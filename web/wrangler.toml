@@ -3,11 +3,12 @@ name = "wilhite-portfolio"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-12-01"
 
-# Create namespace: npx wrangler kv namespace create SETTINGS
-# Then replace id below (preview_id for local dev optional)
-[[kv_namespaces]]
-binding = "SETTINGS"
-id = "00000000000000000000000000000000"
+# Optional KV for persistent extra cleaning fees:
+#   npx wrangler kv namespace create SETTINGS
+# Then uncomment and set the real namespace id:
+# [[kv_namespaces]]
+# binding = "SETTINGS"
+# id = "<your-kv-namespace-id>"
 
 [env.production]
 # API runs as Pages Functions on the same origin — no VITE_API_URL needed
