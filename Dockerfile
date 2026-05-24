@@ -18,4 +18,4 @@ COPY --from=builder /app/api/node_modules api/node_modules
 COPY --from=builder /app/web/dist web/dist
 WORKDIR /app/api
 EXPOSE 8080
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
