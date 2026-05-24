@@ -4,8 +4,20 @@
 
 - **Website:** https://wilhite-portfolio.pages.dev
 - **GitHub:** https://github.com/pmutah/wilhite-portfolio
-- **Firebase project:** `wilhite-portfolio` (Firestore optional — production uses Cloudflare Pages Functions with embedded seed data)
-- **API:** Same-origin Pages Functions at `/api/portfolio/metrics` (no separate backend host required)
+- **Firebase project:** `wilhite-portfolio` (Firestore rules deployed)
+- **API:** Same-origin Pages Functions at `/api/portfolio/metrics`
+- **CI/CD:** GitHub Actions deploys on every push to `main` (secrets configured)
+
+### Cloudflare (configured)
+
+| Item | Value |
+|------|-------|
+| Pages project | `wilhite-portfolio` |
+| Account ID | `513c82ca37c8d7e83926801120de3eee` |
+| GitHub secrets | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
+| Auto-deploy | Push to `main` → GitHub Actions → Cloudflare Pages |
+
+**Recommended:** Replace the GitHub `CLOUDFLARE_API_TOKEN` with a long-lived token from [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) (template: **Edit Cloudflare Workers** — includes Pages). The current token is from `wrangler login` and will expire.
 
 ## Local development
 
