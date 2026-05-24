@@ -6,8 +6,15 @@ export class PortfolioController {
   constructor(private readonly portfolioService: PortfolioService) {}
 
   @Get('metrics')
-  getMetrics(@Query('month') month: string) {
-    return this.portfolioService.getPortfolioMetrics(month || '2026-07');
+  getMetrics(@Query('month') month: string, @Query('compare') compare?: string) {
+    return this.portfolioService.getPortfolioMetrics(month || '2026-07', compare === '1');
+  }
+
+  @Get('history')
+  getHistory(@Query('end') end: string, @Query('count') count?: string) {
+    const endMonth = end || '2026-07';
+    const n = Math.min(24, Math.max(1, Number(count ?? 12)));
+    return this.portfolioService.getHistory(endMonth, n);
   }
 
   @Get('metrics/:propertyId')

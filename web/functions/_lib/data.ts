@@ -72,7 +72,7 @@ export const EXPENSES = [
   { id: 'l-ace-05', month: '2026-05', propertyId: 'lindon', category: 'Maintenance', amount: 1.29 },
 ];
 
-export const extraCleaningFees: Record<string, number> = { 'ranch-2026-02': 572.92 };
+export const DEFAULT_EXTRA_CLEANING: Record<string, number> = { 'ranch-2026-02': 572.92 };
 
 function getOverlappingNights(checkIn: string, checkOut: string, targetYearMonth: string): number {
   const [year, month] = targetYearMonth.split('-');
@@ -86,7 +86,11 @@ function getOverlappingNights(checkIn: string, checkOut: string, targetYearMonth
   return Math.round((actualEnd.getTime() - actualStart.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export function calculateMetrics(propId: PropertyId, currentMonth: string) {
+export function calculateMetrics(
+  propId: PropertyId,
+  currentMonth: string,
+  extraCleaningFees: Record<string, number> = DEFAULT_EXTRA_CLEANING,
+) {
   let revenue = 0;
   let baseCleaning = 0;
   let occupied = 0;
@@ -135,12 +139,19 @@ export function calculateMetrics(propId: PropertyId, currentMonth: string) {
   };
 }
 
-export function corsJson(request: Request, data: unknown, status = 200) {
+export function corsJson(
+  request: Request,
+  data: unknown,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': request.headers.get('Origin') ?? '*',
     'Access-Control-Allow-Methods': 'GET, PUT, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Credentials': 'true',
+    ...extraHeaders,
   };
   if (status === 204) return new Response(null, { status, headers });
   return new Response(JSON.stringify(data), { status, headers });

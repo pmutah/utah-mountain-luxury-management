@@ -1,11 +1,16 @@
-import { RESERVATIONS, EXPENSES, PROPERTIES, extraCleaningFees, calculateMetrics, corsJson } from '../../_lib/data';
+import { RESERVATIONS, EXPENSES, PROPERTIES, calculateMetrics, corsJson } from '../../_lib/data';
+import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
+import { addMonths } from '../../_lib/months';
 
-export const onRequestGet: PagesFunction = async ({ request }) => {
+export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   const url = new URL(request.url);
   const month = url.searchParams.get('month') ?? '2026-07';
-  const ranch = calculateMetrics('ranch', month);
-  const lindon = calculateMetrics('lindon', month);
-  return corsJson(request, {
+  const compare = url.searchParams.get('compare') === '1';
+  const fees = await loadExtraCleaningFees(env);
+  const ranch = calculateMetrics('ranch', month, fees);
+  const lindon = calculateMetrics('lindon', month, fees);
+
+  const payload: Record<string, unknown> = {
     month,
     ranch,
     lindon,
@@ -14,9 +19,25 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
     avgOccupancy: (ranch.occupancy + lindon.occupancy) / 2,
     reservations: RESERVATIONS,
     expenses: EXPENSES,
-    extraCleaningFees,
+    extraCleaningFees: fees,
     properties: Object.values(PROPERTIES),
-  });
+  };
+
+  if (compare) {
+    const prevMonth = addMonths(month, -1);
+    const prevRanch = calculateMetrics('ranch', prevMonth, fees);
+    const prevLindon = calculateMetrics('lindon', prevMonth, fees);
+    payload.previousMonth = prevMonth;
+    payload.previous = {
+      ranch: prevRanch,
+      lindon: prevLindon,
+      totalRevenue: prevRanch.revenue + prevLindon.revenue,
+      totalProfit: prevRanch.profit + prevLindon.profit,
+      avgOccupancy: (prevRanch.occupancy + prevLindon.occupancy) / 2,
+    };
+  }
+
+  return corsJson(request, payload);
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

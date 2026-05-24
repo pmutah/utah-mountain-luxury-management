@@ -7,6 +7,7 @@ import { ReservationsModule } from './reservations/reservations.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { SeedModule } from './seed/seed.module';
+import { AuthModule } from './auth/auth.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -21,6 +22,7 @@ import { HealthController } from './health.controller';
     ExpensesModule,
     PortfolioModule,
     SeedModule,
+    AuthModule,
   ],
   controllers: [HealthController],
 })

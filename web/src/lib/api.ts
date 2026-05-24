@@ -2,6 +2,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'ht
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   });
@@ -68,11 +69,52 @@ export interface PortfolioData {
   reservations: Reservation[];
   expenses: Expense[];
   extraCleaningFees: Record<string, number>;
+  previousMonth?: string;
+  previous?: {
+    ranch: PropertyMetrics;
+    lindon: PropertyMetrics;
+    totalRevenue: number;
+    totalProfit: number;
+    avgOccupancy: number;
+  };
+}
+
+export interface MonthHistoryPoint {
+  month: string;
+  ranch: { revenue: number; profit: number; occupancy: number; stayCount: number };
+  lindon: { revenue: number; profit: number; occupancy: number; stayCount: number };
+  totalRevenue: number;
+  totalProfit: number;
+  avgOccupancy: number;
+}
+
+export interface HistoryData {
+  endMonth: string;
+  count: number;
+  history: MonthHistoryPoint[];
+  reservations: Reservation[];
+}
+
+export interface SessionInfo {
+  authenticated: boolean;
+  authRequired: boolean;
 }
 
 export const api = {
-  getPortfolio: (month: string) =>
-    request<PortfolioData>(`/api/portfolio/metrics?month=${encodeURIComponent(month)}`),
+  getSession: () => request<SessionInfo>('/api/auth/session'),
+  login: (password: string) =>
+    request<SessionInfo>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    }),
+  getPortfolio: (month: string, compare = true) =>
+    request<PortfolioData>(
+      `/api/portfolio/metrics?month=${encodeURIComponent(month)}${compare ? '&compare=1' : ''}`,
+    ),
+  getHistory: (endMonth: string, count = 12) =>
+    request<HistoryData>(
+      `/api/portfolio/history?end=${encodeURIComponent(endMonth)}&count=${count}`,
+    ),
   updateExtraCleaning: (fees: Record<string, number | string>) =>
     request<Record<string, number>>('/api/portfolio/extra-cleaning', {
       method: 'PUT',
