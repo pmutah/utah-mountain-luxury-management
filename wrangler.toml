@@ -1,0 +1,6 @@
+name = "wilhite-portfolio"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "web/dist"
+
+[env.production]
+vars = { VITE_API_URL = "https://wilhite-portfolio-api.onrender.com" }

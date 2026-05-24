@@ -1,0 +1,15 @@
+services:
+  wilhite-portfolio-api:
+    type: web
+    name: wilhite-portfolio-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: FIREBASE_PROJECT_ID
+        value: wilhite-portfolio
+      - key: CORS_ORIGINS
+        value: https://wilhite-portfolio.pages.dev,https://wilhite-property-management.pages.dev
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+    autoDeploy: true
