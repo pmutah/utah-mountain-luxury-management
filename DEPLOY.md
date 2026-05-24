@@ -19,6 +19,16 @@
 
 **Recommended:** Replace the GitHub `CLOUDFLARE_API_TOKEN` with a long-lived token from [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) (template: **Edit Cloudflare Workers** — includes Pages). The current token is from `wrangler login` and will expire.
 
+### KV (extra cleaning fees)
+
+1. `npx wrangler kv namespace create SETTINGS` (note the id)
+2. Update `web/wrangler.toml` `[[kv_namespaces]]` id with the real namespace id
+3. Redeploy — extra cleaning edits persist across requests
+
+### Dashboard password (optional)
+
+Set `DASHBOARD_PASSWORD` in Cloudflare Pages → Environment variables. When set, `/api/*` requires login (`POST /api/auth/login`). Leave unset for open access.
+
 ## Local development
 
 1. Open https://console.firebase.google.com/project/wilhite-portfolio/firestore
