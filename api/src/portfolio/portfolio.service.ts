@@ -5,6 +5,7 @@ import type { PropertyId } from '../common/constants';
 import { DEFAULT_EXTRA_CLEANING } from '../seed/seed-data';
 import { ReservationsService } from '../reservations/reservations.service';
 import { ExpensesService } from '../expenses/expenses.service';
+import { PROPERTIES } from '../common/constants';
 
 @Injectable()
 export class PortfolioService {
@@ -15,9 +16,7 @@ export class PortfolioService {
   ) {}
 
   async getExtraCleaningFees(): Promise<Record<string, number>> {
-    const doc = await this.firebase.collection('settings').doc('extraCleaningFees').get();
-    if (!doc.exists) return { ...DEFAULT_EXTRA_CLEANING };
-    return doc.data() as Record<string, number>;
+    return this.firebase.getSetting('extraCleaningFees', { ...DEFAULT_EXTRA_CLEANING });
   }
 
   async updateExtraCleaningFees(body: Record<string, number | string>) {
@@ -31,7 +30,7 @@ export class PortfolioService {
         next[key] = num;
       }
     }
-    await this.firebase.collection('settings').doc('extraCleaningFees').set(next);
+    await this.firebase.setSetting('extraCleaningFees', next);
     return next;
   }
 
@@ -45,19 +44,15 @@ export class PortfolioService {
   }
 
   async getPortfolioMetrics(month: string) {
-    const [ranch, lindon, reservations, expenses, extraCleaningFees, properties] =
-      await Promise.all([
-        this.getPropertyMetrics('ranch', month),
-        this.getPropertyMetrics('lindon', month),
-        this.reservationsService.findAll(),
-        this.expensesService.findAll(),
-        this.getExtraCleaningFees(),
-        this.firebase.collection('properties').get(),
-      ]);
+    const [ranch, lindon, reservations, expenses, extraCleaningFees] = await Promise.all([
+      this.getPropertyMetrics('ranch', month),
+      this.getPropertyMetrics('lindon', month),
+      this.reservationsService.findAll(),
+      this.expensesService.findAll(),
+      this.getExtraCleaningFees(),
+    ]);
 
-    const propertyList = properties.empty
-      ? null
-      : properties.docs.map((d) => d.data());
+    const fromDb = await this.firebase.listCollection('properties');
 
     return {
       month,
@@ -69,7 +64,7 @@ export class PortfolioService {
       reservations,
       expenses,
       extraCleaningFees,
-      properties: propertyList,
+      properties: fromDb ?? Object.values(PROPERTIES),
     };
   }
 }

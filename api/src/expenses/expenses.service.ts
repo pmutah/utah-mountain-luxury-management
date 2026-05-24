@@ -8,10 +8,11 @@ export class ExpensesService {
   constructor(private readonly firebase: FirebaseService) {}
 
   async findAll(): Promise<Expense[]> {
-    const snap = await this.firebase.collection('expenses').get();
-    if (snap.empty) {
-      return EXPENSES.map((e) => ({ ...e, propertyId: e.propertyId as Expense['propertyId'] }));
-    }
-    return snap.docs.map((d) => d.data() as Expense);
+    const fromDb = await this.firebase.listCollection<Expense>('expenses');
+    if (fromDb) return fromDb;
+    return EXPENSES.map((e) => ({
+      ...e,
+      propertyId: e.propertyId as Expense['propertyId'],
+    }));
   }
 }
