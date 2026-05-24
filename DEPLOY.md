@@ -1,13 +1,13 @@
 # Deployment Guide — Wilhite Property Management
 
-## What's already done
+## What's live
 
-- **GitHub repo:** https://github.com/pmutah/wilhite-portfolio
-- **Firebase project:** `wilhite-portfolio` (created)
-- **Local API:** works at http://localhost:8080 (in-memory seed data without credentials)
-- **Build:** `npm run build` succeeds for web + api
+- **Website:** https://wilhite-portfolio.pages.dev
+- **GitHub:** https://github.com/pmutah/wilhite-portfolio
+- **Firebase project:** `wilhite-portfolio` (Firestore optional — production uses Cloudflare Pages Functions with embedded seed data)
+- **API:** Same-origin Pages Functions at `/api/portfolio/metrics` (no separate backend host required)
 
-## 1. Firebase Firestore
+## Local development
 
 1. Open https://console.firebase.google.com/project/wilhite-portfolio/firestore
 2. Click **Create database** → Production mode → `us-central1`

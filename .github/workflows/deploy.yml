@@ -23,7 +23,6 @@ jobs:
       - name: Install & build web
         run: |
           npm ci --workspace web || npm install --workspace web
-          echo "VITE_API_URL=${{ vars.VITE_API_URL || 'https://wilhite-portfolio-api.onrender.com' }}" > web/.env
           npm run build -w web
 
       - name: Deploy to Cloudflare Pages
@@ -32,6 +31,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy web/dist --project-name=wilhite-portfolio --commit-dirty=true
+        workingDirectory: .
 
   build-api:
     name: Build API
