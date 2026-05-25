@@ -3,13 +3,9 @@ name = "wilhite-portfolio"
 pages_build_output_dir = "dist"
 compatibility_date = "2024-12-01"
 
-# Optional KV for persistent extra cleaning fees:
-#   npx wrangler kv namespace create SETTINGS
-# Then uncomment and set the real namespace id:
-# [[kv_namespaces]]
-# binding = "SETTINGS"
-# id = "<your-kv-namespace-id>"
+# Persistent extra cleaning fees (Cloudflare KV)
+[[kv_namespaces]]
+binding = "SETTINGS"
+id = "a211af7ec8bd4c2e973d6421cccd8beb"
 
-[env.production]
-# API runs as Pages Functions on the same origin — no VITE_API_URL needed
-# Set DASHBOARD_PASSWORD in Pages → Settings → Environment variables to enable auth
+# Optional: set DASHBOARD_PASSWORD in Pages → Settings → Environment variables to enable auth
