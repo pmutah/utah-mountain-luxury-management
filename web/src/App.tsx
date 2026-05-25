@@ -84,7 +84,13 @@ function Dashboard() {
         ) : data ? (
           <main className={loading ? 'opacity-60 pointer-events-none' : ''}>
             {activeTab === 'portfolio' && (
-              <PortfolioOverview data={data} history={history} onToast={showToast} />
+              <PortfolioOverview
+                data={data}
+                history={history}
+                onToast={showToast}
+                onRefresh={() => void load()}
+                onError={(msg) => showToast(msg, 'error')}
+              />
             )}
             {(activeTab === 'ranch' || activeTab === 'lindon') && (
               <PropertyDetail

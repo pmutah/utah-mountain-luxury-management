@@ -18,7 +18,10 @@ async function fileToBase64(file: File): Promise<{ base64: string; mimeType: str
   const bytes = new Uint8Array(buf);
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
-  return { base64: btoa(binary), mimeType: file.type || 'image/jpeg' };
+  const mimeType =
+    file.type ||
+    (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+  return { base64: btoa(binary), mimeType };
 }
 
 export function ExpenseScanner({
@@ -73,8 +76,10 @@ export function ExpenseScanner({
 
   const handleFiles = async (files: FileList | null) => {
     const file = files?.[0];
-    if (!file || !file.type.startsWith('image/')) {
-      onError('Please drop or select an image (PNG, JPG, etc.)');
+    if (!file) return;
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!file.type.startsWith('image/') && !isPdf) {
+      onError('Please drop or select a PDF or image (PNG, JPG, etc.)');
       return;
     }
     const { base64, mimeType } = await fileToBase64(file);
@@ -195,14 +200,14 @@ export function ExpenseScanner({
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept="application/pdf,image/*"
                   className="hidden"
                   onChange={(e) => void handleFiles(e.target.files)}
                 />
                 <input
                   ref={cameraRef}
                   type="file"
-                  accept="image/*"
+                  accept="application/pdf,image/*"
                   capture="environment"
                   className="hidden"
                   onChange={(e) => void handleFiles(e.target.files)}

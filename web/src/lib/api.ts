@@ -49,6 +49,20 @@ export interface ExpenseScanResult {
   propertyId: 'ranch' | 'lindon' | null;
   vendor?: string;
   note?: string;
+  confidence?: 'high' | 'low';
+}
+
+export interface BatchScannedExpense extends ExpenseScanResult {
+  sourceFile?: string;
+}
+
+export interface BulkExpenseInput {
+  propertyId: 'ranch' | 'lindon';
+  month: string;
+  category: string;
+  amount: number;
+  note?: string;
+  vendor?: string;
 }
 
 export interface OwnerDistribution {
@@ -144,18 +158,24 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  addExpense: (body: {
-    propertyId: 'ranch' | 'lindon';
-    month: string;
-    category: string;
-    amount: number;
-    note?: string;
-    vendor?: string;
-  }) =>
+  scanExpenseBatch: (body: { fileBase64: string; mimeType: string; fileName?: string }) =>
+    request<{ expenses: ExpenseScanResult[]; sourceFile: string }>('/api/expenses/scan-batch', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  addExpense: (body: BulkExpenseInput) =>
     request<Expense>('/api/expenses', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  addExpensesBulk: (expenses: BulkExpenseInput[]) =>
+    request<{ saved: Expense[]; skipped: Array<{ reason: string; expense: BulkExpenseInput }> }>(
+      '/api/expenses/bulk',
+      {
+        method: 'POST',
+        body: JSON.stringify({ expenses }),
+      },
+    ),
   deleteExpense: (id: string) =>
     request<{ ok: boolean }>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'DELETE',

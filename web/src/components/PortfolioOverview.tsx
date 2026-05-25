@@ -4,15 +4,20 @@ import { pctChange } from '../lib/months';
 import { StatCard } from './StatCard';
 import { TrendCharts } from './TrendCharts';
 import { ExportMenu } from './ExportMenu';
+import { BatchBillImporter } from './BatchBillImporter';
 
 export function PortfolioOverview({
   data,
   history,
   onToast,
+  onRefresh,
+  onError,
 }: {
   data: PortfolioData;
   history: HistoryData | null;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
+  onRefresh: () => void;
+  onError: (msg: string) => void;
 }) {
   const { ranch, lindon, previous } = data;
   const rev = ranch.revenue + lindon.revenue;
@@ -26,6 +31,7 @@ export function PortfolioOverview({
   return (
     <div className="space-y-6">
       <ExportMenu data={data} onToast={onToast} />
+      <BatchBillImporter onRefresh={onRefresh} onToast={onToast} onError={onError} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Revenue" value={formatCurrency(rev)} icon={BarChart3} delta={revDelta} />
         <StatCard label="Net Profit" value={formatCurrency(profit)} icon={DollarSign} color="text-blue-400" delta={profitDelta} />
