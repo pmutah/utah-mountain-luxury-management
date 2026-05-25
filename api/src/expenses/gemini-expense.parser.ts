@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Expense } from '../common/metrics';
 
-const PROMPT = `You extract vacation-rental expenses for Wilhite Property Management.
+const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
 Properties: ranch (The Ranch House, 270 E Center St), lindon (The Lindon House, 1011 E 100 N).
 Categories: Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 Return ONLY JSON: {"amount": number, "category": string, "month": "YYYY-MM", "propertyId": "ranch"|"lindon"|null, "vendor": string, "note": string}`;

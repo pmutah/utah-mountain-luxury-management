@@ -18,7 +18,7 @@ export function Header({
           <div>
             <h1 className="text-2xl font-black text-white">Portfolio</h1>
             <p className="text-xs text-slate-500 font-bold uppercase tracking-tighter">
-              Wilhite Property Management
+              Utah Mountain Luxury Portfolio
             </p>
           </div>
         </div>

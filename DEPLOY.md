@@ -1,4 +1,4 @@
-# Deployment Guide — Wilhite Property Management
+# Deployment Guide — Utah Mountain Luxury Portfolio
 
 ## What's live
 

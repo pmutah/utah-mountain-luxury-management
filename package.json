@@ -2,7 +2,7 @@
   "name": "wilhite-portfolio",
   "version": "1.0.0",
   "private": true,
-  "description": "Wilhite Property Management — vacation rental portfolio dashboard",
+  "description": "Utah Mountain Luxury Portfolio — vacation rental dashboard",
   "workspaces": [
     "api",
     "web"

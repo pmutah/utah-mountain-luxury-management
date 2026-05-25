@@ -31,7 +31,7 @@ async function bootstrap() {
 
   const port = Number(config.get('PORT') ?? 8080);
   await app.listen(port);
-  console.log(`Wilhite Portfolio API listening on http://localhost:${port}`);
+  console.log(`Utah Mountain Luxury Portfolio API listening on http://localhost:${port}`);
 }
 
 bootstrap();

@@ -4,7 +4,7 @@ import { formatMonthLabel } from './months';
 
 export function portfolioToCsv(data: PortfolioData): string {
   const rows: string[] = [
-    `Wilhite Property Management — ${formatMonthLabel(data.month)}`,
+    `Utah Mountain Luxury Portfolio — ${formatMonthLabel(data.month)}`,
     '',
     'Property,Revenue,Profit,Occupancy %,Stays',
     `Ranch,${data.ranch.revenue},${data.ranch.profit},${data.ranch.occupancy.toFixed(1)},${data.ranch.stayCount}`,
@@ -25,7 +25,7 @@ export function portfolioSummaryText(data: PortfolioData): string {
   const rev = data.ranch.revenue + data.lindon.revenue;
   const profit = data.ranch.profit + data.lindon.profit;
   return [
-    `Wilhite Portfolio — ${formatMonthLabel(data.month)}`,
+    `Utah Mountain Luxury Portfolio — ${formatMonthLabel(data.month)}`,
     `Revenue: ${formatCurrency(rev)}`,
     `Net profit: ${formatCurrency(profit)}`,
     `Ranch: ${formatCurrency(data.ranch.revenue)} (${data.ranch.stayCount} stays)`,
@@ -38,7 +38,7 @@ export function downloadCsv(data: PortfolioData) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `wilhite-portfolio-${data.month}.csv`;
+  a.download = `utah-mountain-luxury-${data.month}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

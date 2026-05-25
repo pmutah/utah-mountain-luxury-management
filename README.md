@@ -1,4 +1,4 @@
-# Wilhite Property Management
+# Utah Mountain Luxury Portfolio
 
 Vacation rental portfolio dashboard for **The Ranch House** and **The Lindon House**.
 
@@ -61,4 +61,4 @@ Repo: https://github.com/pmutah/wilhite-portfolio
 
 ## License
 
-Private — Wilhite Property Management
+Private — Utah Mountain Luxury Portfolio

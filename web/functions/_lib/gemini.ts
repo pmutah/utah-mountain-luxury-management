@@ -7,7 +7,7 @@ export interface ParsedExpense {
   note?: string;
 }
 
-const PROMPT = `You extract vacation-rental expenses for Wilhite Property Management.
+const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
 
 Properties (pick the best match from receipt context or user hint):
 - ranch: "The Ranch House", 270 E Center St (larger home, Provo area)
