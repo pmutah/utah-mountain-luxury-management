@@ -16,6 +16,8 @@ export interface Expense {
   propertyId: PropertyId;
   category: string;
   amount: number;
+  note?: string;
+  vendor?: string;
 }
 
 export interface OwnerDistribution {

@@ -9,6 +9,7 @@ import {
 } from '../lib/api';
 import { OwnerDistributionPanel } from './OwnerDistribution';
 import { ExtraCleaningInput } from './ExtraCleaningInput';
+import { ExpenseScanner } from './ExpenseScanner';
 import { OccupancyCalendar, RevenueLog } from './OccupancyCalendar';
 import { EmptyState } from './EmptyState';
 import { CalendarX } from 'lucide-react';
@@ -79,6 +80,15 @@ export function PropertyDetail({
               onToast('Extra cleaning saved', 'success');
             }}
             onError={onError}
+          />
+
+          <ExpenseScanner
+            propertyId={tab}
+            month={data.month}
+            expenses={data.expenses}
+            onSaved={onRefresh}
+            onError={onError}
+            onToast={onToast}
           />
 
           {data.expenses.filter(

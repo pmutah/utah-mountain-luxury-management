@@ -1,4 +1,5 @@
-import { RESERVATIONS, EXPENSES, PROPERTIES, calculateMetrics, corsJson } from '../../_lib/data';
+import { RESERVATIONS, PROPERTIES, calculateMetrics, corsJson } from '../../_lib/data';
+import { mergeAllExpenses } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { addMonths } from '../../_lib/months';
 
@@ -7,8 +8,9 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   const month = url.searchParams.get('month') ?? '2026-07';
   const compare = url.searchParams.get('compare') === '1';
   const fees = await loadExtraCleaningFees(env);
-  const ranch = calculateMetrics('ranch', month, fees);
-  const lindon = calculateMetrics('lindon', month, fees);
+  const allExpenses = await mergeAllExpenses(env);
+  const ranch = calculateMetrics('ranch', month, fees, allExpenses);
+  const lindon = calculateMetrics('lindon', month, fees, allExpenses);
 
   const payload: Record<string, unknown> = {
     month,
@@ -18,15 +20,15 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     totalProfit: ranch.profit + lindon.profit,
     avgOccupancy: (ranch.occupancy + lindon.occupancy) / 2,
     reservations: RESERVATIONS,
-    expenses: EXPENSES,
+    expenses: allExpenses,
     extraCleaningFees: fees,
     properties: Object.values(PROPERTIES),
   };
 
   if (compare) {
     const prevMonth = addMonths(month, -1);
-    const prevRanch = calculateMetrics('ranch', prevMonth, fees);
-    const prevLindon = calculateMetrics('lindon', prevMonth, fees);
+    const prevRanch = calculateMetrics('ranch', prevMonth, fees, allExpenses);
+    const prevLindon = calculateMetrics('lindon', prevMonth, fees, allExpenses);
     payload.previousMonth = prevMonth;
     payload.previous = {
       ranch: prevRanch,

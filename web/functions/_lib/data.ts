@@ -90,6 +90,7 @@ export function calculateMetrics(
   propId: PropertyId,
   currentMonth: string,
   extraCleaningFees: Record<string, number> = DEFAULT_EXTRA_CLEANING,
+  expenseList: Array<{ propertyId: string; month: string; category: string; amount: number }> = EXPENSES,
 ) {
   let revenue = 0;
   let baseCleaning = 0;
@@ -108,7 +109,7 @@ export function calculateMetrics(
   const extra = Number(extraCleaningFees[`${propId}-${currentMonth}`] || 0);
   const totalCleaning = baseCleaning + extra;
   const mortgage = PROPERTIES[propId].mortgage;
-  const operationalExpenses = EXPENSES.filter(
+  const operationalExpenses = expenseList.filter(
     (e) => e.propertyId === propId && e.month === currentMonth && e.category !== 'Mortgage',
   ).reduce((sum, e) => sum + e.amount, 0);
   const [yearStr, monthStr] = currentMonth.split('-');

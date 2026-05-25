@@ -37,6 +37,18 @@ export interface Expense {
   propertyId: string;
   category: string;
   amount: number;
+  note?: string;
+  vendor?: string;
+  createdAt?: string;
+}
+
+export interface ExpenseScanResult {
+  amount: number;
+  category: string;
+  month: string;
+  propertyId: 'ranch' | 'lindon' | null;
+  vendor?: string;
+  note?: string;
 }
 
 export interface OwnerDistribution {
@@ -119,6 +131,34 @@ export const api = {
     request<Record<string, number>>('/api/portfolio/extra-cleaning', {
       method: 'PUT',
       body: JSON.stringify(fees),
+    }),
+  scanExpense: (body: {
+    type: 'text' | 'image';
+    text?: string;
+    imageBase64?: string;
+    mimeType?: string;
+    propertyId?: 'ranch' | 'lindon';
+    month?: string;
+  }) =>
+    request<ExpenseScanResult>('/api/expenses/scan', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  addExpense: (body: {
+    propertyId: 'ranch' | 'lindon';
+    month: string;
+    category: string;
+    amount: number;
+    note?: string;
+    vendor?: string;
+  }) =>
+    request<Expense>('/api/expenses', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  deleteExpense: (id: string) =>
+    request<{ ok: boolean }>(`/api/expenses/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     }),
 };
 
