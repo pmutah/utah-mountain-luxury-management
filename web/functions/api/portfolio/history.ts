@@ -1,11 +1,11 @@
 import { calculateMetrics, RESERVATIONS, PROPERTIES, corsJson } from '../../_lib/data';
 import { mergeAllExpenses } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
-import { monthRange } from '../../_lib/months';
+import { currentYearMonth, monthRange } from '../../_lib/months';
 
 export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   const url = new URL(request.url);
-  const endMonth = url.searchParams.get('end') ?? url.searchParams.get('month') ?? '2026-07';
+  const endMonth = url.searchParams.get('end') ?? url.searchParams.get('month') ?? currentYearMonth();
   const count = Math.min(24, Math.max(1, Number(url.searchParams.get('count') ?? 12)));
   const fees = await loadExtraCleaningFees(env);
   const allExpenses = await mergeAllExpenses(env);

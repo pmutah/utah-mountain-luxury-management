@@ -7,12 +7,13 @@ import { PropertyDetail } from './components/PropertyDetail';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { ToastStack } from './components/Toast';
 import { useToast } from './hooks/useToast';
+import { currentYearMonth } from './lib/months';
 
 type TabId = 'portfolio' | 'ranch' | 'lindon';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
-  const [currentMonth, setCurrentMonth] = useState('2026-07');
+  const [currentMonth, setCurrentMonth] = useState(currentYearMonth);
   const [data, setData] = useState<PortfolioData | null>(null);
   const [history, setHistory] = useState<HistoryData | null>(null);
   const [loading, setLoading] = useState(true);
