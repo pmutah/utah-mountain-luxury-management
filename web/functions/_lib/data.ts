@@ -61,7 +61,18 @@ export const RESERVATIONS = [
   { id: 'l25', guestName: 'Jason Parkin', propertyId: 'lindon', checkIn: '2026-11-22', checkOut: '2026-11-29', payout: 1299.78, source: 'Airbnb' },
 ];
 
-export const EXPENSES = [
+export interface ExpenseRecord {
+  id: string;
+  month: string;
+  propertyId: string;
+  category: string;
+  amount: number;
+  receiptStoragePath?: string | null;
+  receiptContentType?: string | null;
+  receiptUploadedAt?: string | null;
+}
+
+export const EXPENSES: ExpenseRecord[] = [
   ...Array.from({ length: 12 }, (_, i) => {
     const m = `2026-${String(i + 1).padStart(2, '0')}`;
     return [

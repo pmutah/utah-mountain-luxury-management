@@ -77,9 +77,19 @@ Set **Pages → Settings → Environment variables:**
 2. Render reads `render.yaml` and creates **wilhite-portfolio-api**
 3. Add secret env var `FIREBASE_SERVICE_ACCOUNT_JSON` (full JSON)
 4. After deploy, copy the service URL (e.g. `https://wilhite-portfolio-api.onrender.com`)
-5. Set that as `VITE_API_URL` in Cloudflare Pages
+5. Set that as `VITE_API_URL` in Cloudflare Pages (required for **expense receipt uploads**; portfolio reads can still use same-origin Pages Functions when `VITE_API_URL` is empty, but writes must hit Nest)
 
 Health check: `GET https://wilhite-portfolio-api.onrender.com/health`
+
+### Firebase Storage (receipt photos)
+
+1. In [Firebase Console](https://console.firebase.google.com/project/wilhite-portfolio/storage), enable **Cloud Storage**
+2. Deploy storage rules from the repo root:  
+   `firebase deploy --only storage --project wilhite-portfolio`
+3. Ensure the service account used by Render has permission to create/read/delete objects (e.g. **Storage Object Admin** on the default bucket)
+4. Optional: set `FIREBASE_STORAGE_BUCKET` on Render if your bucket name differs from `wilhite-portfolio.appspot.com`
+
+Receipts are stored at `receipts/{propertyId}/{expenseId}.{ext}`; Firestore expense documents hold `receiptStoragePath`, `receiptContentType`, and `receiptUploadedAt` only (signed URLs are generated per request).
 
 ## 4. Local development
 
@@ -95,7 +105,7 @@ npm run dev
 - Web: http://localhost:5173  
 - API: http://localhost:8080  
 
-Without Firebase credentials, the API serves all reservation/expense seed data from memory.
+Without Firebase credentials, the API serves all reservation/expense seed data from memory. Receipt uploads return **503** until Storage is configured.
 
 ## 5. Verify production
 

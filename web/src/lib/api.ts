@@ -1,15 +1,44 @@
 const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8080');
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
   const res = await fetch(`${API_URL}${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
+    headers,
   });
   if (!res.ok) {
-    throw new Error(`API ${path} failed: ${res.status}`);
+    const detail = await res.text().catch(() => '');
+    throw new Error(detail || `API ${path} failed: ${res.status}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
+}
+
+export type CreateExpenseInput = {
+  propertyId: string;
+  month: string;
+  category: string;
+  amount: number;
+  file?: File | null;
+};
+
+export type UpdateExpenseInput = {
+  category?: string;
+  amount?: number;
+  file?: File | null;
+};
+
+function expenseFormData(fields: Record<string, string | number>, file?: File | null): FormData {
+  const form = new FormData();
+  for (const [key, value] of Object.entries(fields)) {
+    form.append(key, String(value));
+  }
+  if (file) form.append('file', file);
+  return form;
 }
 
 export interface Property {
@@ -37,6 +66,11 @@ export interface Expense {
   propertyId: string;
   category: string;
   amount: number;
+  receiptStoragePath?: string | null;
+  receiptContentType?: string | null;
+  receiptUploadedAt?: string | null;
+  /** Signed URL from API when a receipt exists (not stored in Firestore). */
+  receiptUrl?: string | null;
 }
 
 export interface OwnerDistribution {
@@ -120,6 +154,34 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(fees),
     }),
+  createExpense: (input: CreateExpenseInput) =>
+    request<Expense>('/api/expenses', {
+      method: 'POST',
+      body: expenseFormData(
+        {
+          propertyId: input.propertyId,
+          month: input.month,
+          category: input.category,
+          amount: input.amount,
+        },
+        input.file,
+      ),
+    }),
+  updateExpense: (id: string, input: UpdateExpenseInput) =>
+    request<Expense>(`/api/expenses/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: expenseFormData(
+        {
+          ...(input.category !== undefined ? { category: input.category } : {}),
+          ...(input.amount !== undefined ? { amount: input.amount } : {}),
+        },
+        input.file,
+      ),
+    }),
+  deleteExpense: (id: string) =>
+    request<void>(`/api/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  receiptUrl: (expenseId: string) =>
+    `${API_URL}/api/expenses/${encodeURIComponent(expenseId)}/receipt`,
 };
 
 export const PROPERTIES: Record<string, Property> = {

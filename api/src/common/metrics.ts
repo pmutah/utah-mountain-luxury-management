@@ -16,6 +16,11 @@ export interface Expense {
   propertyId: PropertyId;
   category: string;
   amount: number;
+  receiptStoragePath?: string | null;
+  receiptContentType?: string | null;
+  receiptUploadedAt?: string | null;
+  /** Populated by API when returning expenses (signed URL, not stored in Firestore). */
+  receiptUrl?: string | null;
 }
 
 export interface OwnerDistribution {

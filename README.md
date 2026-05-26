@@ -30,15 +30,21 @@ Open http://localhost:5173
 | GET | `/api/portfolio/metrics?month=2026-07` | Full portfolio + metrics |
 | PUT | `/api/portfolio/extra-cleaning` | Update extra cleaning fees |
 | GET | `/api/reservations` | All reservations |
-| GET | `/api/expenses` | All expenses |
+| GET | `/api/expenses` | All expenses (includes signed receipt URLs when stored) |
+| POST | `/api/expenses` | Create expense (`multipart/form-data`: `propertyId`, `month`, `category`, `amount`, `file`) |
+| PATCH | `/api/expenses/:id` | Update expense metadata and/or replace receipt |
+| DELETE | `/api/expenses/:id` | Delete expense and receipt from Storage |
+| GET | `/api/expenses/:id/receipt` | Redirect to signed receipt image URL |
 | POST | `/api/seed` | Seed Firestore |
+
+**Receipt uploads** require the Nest API with Firebase Storage enabled. Set `VITE_API_URL` to your Render API URL in production so the web app posts expenses to Nest (Pages Functions remain read-only for portfolio metrics).
 
 ## Firebase setup
 
 1. Create project **wilhite-portfolio** in [Firebase Console](https://console.firebase.google.com/)
-2. Enable Firestore (production mode)
-3. Generate a service account key → set `FIREBASE_SERVICE_ACCOUNT_JSON` in `.env`
-4. Deploy rules: `firebase deploy --only firestore:rules --project wilhite-portfolio`
+2. Enable Firestore (production mode) and **Cloud Storage**
+3. Generate a service account key → set `FIREBASE_SERVICE_ACCOUNT_JSON` in `.env` (role needs Firestore + Storage object access)
+4. Deploy rules: `firebase deploy --only firestore:rules,storage --project wilhite-portfolio`
 
 ## Deployment
 
