@@ -1,10 +1,17 @@
-import { RESERVATIONS, EXPENSES, PROPERTIES, calculateMetrics, corsJson } from '../../_lib/data';
+import {
+  RESERVATIONS,
+  EXPENSES,
+  PROPERTIES,
+  calculateMetrics,
+  corsJson,
+  currentYearMonth,
+} from '../../_lib/data';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { addMonths } from '../../_lib/months';
 
 export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   const url = new URL(request.url);
-  const month = url.searchParams.get('month') ?? '2026-07';
+  const month = url.searchParams.get('month') ?? currentYearMonth();
   const compare = url.searchParams.get('compare') === '1';
   const fees = await loadExtraCleaningFees(env);
   const ranch = calculateMetrics('ranch', month, fees);

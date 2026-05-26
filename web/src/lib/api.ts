@@ -1,5 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8080');
 
+/** Calendar month for today in `YYYY-MM` (local timezone). */
+export function currentYearMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (init?.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {

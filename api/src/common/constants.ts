@@ -18,3 +18,8 @@ export const PROPERTIES = {
 } as const;
 
 export type PropertyId = keyof typeof PROPERTIES;
+
+export function currentYearMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}

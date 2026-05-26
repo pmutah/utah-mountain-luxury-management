@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
+import { currentYearMonth } from '../common/constants';
 import { PortfolioService } from './portfolio.service';
 
 @Controller('portfolio')
@@ -12,7 +13,7 @@ export class PortfolioController {
 
   @Get('history')
   getHistory(@Query('end') end: string, @Query('count') count?: string) {
-    const endMonth = end || '2026-07';
+    const endMonth = end || currentYearMonth();
     const n = Math.min(24, Math.max(1, Number(count ?? 12)));
     return this.portfolioService.getHistory(endMonth, n);
   }

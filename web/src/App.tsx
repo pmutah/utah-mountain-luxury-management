@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, PROPERTIES, type HistoryData, type PortfolioData } from './lib/api';
+import { api, currentYearMonth, PROPERTIES, type HistoryData, type PortfolioData } from './lib/api';
 import { LoginGate } from './components/LoginGate';
 import { Header } from './components/Header';
 import { PortfolioOverview } from './components/PortfolioOverview';
@@ -12,7 +12,7 @@ type TabId = 'portfolio' | 'ranch' | 'lindon';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
-  const [currentMonth, setCurrentMonth] = useState('2026-07');
+  const [currentMonth, setCurrentMonth] = useState(currentYearMonth);
   const [data, setData] = useState<PortfolioData | null>(null);
   const [history, setHistory] = useState<HistoryData | null>(null);
   const [loading, setLoading] = useState(true);
