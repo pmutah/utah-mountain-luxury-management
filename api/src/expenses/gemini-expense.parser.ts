@@ -2,12 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Expense } from '../common/metrics';
 import { ADDRESS_RULES_PROMPT, filterPortfolioExpenses } from './expense-address';
+import { applyRockyMountainPowerVendor } from './expense-vendors';
 
 const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
 ${ADDRESS_RULES_PROMPT}
 Categories: Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 Return ONLY JSON: {"expenses":[{"amount":number,"category":string,"month":"YYYY-MM","propertyId":"ranch"|"lindon"|null,"vendor":string,"note":string,"confidence":"high"|"low"}]}
-Rules: one or many bills per document at portfolio addresses only; per-address amount not account total; confidence low if property or month ambiguous; note must include service address.`;
+Rules: one or many bills per document at portfolio addresses only; per-address amount not account total; confidence low if property or month ambiguous; note must include service address; vendor must be "Rocky Mountain Power" for Rocky Mountain Power electric utility bills.`;
 
 const SINGLE_PROMPT = `${PROMPT}\nFor a single receipt return one item in expenses array.`;
 
@@ -56,14 +57,18 @@ export class GeminiExpenseParser {
     fileName?: string,
   ): Promise<ParsedExpense[]> {
     const fileLine = fileName ? `File name: ${fileName}` : '';
-    return this.parseBatch([
-      { text: `${PROMPT}\n\n${fileLine}\n\nExtract all bills from this document.` },
-      { inline_data: { mime_type: mimeType, data: base64 } },
-    ]);
+    return this.parseBatch(
+      [
+        { text: `${PROMPT}\n\n${fileLine}\n\nExtract all bills from this document.` },
+        { inline_data: { mime_type: mimeType, data: base64 } },
+      ],
+      fileName,
+    );
   }
 
   private async parseBatch(
     parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }>,
+    fileName?: string,
   ): Promise<ParsedExpense[]> {
     const raw = await this.call(parts);
     const json = JSON.parse(raw) as { expenses?: ParsedExpense[] } | ParsedExpense;
@@ -81,7 +86,7 @@ export class GeminiExpenseParser {
           parsed.confidence =
             parsed.propertyId && /^\d{4}-\d{2}$/.test(parsed.month) ? 'high' : 'low';
         }
-        return parsed;
+        return applyRockyMountainPowerVendor(parsed, { fileName });
       }),
     );
   }

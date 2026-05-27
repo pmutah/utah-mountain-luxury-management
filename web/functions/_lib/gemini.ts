@@ -2,6 +2,7 @@ import {
   ADDRESS_RULES_PROMPT,
   filterPortfolioExpenses,
 } from './expense-address';
+import { applyRockyMountainPowerVendor } from './expense-vendors';
 
 export interface ParsedExpense {
   amount: number;
@@ -32,7 +33,8 @@ Rules:
 - month is expense month YYYY-MM from billing/statement period or due date (NOT scan date)
 - propertyId null if truly unknown; set confidence "low" when property OR month is ambiguous
 - confidence "high" only when both propertyId and month are clear from the document
-- note: brief description plus which service address the charge applies to`;
+- note: brief description plus which service address the charge applies to
+- vendor: bill issuer (e.g. "Rocky Mountain Power" for Rocky Mountain Power electric bills); use exact name "Rocky Mountain Power" for their utility statements`;
 
 const SINGLE_PROMPT = `${PROMPT}
 
@@ -47,7 +49,7 @@ function buildHintLine(hints: { propertyId?: string; month?: string }): string {
     .join('. ');
 }
 
-function normalizeExpense(raw: ParsedExpense): ParsedExpense {
+function normalizeExpense(raw: ParsedExpense, fileName?: string): ParsedExpense {
   const parsed = { ...raw };
   if (!Number.isFinite(parsed.amount) || parsed.amount <= 0) {
     throw new Error('Could not detect a valid expense amount');
@@ -66,16 +68,16 @@ function normalizeExpense(raw: ParsedExpense): ParsedExpense {
     parsed.confidence =
       parsed.propertyId && /^\d{4}-\d{2}$/.test(parsed.month) ? 'high' : 'low';
   }
-  return parsed;
+  return applyRockyMountainPowerVendor(parsed, { fileName });
 }
 
-function parseBatchResponse(raw: string): ParsedExpense[] {
+function parseBatchResponse(raw: string, fileName?: string): ParsedExpense[] {
   const json = JSON.parse(raw) as ParsedExpenseBatch | ParsedExpense;
   const items = Array.isArray((json as ParsedExpenseBatch).expenses)
     ? (json as ParsedExpenseBatch).expenses
     : [json as ParsedExpense];
   if (items.length === 0) throw new Error('No expenses found in document');
-  return filterPortfolioExpenses(items.map(normalizeExpense));
+  return filterPortfolioExpenses(items.map((item) => normalizeExpense(item, fileName)));
 }
 
 async function callGemini(
@@ -130,7 +132,7 @@ export async function parseExpensesFromDocument(
     },
     { inline_data: { mime_type: mimeType, data: base64 } },
   ]);
-  return parseBatchResponse(raw);
+  return parseBatchResponse(raw, fileName);
 }
 
 export async function parseExpenseFromText(

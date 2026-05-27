@@ -14,6 +14,27 @@ import {
   type ExpenseScanResult,
 } from '../lib/api';
 
+const ROCKY_MOUNTAIN_POWER = 'Rocky Mountain Power';
+
+function withRockyMountainPowerVendor(
+  expense: ExpenseScanResult,
+  sourceFile: string,
+): ExpenseScanResult {
+  const blob = `${expense.vendor ?? ''} ${expense.note ?? ''} ${sourceFile}`;
+  const isRmp =
+    /rocky\s*mountain\s*power|rockymountainpower|\brmp\b/i.test(blob) ||
+    (expense.category === 'Utilities' && !expense.vendor);
+
+  if (!isRmp) return expense;
+
+  return {
+    ...expense,
+    vendor: ROCKY_MOUNTAIN_POWER,
+    category:
+      !expense.category || expense.category === 'Other' ? 'Utilities' : expense.category,
+  };
+}
+
 const CATEGORIES = [
   'Maintenance',
   'Supplies',
@@ -139,7 +160,9 @@ export function BatchBillImporter({
             fileName: file.name,
           });
 
-          const portfolioExpenses = expenses.filter((e) => !isExcludedExpense(e));
+          const portfolioExpenses = expenses
+            .filter((e) => !isExcludedExpense(e))
+            .map((e) => withRockyMountainPowerVendor(e, file.name));
 
           const autoBatch: BulkExpenseInput[] = [];
 
@@ -257,7 +280,7 @@ export function BatchBillImporter({
               Import bills (PDF)
             </p>
             <p className="text-[10px] text-slate-500 font-bold mt-1">
-              Drop multiple PDFs or images — auto-assigns house &amp; month
+              Drop Rocky Mountain Power PDFs — auto-assigns house, month &amp; vendor
             </p>
           </div>
         </div>
