@@ -6,6 +6,7 @@ import { TrendCharts } from './TrendCharts';
 import { ExportMenu } from './ExportMenu';
 import { BatchBillImporter } from './BatchBillImporter';
 import { UtilitiesByMonth } from './UtilitiesByMonth';
+import { PricingWatch } from './PricingWatch';
 
 export function PortfolioOverview({
   data,
@@ -31,6 +32,7 @@ export function PortfolioOverview({
 
   return (
     <div className="space-y-6">
+      <PricingWatch onError={onError} />
       <ExportMenu data={data} onToast={onToast} />
       <BatchBillImporter
         expenses={data.expenses}

@@ -42,6 +42,29 @@ Scanned expenses can **save the original image/PDF** and view it later (thumbnai
 
 Without `FIREBASE_SERVICE_ACCOUNT_JSON`, bill PDFs are stored in **Cloudflare KV** (same `SETTINGS` namespace, up to ~4 MB per file). Firebase is optional for larger files or long-term object storage.
 
+### AI co-host agent
+
+The dashboard includes a floating **Co-host** chat panel powered by Gemini function calling.
+
+**Required:** `GEMINI_API_KEY` (same key as expense scanning).
+
+**Optional env vars** (Cloudflare Pages → Environment variables):
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | Whisper transcription fallback when browser lacks Web Speech API |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Gmail search + draft replies |
+| `PRICELABS_API_KEY` | Tier-A competitive pricing (optional; default uses Gemini page scrape) |
+
+**Gmail OAuth setup:**
+
+1. Enable **Gmail API** in [Google Cloud Console](https://console.cloud.google.com/) for project `wilhite-portfolio`
+2. Create OAuth 2.0 Web client with redirect URI: `https://wilhite-portfolio.pages.dev/api/integrations/gmail/callback`
+3. Add `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` to Pages env vars
+4. Connect via `/api/integrations/gmail/connect` (or ask the co-host to help)
+
+Agent data (reservations overlay, calendar blocks, tasks, comp set, chat sessions) persists in the same **SETTINGS** KV namespace.
+
 ## Local development
 
 1. Open https://console.firebase.google.com/project/wilhite-portfolio/firestore

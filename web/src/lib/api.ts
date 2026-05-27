@@ -146,6 +146,36 @@ export interface SessionInfo {
   authRequired: boolean;
 }
 
+export interface AgentMessage {
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  toolName?: string;
+  timestamp?: string;
+}
+
+export interface ToolStep {
+  tool: string;
+  action: string;
+  summary: string;
+}
+
+export interface AgentChatResponse {
+  sessionId: string;
+  reply: string;
+  messages: AgentMessage[];
+  toolSteps: ToolStep[];
+}
+
+export interface PricingAlert {
+  id: string;
+  propertyId: 'ranch' | 'lindon';
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  suggestedAction?: string;
+  createdAt: string;
+  dismissed?: boolean;
+}
+
 export const api = {
   getSession: () => request<SessionInfo>('/api/auth/session'),
   login: (password: string) =>
@@ -214,6 +244,39 @@ export const api = {
         body: JSON.stringify(body),
       },
     ),
+  agentChat: (body: {
+    message: string;
+    sessionId?: string;
+    context?: { month?: string; activeTab?: string };
+  }) =>
+    request<AgentChatResponse>('/api/agent/chat', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  agentTranscribe: (body: { audioBase64: string; mimeType?: string }) =>
+    request<{ text: string }>('/api/agent/transcribe', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getReservations: (params?: { propertyId?: string; when?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.propertyId) q.set('propertyId', params.propertyId);
+    if (params?.when) q.set('when', params.when);
+    const qs = q.toString();
+    return request<{ reservations: Reservation[] }>(
+      `/api/reservations${qs ? `?${qs}` : ''}`,
+    );
+  },
+  getGmailStatus: () =>
+    request<{ connected: boolean; email: string | null }>('/api/integrations/gmail/status'),
+  getPricingAlerts: () => request<{ alerts: PricingAlert[] }>('/api/pricing/alerts'),
+  dismissPricingAlert: (id: string) =>
+    request<{ ok: boolean }>('/api/pricing/alerts', {
+      method: 'PATCH',
+      body: JSON.stringify({ id }),
+    }),
+  refreshCompPrices: () =>
+    request<{ refreshed: number; errors: string[] }>('/api/pricing/refresh', { method: 'POST' }),
 };
 
 export const PROPERTIES: Record<string, Property> = {

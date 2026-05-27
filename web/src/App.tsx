@@ -6,6 +6,7 @@ import { PortfolioOverview } from './components/PortfolioOverview';
 import { PropertyDetail } from './components/PropertyDetail';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { ToastStack } from './components/Toast';
+import { AgentChat } from './components/AgentChat';
 import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
@@ -107,6 +108,11 @@ function Dashboard() {
         ) : null}
       </div>
       <ToastStack toasts={toasts} />
+      <AgentChat
+        month={currentMonth}
+        activeTab={activeTab}
+        onError={(msg) => showToast(msg, 'error')}
+      />
     </div>
   );
 }
