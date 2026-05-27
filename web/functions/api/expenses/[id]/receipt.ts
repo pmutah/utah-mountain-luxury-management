@@ -1,5 +1,6 @@
-import { downloadReceipt, type FirebaseStorageEnv } from '../../../_lib/gcs';
 import { loadCustomExpenses } from '../../../_lib/expenses';
+import { loadStoredReceipt } from '../../../_lib/receipt-store';
+import type { FirebaseStorageEnv } from '../../../_lib/gcs';
 import type { SettingsEnv } from '../../../_lib/kv';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
@@ -13,11 +14,14 @@ export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env, pa
   const custom = await loadCustomExpenses(env);
   const expense = custom.find((e) => e.id === id);
   if (!expense?.receiptStoragePath) {
-    return new Response(JSON.stringify({ error: 'No receipt for this expense' }), { status: 404 });
+    return new Response(JSON.stringify({ error: 'No receipt for this expense' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   try {
-    const { bytes, contentType } = await downloadReceipt(env, expense.receiptStoragePath);
+    const { bytes, contentType } = await loadStoredReceipt(env, expense);
     const origin = request.headers.get('Origin') ?? '*';
     return new Response(bytes, {
       status: 200,

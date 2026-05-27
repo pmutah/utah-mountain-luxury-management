@@ -1,6 +1,7 @@
 import { corsJson } from '../../_lib/data';
-import { deleteReceipt, type FirebaseStorageEnv } from '../../_lib/gcs';
+import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import { loadCustomExpenses, saveCustomExpenses } from '../../_lib/expenses';
+import { deleteStoredReceipt } from '../../_lib/receipt-store';
 import type { SettingsEnv } from '../../_lib/kv';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
@@ -18,7 +19,7 @@ export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env,
   const expense = custom[idx]!;
   if (expense.receiptStoragePath) {
     try {
-      await deleteReceipt(env, expense.receiptStoragePath);
+      await deleteStoredReceipt(env, expense);
     } catch {
       // continue even if storage delete fails
     }

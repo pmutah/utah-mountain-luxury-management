@@ -33,6 +33,7 @@ function CellDetail({
         <li key={e.id}>
           <ExpenseRow
             expense={e}
+            onRefresh={onRefresh}
             onDelete={e.id.startsWith('exp-') ? deleteExpense : undefined}
             onToast={onToast}
             onError={onError}

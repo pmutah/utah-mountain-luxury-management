@@ -191,7 +191,7 @@ export function BatchBillImporter({
 
           if (filePdfWarnings > 0 && autoSaved > 0) {
             onToast(
-              `${filePdfWarnings} saved without PDF file — add FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare Pages to store bills`,
+              `${filePdfWarnings} saved without a bill file — use Attach bill on each row to add the PDF`,
               'info',
             );
           }
@@ -523,15 +523,16 @@ export function BatchBillImporter({
                 Saved bill imports
               </p>
               <p className="text-xs text-slate-500 mb-3">
-                Use the blue <span className="text-blue-400 font-bold">View PDF</span> button on each
-                row. If you only see “no PDF on file,” the amount was saved but the file was not
-                stored — re-import the bill after storage is configured.
+                <span className="text-emerald-400 font-bold">Attach bill</span> adds a PDF you already
+                imported (for older rows). <span className="text-blue-400 font-bold">View PDF</span>{' '}
+                opens the stored file.
               </p>
               {savedImports.map((e) => (
                 <ExpenseRow
                   key={e.id}
                   expense={e}
                   showMissingReceiptHint
+                  onRefresh={onRefresh}
                   onDelete={deleteImport}
                   onError={onError}
                   onToast={onToast}

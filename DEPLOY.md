@@ -40,7 +40,7 @@ Scanned expenses can **save the original image/PDF** and view it later (thumbnai
    - Optional `FIREBASE_STORAGE_BUCKET` if not `{project}.appspot.com`
 4. Redeploy Pages after setting secrets
 
-Without `FIREBASE_SERVICE_ACCOUNT_JSON`, scan/save still works but only stores amount/category (no photo).
+Without `FIREBASE_SERVICE_ACCOUNT_JSON`, bill PDFs are stored in **Cloudflare KV** (same `SETTINGS` namespace, up to ~4 MB per file). Firebase is optional for larger files or long-term object storage.
 
 ## Local development
 

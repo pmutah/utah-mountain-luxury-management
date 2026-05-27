@@ -203,6 +203,17 @@ export const api = {
     }),
   expenseReceiptUrl: (expenseId: string) =>
     `${API_URL}/api/expenses/${encodeURIComponent(expenseId)}/receipt`,
+  attachExpenseReceipt: (
+    id: string,
+    body: { receiptBase64: string; receiptMimeType: string },
+  ) =>
+    request<Expense & { receiptWarning?: string | null }>(
+      `/api/expenses/${encodeURIComponent(id)}/attach-receipt`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    ),
 };
 
 export const PROPERTIES: Record<string, Property> = {
