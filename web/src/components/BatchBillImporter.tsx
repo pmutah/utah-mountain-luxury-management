@@ -15,6 +15,7 @@ import {
   type ExpenseScanResult,
 } from '../lib/api';
 import { ExpenseRow } from './ExpenseRow';
+import { filterPortfolioExpenses, isPortfolioExpense } from '../lib/expense-address';
 import { applyPortfolioVendorNormalization } from '../lib/utility-vendors';
 
 const CATEGORIES = [
@@ -30,10 +31,6 @@ const CATEGORIES = [
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
-/** Drop charges tied to non-portfolio addresses (e.g. 53 North State Street on combined utility bills). */
-function isExcludedExpense(e: { note?: string; vendor?: string }): boolean {
-  return /53\s+n(orth)?\.?\s+state/i.test(`${e.note ?? ''} ${e.vendor ?? ''}`);
-}
 
 type FileStatus = 'pending' | 'scanning' | 'done' | 'failed';
 
@@ -71,6 +68,7 @@ function canAutoSave(e: ExpenseScanResult): e is ExpenseScanResult & {
   month: string;
 } {
   if (e.propertyId !== 'ranch' && e.propertyId !== 'lindon') return false;
+  if (!isPortfolioExpense(e)) return false;
   if (!/^\d{4}-\d{2}$/.test(e.month)) return false;
   if (!Number.isFinite(e.amount) || e.amount <= 0) return false;
   const confidence = e.confidence ?? (e.propertyId && e.month ? 'high' : 'low');
@@ -145,6 +143,7 @@ export function BatchBillImporter({
       setFileRows(valid.map((f) => ({ name: f.name, status: 'pending' as FileStatus })));
       const needsReview: ReviewRow[] = [];
       let autoSaved = 0;
+      let totalSkippedNonPortfolio = 0;
 
       for (let i = 0; i < valid.length; i++) {
         const file = valid[i]!;
@@ -161,9 +160,12 @@ export function BatchBillImporter({
             fileName: file.name,
           });
 
-          const portfolioExpenses = expenses
-            .filter((e) => !isExcludedExpense(e))
-            .map((e) => applyPortfolioVendorNormalization(e, { fileName: file.name }));
+          const portfolioExpenses = filterPortfolioExpenses(expenses).map((e) =>
+            applyPortfolioVendorNormalization(e, { fileName: file.name }),
+          );
+
+          const skippedNonPortfolio = expenses.length - portfolioExpenses.length;
+          totalSkippedNonPortfolio += skippedNonPortfolio;
 
           let filePdfWarnings = 0;
 
@@ -220,7 +222,12 @@ export function BatchBillImporter({
                 ? {
                     ...r,
                     status: 'done' as FileStatus,
-                    detail: `${portfolioExpenses.length} bill(s) found${expenses.length > portfolioExpenses.length ? ` (${expenses.length - portfolioExpenses.length} non-portfolio skipped)` : ''}`,
+                    detail:
+                      portfolioExpenses.length > 0
+                        ? `${portfolioExpenses.length} portfolio bill(s)${skippedNonPortfolio > 0 ? ` (${skippedNonPortfolio} other address(es) skipped)` : ''}`
+                        : skippedNonPortfolio > 0
+                          ? 'No charges for 270 East Center or 143 Harcliff — other addresses skipped'
+                          : 'No portfolio charges found',
                   }
                 : r,
             ),
@@ -244,6 +251,12 @@ export function BatchBillImporter({
       }
       if (needsReview.length > 0) {
         onToast(`${needsReview.length} item(s) need review below`, 'info');
+      }
+      if (totalSkippedNonPortfolio > 0) {
+        onToast(
+          'Skipped charges for other addresses — only 270 East Center Street and 143 Harcliff Circle are imported',
+          'info',
+        );
       }
     },
     [onError, onRefresh, onToast],

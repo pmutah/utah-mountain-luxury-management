@@ -36,7 +36,7 @@ Return ONLY valid JSON:
 {"expenses":[{"amount":number,"category":string,"month":"YYYY-MM","propertyId":"ranch"|"lindon"|null,"vendor":string,"note":string,"confidence":"high"|"low"}]}
 
 Rules:
-- A document may contain ONE or MANY bills/charges; emit one object per distinct bill or charge at a portfolio address only
+- A document may contain ZERO, ONE, or TWO expenses — only for 270 East Center Street and/or 143 Harcliff Circle (never other addresses)
 - amount is total paid in USD for THAT service address only (positive number)
 - month: follow MONTH assignment rules above (never use import/scan date)
 - propertyId null if truly unknown; set confidence "low" when property OR month is ambiguous
