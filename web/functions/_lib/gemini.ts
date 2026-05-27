@@ -2,6 +2,11 @@ import {
   ADDRESS_RULES_PROMPT,
   filterPortfolioExpenses,
 } from './expense-address';
+import {
+  MONTH_ASSIGNMENT_PROMPT,
+  resolveExpenseMonth,
+  type MonthInferenceContext,
+} from './expense-month';
 import { applyRockyMountainPowerVendor } from './expense-vendors';
 
 export interface ParsedExpense {
@@ -22,6 +27,8 @@ const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Po
 
 ${ADDRESS_RULES_PROMPT}
 
+${MONTH_ASSIGNMENT_PROMPT}
+
 Categories (pick one): Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 
 Return ONLY valid JSON:
@@ -30,7 +37,7 @@ Return ONLY valid JSON:
 Rules:
 - A document may contain ONE or MANY bills/charges; emit one object per distinct bill or charge at a portfolio address only
 - amount is total paid in USD for THAT service address only (positive number)
-- month is expense month YYYY-MM from billing/statement period or due date (NOT scan date)
+- month: follow MONTH assignment rules above (never use import/scan date)
 - propertyId null if truly unknown; set confidence "low" when property OR month is ambiguous
 - confidence "high" only when both propertyId and month are clear from the document
 - note: brief description plus which service address the charge applies to
@@ -43,41 +50,47 @@ For a single receipt, return exactly one item in the expenses array.`;
 function buildHintLine(hints: { propertyId?: string; month?: string }): string {
   return [
     hints.propertyId ? `User selected property: ${hints.propertyId}` : '',
-    hints.month ? `User selected month: ${hints.month}` : '',
+    hints.month
+      ? `If the document has no billing or statement date, you may use ${hints.month} as month (last resort only).`
+      : '',
   ]
     .filter(Boolean)
     .join('. ');
 }
 
-function normalizeExpense(raw: ParsedExpense, fileName?: string): ParsedExpense {
+function normalizeExpense(raw: ParsedExpense, context: MonthInferenceContext = {}): ParsedExpense {
   const parsed = { ...raw };
   if (!Number.isFinite(parsed.amount) || parsed.amount <= 0) {
     throw new Error('Could not detect a valid expense amount');
   }
   if (!parsed.category) parsed.category = 'Other';
-  if (!parsed.month || !/^\d{4}-\d{2}$/.test(parsed.month)) {
-    const now = new Date();
-    parsed.month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    parsed.confidence = 'low';
-  }
+
+  const { month, confidencePenalty } = resolveExpenseMonth(
+    parsed.month,
+    parsed.note,
+    context,
+  );
+  parsed.month = month;
+  if (confidencePenalty) parsed.confidence = 'low';
+
   if (parsed.propertyId !== 'ranch' && parsed.propertyId !== 'lindon') {
     parsed.propertyId = null;
     parsed.confidence = 'low';
   }
   if (!parsed.confidence) {
     parsed.confidence =
-      parsed.propertyId && /^\d{4}-\d{2}$/.test(parsed.month) ? 'high' : 'low';
+      parsed.propertyId && !confidencePenalty ? 'high' : 'low';
   }
-  return applyRockyMountainPowerVendor(parsed, { fileName });
+  return applyRockyMountainPowerVendor(parsed, { fileName: context.fileName });
 }
 
-function parseBatchResponse(raw: string, fileName?: string): ParsedExpense[] {
+function parseBatchResponse(raw: string, context: MonthInferenceContext = {}): ParsedExpense[] {
   const json = JSON.parse(raw) as ParsedExpenseBatch | ParsedExpense;
   const items = Array.isArray((json as ParsedExpenseBatch).expenses)
     ? (json as ParsedExpenseBatch).expenses
     : [json as ParsedExpense];
   if (items.length === 0) throw new Error('No expenses found in document');
-  return filterPortfolioExpenses(items.map((item) => normalizeExpense(item, fileName)));
+  return filterPortfolioExpenses(items.map((item) => normalizeExpense(item, context)));
 }
 
 async function callGemini(
@@ -132,7 +145,7 @@ export async function parseExpensesFromDocument(
     },
     { inline_data: { mime_type: mimeType, data: base64 } },
   ]);
-  return parseBatchResponse(raw, fileName);
+  return parseBatchResponse(raw, { fileName });
 }
 
 export async function parseExpenseFromText(
@@ -144,7 +157,7 @@ export async function parseExpenseFromText(
   const raw = await callGemini(apiKey, [
     { text: `${SINGLE_PROMPT}\n\n${hintLine}\n\nReceipt or expense text:\n${text}` },
   ]);
-  return parseBatchResponse(raw)[0]!;
+  return parseBatchResponse(raw, { fallbackMonth: hints.month })[0]!;
 }
 
 export async function parseExpenseFromImage(
@@ -158,5 +171,5 @@ export async function parseExpenseFromImage(
     { text: `${SINGLE_PROMPT}\n\n${hintLine}\n\nExtract expense from this receipt image.` },
     { inline_data: { mime_type: mimeType, data: base64 } },
   ]);
-  return parseBatchResponse(raw)[0]!;
+  return parseBatchResponse(raw, { fallbackMonth: hints.month })[0]!;
 }

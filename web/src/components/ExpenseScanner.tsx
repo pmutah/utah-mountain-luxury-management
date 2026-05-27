@@ -71,7 +71,7 @@ export function ExpenseScanner({
         setPreview({
           ...result,
           propertyId: prop,
-          month: result.month || month,
+          month: result.month,
         });
         onToast('Receipt scanned — review and save', 'info');
       } catch (e) {
@@ -80,7 +80,7 @@ export function ExpenseScanner({
         setScanning(false);
       }
     },
-    [propertyId, month, onError, onToast],
+    [propertyId, onError, onToast],
   );
 
   const handleFiles = async (files: FileList | null) => {
@@ -95,7 +95,7 @@ export function ExpenseScanner({
     const previewUrl =
       mimeType.startsWith('image/') ? `data:${mimeType};base64,${base64}` : '';
     setPendingReceipt({ base64, mimeType, previewUrl });
-    await runScan({ type: 'image', imageBase64: base64, mimeType, propertyId, month });
+    await runScan({ type: 'image', imageBase64: base64, mimeType, propertyId });
   };
 
   const onDrop = (e: React.DragEvent) => {
@@ -251,7 +251,7 @@ export function ExpenseScanner({
             <button
               type="button"
               disabled={!text.trim() || scanning}
-              onClick={() => void runScan({ type: 'text', text: text.trim(), propertyId, month })}
+              onClick={() => void runScan({ type: 'text', text: text.trim(), propertyId })}
               className="self-end px-4 py-2 bg-emerald-600 disabled:opacity-40 rounded-xl text-xs font-black uppercase min-h-[44px]"
             >
               Scan text

@@ -41,7 +41,7 @@ export const onRequestPost: PagesFunction<ScanEnv> = async ({ request, env }) =>
     return corsJson(request, {
       ...parsed,
       propertyId,
-      month: parsed.month || body.month || '',
+      month: parsed.month,
     });
   } catch (e) {
     return corsJson(

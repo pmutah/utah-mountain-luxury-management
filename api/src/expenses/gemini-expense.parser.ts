@@ -2,13 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Expense } from '../common/metrics';
 import { ADDRESS_RULES_PROMPT, filterPortfolioExpenses } from './expense-address';
+import {
+  MONTH_ASSIGNMENT_PROMPT,
+  resolveExpenseMonth,
+  type MonthInferenceContext,
+} from './expense-month';
 import { applyRockyMountainPowerVendor } from './expense-vendors';
 
 const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
 ${ADDRESS_RULES_PROMPT}
+${MONTH_ASSIGNMENT_PROMPT}
 Categories: Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 Return ONLY JSON: {"expenses":[{"amount":number,"category":string,"month":"YYYY-MM","propertyId":"ranch"|"lindon"|null,"vendor":string,"note":string,"confidence":"high"|"low"}]}
-Rules: one or many bills per document at portfolio addresses only; per-address amount not account total; confidence low if property or month ambiguous; note must include service address; vendor must be "Rocky Mountain Power" for Rocky Mountain Power electric utility bills.`;
+Rules: one or many bills per document at portfolio addresses only; per-address amount not account total; month from billing/statement period not import date; confidence low if property or month ambiguous; note must include service address; vendor must be "Rocky Mountain Power" for Rocky Mountain Power electric utility bills.`;
 
 const SINGLE_PROMPT = `${PROMPT}\nFor a single receipt return one item in expenses array.`;
 
@@ -27,12 +33,17 @@ export class GeminiExpenseParser {
   constructor(private readonly config: ConfigService) {}
 
   async parseText(text: string, hints: { propertyId?: string; month?: string }): Promise<ParsedExpense> {
-    const hint = [hints.propertyId && `property: ${hints.propertyId}`, hints.month && `month: ${hints.month}`]
+    const hint = [
+      hints.propertyId && `property: ${hints.propertyId}`,
+      hints.month &&
+        `If the document has no billing or statement date, you may use ${hints.month} as month (last resort only).`,
+    ]
       .filter(Boolean)
       .join('. ');
-    const items = await this.parseBatch([
-      { text: `${SINGLE_PROMPT}\n${hint}\n\nText:\n${text}` },
-    ]);
+    const items = await this.parseBatch(
+      [{ text: `${SINGLE_PROMPT}\n${hint}\n\nText:\n${text}` }],
+      { fallbackMonth: hints.month },
+    );
     return items[0]!;
   }
 
@@ -41,13 +52,20 @@ export class GeminiExpenseParser {
     mimeType: string,
     hints: { propertyId?: string; month?: string },
   ): Promise<ParsedExpense> {
-    const hint = [hints.propertyId && `property: ${hints.propertyId}`, hints.month && `month: ${hints.month}`]
+    const hint = [
+      hints.propertyId && `property: ${hints.propertyId}`,
+      hints.month &&
+        `If the document has no billing or statement date, you may use ${hints.month} as month (last resort only).`,
+    ]
       .filter(Boolean)
       .join('. ');
-    const items = await this.parseBatch([
-      { text: `${SINGLE_PROMPT}\n${hint}\n\nExtract from receipt image.` },
-      { inline_data: { mime_type: mimeType, data: base64 } },
-    ]);
+    const items = await this.parseBatch(
+      [
+        { text: `${SINGLE_PROMPT}\n${hint}\n\nExtract from receipt image.` },
+        { inline_data: { mime_type: mimeType, data: base64 } },
+      ],
+      { fallbackMonth: hints.month },
+    );
     return items[0]!;
   }
 
@@ -62,13 +80,13 @@ export class GeminiExpenseParser {
         { text: `${PROMPT}\n\n${fileLine}\n\nExtract all bills from this document.` },
         { inline_data: { mime_type: mimeType, data: base64 } },
       ],
-      fileName,
+      { fileName },
     );
   }
 
   private async parseBatch(
     parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }>,
-    fileName?: string,
+    context: MonthInferenceContext = {},
   ): Promise<ParsedExpense[]> {
     const raw = await this.call(parts);
     const json = JSON.parse(raw) as { expenses?: ParsedExpense[] } | ParsedExpense;
@@ -77,18 +95,33 @@ export class GeminiExpenseParser {
       : [json as ParsedExpense];
     if (items.length === 0) throw new Error('No expenses found');
     return filterPortfolioExpenses(
-      items.map((parsed) => {
-        if (!Number.isFinite(parsed.amount) || parsed.amount <= 0) {
-          throw new Error('Invalid amount from scan');
-        }
-        if (!parsed.category) parsed.category = 'Other';
-        if (!parsed.confidence) {
-          parsed.confidence =
-            parsed.propertyId && /^\d{4}-\d{2}$/.test(parsed.month) ? 'high' : 'low';
-        }
-        return applyRockyMountainPowerVendor(parsed, { fileName });
-      }),
+      items.map((parsed) => this.normalizeExpense(parsed, context)),
     );
+  }
+
+  private normalizeExpense(raw: ParsedExpense, context: MonthInferenceContext): ParsedExpense {
+    const parsed = { ...raw };
+    if (!Number.isFinite(parsed.amount) || parsed.amount <= 0) {
+      throw new Error('Invalid amount from scan');
+    }
+    if (!parsed.category) parsed.category = 'Other';
+
+    const { month, confidencePenalty } = resolveExpenseMonth(
+      parsed.month,
+      parsed.note,
+      context,
+    );
+    parsed.month = month;
+    if (confidencePenalty) parsed.confidence = 'low';
+
+    if (parsed.propertyId !== 'ranch' && parsed.propertyId !== 'lindon') {
+      parsed.propertyId = null;
+      parsed.confidence = 'low';
+    }
+    if (!parsed.confidence) {
+      parsed.confidence = parsed.propertyId && !confidencePenalty ? 'high' : 'low';
+    }
+    return applyRockyMountainPowerVendor(parsed, { fileName: context.fileName });
   }
 
   private async call(

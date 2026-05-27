@@ -229,7 +229,7 @@ export function BatchBillImporter({
                 expense.propertyId === 'lindon' || expense.propertyId === 'ranch'
                   ? expense.propertyId
                   : 'ranch',
-              month: expense.month || new Date().toISOString().slice(0, 7),
+              month: expense.month,
               category: expense.category || 'Other',
             });
           }

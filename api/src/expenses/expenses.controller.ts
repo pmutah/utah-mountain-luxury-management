@@ -54,7 +54,7 @@ export class ExpensesController {
     return {
       ...parsed,
       propertyId: parsed.propertyId ?? body.propertyId ?? null,
-      month: parsed.month || body.month || '',
+      month: parsed.month,
     };
   }
 
