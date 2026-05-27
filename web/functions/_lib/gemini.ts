@@ -15,8 +15,8 @@ export interface ParsedExpenseBatch {
 const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
 
 Properties (pick the best match from bill context):
-- ranch: "The Ranch House", 270 E Center St (larger home, Provo area)
-- lindon: "The Lindon House", 1011 E 100 N, Lindon UT (smaller home)
+- ranch: "The Ranch House", 270 East Center Street, Lindon, Utah 84042
+- lindon: "The Lindon House", 143 Harcliff Circle, Lindon, Utah 84042
 
 Categories (pick one): Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 
