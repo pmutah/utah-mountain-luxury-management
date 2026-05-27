@@ -8,6 +8,7 @@ import {
   type MonthInferenceContext,
 } from './expense-month';
 import { applyRockyMountainPowerVendor } from './expense-vendors';
+import { generateGeminiJson, type GeminiPart } from './gemini-call';
 
 export interface ParsedExpense {
   amount: number;
@@ -93,37 +94,8 @@ function parseBatchResponse(raw: string, context: MonthInferenceContext = {}): P
   return filterPortfolioExpenses(items.map((item) => normalizeExpense(item, context)));
 }
 
-async function callGemini(
-  apiKey: string,
-  parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }>,
-): Promise<string> {
-  const model = 'gemini-2.5-flash';
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-        },
-      }),
-    },
-  );
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini API error: ${res.status} ${err.slice(0, 200)}`);
-  }
-
-  const json = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const raw = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!raw) throw new Error('No response from Gemini');
-  return raw;
+function callGemini(apiKey: string, parts: GeminiPart[]): Promise<string> {
+  return generateGeminiJson(apiKey, parts);
 }
 
 export async function parseExpensesFromDocument(

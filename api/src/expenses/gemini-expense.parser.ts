@@ -8,6 +8,7 @@ import {
   type MonthInferenceContext,
 } from './expense-month';
 import { applyRockyMountainPowerVendor } from './expense-vendors';
+import { generateGeminiJson, type GeminiPart } from './gemini-call';
 
 const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
 ${ADDRESS_RULES_PROMPT}
@@ -124,30 +125,10 @@ export class GeminiExpenseParser {
     return applyRockyMountainPowerVendor(parsed, { fileName: context.fileName });
   }
 
-  private async call(
-    parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }>,
-  ): Promise<string> {
+  private async call(parts: GeminiPart[]): Promise<string> {
     const apiKey = this.config.get<string>('GEMINI_API_KEY')?.trim();
     if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
-
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
-        }),
-      },
-    );
-    if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
-    const json = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const raw = json.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error('Empty Gemini response');
-    return raw;
+    return generateGeminiJson(apiKey, parts);
   }
 }
 
