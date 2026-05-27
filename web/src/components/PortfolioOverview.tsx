@@ -5,6 +5,7 @@ import { StatCard } from './StatCard';
 import { TrendCharts } from './TrendCharts';
 import { ExportMenu } from './ExportMenu';
 import { BatchBillImporter } from './BatchBillImporter';
+import { UtilitiesByMonth } from './UtilitiesByMonth';
 
 export function PortfolioOverview({
   data,
@@ -33,6 +34,13 @@ export function PortfolioOverview({
       <ExportMenu data={data} onToast={onToast} />
       <BatchBillImporter
         expenses={data.expenses}
+        onRefresh={onRefresh}
+        onToast={onToast}
+        onError={onError}
+      />
+      <UtilitiesByMonth
+        expenses={data.expenses}
+        endMonth={data.month}
         onRefresh={onRefresh}
         onToast={onToast}
         onError={onError}

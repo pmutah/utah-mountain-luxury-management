@@ -41,7 +41,7 @@ Rules:
 - propertyId null if truly unknown; set confidence "low" when property OR month is ambiguous
 - confidence "high" only when both propertyId and month are clear from the document
 - note: brief description plus which service address the charge applies to
-- vendor: bill issuer (e.g. "Rocky Mountain Power" for Rocky Mountain Power electric bills); use exact name "Rocky Mountain Power" for their utility statements`;
+- vendor: use exact names when applicable — "Lindon City Utilities", "Rocky Mountain Power", "Enbridge Gas", "X-Mission Internet", "Hospitable Software"`;
 
 const SINGLE_PROMPT = `${PROMPT}
 

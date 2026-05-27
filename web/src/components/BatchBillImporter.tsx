@@ -15,27 +15,7 @@ import {
   type ExpenseScanResult,
 } from '../lib/api';
 import { ExpenseRow } from './ExpenseRow';
-
-const ROCKY_MOUNTAIN_POWER = 'Rocky Mountain Power';
-
-function withRockyMountainPowerVendor(
-  expense: ExpenseScanResult,
-  sourceFile: string,
-): ExpenseScanResult {
-  const blob = `${expense.vendor ?? ''} ${expense.note ?? ''} ${sourceFile}`;
-  const isRmp =
-    /rocky\s*mountain\s*power|rockymountainpower|\brmp\b/i.test(blob) ||
-    (expense.category === 'Utilities' && !expense.vendor);
-
-  if (!isRmp) return expense;
-
-  return {
-    ...expense,
-    vendor: ROCKY_MOUNTAIN_POWER,
-    category:
-      !expense.category || expense.category === 'Other' ? 'Utilities' : expense.category,
-  };
-}
+import { applyPortfolioVendorNormalization } from '../lib/utility-vendors';
 
 const CATEGORIES = [
   'Maintenance',
@@ -183,7 +163,7 @@ export function BatchBillImporter({
 
           const portfolioExpenses = expenses
             .filter((e) => !isExcludedExpense(e))
-            .map((e) => withRockyMountainPowerVendor(e, file.name));
+            .map((e) => applyPortfolioVendorNormalization(e, { fileName: file.name }));
 
           let filePdfWarnings = 0;
 

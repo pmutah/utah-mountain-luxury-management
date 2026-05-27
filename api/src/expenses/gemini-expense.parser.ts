@@ -14,7 +14,7 @@ ${ADDRESS_RULES_PROMPT}
 ${MONTH_ASSIGNMENT_PROMPT}
 Categories: Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 Return ONLY JSON: {"expenses":[{"amount":number,"category":string,"month":"YYYY-MM","propertyId":"ranch"|"lindon"|null,"vendor":string,"note":string,"confidence":"high"|"low"}]}
-Rules: one or many bills per document at portfolio addresses only; per-address amount not account total; month from billing/statement period not import date; confidence low if property or month ambiguous; note must include service address; vendor must be "Rocky Mountain Power" for Rocky Mountain Power electric utility bills.`;
+Rules: one or many bills per document at portfolio addresses only; per-address amount not account total; month from billing/statement period not import date; confidence low if property or month ambiguous; note must include service address; vendor exact names: "Lindon City Utilities", "Rocky Mountain Power", "Enbridge Gas", "X-Mission Internet", "Hospitable Software" when applicable.`;
 
 const SINGLE_PROMPT = `${PROMPT}\nFor a single receipt return one item in expenses array.`;
 
