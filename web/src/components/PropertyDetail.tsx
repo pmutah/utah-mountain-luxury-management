@@ -1,5 +1,6 @@
-import { Brush, Hammer } from 'lucide-react';
+import { Brush } from 'lucide-react';
 import {
+  api,
   formatCurrency,
   PROPERTIES,
   RANCH_MORTGAGE,
@@ -13,6 +14,7 @@ import { ExpenseScanner } from './ExpenseScanner';
 import { OccupancyCalendar, RevenueLog } from './OccupancyCalendar';
 import { EmptyState } from './EmptyState';
 import { CalendarX } from 'lucide-react';
+import { ExpenseRow } from './ExpenseRow';
 
 type TabId = 'ranch' | 'lindon';
 
@@ -92,19 +94,37 @@ export function PropertyDetail({
           />
 
           {data.expenses.filter(
-            (e) => e.propertyId === tab && e.month === data.month && e.category !== 'Mortgage',
+            (e) =>
+              e.propertyId === tab &&
+              e.month === data.month &&
+              e.category !== 'Mortgage' &&
+              !e.id.startsWith('exp-'),
           ).length > 0 && (
             <div className="pt-4 border-t border-slate-800/50">
               <p className="text-[10px] font-bold text-slate-500 uppercase mb-3">Other operational expenses</p>
               {data.expenses
-                .filter((e) => e.propertyId === tab && e.month === data.month && e.category !== 'Mortgage')
+                .filter(
+                  (e) =>
+                    e.propertyId === tab &&
+                    e.month === data.month &&
+                    e.category !== 'Mortgage' &&
+                    !e.id.startsWith('exp-'),
+                )
                 .map((e) => (
-                  <div key={e.id} className="flex justify-between items-center text-sm mb-2">
-                    <span className="text-slate-400 flex items-center gap-2">
-                      <Hammer className="w-3 h-3" /> {e.category}
-                    </span>
-                    <span className="font-black text-white">{formatCurrency(e.amount)}</span>
-                  </div>
+                  <ExpenseRow
+                    key={e.id}
+                    expense={e}
+                    onDelete={
+                      e.id.startsWith('exp-')
+                        ? async (id) => {
+                            await api.deleteExpense(id);
+                            onRefresh();
+                          }
+                        : undefined
+                    }
+                    onError={onError}
+                    onToast={onToast}
+                  />
                 ))}
             </div>
           )}

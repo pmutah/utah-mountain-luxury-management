@@ -18,6 +18,11 @@ export interface Expense {
   amount: number;
   note?: string;
   vendor?: string;
+  receiptStoragePath?: string | null;
+  receiptContentType?: string | null;
+  receiptUploadedAt?: string | null;
+  /** Same-origin proxy URL when a receipt is stored. */
+  receiptUrl?: string | null;
 }
 
 export interface OwnerDistribution {

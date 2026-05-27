@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
-import { Camera, ImagePlus, Loader2, ScanLine, Trash2, Type } from 'lucide-react';
+import { Camera, ImagePlus, Loader2, ScanLine, Type } from 'lucide-react';
 import { api, formatCurrency, PROPERTIES, type Expense, type ExpenseScanResult } from '../lib/api';
+import { ExpenseRow } from './ExpenseRow';
 
 const CATEGORIES = [
   'Maintenance',
@@ -44,6 +45,11 @@ export function ExpenseScanner({
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<(ExpenseScanResult & { propertyId: 'ranch' | 'lindon' }) | null>(null);
+  const [pendingReceipt, setPendingReceipt] = useState<{
+    base64: string;
+    mimeType: string;
+    previewUrl: string;
+  } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -56,6 +62,9 @@ export function ExpenseScanner({
     async (payload: Parameters<typeof api.scanExpense>[0]) => {
       setScanning(true);
       setPreview(null);
+      if (payload.type === 'text') {
+        setPendingReceipt(null);
+      }
       try {
         const result = await api.scanExpense(payload);
         const prop = (result.propertyId ?? propertyId) as 'ranch' | 'lindon';
@@ -83,6 +92,9 @@ export function ExpenseScanner({
       return;
     }
     const { base64, mimeType } = await fileToBase64(file);
+    const previewUrl =
+      mimeType.startsWith('image/') ? `data:${mimeType};base64,${base64}` : '';
+    setPendingReceipt({ base64, mimeType, previewUrl });
     await runScan({ type: 'image', imageBase64: base64, mimeType, propertyId, month });
   };
 
@@ -116,12 +128,22 @@ export function ExpenseScanner({
         amount: preview.amount,
         note: preview.note,
         vendor: preview.vendor,
+        ...(pendingReceipt
+          ? {
+              receiptBase64: pendingReceipt.base64,
+              receiptMimeType: pendingReceipt.mimeType,
+            }
+          : {}),
       });
       setPreview(null);
+      setPendingReceipt(null);
       setText('');
       setOpen(false);
       onSaved();
-      onToast('Expense added to portfolio', 'success');
+      onToast(
+        pendingReceipt ? 'Expense and receipt saved' : 'Expense added to portfolio',
+        'success',
+      );
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not save expense');
     } finally {
@@ -130,13 +152,8 @@ export function ExpenseScanner({
   };
 
   const deleteExpense = async (id: string) => {
-    try {
-      await api.deleteExpense(id);
-      onSaved();
-      onToast('Expense removed', 'success');
-    } catch {
-      onError('Could not delete expense');
-    }
+    await api.deleteExpense(id);
+    onSaved();
   };
 
   return (
@@ -240,6 +257,16 @@ export function ExpenseScanner({
           {preview && (
             <div className="p-4 bg-slate-900 rounded-2xl border border-emerald-800/50 space-y-3">
               <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Review expense</p>
+              {pendingReceipt?.previewUrl && (
+                <img
+                  src={pendingReceipt.previewUrl}
+                  alt="Receipt preview"
+                  className="w-full max-h-36 object-contain rounded-xl border border-slate-700 bg-slate-950"
+                />
+              )}
+              {pendingReceipt && !pendingReceipt.previewUrl && (
+                <p className="text-xs text-slate-400 font-bold">PDF receipt will be saved with this expense.</p>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-[9px] text-slate-500 uppercase font-bold">
                   Amount
@@ -299,7 +326,10 @@ export function ExpenseScanner({
               <div className="flex gap-2 justify-end">
                 <button
                   type="button"
-                  onClick={() => setPreview(null)}
+                  onClick={() => {
+                    setPreview(null);
+                    setPendingReceipt(null);
+                  }}
                   className="px-4 py-2 text-xs font-black uppercase text-slate-400"
                 >
                   Cancel
@@ -318,24 +348,17 @@ export function ExpenseScanner({
 
           {customExpenses.length > 0 && (
             <div className="pt-2 border-t border-slate-800/50">
-              <p className="text-[9px] font-bold text-slate-500 uppercase mb-2">Scanned expenses this month</p>
+              <p className="text-[9px] font-bold text-slate-500 uppercase mb-2">
+                Saved expenses with receipts
+              </p>
               {customExpenses.map((e) => (
-                <div key={e.id} className="flex justify-between items-center text-sm mb-2 group">
-                  <span className="text-slate-400 truncate flex-1 mr-2">
-                    {e.vendor ? `${e.vendor} · ` : ''}
-                    {e.category}
-                    {e.note ? ` — ${e.note}` : ''}
-                  </span>
-                  <span className="font-black text-white shrink-0">{formatCurrency(e.amount)}</span>
-                  <button
-                    type="button"
-                    onClick={() => void deleteExpense(e.id)}
-                    className="ml-2 p-1 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Delete expense"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <ExpenseRow
+                  key={e.id}
+                  expense={e}
+                  onDelete={deleteExpense}
+                  onError={onError}
+                  onToast={onToast}
+                />
               ))}
             </div>
           )}

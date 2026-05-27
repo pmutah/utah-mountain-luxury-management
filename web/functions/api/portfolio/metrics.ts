@@ -1,5 +1,5 @@
 import { RESERVATIONS, PROPERTIES, calculateMetrics, corsJson } from '../../_lib/data';
-import { mergeAllExpenses } from '../../_lib/expenses';
+import { mergeAllExpenses, withReceiptUrls } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { addMonths, currentYearMonth } from '../../_lib/months';
 
@@ -8,7 +8,7 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   const month = url.searchParams.get('month') ?? currentYearMonth();
   const compare = url.searchParams.get('compare') === '1';
   const fees = await loadExtraCleaningFees(env);
-  const allExpenses = await mergeAllExpenses(env);
+  const allExpenses = withReceiptUrls(await mergeAllExpenses(env));
   const ranch = calculateMetrics('ranch', month, fees, allExpenses);
   const lindon = calculateMetrics('lindon', month, fees, allExpenses);
 

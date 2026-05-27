@@ -1,125 +1,129 @@
-import { Injectable } from '@nestjs/common';
-
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { FirebaseService } from '../firebase/firebase.service';
-
 import type { Expense } from '../common/metrics';
-
 import { EXPENSES } from '../seed/seed-data';
-
-
+import {
+  RECEIPT_ALLOWED_MIME,
+  RECEIPT_MAX_BYTES,
+  buildReceiptStoragePath,
+} from './receipt.constants';
 
 const customExpenses: Expense[] = [];
 
-
-
 @Injectable()
-
 export class ExpensesService {
-
   constructor(private readonly firebase: FirebaseService) {}
 
-
+  private attachReceiptUrl(expense: Expense): Expense {
+    return {
+      ...expense,
+      receiptUrl: expense.receiptStoragePath
+        ? `/api/expenses/${encodeURIComponent(expense.id)}/receipt`
+        : null,
+    };
+  }
 
   async findAll(): Promise<Expense[]> {
-
     const base = await this.getBaseExpenses();
-
-    return [...base, ...customExpenses];
-
+    return [...base, ...customExpenses].map((e) => this.attachReceiptUrl(e));
   }
-
-
 
   getCustomExpenses(): Expense[] {
-
-    return customExpenses;
-
+    return customExpenses.map((e) => this.attachReceiptUrl(e));
   }
 
+  findCustomById(id: string): Expense | undefined {
+    return customExpenses.find((e) => e.id === id);
+  }
 
-
-  async addCustom(expense: Expense): Promise<Expense> {
-
+  async addCustom(
+    expense: Expense,
+    receipt?: { buffer: Buffer; mimeType: string },
+  ): Promise<Expense> {
+    if (receipt) {
+      if (!RECEIPT_ALLOWED_MIME.has(receipt.mimeType)) {
+        throw new BadRequestException('Receipt must be JPEG, PNG, WebP, or PDF');
+      }
+      if (receipt.buffer.length > RECEIPT_MAX_BYTES) {
+        throw new BadRequestException('Receipt must be 10 MB or smaller');
+      }
+      if (!this.firebase.storageEnabled) {
+        throw new ServiceUnavailableException(
+          'Receipt storage requires Firebase Storage (enable Storage and set FIREBASE_SERVICE_ACCOUNT_JSON)',
+        );
+      }
+      const path = buildReceiptStoragePath(expense.propertyId, expense.id, receipt.mimeType);
+      await this.firebase.uploadReceipt(path, receipt.buffer, receipt.mimeType);
+      expense = {
+        ...expense,
+        receiptStoragePath: path,
+        receiptContentType: receipt.mimeType,
+        receiptUploadedAt: new Date().toISOString(),
+      };
+    }
     customExpenses.push(expense);
-
-    return expense;
-
+    return this.attachReceiptUrl(expense);
   }
 
-
-
-  async addCustomBulk(expenses: Expense[]): Promise<{ saved: Expense[]; skipped: Array<{ reason: string; expense: Expense }> }> {
-
+  async addCustomBulk(expenses: Expense[]): Promise<{
+    saved: Expense[];
+    skipped: Array<{ reason: string; expense: Expense }>;
+  }> {
     const saved: Expense[] = [];
-
     const skipped: Array<{ reason: string; expense: Expense }> = [];
-
     const keys = new Set(
-
-      customExpenses.map((e) => `${e.propertyId}|${e.month}|${(e.vendor ?? '').toLowerCase()}|${e.amount}`),
-
+      customExpenses.map(
+        (e) => `${e.propertyId}|${e.month}|${(e.vendor ?? '').toLowerCase()}|${e.amount}`,
+      ),
     );
 
-
-
     for (const expense of expenses) {
-
       const key = `${expense.propertyId}|${expense.month}|${(expense.vendor ?? '').toLowerCase()}|${expense.amount}`;
-
       if (keys.has(key)) {
-
         skipped.push({ reason: 'Duplicate', expense });
-
         continue;
-
       }
-
       customExpenses.push(expense);
-
       keys.add(key);
-
-      saved.push(expense);
-
+      saved.push(this.attachReceiptUrl(expense));
     }
 
-
-
     return { saved, skipped };
-
   }
 
-
-
-  deleteCustom(id: string): boolean {
-
+  async deleteCustom(id: string): Promise<boolean> {
     const idx = customExpenses.findIndex((e) => e.id === id);
-
     if (idx === -1) return false;
-
+    const expense = customExpenses[idx]!;
+    if (expense.receiptStoragePath) {
+      await this.firebase.deleteReceipt(expense.receiptStoragePath);
+    }
     customExpenses.splice(idx, 1);
-
     return true;
-
   }
 
-
+  async getReceiptFile(id: string): Promise<{ buffer: Buffer; contentType: string }> {
+    const expense = this.findCustomById(id);
+    if (!expense?.receiptStoragePath) {
+      throw new NotFoundException('No receipt for this expense');
+    }
+    if (!this.firebase.storageEnabled) {
+      throw new ServiceUnavailableException('Firebase Storage not configured');
+    }
+    return this.firebase.downloadReceipt(expense.receiptStoragePath);
+  }
 
   private async getBaseExpenses(): Promise<Expense[]> {
-
     const fromDb = await this.firebase.listCollection<Expense>('expenses');
-
     if (fromDb) return fromDb;
-
     return EXPENSES.map((e) => ({
-
       ...e,
-
       propertyId: e.propertyId as Expense['propertyId'],
-
     }));
-
   }
-
 }
-
-

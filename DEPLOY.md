@@ -29,6 +29,19 @@
 
 Set `DASHBOARD_PASSWORD` in Cloudflare Pages → Environment variables. When set, `/api/*` requires login (`POST /api/auth/login`). Leave unset for open access.
 
+### Receipt photo storage
+
+Scanned expenses can **save the original image/PDF** and view it later (thumbnail → full view).
+
+1. Enable **Cloud Storage** in [Firebase Console](https://console.firebase.google.com/project/wilhite-portfolio/storage)
+2. Deploy rules: `firebase deploy --only storage --project wilhite-portfolio`
+3. In **Cloudflare Pages → Settings → Environment variables**, add:
+   - `FIREBASE_SERVICE_ACCOUNT_JSON` — same JSON as Render/local (needs Storage Object Admin on the bucket)
+   - Optional `FIREBASE_STORAGE_BUCKET` if not `{project}.appspot.com`
+4. Redeploy Pages after setting secrets
+
+Without `FIREBASE_SERVICE_ACCOUNT_JSON`, scan/save still works but only stores amount/category (no photo).
+
 ## Local development
 
 1. Open https://console.firebase.google.com/project/wilhite-portfolio/firestore

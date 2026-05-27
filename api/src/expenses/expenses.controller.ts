@@ -1,9 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
-
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Res,
+  StreamableFile,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { ExpensesService } from './expenses.service';
-
 import { GeminiExpenseParser, buildExpenseFromInput, type BulkExpenseInput } from './gemini-expense.parser';
-
 import type { Expense } from '../common/metrics';
 
 @Controller('expenses')
@@ -16,6 +23,14 @@ export class ExpensesController {
   @Get()
   findAll() {
     return this.expensesService.findAll();
+  }
+
+  @Get(':id/receipt')
+  async getReceipt(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    const { buffer, contentType } = await this.expensesService.getReceiptFile(id);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    return new StreamableFile(buffer);
   }
 
   @Post('scan')
@@ -93,29 +108,38 @@ export class ExpensesController {
     const result = await this.expensesService.addCustomBulk(toSave);
     return {
       saved: result.saved,
-      skipped: [...skipped, ...result.skipped.map((s) => ({ reason: s.reason, expense: s.expense as BulkExpenseInput }))],
+      skipped: [
+        ...skipped,
+        ...result.skipped.map((s) => ({
+          reason: s.reason,
+          expense: s.expense as BulkExpenseInput,
+        })),
+      ],
     };
   }
 
   @Post()
   async create(
     @Body()
-    body: {
-      propertyId: 'ranch' | 'lindon';
-      month: string;
-      category: string;
-      amount: number;
-      note?: string;
-      vendor?: string;
+    body: BulkExpenseInput & {
+      receiptBase64?: string;
+      receiptMimeType?: string;
     },
   ) {
-    const item: Expense = buildExpenseFromInput(body);
-    return this.expensesService.addCustom(item);
+    const item = buildExpenseFromInput(body);
+    let receipt: { buffer: Buffer; mimeType: string } | undefined;
+    if (body.receiptBase64 && body.receiptMimeType) {
+      receipt = {
+        buffer: Buffer.from(body.receiptBase64, 'base64'),
+        mimeType: body.receiptMimeType,
+      };
+    }
+    return this.expensesService.addCustom(item, receipt);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    const ok = this.expensesService.deleteCustom(id);
+  async remove(@Param('id') id: string) {
+    const ok = await this.expensesService.deleteCustom(id);
     if (!ok) return { error: 'Not found' };
     return { ok: true, id };
   }

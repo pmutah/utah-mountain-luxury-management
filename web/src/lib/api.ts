@@ -1,14 +1,20 @@
 const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8080');
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
   const res = await fetch(`${API_URL}${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
+    headers,
   });
   if (!res.ok) {
-    throw new Error(`API ${path} failed: ${res.status}`);
+    const detail = await res.text().catch(() => '');
+    throw new Error(detail || `API ${path} failed: ${res.status}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -40,6 +46,10 @@ export interface Expense {
   note?: string;
   vendor?: string;
   createdAt?: string;
+  receiptStoragePath?: string | null;
+  receiptContentType?: string | null;
+  receiptUploadedAt?: string | null;
+  receiptUrl?: string | null;
 }
 
 export interface ExpenseScanResult {
@@ -63,6 +73,8 @@ export interface BulkExpenseInput {
   amount: number;
   note?: string;
   vendor?: string;
+  receiptBase64?: string;
+  receiptMimeType?: string;
 }
 
 export interface OwnerDistribution {
@@ -180,6 +192,8 @@ export const api = {
     request<{ ok: boolean }>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
+  expenseReceiptUrl: (expenseId: string) =>
+    `${API_URL}/api/expenses/${encodeURIComponent(expenseId)}/receipt`,
 };
 
 export const PROPERTIES: Record<string, Property> = {

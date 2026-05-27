@@ -10,7 +10,13 @@ export interface ExpenseRecord {
   note?: string;
   vendor?: string;
   createdAt?: string;
+  receiptStoragePath?: string | null;
+  receiptContentType?: string | null;
+  receiptUploadedAt?: string | null;
 }
+
+/** Client-facing expense with optional same-origin receipt URL. */
+export type ExpenseWithReceipt = ExpenseRecord & { receiptUrl?: string | null };
 
 const KV_KEY = 'customExpenses';
 
@@ -39,6 +45,13 @@ export async function mergeAllExpenses(env: SettingsEnv): Promise<ExpenseRecord[
     propertyId: e.propertyId as 'ranch' | 'lindon',
   }));
   return [...base, ...custom];
+}
+
+export function withReceiptUrls(expenses: ExpenseRecord[]): ExpenseWithReceipt[] {
+  return expenses.map((e) => ({
+    ...e,
+    receiptUrl: e.receiptStoragePath ? `/api/expenses/${encodeURIComponent(e.id)}/receipt` : null,
+  }));
 }
 
 export function newExpenseId(): string {
