@@ -7,7 +7,7 @@ import {
   withReceiptUrls,
   type ExpenseRecord,
 } from '../../_lib/expenses';
-import { storeReceiptForExpense } from '../../_lib/receipt-store';
+import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt-store';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
 
@@ -20,7 +20,15 @@ export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env }) 
 };
 
 export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env }) => {
-  const body = (await request.json()) as {
+  if (!env.SETTINGS) {
+    return corsJson(
+      request,
+      { error: 'Expense storage not available (KV SETTINGS binding missing)' },
+      503,
+    );
+  }
+
+  let body: {
     propertyId: 'ranch' | 'lindon';
     month: string;
     category: string;
@@ -30,6 +38,12 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     receiptBase64?: string;
     receiptMimeType?: string;
   };
+
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return corsJson(request, { error: 'Request too large or invalid JSON' }, 413);
+  }
 
   if (!body.propertyId || !body.month || !body.category) {
     return corsJson(request, { error: 'propertyId, month, and category required' }, 400);
@@ -43,30 +57,13 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
   }
 
   const id = newExpenseId();
-  let receiptStoragePathValue: string | null = null;
-  let receiptContentType: string | null = null;
-  let receiptUploadedAt: string | null = null;
-
-  if (body.receiptBase64 && body.receiptMimeType) {
-    try {
-      const receiptMeta = await storeReceiptForExpense(
-        env,
-        body.propertyId,
-        id,
-        body.receiptBase64,
-        body.receiptMimeType,
-      );
-      receiptStoragePathValue = receiptMeta.receiptStoragePath;
-      receiptContentType = receiptMeta.receiptContentType;
-      receiptUploadedAt = receiptMeta.receiptUploadedAt;
-    } catch (e) {
-      return corsJson(
-        request,
-        { error: e instanceof Error ? e.message : 'Receipt upload failed' },
-        422,
-      );
-    }
-  }
+  const { meta, warning } = await storeReceiptForExpense(
+    env,
+    body.propertyId,
+    id,
+    body.receiptBase64,
+    body.receiptMimeType,
+  );
 
   const item: ExpenseRecord = {
     id,
@@ -74,12 +71,10 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     month: body.month,
     category: body.category.trim(),
     amount,
-    note: body.note?.trim() || undefined,
+    note: appendReceiptWarning(body.note?.trim(), warning),
     vendor: body.vendor?.trim() || undefined,
     createdAt: new Date().toISOString(),
-    receiptStoragePath: receiptStoragePathValue,
-    receiptContentType,
-    receiptUploadedAt,
+    ...meta,
   };
 
   const custom = await loadCustomExpenses(env);
@@ -87,7 +82,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
   await saveCustomExpenses(env, custom);
 
   const [enriched] = withReceiptUrls([item]);
-  return corsJson(request, enriched, 201);
+  return corsJson(request, { ...enriched, receiptWarning: warning ?? null }, 201);
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

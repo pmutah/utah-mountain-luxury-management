@@ -121,7 +121,7 @@ export function ExpenseScanner({
     if (!preview) return;
     setSaving(true);
     try {
-      await api.addExpense({
+      const result = await api.addExpense({
         propertyId: preview.propertyId,
         month: preview.month,
         category: preview.category,
@@ -140,10 +140,14 @@ export function ExpenseScanner({
       setText('');
       setOpen(false);
       onSaved();
-      onToast(
-        pendingReceipt ? 'Expense and receipt saved' : 'Expense added to portfolio',
-        'success',
-      );
+      if (result.receiptWarning) {
+        onToast(result.receiptWarning, 'info');
+      } else {
+        onToast(
+          pendingReceipt ? 'Expense and receipt saved' : 'Expense added to portfolio',
+          'success',
+        );
+      }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not save expense');
     } finally {

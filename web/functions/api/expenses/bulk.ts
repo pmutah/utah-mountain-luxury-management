@@ -6,7 +6,7 @@ import {
   withReceiptUrls,
   type ExpenseRecord,
 } from '../../_lib/expenses';
-import { storeReceiptForExpense } from '../../_lib/receipt-store';
+import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt-store';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
 
@@ -28,16 +28,34 @@ function expenseKey(e: { propertyId: string; month: string; vendor?: string; amo
 }
 
 export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) => {
-  const body = (await request.json()) as { expenses?: BulkInput[] };
+  let body: { expenses?: BulkInput[] };
+  try {
+    body = (await request.json()) as { expenses?: BulkInput[] };
+  } catch {
+    return corsJson(request, { error: 'Request too large or invalid JSON — try importing fewer PDFs at once' }, 413);
+  }
+
   const incoming = body.expenses ?? [];
   if (incoming.length === 0) {
     return corsJson(request, { error: 'expenses array required' }, 400);
+  }
+
+  if (!env.SETTINGS) {
+    return corsJson(
+      request,
+      {
+        error:
+          'Expense storage not available — KV SETTINGS binding missing. Check web/wrangler.toml and redeploy.',
+      },
+      503,
+    );
   }
 
   const custom = await loadCustomExpenses(env);
   const existingKeys = new Set(custom.map(expenseKey));
   const saved: ExpenseRecord[] = [];
   const skipped: Array<{ reason: string; expense: BulkInput }> = [];
+  const warnings: string[] = [];
 
   for (const row of incoming) {
     if (row.propertyId !== 'ranch' && row.propertyId !== 'lindon') {
@@ -74,29 +92,25 @@ export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) =>
     }
 
     const id = newExpenseId();
-    let item: ExpenseRecord;
+    const { meta, warning } = await storeReceiptForExpense(
+      env,
+      row.propertyId,
+      id,
+      row.receiptBase64,
+      row.receiptMimeType,
+    );
 
-    try {
-      const receiptMeta = await storeReceiptForExpense(
-        env,
-        row.propertyId,
-        id,
-        row.receiptBase64,
-        row.receiptMimeType,
-      );
-      item = {
-        id,
-        ...candidate,
-        createdAt: new Date().toISOString(),
-        ...receiptMeta,
-      };
-    } catch (e) {
-      skipped.push({
-        reason: e instanceof Error ? e.message : 'Receipt upload failed',
-        expense: row,
-      });
-      continue;
+    if (warning) {
+      warnings.push(warning);
     }
+
+    const item: ExpenseRecord = {
+      id,
+      ...candidate,
+      note: appendReceiptWarning(candidate.note, warning),
+      createdAt: new Date().toISOString(),
+      ...meta,
+    };
 
     custom.push(item);
     existingKeys.add(key);
@@ -107,7 +121,7 @@ export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) =>
     await saveCustomExpenses(env, custom);
   }
 
-  return corsJson(request, { saved: withReceiptUrls(saved), skipped }, saved.length > 0 ? 201 : 200);
+  return corsJson(request, { saved: withReceiptUrls(saved), skipped, warnings }, saved.length > 0 ? 201 : 200);
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

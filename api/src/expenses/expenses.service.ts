@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { FirebaseService } from '../firebase/firebase.service';
 import type { Expense } from '../common/metrics';
 import { EXPENSES } from '../seed/seed-data';
@@ -44,30 +39,41 @@ export class ExpensesService {
   async addCustom(
     expense: Expense,
     receipt?: { buffer: Buffer; mimeType: string },
-  ): Promise<Expense> {
+  ): Promise<Expense & { receiptWarning?: string }> {
+    let receiptWarning: string | undefined;
     if (receipt) {
       if (!RECEIPT_ALLOWED_MIME.has(receipt.mimeType)) {
-        throw new BadRequestException('Receipt must be JPEG, PNG, WebP, or PDF');
+        receiptWarning = 'Unsupported file type for receipt storage. Expense was saved.';
+      } else if (!this.firebase.storageEnabled) {
+        receiptWarning =
+          'Receipt not stored — configure FIREBASE_SERVICE_ACCOUNT_JSON. Expense was saved.';
+      } else {
+        try {
+          if (receipt.buffer.length > RECEIPT_MAX_BYTES) {
+            receiptWarning = 'Receipt over 10 MB — not stored. Expense was saved.';
+          } else {
+            const path = buildReceiptStoragePath(expense.propertyId, expense.id, receipt.mimeType);
+            await this.firebase.uploadReceipt(path, receipt.buffer, receipt.mimeType);
+            expense = {
+              ...expense,
+              receiptStoragePath: path,
+              receiptContentType: receipt.mimeType,
+              receiptUploadedAt: new Date().toISOString(),
+            };
+          }
+        } catch (e) {
+          receiptWarning = `Receipt not stored (${e instanceof Error ? e.message : 'upload failed'}). Expense was saved.`;
+        }
       }
-      if (receipt.buffer.length > RECEIPT_MAX_BYTES) {
-        throw new BadRequestException('Receipt must be 10 MB or smaller');
-      }
-      if (!this.firebase.storageEnabled) {
-        throw new ServiceUnavailableException(
-          'Receipt storage requires Firebase Storage (enable Storage and set FIREBASE_SERVICE_ACCOUNT_JSON)',
-        );
-      }
-      const path = buildReceiptStoragePath(expense.propertyId, expense.id, receipt.mimeType);
-      await this.firebase.uploadReceipt(path, receipt.buffer, receipt.mimeType);
+    }
+    if (receiptWarning) {
       expense = {
         ...expense,
-        receiptStoragePath: path,
-        receiptContentType: receipt.mimeType,
-        receiptUploadedAt: new Date().toISOString(),
+        note: expense.note ? `${expense.note} · ${receiptWarning}` : receiptWarning,
       };
     }
     customExpenses.push(expense);
-    return this.attachReceiptUrl(expense);
+    return { ...this.attachReceiptUrl(expense), receiptWarning };
   }
 
   async addCustomBulk(expenses: Expense[]): Promise<{

@@ -185,45 +185,53 @@ export function BatchBillImporter({
             .filter((e) => !isExcludedExpense(e))
             .map((e) => withRockyMountainPowerVendor(e, file.name));
 
-          const autoBatch: BulkExpenseInput[] = [];
+          let filePdfWarnings = 0;
 
           for (const expense of portfolioExpenses) {
-            if (canAutoSave(expense)) {
-              const key = expenseFingerprint(expense);
-              if (sessionKeys.current.has(key)) continue;
-              autoBatch.push(toBulkInput(expense, fileReceipt));
+            if (!canAutoSave(expense)) continue;
+            const key = expenseFingerprint(expense);
+            if (sessionKeys.current.has(key)) continue;
+
+            try {
+              const result = await api.addExpense(toBulkInput(expense, fileReceipt));
               sessionKeys.current.add(key);
-            } else {
-              needsReview.push({
-                ...expense,
-                key: `${file.name}-${needsReview.length}-${expense.amount}`,
-                sourceFile: file.name,
-                selected: true,
-                receiptBase64: base64,
-                receiptMimeType: mimeType,
-                propertyId:
-                  expense.propertyId === 'lindon' || expense.propertyId === 'ranch'
-                    ? expense.propertyId
-                    : 'ranch',
-                month: expense.month || new Date().toISOString().slice(0, 7),
-                category: expense.category || 'Other',
-              });
+              autoSaved++;
+              if (result.receiptWarning) filePdfWarnings++;
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : 'Save failed';
+              onError(msg);
+              setFileRows((rows) =>
+                rows.map((r, idx) =>
+                  idx === i ? { ...r, status: 'failed' as FileStatus, detail: msg } : r,
+                ),
+              );
+              break;
             }
           }
 
-          if (autoBatch.length > 0) {
-            const { saved, skipped } = await api.addExpensesBulk(autoBatch);
-            autoSaved += saved.length;
-            const storageErrors = skipped.filter((s) =>
-              /storage|FIREBASE/i.test(s.reason),
+          if (filePdfWarnings > 0 && autoSaved > 0) {
+            onToast(
+              `${filePdfWarnings} saved without PDF file — add FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare Pages to store bills`,
+              'info',
             );
-            if (storageErrors.length > 0) {
-              onError(
-                'PDF not saved — set FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare Pages (see DEPLOY.md)',
-              );
-            } else if (skipped.length > 0) {
-              onToast(`${skipped.length} duplicate(s) skipped`, 'info');
-            }
+          }
+
+          for (const expense of portfolioExpenses) {
+            if (canAutoSave(expense)) continue;
+            needsReview.push({
+              ...expense,
+              key: `${file.name}-${needsReview.length}-${expense.amount}`,
+              sourceFile: file.name,
+              selected: true,
+              receiptBase64: base64,
+              receiptMimeType: mimeType,
+              propertyId:
+                expense.propertyId === 'lindon' || expense.propertyId === 'ranch'
+                  ? expense.propertyId
+                  : 'ranch',
+              month: expense.month || new Date().toISOString().slice(0, 7),
+              category: expense.category || 'Other',
+            });
           }
 
           setFileRows((rows) =>
@@ -252,7 +260,7 @@ export function BatchBillImporter({
       onRefresh();
 
       if (autoSaved > 0) {
-        onToast(`Saved ${autoSaved} bill${autoSaved === 1 ? '' : 's'} with PDF`, 'success');
+        onToast(`Saved ${autoSaved} bill${autoSaved === 1 ? '' : 's'}`, 'success');
       }
       if (needsReview.length > 0) {
         onToast(`${needsReview.length} item(s) need review below`, 'info');
@@ -274,25 +282,33 @@ export function BatchBillImporter({
     }
     setSavingReview(true);
     try {
-      const payload: BulkExpenseInput[] = selected.map((r) => ({
-        propertyId: r.propertyId,
-        month: r.month,
-        category: r.category,
-        amount: r.amount,
-        note: r.note,
-        vendor: r.vendor,
-        receiptBase64: r.receiptBase64,
-        receiptMimeType: r.receiptMimeType,
-      }));
-      const { saved, skipped } = await api.addExpensesBulk(payload);
-      for (const s of saved) {
-        sessionKeys.current.add(expenseFingerprint(s));
+      let savedCount = 0;
+      let pdfWarnings = 0;
+      for (const r of selected) {
+        const result = await api.addExpense({
+          propertyId: r.propertyId,
+          month: r.month,
+          category: r.category,
+          amount: r.amount,
+          note: r.note,
+          vendor: r.vendor,
+          receiptBase64: r.receiptBase64,
+          receiptMimeType: r.receiptMimeType,
+        });
+        sessionKeys.current.add(expenseFingerprint(result));
+        savedCount++;
+        if (result.receiptWarning) pdfWarnings++;
       }
       setReviewRows([]);
       onRefresh();
-      onToast(`Saved ${saved.length} bill${saved.length === 1 ? '' : 's'} with PDF`, 'success');
-      if (skipped.length > 0) {
-        onToast(`${skipped.length} duplicate(s) skipped`, 'info');
+      if (savedCount > 0) {
+        onToast(`Saved ${savedCount} bill${savedCount === 1 ? '' : 's'}`, 'success');
+      }
+      if (pdfWarnings > 0) {
+        onToast(
+          'Some bills saved without PDF — add FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare Pages',
+          'info',
+        );
       }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not save expenses');

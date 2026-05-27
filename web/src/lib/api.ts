@@ -12,7 +12,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(detail || `API ${path} failed: ${res.status}`);
+    let message = detail || `API ${path} failed: ${res.status}`;
+    try {
+      const parsed = JSON.parse(detail) as { error?: string; message?: string };
+      if (parsed.error) message = parsed.error;
+      else if (parsed.message) message = parsed.message;
+    } catch {
+      // use raw detail
+    }
+    throw new Error(message);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -175,19 +183,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  addExpensesBulk: (expenses: BulkExpenseInput[]) =>
+    request<{
+      saved: Expense[];
+      skipped: Array<{ reason: string; expense: BulkExpenseInput }>;
+      warnings?: string[];
+    }>('/api/expenses/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ expenses }),
+    }),
   addExpense: (body: BulkExpenseInput) =>
-    request<Expense>('/api/expenses', {
+    request<Expense & { receiptWarning?: string | null }>('/api/expenses', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  addExpensesBulk: (expenses: BulkExpenseInput[]) =>
-    request<{ saved: Expense[]; skipped: Array<{ reason: string; expense: BulkExpenseInput }> }>(
-      '/api/expenses/bulk',
-      {
-        method: 'POST',
-        body: JSON.stringify({ expenses }),
-      },
-    ),
   deleteExpense: (id: string) =>
     request<{ ok: boolean }>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'DELETE',
