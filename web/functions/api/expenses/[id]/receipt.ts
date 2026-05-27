@@ -23,15 +23,17 @@ export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env, pa
   try {
     const { bytes, contentType } = await loadStoredReceipt(env, expense);
     const origin = request.headers.get('Origin') ?? '*';
-    return new Response(bytes, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'private, max-age=3600',
-        'Access-Control-Allow-Origin': origin,
-        'Access-Control-Allow-Credentials': 'true',
-      },
-    });
+    const isPdf = contentType === 'application/pdf';
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Cache-Control': 'private, max-age=3600',
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
+    };
+    if (isPdf) {
+      headers['Content-Disposition'] = `inline; filename="bill-${id}.pdf"`;
+    }
+    return new Response(bytes, { status: 200, headers });
   } catch (e) {
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : 'Failed to load receipt' }),

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Eye, Hammer, Loader2, Paperclip, Trash2 } from 'lucide-react';
 import { api, formatCurrency, type Expense } from '../lib/api';
+import { expenseReceiptIsPdf, isMobileDevice } from '../lib/device';
 import { ReceiptViewerModal } from './ReceiptViewerModal';
 
 function hasStoredReceipt(expense: Expense): boolean {
@@ -43,10 +44,22 @@ export function ExpenseRow({
 
   const storedReceipt = hasStoredReceipt(expense);
   const receiptEndpoint = api.expenseReceiptUrl(expense.id);
+  const pdfReceipt = storedReceipt && expenseReceiptIsPdf(expense);
+  const mobilePdfLink = pdfReceipt && isMobileDevice();
   const canDelete = expense.id.startsWith('exp-') && onDelete;
   const canAttach = expense.id.startsWith('exp-') && !storedReceipt && onRefresh;
 
+  const viewButtonClass =
+    'inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider';
+
   const openReceipt = async () => {
+    if (pdfReceipt) {
+      setViewerSrc(receiptEndpoint);
+      setViewerContentType('application/pdf');
+      setViewerOpen(true);
+      return;
+    }
+
     setLoadingReceipt(true);
     try {
       const res = await fetch(receiptEndpoint, { credentials: 'include' });
@@ -155,22 +168,30 @@ export function ExpenseRow({
               Attach bill
             </button>
           )}
-          {storedReceipt && (
+          {storedReceipt && mobilePdfLink && (
+            <a
+              href={receiptEndpoint}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={viewButtonClass}
+            >
+              <Eye className="w-4 h-4" />
+              Open PDF
+            </a>
+          )}
+          {storedReceipt && !mobilePdfLink && (
             <button
               type="button"
               disabled={loadingReceipt}
               onClick={() => void openReceipt()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider"
+              className={viewButtonClass}
             >
               {loadingReceipt ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Eye className="w-4 h-4" />
               )}
-              {expense.receiptContentType === 'application/pdf' ||
-              !expense.receiptContentType?.startsWith('image/')
-                ? 'View PDF'
-                : 'View receipt'}
+              {pdfReceipt ? 'View PDF' : 'View receipt'}
             </button>
           )}
           {canDelete && (
@@ -194,6 +215,7 @@ export function ExpenseRow({
         <ReceiptViewerModal
           title={`${expense.vendor ?? expense.category} bill`}
           imageUrl={viewerSrc}
+          openUrl={receiptEndpoint}
           contentType={viewerContentType}
           onClose={closeViewer}
         />
