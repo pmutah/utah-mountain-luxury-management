@@ -3,8 +3,11 @@ import {
   loadCustomExpenses,
   newExpenseId,
   saveCustomExpenses,
+  withReceiptUrls,
   type ExpenseRecord,
 } from '../../_lib/expenses';
+import { storeReceiptForExpense } from '../../_lib/receipt-store';
+import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
 
 type BulkInput = {
@@ -14,13 +17,17 @@ type BulkInput = {
   amount: number;
   note?: string;
   vendor?: string;
+  receiptBase64?: string;
+  receiptMimeType?: string;
 };
+
+type BulkEnv = SettingsEnv & FirebaseStorageEnv;
 
 function expenseKey(e: { propertyId: string; month: string; vendor?: string; amount: number }) {
   return `${e.propertyId}|${e.month}|${(e.vendor ?? '').toLowerCase()}|${e.amount.toFixed(2)}`;
 }
 
-export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }) => {
+export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) => {
   const body = (await request.json()) as { expenses?: BulkInput[] };
   const incoming = body.expenses ?? [];
   if (incoming.length === 0) {
@@ -66,11 +73,31 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
       continue;
     }
 
-    const item: ExpenseRecord = {
-      id: newExpenseId(),
-      ...candidate,
-      createdAt: new Date().toISOString(),
-    };
+    const id = newExpenseId();
+    let item: ExpenseRecord;
+
+    try {
+      const receiptMeta = await storeReceiptForExpense(
+        env,
+        row.propertyId,
+        id,
+        row.receiptBase64,
+        row.receiptMimeType,
+      );
+      item = {
+        id,
+        ...candidate,
+        createdAt: new Date().toISOString(),
+        ...receiptMeta,
+      };
+    } catch (e) {
+      skipped.push({
+        reason: e instanceof Error ? e.message : 'Receipt upload failed',
+        expense: row,
+      });
+      continue;
+    }
+
     custom.push(item);
     existingKeys.add(key);
     saved.push(item);
@@ -80,7 +107,7 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     await saveCustomExpenses(env, custom);
   }
 
-  return corsJson(request, { saved, skipped }, saved.length > 0 ? 201 : 200);
+  return corsJson(request, { saved: withReceiptUrls(saved), skipped }, saved.length > 0 ? 201 : 200);
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

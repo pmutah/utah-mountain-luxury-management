@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hammer, ImageIcon, Loader2, Trash2 } from 'lucide-react';
+import { Hammer, FileText, ImageIcon, Loader2, Trash2 } from 'lucide-react';
 import { api, formatCurrency, type Expense } from '../lib/api';
 import { ReceiptViewerModal } from './ReceiptViewerModal';
 
@@ -54,6 +54,8 @@ export function ExpenseRow({
             >
               {expense.receiptContentType?.startsWith('image/') ? (
                 <img src={receiptSrc} alt="" className="w-8 h-8 object-cover rounded" />
+              ) : expense.receiptStoragePath || expense.receiptUrl ? (
+                <FileText className="w-4 h-4 m-1" />
               ) : (
                 <ImageIcon className="w-4 h-4 m-1" />
               )}

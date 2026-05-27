@@ -79,9 +79,9 @@ export class ExpensesController {
   }
 
   @Post('bulk')
-  async bulk(@Body() body: { expenses?: BulkExpenseInput[] }) {
+  async bulk(@Body() body: { expenses?: (BulkExpenseInput & { receiptBase64?: string; receiptMimeType?: string })[] }) {
     const incoming = body.expenses ?? [];
-    const toSave: Expense[] = [];
+    const saved: Expense[] = [];
     const skipped: Array<{ reason: string; expense: BulkExpenseInput }> = [];
 
     for (const row of incoming) {
@@ -102,20 +102,38 @@ export class ExpensesController {
         skipped.push({ reason: 'Missing category', expense: row });
         continue;
       }
-      toSave.push(buildExpenseFromInput({ ...row, amount }));
+
+      const item = buildExpenseFromInput({ ...row, amount });
+      let receipt: { buffer: Buffer; mimeType: string } | undefined;
+      if (row.receiptBase64 && row.receiptMimeType) {
+        receipt = {
+          buffer: Buffer.from(row.receiptBase64, 'base64'),
+          mimeType: row.receiptMimeType,
+        };
+      }
+
+      const keys = new Set(
+        [...(await this.expensesService.findAll()), ...saved].map(
+          (e) => `${e.propertyId}|${e.month}|${(e.vendor ?? '').toLowerCase()}|${e.amount}`,
+        ),
+      );
+      const key = `${item.propertyId}|${item.month}|${(item.vendor ?? '').toLowerCase()}|${item.amount}`;
+      if (keys.has(key)) {
+        skipped.push({ reason: 'Duplicate', expense: row });
+        continue;
+      }
+
+      try {
+        saved.push(await this.expensesService.addCustom(item, receipt));
+      } catch (e) {
+        skipped.push({
+          reason: e instanceof Error ? e.message : 'Save failed',
+          expense: row,
+        });
+      }
     }
 
-    const result = await this.expensesService.addCustomBulk(toSave);
-    return {
-      saved: result.saved,
-      skipped: [
-        ...skipped,
-        ...result.skipped.map((s) => ({
-          reason: s.reason,
-          expense: s.expense as BulkExpenseInput,
-        })),
-      ],
-    };
+    return { saved, skipped };
   }
 
   @Post()

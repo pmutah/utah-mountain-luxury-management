@@ -11,8 +11,10 @@ import {
   formatCurrency,
   PROPERTIES,
   type BulkExpenseInput,
+  type Expense,
   type ExpenseScanResult,
 } from '../lib/api';
+import { ExpenseRow } from './ExpenseRow';
 
 const ROCKY_MOUNTAIN_POWER = 'Rocky Mountain Power';
 
@@ -60,6 +62,8 @@ type ReviewRow = ExpenseScanResult & {
   sourceFile: string;
   selected: boolean;
   propertyId: 'ranch' | 'lindon';
+  receiptBase64: string;
+  receiptMimeType: string;
 };
 
 async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
@@ -93,7 +97,10 @@ function canAutoSave(e: ExpenseScanResult): e is ExpenseScanResult & {
   return confidence !== 'low';
 }
 
-function toBulkInput(e: ExpenseScanResult & { propertyId: 'ranch' | 'lindon' }): BulkExpenseInput {
+function toBulkInput(
+  e: ExpenseScanResult & { propertyId: 'ranch' | 'lindon' },
+  receipt: { base64: string; mimeType: string },
+): BulkExpenseInput {
   return {
     propertyId: e.propertyId,
     month: e.month,
@@ -101,14 +108,18 @@ function toBulkInput(e: ExpenseScanResult & { propertyId: 'ranch' | 'lindon' }):
     amount: e.amount,
     note: e.note,
     vendor: e.vendor,
+    receiptBase64: receipt.base64,
+    receiptMimeType: receipt.mimeType,
   };
 }
 
 export function BatchBillImporter({
+  expenses,
   onRefresh,
   onToast,
   onError,
 }: {
+  expenses: Expense[];
   onRefresh: () => void;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
   onError: (msg: string) => void;
@@ -123,6 +134,15 @@ export function BatchBillImporter({
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const sessionKeys = useRef(new Set<string>());
+
+  const savedImports = expenses
+    .filter((e) => e.id.startsWith('exp-'))
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+
+  const deleteImport = async (id: string) => {
+    await api.deleteExpense(id);
+    onRefresh();
+  };
 
   const processFiles = useCallback(
     async (files: File[]) => {
@@ -154,6 +174,7 @@ export function BatchBillImporter({
 
         try {
           const { base64, mimeType } = await fileToBase64(file);
+          const fileReceipt = { base64, mimeType };
           const { expenses } = await api.scanExpenseBatch({
             fileBase64: base64,
             mimeType,
@@ -170,7 +191,7 @@ export function BatchBillImporter({
             if (canAutoSave(expense)) {
               const key = expenseFingerprint(expense);
               if (sessionKeys.current.has(key)) continue;
-              autoBatch.push(toBulkInput(expense));
+              autoBatch.push(toBulkInput(expense, fileReceipt));
               sessionKeys.current.add(key);
             } else {
               needsReview.push({
@@ -178,6 +199,8 @@ export function BatchBillImporter({
                 key: `${file.name}-${needsReview.length}-${expense.amount}`,
                 sourceFile: file.name,
                 selected: true,
+                receiptBase64: base64,
+                receiptMimeType: mimeType,
                 propertyId:
                   expense.propertyId === 'lindon' || expense.propertyId === 'ranch'
                     ? expense.propertyId
@@ -189,8 +212,18 @@ export function BatchBillImporter({
           }
 
           if (autoBatch.length > 0) {
-            const { saved } = await api.addExpensesBulk(autoBatch);
+            const { saved, skipped } = await api.addExpensesBulk(autoBatch);
             autoSaved += saved.length;
+            const storageErrors = skipped.filter((s) =>
+              /storage|FIREBASE/i.test(s.reason),
+            );
+            if (storageErrors.length > 0) {
+              onError(
+                'PDF not saved — set FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare Pages (see DEPLOY.md)',
+              );
+            } else if (skipped.length > 0) {
+              onToast(`${skipped.length} duplicate(s) skipped`, 'info');
+            }
           }
 
           setFileRows((rows) =>
@@ -219,7 +252,7 @@ export function BatchBillImporter({
       onRefresh();
 
       if (autoSaved > 0) {
-        onToast(`Auto-saved ${autoSaved} expense${autoSaved === 1 ? '' : 's'}`, 'success');
+        onToast(`Saved ${autoSaved} bill${autoSaved === 1 ? '' : 's'} with PDF`, 'success');
       }
       if (needsReview.length > 0) {
         onToast(`${needsReview.length} item(s) need review below`, 'info');
@@ -248,6 +281,8 @@ export function BatchBillImporter({
         amount: r.amount,
         note: r.note,
         vendor: r.vendor,
+        receiptBase64: r.receiptBase64,
+        receiptMimeType: r.receiptMimeType,
       }));
       const { saved, skipped } = await api.addExpensesBulk(payload);
       for (const s of saved) {
@@ -255,7 +290,7 @@ export function BatchBillImporter({
       }
       setReviewRows([]);
       onRefresh();
-      onToast(`Saved ${saved.length} expense${saved.length === 1 ? '' : 's'}`, 'success');
+      onToast(`Saved ${saved.length} bill${saved.length === 1 ? '' : 's'} with PDF`, 'success');
       if (skipped.length > 0) {
         onToast(`${skipped.length} duplicate(s) skipped`, 'info');
       }
@@ -280,7 +315,7 @@ export function BatchBillImporter({
               Import bills (PDF)
             </p>
             <p className="text-[10px] text-slate-500 font-bold mt-1">
-              Drop Rocky Mountain Power PDFs — auto-assigns house, month &amp; vendor
+              Drop Rocky Mountain Power PDFs — saves bill file, amount &amp; vendor
             </p>
           </div>
         </div>
@@ -483,6 +518,23 @@ export function BatchBillImporter({
                   {savingReview ? 'Saving…' : 'Save selected'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {savedImports.length > 0 && (
+            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Saved bill imports — tap PDF to view, trash to delete
+              </p>
+              {savedImports.map((e) => (
+                <ExpenseRow
+                  key={e.id}
+                  expense={e}
+                  onDelete={deleteImport}
+                  onError={onError}
+                  onToast={onToast}
+                />
+              ))}
             </div>
           )}
         </div>

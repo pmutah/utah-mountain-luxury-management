@@ -1,13 +1,5 @@
 import { corsJson } from '../../_lib/data';
 import {
-  RECEIPT_ALLOWED_MIME,
-  decodeBase64Receipt,
-  receiptStoragePath,
-  storageConfigured,
-  uploadReceipt,
-  type FirebaseStorageEnv,
-} from '../../_lib/gcs';
-import {
   loadCustomExpenses,
   mergeAllExpenses,
   newExpenseId,
@@ -15,6 +7,8 @@ import {
   withReceiptUrls,
   type ExpenseRecord,
 } from '../../_lib/expenses';
+import { storeReceiptForExpense } from '../../_lib/receipt-store';
+import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
@@ -54,22 +48,17 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
   let receiptUploadedAt: string | null = null;
 
   if (body.receiptBase64 && body.receiptMimeType) {
-    if (!RECEIPT_ALLOWED_MIME.has(body.receiptMimeType)) {
-      return corsJson(request, { error: 'Receipt must be JPEG, PNG, WebP, or PDF' }, 400);
-    }
-    if (!storageConfigured(env)) {
-      return corsJson(
-        request,
-        { error: 'Receipt storage not configured (set FIREBASE_SERVICE_ACCOUNT_JSON on Pages)' },
-        503,
-      );
-    }
     try {
-      const bytes = decodeBase64Receipt(body.receiptBase64);
-      receiptStoragePathValue = receiptStoragePath(body.propertyId, id, body.receiptMimeType);
-      await uploadReceipt(env, receiptStoragePathValue, bytes, body.receiptMimeType);
-      receiptContentType = body.receiptMimeType;
-      receiptUploadedAt = new Date().toISOString();
+      const receiptMeta = await storeReceiptForExpense(
+        env,
+        body.propertyId,
+        id,
+        body.receiptBase64,
+        body.receiptMimeType,
+      );
+      receiptStoragePathValue = receiptMeta.receiptStoragePath;
+      receiptContentType = receiptMeta.receiptContentType;
+      receiptUploadedAt = receiptMeta.receiptUploadedAt;
     } catch (e) {
       return corsJson(
         request,

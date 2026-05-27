@@ -31,7 +31,12 @@ export function PortfolioOverview({
   return (
     <div className="space-y-6">
       <ExportMenu data={data} onToast={onToast} />
-      <BatchBillImporter onRefresh={onRefresh} onToast={onToast} onError={onError} />
+      <BatchBillImporter
+        expenses={data.expenses}
+        onRefresh={onRefresh}
+        onToast={onToast}
+        onError={onError}
+      />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Revenue" value={formatCurrency(rev)} icon={BarChart3} delta={revDelta} />
         <StatCard label="Net Profit" value={formatCurrency(profit)} icon={DollarSign} color="text-blue-400" delta={profitDelta} />
