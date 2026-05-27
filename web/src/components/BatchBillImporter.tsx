@@ -27,6 +27,11 @@ const CATEGORIES = [
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
+/** Drop charges tied to non-portfolio addresses (e.g. 53 North State Street on combined utility bills). */
+function isExcludedExpense(e: { note?: string; vendor?: string }): boolean {
+  return /53\s+n(orth)?\.?\s+state/i.test(`${e.note ?? ''} ${e.vendor ?? ''}`);
+}
+
 type FileStatus = 'pending' | 'scanning' | 'done' | 'failed';
 
 type ReviewRow = ExpenseScanResult & {
@@ -134,9 +139,11 @@ export function BatchBillImporter({
             fileName: file.name,
           });
 
+          const portfolioExpenses = expenses.filter((e) => !isExcludedExpense(e));
+
           const autoBatch: BulkExpenseInput[] = [];
 
-          for (const expense of expenses) {
+          for (const expense of portfolioExpenses) {
             if (canAutoSave(expense)) {
               const key = expenseFingerprint(expense);
               if (sessionKeys.current.has(key)) continue;
@@ -169,7 +176,7 @@ export function BatchBillImporter({
                 ? {
                     ...r,
                     status: 'done' as FileStatus,
-                    detail: `${expenses.length} bill(s) found`,
+                    detail: `${portfolioExpenses.length} bill(s) found${expenses.length > portfolioExpenses.length ? ` (${expenses.length - portfolioExpenses.length} non-portfolio skipped)` : ''}`,
                   }
                 : r,
             ),

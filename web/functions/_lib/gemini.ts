@@ -1,3 +1,8 @@
+import {
+  ADDRESS_RULES_PROMPT,
+  filterPortfolioExpenses,
+} from './expense-address';
+
 export interface ParsedExpense {
   amount: number;
   category: string;
@@ -14,9 +19,7 @@ export interface ParsedExpenseBatch {
 
 const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
 
-Properties (pick the best match from bill context):
-- ranch: "The Ranch House", 270 East Center Street, Lindon, Utah 84042
-- lindon: "The Lindon House", 143 Harcliff Circle, Lindon, Utah 84042
+${ADDRESS_RULES_PROMPT}
 
 Categories (pick one): Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 
@@ -24,12 +27,12 @@ Return ONLY valid JSON:
 {"expenses":[{"amount":number,"category":string,"month":"YYYY-MM","propertyId":"ranch"|"lindon"|null,"vendor":string,"note":string,"confidence":"high"|"low"}]}
 
 Rules:
-- A document may contain ONE or MANY bills/charges; emit one object per distinct bill or charge
-- amount is total paid in USD (positive number)
+- A document may contain ONE or MANY bills/charges; emit one object per distinct bill or charge at a portfolio address only
+- amount is total paid in USD for THAT service address only (positive number)
 - month is expense month YYYY-MM from billing/statement period or due date (NOT scan date)
 - propertyId null if truly unknown; set confidence "low" when property OR month is ambiguous
 - confidence "high" only when both propertyId and month are clear from the document
-- note: brief description of what was purchased or billed`;
+- note: brief description plus which service address the charge applies to`;
 
 const SINGLE_PROMPT = `${PROMPT}
 
@@ -72,7 +75,7 @@ function parseBatchResponse(raw: string): ParsedExpense[] {
     ? (json as ParsedExpenseBatch).expenses
     : [json as ParsedExpense];
   if (items.length === 0) throw new Error('No expenses found in document');
-  return items.map(normalizeExpense);
+  return filterPortfolioExpenses(items.map(normalizeExpense));
 }
 
 async function callGemini(

@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Expense } from '../common/metrics';
+import { ADDRESS_RULES_PROMPT, filterPortfolioExpenses } from './expense-address';
 
 const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
-Properties: ranch (The Ranch House, 270 East Center Street, Lindon, Utah 84042), lindon (The Lindon House, 143 Harcliff Circle, Lindon, Utah 84042).
+${ADDRESS_RULES_PROMPT}
 Categories: Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 Return ONLY JSON: {"expenses":[{"amount":number,"category":string,"month":"YYYY-MM","propertyId":"ranch"|"lindon"|null,"vendor":string,"note":string,"confidence":"high"|"low"}]}
-Rules: one or many bills per document; confidence low if property or month ambiguous.`;
+Rules: one or many bills per document at portfolio addresses only; per-address amount not account total; confidence low if property or month ambiguous; note must include service address.`;
 
 const SINGLE_PROMPT = `${PROMPT}\nFor a single receipt return one item in expenses array.`;
 
@@ -70,17 +71,19 @@ export class GeminiExpenseParser {
       ? (json as { expenses: ParsedExpense[] }).expenses
       : [json as ParsedExpense];
     if (items.length === 0) throw new Error('No expenses found');
-    return items.map((parsed) => {
-      if (!Number.isFinite(parsed.amount) || parsed.amount <= 0) {
-        throw new Error('Invalid amount from scan');
-      }
-      if (!parsed.category) parsed.category = 'Other';
-      if (!parsed.confidence) {
-        parsed.confidence =
-          parsed.propertyId && /^\d{4}-\d{2}$/.test(parsed.month) ? 'high' : 'low';
-      }
-      return parsed;
-    });
+    return filterPortfolioExpenses(
+      items.map((parsed) => {
+        if (!Number.isFinite(parsed.amount) || parsed.amount <= 0) {
+          throw new Error('Invalid amount from scan');
+        }
+        if (!parsed.category) parsed.category = 'Other';
+        if (!parsed.confidence) {
+          parsed.confidence =
+            parsed.propertyId && /^\d{4}-\d{2}$/.test(parsed.month) ? 'high' : 'low';
+        }
+        return parsed;
+      }),
+    );
   }
 
   private async call(
