@@ -518,14 +518,20 @@ export function BatchBillImporter({
           )}
 
           {savedImports.length > 0 && (
-            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                Saved bill imports — tap PDF to view, trash to delete
+            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                Saved bill imports
+              </p>
+              <p className="text-xs text-slate-500 mb-3">
+                Use the blue <span className="text-blue-400 font-bold">View PDF</span> button on each
+                row. If you only see “no PDF on file,” the amount was saved but the file was not
+                stored — re-import the bill after storage is configured.
               </p>
               {savedImports.map((e) => (
                 <ExpenseRow
                   key={e.id}
                   expense={e}
+                  showMissingReceiptHint
                   onDelete={deleteImport}
                   onError={onError}
                   onToast={onToast}

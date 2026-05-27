@@ -353,7 +353,7 @@ export function ExpenseScanner({
           {customExpenses.length > 0 && (
             <div className="pt-2 border-t border-slate-800/50">
               <p className="text-[9px] font-bold text-slate-500 uppercase mb-2">
-                Saved expenses with receipts
+                Saved expenses — use View PDF / View receipt on each row
               </p>
               {customExpenses.map((e) => (
                 <ExpenseRow
