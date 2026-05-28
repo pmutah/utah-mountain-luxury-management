@@ -7,10 +7,12 @@ import { PropertyDetail } from './components/PropertyDetail';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { ToastStack } from './components/Toast';
 import { AgentChat } from './components/AgentChat';
+import { ConstructionManagerChat } from './components/ConstructionManagerChat';
+import { ConstructionProjectView } from './components/ConstructionProject';
 import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
-type TabId = 'portfolio' | 'ranch' | 'lindon';
+type TabId = 'portfolio' | 'ranch' | 'lindon' | 'construction';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
@@ -65,23 +67,36 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-thin">
-          {(['portfolio', 'ranch', 'lindon'] as const).map((id) => (
+          {(['portfolio', 'ranch', 'lindon', 'construction'] as const).map((id) => (
             <button
               key={id}
               type="button"
               onClick={() => setActiveTab(id)}
               className={`px-6 sm:px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap min-h-[44px] ${
                 activeTab === id
-                  ? 'bg-blue-600 text-white shadow-xl'
+                  ? id === 'construction'
+                    ? 'bg-amber-600 text-white shadow-xl'
+                    : 'bg-blue-600 text-white shadow-xl'
                   : 'bg-slate-900 text-slate-500 border border-slate-800'
               }`}
             >
-              {id === 'portfolio' ? 'Overview' : PROPERTIES[id].name}
+              {id === 'portfolio'
+                ? 'Overview'
+                : id === 'construction'
+                  ? PROPERTIES.construction.name
+                  : PROPERTIES[id].name}
             </button>
           ))}
         </nav>
 
-        {loading && !data ? (
+        {activeTab === 'construction' ? (
+          <main>
+            <ConstructionProjectView
+              onToast={showToast}
+              onError={(msg) => showToast(msg, 'error')}
+            />
+          </main>
+        ) : loading && !data ? (
           <LoadingSkeleton />
         ) : data ? (
           <main className={loading ? 'opacity-60 pointer-events-none' : ''}>
@@ -110,9 +125,10 @@ function Dashboard() {
       <ToastStack toasts={toasts} />
       <AgentChat
         month={currentMonth}
-        activeTab={activeTab}
+        activeTab={activeTab === 'construction' ? 'construction' : activeTab}
         onError={(msg) => showToast(msg, 'error')}
       />
+      <ConstructionManagerChat onError={(msg) => showToast(msg, 'error')} />
     </div>
   );
 }

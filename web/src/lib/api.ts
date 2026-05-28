@@ -33,6 +33,7 @@ export interface Property {
   cleaningFee: number;
   accentColor: string;
   mortgage: number;
+  status?: 'active' | 'under_construction';
 }
 
 export interface Reservation {
@@ -176,6 +177,66 @@ export interface PricingAlert {
   dismissed?: boolean;
 }
 
+export interface ConstructionProject {
+  id: string;
+  name: string;
+  address: string;
+  jurisdiction: string;
+  currentStage: string;
+  stages: string[];
+  budgetTarget: number;
+  scopeNotes?: string;
+  projectType?: string;
+  contacts?: Array<{ name: string; role: string; phone?: string; email?: string }>;
+  updatedAt?: string;
+}
+
+export interface ConstructionDocument {
+  id: string;
+  type: string;
+  title: string;
+  vendor?: string;
+  amount?: number;
+  documentDate?: string;
+  trade?: string;
+  stage?: string;
+  storagePath?: string | null;
+  contentType?: string | null;
+  uploadedAt: string;
+  extractedSummary?: string;
+  extractedFields?: Record<string, unknown>;
+  sourceFileName?: string;
+}
+
+export interface ConstructionRecommendation {
+  id: string;
+  stage: string;
+  priority: 'low' | 'medium' | 'high';
+  category: string;
+  title: string;
+  body: string;
+  savingsEstimate?: number;
+  createdAt: string;
+  dismissed?: boolean;
+}
+
+export interface ConstructionDecision {
+  id: string;
+  date: string;
+  topic: string;
+  decision: string;
+  rationale: string;
+  relatedDocIds?: string[];
+}
+
+export interface ConstructionChatResponse {
+  sessionId: string;
+  reply: string;
+  messages: AgentMessage[];
+  toolSteps: ToolStep[];
+  briefing?: string;
+}
+
 export const api = {
   getSession: () => request<SessionInfo>('/api/auth/session'),
   login: (password: string) =>
@@ -277,6 +338,43 @@ export const api = {
     }),
   refreshCompPrices: () =>
     request<{ refreshed: number; errors: string[] }>('/api/pricing/refresh', { method: 'POST' }),
+  getConstructionProject: () =>
+    request<ConstructionProject>('/api/construction/project'),
+  updateConstructionProject: (body: Partial<ConstructionProject>) =>
+    request<ConstructionProject>('/api/construction/project', {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+  getConstructionDocuments: () =>
+    request<{ documents: ConstructionDocument[] }>('/api/construction/documents'),
+  uploadConstructionDocument: (body: {
+    fileBase64: string;
+    mimeType: string;
+    fileName?: string;
+    type?: string;
+  }) =>
+    request<ConstructionDocument>('/api/construction/documents', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  constructionDocumentFileUrl: (id: string) =>
+    `${API_URL}/api/construction/documents/${encodeURIComponent(id)}/file`,
+  deleteConstructionDocument: (id: string) =>
+    request<{ ok: boolean }>(`/api/construction/documents/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  getConstructionRecommendations: () =>
+    request<{ recommendations: ConstructionRecommendation[] }>('/api/construction/recommendations'),
+  dismissConstructionRecommendation: (id: string) =>
+    request<{ ok: boolean }>(`/api/construction/recommendations/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ dismissed: true }),
+    }),
+  constructionChat: (body: { message: string; sessionId?: string }) =>
+    request<ConstructionChatResponse>('/api/agent/construction/chat', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
 
 export const PROPERTIES: Record<string, Property> = {
@@ -287,6 +385,7 @@ export const PROPERTIES: Record<string, Property> = {
     cleaningFee: 350,
     accentColor: 'bg-blue-500',
     mortgage: 3133.36,
+    status: 'active',
   },
   lindon: {
     id: 'lindon',
@@ -295,6 +394,16 @@ export const PROPERTIES: Record<string, Property> = {
     cleaningFee: 160,
     accentColor: 'bg-emerald-500',
     mortgage: 1265.14,
+    status: 'active',
+  },
+  construction: {
+    id: 'construction',
+    name: 'Construction Project',
+    address: 'Lindon, Utah 84042',
+    cleaningFee: 0,
+    accentColor: 'bg-amber-500',
+    mortgage: 0,
+    status: 'under_construction',
   },
 };
 

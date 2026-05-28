@@ -65,6 +65,18 @@ The dashboard includes a floating **Co-host** chat panel powered by Gemini funct
 
 Agent data (reservations overlay, calendar blocks, tasks, comp set, chat sessions) persists in the same **SETTINGS** KV namespace.
 
+### Construction Manager (third property tab)
+
+The **Construction** tab and amber **Build** chat provide a genius-tier construction superintendent agent (architecture, engineering, contracting, all trades).
+
+- **Chat:** `POST /api/agent/construction/chat` (uses `gemini-2.5-pro` when available)
+- **Documents:** `POST /api/construction/documents` — uploads plans, bids, invoices; Gemini extracts scope and amounts
+- **Project:** `GET/PUT /api/construction/project` — stage, budget, jurisdiction
+
+**Required:** `GEMINI_API_KEY`. **Recommended:** `FIREBASE_SERVICE_ACCOUNT_JSON` for plan PDFs over 4 MB.
+
+The Construction Manager provides decision support only — not a licensed architect, engineer, or contractor. Verify permits and structural decisions with licensees and your AHJ.
+
 ## Local development
 
 1. Open https://console.firebase.google.com/project/wilhite-portfolio/firestore

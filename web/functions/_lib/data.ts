@@ -1,9 +1,41 @@
 export const PROPERTIES = {
-  ranch: { id: 'ranch', name: 'The Ranch House', address: '270 East Center Street, Lindon, Utah 84042', cleaningFee: 350, accentColor: 'bg-blue-500', mortgage: 3133.36 },
-  lindon: { id: 'lindon', name: 'The Lindon House', address: '143 Harcliff Circle, Lindon, Utah 84042', cleaningFee: 160, accentColor: 'bg-emerald-500', mortgage: 1265.14 },
+  ranch: {
+    id: 'ranch',
+    name: 'The Ranch House',
+    address: '270 East Center Street, Lindon, Utah 84042',
+    cleaningFee: 350,
+    accentColor: 'bg-blue-500',
+    mortgage: 3133.36,
+    status: 'active' as const,
+  },
+  lindon: {
+    id: 'lindon',
+    name: 'The Lindon House',
+    address: '143 Harcliff Circle, Lindon, Utah 84042',
+    cleaningFee: 160,
+    accentColor: 'bg-emerald-500',
+    mortgage: 1265.14,
+    status: 'active' as const,
+  },
+  construction: {
+    id: 'construction',
+    name: 'Construction Project',
+    address: 'Lindon, Utah 84042',
+    cleaningFee: 0,
+    accentColor: 'bg-amber-500',
+    mortgage: 0,
+    status: 'under_construction' as const,
+  },
 } as const;
 
-type PropertyId = keyof typeof PROPERTIES;
+export type PropertyId = keyof typeof PROPERTIES;
+export type RentalPropertyId = 'ranch' | 'lindon';
+
+export const RENTAL_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon'];
+
+export function isRentalProperty(id: string): id is RentalPropertyId {
+  return id === 'ranch' || id === 'lindon';
+}
 
 export const RESERVATIONS = [
   { id: 'r1', guestName: "Kristin's Group", propertyId: 'ranch', checkIn: '2026-01-15', checkOut: '2026-01-19', payout: 2232.94, source: 'Airbnb' },
@@ -87,7 +119,7 @@ function getOverlappingNights(checkIn: string, checkOut: string, targetYearMonth
 }
 
 export function calculateMetrics(
-  propId: PropertyId,
+  propId: RentalPropertyId,
   currentMonth: string,
   extraCleaningFees: Record<string, number> = DEFAULT_EXTRA_CLEANING,
   expenseList: Array<{ propertyId: string; month: string; category: string; amount: number }> = EXPENSES,
