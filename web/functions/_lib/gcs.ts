@@ -132,14 +132,16 @@ export function storageConfigured(env: FirebaseStorageEnv): boolean {
   return parseServiceAccount(env) !== null;
 }
 
-export async function uploadReceipt(
+export async function uploadStorageObject(
   env: FirebaseStorageEnv,
   storagePath: string,
   bytes: Uint8Array,
   contentType: string,
+  maxBytes: number,
 ): Promise<void> {
-  if (bytes.length > RECEIPT_MAX_BYTES) {
-    throw new Error('Receipt must be 10 MB or smaller');
+  if (bytes.length > maxBytes) {
+    const mb = Math.floor(maxBytes / (1024 * 1024));
+    throw new Error(`File must be ${mb} MB or smaller`);
   }
   const sa = parseServiceAccount(env);
   if (!sa) throw new Error('Firebase Storage not configured (set FIREBASE_SERVICE_ACCOUNT_JSON)');
@@ -156,8 +158,17 @@ export async function uploadReceipt(
   });
   if (!res.ok) {
     const detail = await res.text();
-    throw new Error(`Receipt upload failed: ${res.status} ${detail.slice(0, 200)}`);
+    throw new Error(`Storage upload failed: ${res.status} ${detail.slice(0, 200)}`);
   }
+}
+
+export async function uploadReceipt(
+  env: FirebaseStorageEnv,
+  storagePath: string,
+  bytes: Uint8Array,
+  contentType: string,
+): Promise<void> {
+  return uploadStorageObject(env, storagePath, bytes, contentType, RECEIPT_MAX_BYTES);
 }
 
 export async function downloadReceipt(

@@ -346,7 +346,10 @@ export const api = {
       body: JSON.stringify(body),
     }),
   getConstructionDocuments: () =>
-    request<{ documents: ConstructionDocument[] }>('/api/construction/documents'),
+    request<{
+      documents: ConstructionDocument[];
+      limits?: { maxMb: number; firebaseConfigured: boolean };
+    }>('/api/construction/documents'),
   uploadConstructionDocument: (body: {
     fileBase64: string;
     mimeType: string;

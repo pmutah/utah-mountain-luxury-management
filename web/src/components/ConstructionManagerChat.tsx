@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { HardHat, Loader2, Paperclip, Send, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { CONSTRUCTION_MAX_BYTES, CONSTRUCTION_MAX_MB } from '../lib/construction-limits';
 import { useConstructionChat } from '../hooks/useConstructionChat';
 import { AgentToolSteps } from './AgentToolSteps';
 
@@ -50,6 +51,10 @@ export function ConstructionManagerChat({
 
   const onAttach = async (file: File) => {
     if (!disclaimerAccepted) return;
+    if (file.size > CONSTRUCTION_MAX_BYTES) {
+      onError(`File exceeds the ${CONSTRUCTION_MAX_MB} MB limit.`);
+      return;
+    }
     setUploadingFile(true);
     try {
       const { base64, mimeType } = await fileToBase64(file);

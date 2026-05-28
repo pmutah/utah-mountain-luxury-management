@@ -1,7 +1,9 @@
 import type { SettingsEnv } from '../kv';
+import { KV_CONSTRUCTION_MAX_BYTES } from './construction-limits';
+
+export { KV_CONSTRUCTION_MAX_BYTES };
 
 const KV_CONSTRUCTION_PREFIX = 'construction:file:';
-export const KV_CONSTRUCTION_MAX_BYTES = 4 * 1024 * 1024;
 
 export function isKvConstructionPath(storagePath: string | null | undefined): boolean {
   return Boolean(storagePath?.startsWith('kv:construction:'));

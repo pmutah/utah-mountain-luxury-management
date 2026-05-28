@@ -7,10 +7,9 @@ import {
   type ConstructionProject as Project,
   type ConstructionRecommendation,
 } from '../lib/api';
+import { CONSTRUCTION_MAX_BYTES, CONSTRUCTION_MAX_MB } from '../lib/construction-limits';
 import { isMobileDevice, isPdfContentType } from '../lib/device';
 import { ReceiptViewerModal } from './ReceiptViewerModal';
-
-const KV_MAX_BYTES = 4 * 1024 * 1024;
 
 type DocFilter = 'all' | 'plan' | 'bid' | 'invoice' | 'photo';
 
@@ -70,6 +69,7 @@ export function ConstructionProjectView({
   );
   const [dragOver, setDragOver] = useState(false);
   const [docFilter, setDocFilter] = useState<DocFilter>('all');
+  const [firebaseStorage, setFirebaseStorage] = useState<boolean | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,6 +83,7 @@ export function ConstructionProjectView({
       ]);
       setProject(p);
       setDocuments(docs.documents);
+      setFirebaseStorage(docs.limits?.firebaseConfigured ?? null);
       setRecommendations(recs.recommendations);
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Failed to load construction project');
@@ -111,9 +112,13 @@ export function ConstructionProjectView({
       for (let i = 0; i < list.length; i++) {
         const file = list[i]!;
         setUploadProgress({ current: i + 1, total: list.length });
-        if (file.size > KV_MAX_BYTES) {
+        if (file.size > CONSTRUCTION_MAX_BYTES) {
+          onError(`${file.name} exceeds the ${CONSTRUCTION_MAX_MB} MB limit.`);
+          continue;
+        }
+        if (firebaseStorage === false && file.size > 4 * 1024 * 1024) {
           onToast(
-            `${file.name} is over 4 MB. Configure Firebase storage (see DEPLOY.md) or use a smaller file.`,
+            `${file.name} is large — add FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare for best reliability (see DEPLOY.md).`,
             'info',
           );
         }
@@ -300,7 +305,8 @@ export function ConstructionProjectView({
                 Drop plans, bids, invoices, or photos here
               </p>
               <p className="text-xs text-slate-500 mb-3">
-                PDF or images · large plan sets need Firebase (see DEPLOY.md)
+                PDF or images up to {CONSTRUCTION_MAX_MB} MB
+                {firebaseStorage === false ? ' · Firebase recommended for large plans (DEPLOY.md)' : ''}
               </p>
               <button
                 type="button"

@@ -40,7 +40,7 @@ Scanned expenses can **save the original image/PDF** and view it later (thumbnai
    - Optional `FIREBASE_STORAGE_BUCKET` if not `{project}.appspot.com`
 4. Redeploy Pages after setting secrets
 
-Without `FIREBASE_SERVICE_ACCOUNT_JSON`, bill PDFs are stored in **Cloudflare KV** (same `SETTINGS` namespace, up to ~4 MB per file). Firebase is optional for larger files or long-term object storage.
+Without `FIREBASE_SERVICE_ACCOUNT_JSON`, bill PDFs are stored in **Cloudflare KV** (same `SETTINGS` namespace, up to ~4 MB per file). Construction documents can use KV up to ~15 MB per file; Firebase is optional but recommended for large plan PDFs.
 
 ### AI co-host agent
 
@@ -81,7 +81,7 @@ The **Construction** tab and amber **Build** chat provide a genius-tier construc
 4. Optionally attach a file from the amber **Build** chat (paperclip) — it uses the same API and auto-asks the Construction Manager to review it.
 5. The agent receives a **full document catalog** in context plus tools `list_documents`, `search_documents`, and `get_document` for detail.
 
-Files are stored even if Gemini ingest fails (summary may say analysis pending). **Required:** `GEMINI_API_KEY` for automatic extraction. **Recommended:** `FIREBASE_SERVICE_ACCOUNT_JSON` for PDFs over 4 MB (KV limit without Firebase).
+Files are stored even if Gemini ingest fails (summary may say analysis pending). **Required:** `GEMINI_API_KEY` for automatic extraction. Construction documents support up to **15 MB** per file (16 MB internal cap). **Recommended:** `FIREBASE_SERVICE_ACCOUNT_JSON` for large plan PDFs and the most reliable storage at scale (KV can hold files up to ~15 MB when Firebase is not set).
 
 The Construction Manager provides decision support only — not a licensed architect, engineer, or contractor. Verify permits and structural decisions with licensees and your AHJ.
 

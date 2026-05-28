@@ -6,6 +6,8 @@ import {
 } from '../../../_lib/construction/construction-store';
 import { ingestConstructionDocument } from '../../../_lib/construction/construction-ingest';
 import { storeConstructionFile } from '../../../_lib/construction/construction-doc-store';
+import { CONSTRUCTION_MAX_MB } from '../../../_lib/construction/construction-limits';
+import { storageConfigured } from '../../../_lib/gcs';
 import type { ConstructionDocType, ConstructionEnv } from '../../../_lib/construction/types';
 
 const VALID_TYPES: ConstructionDocType[] = [
@@ -31,7 +33,10 @@ export const onRequestGet: PagesFunction<ConstructionEnv> = async ({ request, en
       documents = documents.filter((d) => d.type === typeFilter);
     }
   }
-  return corsJson(request, { documents });
+  return corsJson(request, {
+    documents,
+    limits: { maxMb: CONSTRUCTION_MAX_MB, firebaseConfigured: storageConfigured(env) },
+  });
 };
 
 export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, env }) => {

@@ -4,8 +4,13 @@ import {
   deleteReceipt,
   downloadReceipt,
   storageConfigured,
-  uploadReceipt,
+  uploadStorageObject,
 } from '../gcs';
+import {
+  CONSTRUCTION_MAX_BYTES,
+  CONSTRUCTION_MAX_MB,
+  KV_CONSTRUCTION_MAX_BYTES,
+} from './construction-limits';
 import type { FirebaseStorageEnv } from '../gcs';
 import type { SettingsEnv } from '../kv';
 import {
@@ -13,7 +18,6 @@ import {
   docIdFromKvPath,
   isKvConstructionPath,
   kvConstructionPath,
-  KV_CONSTRUCTION_MAX_BYTES,
   loadConstructionFileFromKv,
   storeConstructionFileInKv,
 } from './construction-doc-kv';
@@ -57,13 +61,29 @@ export async function storeConstructionFile(
   const bytes = decodeBase64Receipt(fileBase64);
   const storeMime = normalizedMime;
 
+  if (bytes.length > CONSTRUCTION_MAX_BYTES) {
+    return {
+      storagePath: '',
+      contentType: mimeType,
+      warning: `File exceeds the ${CONSTRUCTION_MAX_MB} MB maximum.`,
+    };
+  }
+
   if (storageConfigured(env)) {
     try {
       const path = constructionFirebasePath(docId, storeMime);
-      await uploadReceipt(env, path, bytes, storeMime);
+      await uploadStorageObject(env, path, bytes, storeMime, CONSTRUCTION_MAX_BYTES);
       return { storagePath: path, contentType: storeMime };
-    } catch {
-      // fall through to KV
+    } catch (e) {
+      if (bytes.length > KV_CONSTRUCTION_MAX_BYTES) {
+        const msg = e instanceof Error ? e.message : 'Firebase upload failed';
+        return {
+          storagePath: '',
+          contentType: mimeType,
+          warning: `${msg}. Configure FIREBASE_SERVICE_ACCOUNT_JSON for reliable storage of large plans.`,
+        };
+      }
+      // fall through to KV for smaller files when Firebase fails
     }
   }
 
@@ -72,7 +92,7 @@ export async function storeConstructionFile(
       return {
         storagePath: '',
         contentType: mimeType,
-        warning: `File too large for KV (max ${KV_CONSTRUCTION_MAX_BYTES / (1024 * 1024)} MB). Use Firebase storage.`,
+        warning: `File too large for KV (max ${CONSTRUCTION_MAX_MB} MB). Set FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare Pages (see DEPLOY.md).`,
       };
     }
     try {
