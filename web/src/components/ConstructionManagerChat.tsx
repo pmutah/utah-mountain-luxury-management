@@ -1,9 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
-import { HardHat, Loader2, Send, X } from 'lucide-react';
+import { HardHat, Loader2, Paperclip, Send, X } from 'lucide-react';
+import { api } from '../lib/api';
 import { useConstructionChat } from '../hooks/useConstructionChat';
 import { AgentToolSteps } from './AgentToolSteps';
 
-export function ConstructionManagerChat({ onError }: { onError: (msg: string) => void }) {
+async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
+  const mimeType =
+    file.type ||
+    (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+  return { base64: btoa(binary), mimeType };
+}
+
+export function ConstructionManagerChat({
+  onError,
+  onToast,
+}: {
+  onError: (msg: string) => void;
+  onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
+}) {
   const {
     open,
     setOpen,
@@ -16,7 +34,9 @@ export function ConstructionManagerChat({ onError }: { onError: (msg: string) =>
     acceptDisclaimer,
   } = useConstructionChat({ onError });
   const [input, setInput] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,6 +46,28 @@ export function ConstructionManagerChat({ onError }: { onError: (msg: string) =>
     if (!input.trim()) return;
     void sendMessage(input);
     setInput('');
+  };
+
+  const onAttach = async (file: File) => {
+    if (!disclaimerAccepted) return;
+    setUploadingFile(true);
+    try {
+      const { base64, mimeType } = await fileToBase64(file);
+      await api.uploadConstructionDocument({
+        fileBase64: base64,
+        mimeType,
+        fileName: file.name,
+      });
+      onToast('Saved to project documents', 'success');
+      void sendMessage(
+        `I uploaded ${file.name}. Review it and tell me what matters for this project.`,
+      );
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setUploadingFile(false);
+      if (attachRef.current) attachRef.current.value = '';
+    }
   };
 
   if (!open) {
@@ -113,6 +155,29 @@ export function ConstructionManagerChat({ onError }: { onError: (msg: string) =>
       <AgentToolSteps steps={toolSteps} loading={loading} />
 
       <div className="p-3 border-t border-slate-800 flex gap-2 items-end bg-slate-950/50">
+        <input
+          ref={attachRef}
+          type="file"
+          accept="image/*,.pdf,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void onAttach(file);
+          }}
+        />
+        <button
+          type="button"
+          disabled={loading || uploadingFile || !disclaimerAccepted}
+          onClick={() => attachRef.current?.click()}
+          className="shrink-0 p-3 min-h-[44px] min-w-[44px] rounded-xl bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-40"
+          aria-label="Upload document to project"
+        >
+          {uploadingFile ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Paperclip className="w-5 h-5" />
+          )}
+        </button>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}

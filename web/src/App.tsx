@@ -128,7 +128,10 @@ function Dashboard() {
         activeTab={activeTab === 'construction' ? 'construction' : activeTab}
         onError={(msg) => showToast(msg, 'error')}
       />
-      <ConstructionManagerChat onError={(msg) => showToast(msg, 'error')} />
+      <ConstructionManagerChat
+        onError={(msg) => showToast(msg, 'error')}
+        onToast={showToast}
+      />
     </div>
   );
 }

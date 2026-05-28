@@ -73,7 +73,15 @@ The **Construction** tab and amber **Build** chat provide a genius-tier construc
 - **Documents:** `POST /api/construction/documents` — uploads plans, bids, invoices; Gemini extracts scope and amounts
 - **Project:** `GET/PUT /api/construction/project` — stage, budget, jurisdiction
 
-**Required:** `GEMINI_API_KEY`. **Recommended:** `FIREBASE_SERVICE_ACCOUNT_JSON` for plan PDFs over 4 MB.
+#### Construction documents (upload & recall)
+
+1. Open the **Construction Project** tab in the nav.
+2. In **Documents**, drag-and-drop or tap **Upload** / **Photo** (camera on mobile). PDFs and images (JPEG, PNG, WebP, HEIC) are saved under the construction project in KV or Firebase Storage.
+3. Use filter chips (Plans, Bids, Invoices, Photos) and **Open PDF** / **Open** to view files later (`GET /api/construction/documents/:id/file`).
+4. Optionally attach a file from the amber **Build** chat (paperclip) — it uses the same API and auto-asks the Construction Manager to review it.
+5. The agent receives a **full document catalog** in context plus tools `list_documents`, `search_documents`, and `get_document` for detail.
+
+Files are stored even if Gemini ingest fails (summary may say analysis pending). **Required:** `GEMINI_API_KEY` for automatic extraction. **Recommended:** `FIREBASE_SERVICE_ACCOUNT_JSON` for PDFs over 4 MB (KV limit without Firebase).
 
 The Construction Manager provides decision support only — not a licensed architect, engineer, or contractor. Verify permits and structural decisions with licensees and your AHJ.
 

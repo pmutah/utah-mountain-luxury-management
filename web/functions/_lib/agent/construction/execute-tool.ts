@@ -8,6 +8,7 @@ import {
   dismissConstructionRecommendation,
   sumInvoicedAmount,
 } from '../../construction/construction-store';
+import { searchConstructionDocuments } from '../../construction/document-catalog';
 import {
   formatChunksForPrompt,
   retrieveKnowledgeChunks,
@@ -45,6 +46,7 @@ function step(tool: string, action: string): ConstructionToolStep {
     get_project_summary: 'Project summary',
     update_project: 'Updating project',
     list_documents: 'Listing documents',
+    search_documents: 'Searching documents',
     get_document: 'Loading document',
     compare_bids: 'Comparing bids',
     spend_summary: 'Spend summary',
@@ -99,12 +101,51 @@ async function handleManage(
   if (action === 'list_documents') {
     let list = docs;
     if (args.docType) list = list.filter((d) => d.type === args.docType);
-    return { documents: list.slice(0, 30), count: list.length };
+    return {
+      documents: list.slice(0, 30).map((d) => ({
+        id: d.id,
+        type: d.type,
+        title: d.title,
+        vendor: d.vendor,
+        amount: d.amount,
+        documentDate: d.documentDate,
+        trade: d.trade,
+        hasFile: Boolean(d.storagePath),
+        summaryPreview: d.extractedSummary.slice(0, 200),
+      })),
+      count: list.length,
+    };
+  }
+
+  if (action === 'search_documents') {
+    const query = String(args.query ?? '');
+    const matches = searchConstructionDocuments(docs, query, 20);
+    return {
+      query,
+      count: matches.length,
+      documents: matches.map((d) => ({
+        id: d.id,
+        type: d.type,
+        title: d.title,
+        vendor: d.vendor,
+        amount: d.amount,
+        summaryPreview: d.extractedSummary.slice(0, 300),
+      })),
+    };
   }
 
   if (action === 'get_document') {
     const doc = await getConstructionDocument(env, String(args.docId ?? ''));
-    return doc ? { document: doc } : { error: 'Not found' };
+    if (!doc) return { error: 'Not found' };
+    const includeLineItems = args.includeLineItems !== false;
+    return {
+      document: {
+        ...doc,
+        extractedFields: includeLineItems
+          ? doc.extractedFields
+          : { ...doc.extractedFields, lineItems: undefined },
+      },
+    };
   }
 
   if (action === 'compare_bids') {

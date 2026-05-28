@@ -4,6 +4,7 @@ import {
   loadConstructionRecommendations,
   sumInvoicedAmount,
 } from '../../construction/construction-store';
+import { buildDocumentCatalog } from '../../construction/document-catalog';
 import { formatChunksForPrompt, retrieveKnowledgeChunks } from '../../construction/knowledge/knowledge-retrieval';
 import type { ConstructionEnv } from '../../construction/types';
 
@@ -17,6 +18,7 @@ Answer structure for technical questions:
 5) When to confirm with licensed architect, engineer, or inspector
 
 Rules:
+- You have the full project document library via manage_construction: list_documents, search_documents, get_document. Always consult relevant uploaded plans, bids, invoices, and photos before advising on costs, scope, or methods.
 - Prefer project documents and retrieved knowledge over free recall for code claims.
 - Never invent bid amounts or structural capacities not in documents.
 - For scope changes, analyze cross-trade impacts.
@@ -40,13 +42,7 @@ export async function buildConstructionContext(
   });
   const knowledgeBlock = formatChunksForPrompt(chunks);
 
-  const recentDocs = docs
-    .slice(-8)
-    .map(
-      (d) =>
-        `- [${d.type}] ${d.title}${d.amount ? ` $${d.amount}` : ''}: ${d.extractedSummary.slice(0, 400)}`,
-    )
-    .join('\n');
+  const documentCatalog = buildDocumentCatalog(docs);
 
   const briefing = [
     `Stage: ${project.currentStage}`,
@@ -63,8 +59,7 @@ export async function buildConstructionContext(
     `Type: ${project.projectType ?? 'SFH'} | Stage: ${project.currentStage}`,
     project.scopeNotes ? `Scope notes: ${project.scopeNotes}` : '',
     `Budget: target $${project.budgetTarget} | invoiced $${spent}`,
-    `Documents: ${docs.length} total`,
-    recentDocs ? `Recent documents:\n${recentDocs}` : 'No documents uploaded yet.',
+    `--- Project document library ---\n${documentCatalog}`,
     recs.length
       ? `Open recommendations:\n${recs
           .slice(0, 5)

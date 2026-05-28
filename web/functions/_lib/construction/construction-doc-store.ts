@@ -32,13 +32,21 @@ function constructionFirebasePath(docId: string, contentType: string): string {
   return `construction/${docId}.${ext}`;
 }
 
+const CONSTRUCTION_ALLOWED_MIME = new Set([
+  ...RECEIPT_ALLOWED_MIME,
+  'image/heic',
+  'image/heif',
+]);
+
 export async function storeConstructionFile(
   env: ConstructionDocStoreEnv,
   docId: string,
   fileBase64: string,
   mimeType: string,
 ): Promise<{ storagePath: string; contentType: string; warning?: string }> {
-  if (!RECEIPT_ALLOWED_MIME.has(mimeType)) {
+  const normalizedMime =
+    mimeType === 'image/heic' || mimeType === 'image/heif' ? 'image/jpeg' : mimeType;
+  if (!CONSTRUCTION_ALLOWED_MIME.has(mimeType) && !CONSTRUCTION_ALLOWED_MIME.has(normalizedMime)) {
     return {
       storagePath: '',
       contentType: mimeType,
@@ -47,12 +55,13 @@ export async function storeConstructionFile(
   }
 
   const bytes = decodeBase64Receipt(fileBase64);
+  const storeMime = normalizedMime;
 
   if (storageConfigured(env)) {
     try {
-      const path = constructionFirebasePath(docId, mimeType);
-      await uploadReceipt(env, path, bytes, mimeType);
-      return { storagePath: path, contentType: mimeType };
+      const path = constructionFirebasePath(docId, storeMime);
+      await uploadReceipt(env, path, bytes, storeMime);
+      return { storagePath: path, contentType: storeMime };
     } catch {
       // fall through to KV
     }
@@ -67,7 +76,7 @@ export async function storeConstructionFile(
       };
     }
     try {
-      const { path, contentType } = await storeConstructionFileInKv(env, docId, bytes, mimeType);
+      const { path, contentType } = await storeConstructionFileInKv(env, docId, bytes, storeMime);
       return { storagePath: path, contentType };
     } catch (e) {
       return {

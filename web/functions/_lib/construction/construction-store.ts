@@ -1,5 +1,6 @@
 import { kvGet, kvPut, newId } from '../kv-json';
 import type { SettingsEnv } from '../kv';
+import { buildDocumentDigest } from './document-catalog';
 import { DEFAULT_CONSTRUCTION_STAGES } from './types';
 import type {
   ConstructionDecision,
@@ -14,6 +15,7 @@ const KV_DOCS = 'constructionDocuments';
 const KV_DECISIONS = 'constructionDecisions';
 const KV_RECOMMENDATIONS = 'constructionRecommendations';
 const KV_SESSIONS = 'constructionAgentSessions';
+const KV_DOC_DIGEST = 'constructionDocumentDigest';
 
 const DEFAULT_PROJECT: ConstructionProject = {
   id: 'construction',
@@ -49,7 +51,13 @@ export async function saveConstructionDocuments(
   env: SettingsEnv,
   docs: ConstructionDocument[],
 ): Promise<ConstructionDocument[]> {
+  await kvPut(env, KV_DOC_DIGEST, buildDocumentDigest(docs));
   return kvPut(env, KV_DOCS, docs);
+}
+
+export async function refreshConstructionDocumentDigest(env: SettingsEnv): Promise<void> {
+  const docs = await loadConstructionDocuments(env);
+  await kvPut(env, KV_DOC_DIGEST, buildDocumentDigest(docs));
 }
 
 export async function addConstructionDocument(
