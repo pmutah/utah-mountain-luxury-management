@@ -58,11 +58,14 @@ export function ConstructionManagerChat({
     setUploadingFile(true);
     try {
       const { base64, mimeType } = await fileToBase64(file);
-      await api.uploadConstructionDocument({
+      const doc = await api.uploadConstructionDocument({
         fileBase64: base64,
         mimeType,
         fileName: file.name,
       });
+      if (!doc.storagePath) {
+        throw new Error('File was not saved. Check size (max 15 MB) and try again.');
+      }
       onToast('Saved to project documents', 'success');
       void sendMessage(
         `I uploaded ${file.name}. Review it and tell me what matters for this project.`,

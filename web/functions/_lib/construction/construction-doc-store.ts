@@ -9,7 +9,7 @@ import {
 import {
   CONSTRUCTION_MAX_BYTES,
   CONSTRUCTION_MAX_MB,
-  KV_CONSTRUCTION_MAX_BYTES,
+  KV_CONSTRUCTION_SINGLE_MAX_BYTES,
 } from './construction-limits';
 import type { FirebaseStorageEnv } from '../gcs';
 import type { SettingsEnv } from '../kv';
@@ -17,9 +17,9 @@ import {
   deleteConstructionFileFromKv,
   docIdFromKvPath,
   isKvConstructionPath,
-  kvConstructionPath,
   loadConstructionFileFromKv,
   storeConstructionFileInKv,
+  storeConstructionFileInKvChunked,
 } from './construction-doc-kv';
 
 export type ConstructionDocStoreEnv = SettingsEnv & FirebaseStorageEnv;
@@ -41,6 +41,18 @@ const CONSTRUCTION_ALLOWED_MIME = new Set([
   'image/heic',
   'image/heif',
 ]);
+
+async function storeInKv(
+  env: ConstructionDocStoreEnv,
+  docId: string,
+  bytes: Uint8Array,
+  storeMime: string,
+): Promise<{ path: string; contentType: string }> {
+  if (bytes.length > KV_CONSTRUCTION_SINGLE_MAX_BYTES) {
+    return storeConstructionFileInKvChunked(env, docId, bytes, storeMime);
+  }
+  return storeConstructionFileInKv(env, docId, bytes, storeMime);
+}
 
 export async function storeConstructionFile(
   env: ConstructionDocStoreEnv,
@@ -74,30 +86,20 @@ export async function storeConstructionFile(
       const path = constructionFirebasePath(docId, storeMime);
       await uploadStorageObject(env, path, bytes, storeMime, CONSTRUCTION_MAX_BYTES);
       return { storagePath: path, contentType: storeMime };
-    } catch (e) {
-      if (bytes.length > KV_CONSTRUCTION_MAX_BYTES) {
-        const msg = e instanceof Error ? e.message : 'Firebase upload failed';
-        return {
-          storagePath: '',
-          contentType: mimeType,
-          warning: `${msg}. Configure FIREBASE_SERVICE_ACCOUNT_JSON for reliable storage of large plans.`,
-        };
-      }
-      // fall through to KV for smaller files when Firebase fails
+    } catch {
+      // fall through to KV (chunked when needed)
     }
   }
 
   if (env.SETTINGS) {
-    if (bytes.length > KV_CONSTRUCTION_MAX_BYTES) {
-      return {
-        storagePath: '',
-        contentType: mimeType,
-        warning: `File too large for KV (max ${CONSTRUCTION_MAX_MB} MB). Set FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare Pages (see DEPLOY.md).`,
-      };
-    }
     try {
-      const { path, contentType } = await storeConstructionFileInKv(env, docId, bytes, storeMime);
-      return { storagePath: path, contentType };
+      const { path, contentType } = await storeInKv(env, docId, bytes, storeMime);
+      const warning = storageConfigured(env)
+        ? undefined
+        : bytes.length > KV_CONSTRUCTION_SINGLE_MAX_BYTES
+          ? 'Stored in Cloudflare KV (split across chunks). For best performance on large plans, add FIREBASE_SERVICE_ACCOUNT_JSON (see DEPLOY.md).'
+          : undefined;
+      return { storagePath: path, contentType, warning };
     } catch (e) {
       return {
         storagePath: '',

@@ -81,7 +81,7 @@ The **Construction** tab and amber **Build** chat provide a genius-tier construc
 4. Optionally attach a file from the amber **Build** chat (paperclip) — it uses the same API and auto-asks the Construction Manager to review it.
 5. The agent receives a **full document catalog** in context plus tools `list_documents`, `search_documents`, and `get_document` for detail.
 
-Files are stored even if Gemini ingest fails (summary may say analysis pending). **Required:** `GEMINI_API_KEY` for automatic extraction. Construction documents support up to **15 MB** per file (16 MB internal cap). **Recommended:** `FIREBASE_SERVICE_ACCOUNT_JSON` for large plan PDFs and the most reliable storage at scale (KV can hold files up to ~15 MB when Firebase is not set).
+Files are stored even if Gemini ingest fails (summary may say analysis pending). **Required:** `GEMINI_API_KEY` for automatic extraction on files under ~10 MB. Construction documents support up to **15 MB** per file. Without Firebase, large files are stored in **chunked Cloudflare KV** (works on the free tier). **Recommended:** `FIREBASE_SERVICE_ACCOUNT_JSON` for the most reliable storage of large plan PDFs.
 
 The Construction Manager provides decision support only — not a licensed architect, engineer, or contractor. Verify permits and structural decisions with licensees and your AHJ.
 

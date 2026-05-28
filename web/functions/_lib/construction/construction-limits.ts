@@ -4,7 +4,11 @@ export const CONSTRUCTION_MAX_BYTES = 16 * 1024 * 1024;
 /** User-facing cap (MB) shown in UI copy. */
 export const CONSTRUCTION_MAX_MB = 15;
 
-/**
- * KV value limit is 25 MiB; base64 expands ~4/3. 16 MiB raw fits safely in KV when Firebase is unavailable.
- */
-export const KV_CONSTRUCTION_MAX_BYTES = 16 * 1024 * 1024;
+/** Single KV value — one base64 blob (fast path for smaller files). */
+export const KV_CONSTRUCTION_SINGLE_MAX_BYTES = 3 * 1024 * 1024;
+
+/** Raw bytes per chunk when splitting across KV keys. */
+export const KV_CONSTRUCTION_CHUNK_BYTES = 3 * 1024 * 1024;
+
+/** Skip synchronous Gemini ingest above this size (avoids Worker timeouts). */
+export const CONSTRUCTION_INGEST_MAX_BYTES = 10 * 1024 * 1024;

@@ -128,6 +128,12 @@ export function ConstructionProjectView({
           mimeType,
           fileName: file.name,
         });
+        if (!doc.storagePath) {
+          throw new Error(
+            (doc as ConstructionDocument & { ingestWarning?: string }).ingestWarning ??
+              'File was not saved. Try a smaller file or configure Firebase storage (see DEPLOY.md).',
+          );
+        }
         const warning = (doc as ConstructionDocument & { ingestWarning?: string }).ingestWarning;
         if (warning) onToast(warning, 'info');
         saved++;

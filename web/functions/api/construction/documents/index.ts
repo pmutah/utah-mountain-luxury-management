@@ -6,7 +6,11 @@ import {
 } from '../../../_lib/construction/construction-store';
 import { ingestConstructionDocument } from '../../../_lib/construction/construction-ingest';
 import { storeConstructionFile } from '../../../_lib/construction/construction-doc-store';
-import { CONSTRUCTION_MAX_MB } from '../../../_lib/construction/construction-limits';
+import {
+  CONSTRUCTION_INGEST_MAX_BYTES,
+  CONSTRUCTION_MAX_MB,
+} from '../../../_lib/construction/construction-limits';
+import { decodeBase64Receipt } from '../../../_lib/gcs';
 import { storageConfigured } from '../../../_lib/gcs';
 import type { ConstructionDocType, ConstructionEnv } from '../../../_lib/construction/types';
 
@@ -40,6 +44,18 @@ export const onRequestGet: PagesFunction<ConstructionEnv> = async ({ request, en
 };
 
 export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, env }) => {
+  try {
+    return await handleConstructionDocumentPost(request, env);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Upload failed';
+    return corsJson(request, { error: message }, 500);
+  }
+};
+
+async function handleConstructionDocumentPost(
+  request: Request,
+  env: ConstructionEnv,
+): Promise<Response> {
   const apiKey = env.GEMINI_API_KEY?.trim();
 
   const body = (await request.json()) as {
@@ -51,6 +67,13 @@ export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, e
 
   if (!body.fileBase64 || !body.mimeType) {
     return corsJson(request, { error: 'fileBase64 and mimeType required' }, 400);
+  }
+
+  let fileBytes: Uint8Array;
+  try {
+    fileBytes = decodeBase64Receipt(body.fileBase64);
+  } catch {
+    return corsJson(request, { error: 'Invalid file data' }, 400);
   }
 
   const docId = newConstructionDocId();
@@ -66,6 +89,19 @@ export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, e
     sourceFileName: fileName,
   };
 
+  if (!stored.storagePath) {
+    return corsJson(
+      request,
+      {
+        error:
+          stored.warning ??
+          'Could not save file. Large plans need FIREBASE_SERVICE_ACCOUNT_JSON in Cloudflare Pages, or must be under 15 MB.',
+        code: 'storage_failed',
+      },
+      422,
+    );
+  }
+
   if (!apiKey) {
     const doc = await addConstructionDocument(env, {
       ...baseDoc,
@@ -74,6 +110,18 @@ export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, e
       extractedSummary:
         'File saved. GEMINI_API_KEY not configured — analysis unavailable. Open the file or configure API key.',
       extractedFields: {},
+    });
+    return corsJson(request, { ...doc, ingestWarning: stored.warning }, 201);
+  }
+
+  if (fileBytes.length > CONSTRUCTION_INGEST_MAX_BYTES) {
+    const doc = await addConstructionDocument(env, {
+      ...baseDoc,
+      type: (body.type as ConstructionDocType) ?? 'plan',
+      title: fileName.replace(/\.[^.]+$/, '') || fileName,
+      extractedSummary:
+        'Large file saved. Automatic analysis was skipped to avoid timeouts — open the file or ask the Construction Manager in Build chat to review it.',
+      extractedFields: { openIssues: ['Run chat review for full summary'] },
     });
     return corsJson(request, { ...doc, ingestWarning: stored.warning }, 201);
   }
@@ -124,6 +172,6 @@ export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, e
     { ...doc, ingestWarning: stored.warning },
     201,
   );
-};
+}
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);
