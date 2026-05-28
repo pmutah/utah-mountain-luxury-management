@@ -12,3 +12,4 @@ coverage/
 .dev.vars
 service-account*.json
 *-firebase-adminsdk*.json
+web/_worker.bundle
