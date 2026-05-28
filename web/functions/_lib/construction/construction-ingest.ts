@@ -1,6 +1,6 @@
+import { generateGeminiJson, type GeminiPart } from '../gemini-call';
 import type { ConstructionDocType, ConstructionDocument } from './types';
-
-const INGEST_MODEL = 'gemini-2.5-flash';
+import { normalizeIngestFields } from './construction-invoice';
 
 export type IngestResult = {
   type: ConstructionDocType;
@@ -19,17 +19,16 @@ export async function ingestConstructionDocument(
   fileBase64: string,
   mimeType: string,
   fileName?: string,
+  userTypeHint?: ConstructionDocType,
 ): Promise<IngestResult> {
-  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-    {
-      text: `You are a construction document analyst. Extract structured data from this document for a residential build in Utah County / Lindon, Utah.
+  const prompt = `You are a construction document analyst. Extract structured data from this document for a residential build in Utah County / Lindon, Utah.
 
 Return ONLY valid JSON:
 {
   "type": "plan"|"invoice"|"estimate"|"bid"|"contract"|"engineering"|"other",
   "title": "short title",
   "vendor": "company or null",
-  "amount": number or null (total contract/bid/invoice amount USD),
+  "amount": number or null (total due / invoice total / contract total in USD — use the FINAL balance or total, not individual line items unless no total is shown),
   "documentDate": "YYYY-MM-DD or null",
   "trade": "primary trade or null",
   "stage": "construction stage hint or null",
@@ -45,40 +44,23 @@ Return ONLY valid JSON:
   }
 }
 
-For plans: list sheet disciplines and schedules referenced. Do not invent structural member sizes not shown.
-File name: ${fileName ?? 'document'}`,
-    },
-  ];
+IMPORTANT:
+- If this is a vendor INVOICE or BILL requesting payment (including "Inv #", "Invoice", amounts due), set type to "invoice" and amount to the invoice TOTAL / balance due.
+- Quotes, estimates, and bids are NOT invoices — use estimate or bid unless it is clearly a bill for work already performed.
+- For plans: list sheet disciplines and schedules referenced. Do not invent structural member sizes not shown.
 
-  if (mimeType.startsWith('image/') || mimeType === 'application/pdf') {
-    parts.push({ inlineData: { mimeType, data: fileBase64 } });
-  } else {
+File name: ${fileName ?? 'document'}`;
+
+  if (!mimeType.startsWith('image/') && mimeType !== 'application/pdf') {
     throw new Error('Unsupported mime type for ingest');
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${INGEST_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-      }),
-    },
-  );
+  const parts: GeminiPart[] = [
+    { text: prompt },
+    { inline_data: { mime_type: mimeType, data: fileBase64 } },
+  ];
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Ingest failed: ${res.status} ${err.slice(0, 200)}`);
-  }
-
-  const json = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const raw = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!raw) throw new Error('Empty ingest response');
-
+  const raw = await generateGeminiJson(apiKey, parts);
   const parsed = JSON.parse(raw) as IngestResult & { type: string };
   const validTypes: ConstructionDocType[] = [
     'plan',
@@ -93,15 +75,25 @@ File name: ${fileName ?? 'document'}`,
     ? (parsed.type as ConstructionDocType)
     : 'other';
 
-  return {
+  const normalized = normalizeIngestFields({
     type,
     title: parsed.title || fileName || 'Document',
+    amount: parsed.amount,
     vendor: parsed.vendor ?? undefined,
-    amount: typeof parsed.amount === 'number' ? parsed.amount : undefined,
+    sourceFileName: fileName,
+    extractedFields: parsed.extractedFields ?? {},
+    userTypeHint,
+  });
+
+  return {
+    type: normalized.type,
+    title: normalized.title,
+    vendor: normalized.vendor,
+    amount: normalized.amount,
     documentDate: parsed.documentDate ?? undefined,
     trade: parsed.trade ?? undefined,
     stage: parsed.stage ?? undefined,
     extractedSummary: parsed.extractedSummary || 'No summary extracted.',
-    extractedFields: parsed.extractedFields ?? {},
+    extractedFields: normalized.extractedFields,
   };
 }

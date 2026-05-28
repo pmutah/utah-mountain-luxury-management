@@ -362,6 +362,19 @@ export const api = {
     }),
   constructionDocumentFileUrl: (id: string) =>
     `${API_URL}/api/construction/documents/${encodeURIComponent(id)}/file`,
+  updateConstructionDocument: (
+    id: string,
+    body: Partial<Pick<ConstructionDocument, 'type' | 'amount' | 'title' | 'vendor'>>,
+  ) =>
+    request<ConstructionDocument>(`/api/construction/documents/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  reanalyzeConstructionDocument: (id: string) =>
+    request<ConstructionDocument>(
+      `/api/construction/documents/${encodeURIComponent(id)}/reanalyze`,
+      { method: 'POST' },
+    ),
   deleteConstructionDocument: (id: string) =>
     request<{ ok: boolean }>(`/api/construction/documents/${encodeURIComponent(id)}`, {
       method: 'DELETE',

@@ -5,6 +5,10 @@ import {
   newConstructionDocId,
 } from '../../../_lib/construction/construction-store';
 import { ingestConstructionDocument } from '../../../_lib/construction/construction-ingest';
+import {
+  looksLikeInvoiceFileName,
+  normalizeIngestFields,
+} from '../../../_lib/construction/construction-invoice';
 import { storeConstructionFile } from '../../../_lib/construction/construction-doc-store';
 import {
   CONSTRUCTION_INGEST_MAX_BYTES,
@@ -102,13 +106,26 @@ async function handleConstructionDocumentPost(
     );
   }
 
+  const userType =
+    body.type && VALID_TYPES.includes(body.type as ConstructionDocType)
+      ? (body.type as ConstructionDocType)
+      : undefined;
+
   if (!apiKey) {
+    const normalized = normalizeIngestFields({
+      type: userType ?? 'other',
+      title: fileName,
+      sourceFileName: fileName,
+      extractedFields: {},
+      userTypeHint: userType,
+    });
     const doc = await addConstructionDocument(env, {
       ...baseDoc,
-      type: (body.type as ConstructionDocType) ?? 'other',
-      title: fileName,
+      type: normalized.type,
+      title: normalized.title,
+      amount: normalized.amount,
       extractedSummary:
-        'File saved. GEMINI_API_KEY not configured — analysis unavailable. Open the file or configure API key.',
+        'File saved. GEMINI_API_KEY not configured — analysis unavailable. Set type and amount manually or configure API key.',
       extractedFields: {},
     });
     return corsJson(request, { ...doc, ingestWarning: stored.warning }, 201);
@@ -128,15 +145,29 @@ async function handleConstructionDocumentPost(
 
   let ingest;
   try {
-    ingest = await ingestConstructionDocument(apiKey, body.fileBase64, body.mimeType, fileName);
+    ingest = await ingestConstructionDocument(
+      apiKey,
+      body.fileBase64,
+      body.mimeType,
+      fileName,
+      userType,
+    );
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : 'Ingest failed';
+    const normalized = normalizeIngestFields({
+      type: userType ?? (looksLikeInvoiceFileName(fileName) ? 'invoice' : 'other'),
+      title: fileName.replace(/\.[^.]+$/, '') || fileName,
+      sourceFileName: fileName,
+      extractedFields: { openIssues: ['Analysis failed — tap Re-analyze or set type and amount'] },
+      userTypeHint: userType,
+    });
     const doc = await addConstructionDocument(env, {
       ...baseDoc,
-      type: (body.type as ConstructionDocType) ?? 'other',
-      title: fileName,
-      extractedSummary: `File saved but automatic analysis failed: ${errMsg}. Use get_document or open the file for manual review.`,
-      extractedFields: { openIssues: ['Ingest failed — summary may be incomplete'] },
+      type: normalized.type,
+      title: normalized.title,
+      amount: normalized.amount,
+      extractedSummary: `File saved but automatic analysis failed: ${errMsg}. Tap Re-analyze on this document, or set Type to Invoice and enter the total.`,
+      extractedFields: normalized.extractedFields,
     });
     return corsJson(
       request,
@@ -147,11 +178,6 @@ async function handleConstructionDocumentPost(
       },
       201,
     );
-  }
-
-  if (body.type && ingest.type === 'other') {
-    const t = body.type as ConstructionDocType;
-    if (VALID_TYPES.includes(t)) ingest.type = t;
   }
 
   const doc = await addConstructionDocument(env, {

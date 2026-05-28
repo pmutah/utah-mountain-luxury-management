@@ -8,6 +8,11 @@ import {
   type ConstructionRecommendation,
 } from '../lib/api';
 import { CONSTRUCTION_MAX_BYTES, CONSTRUCTION_MAX_MB } from '../lib/construction-limits';
+import {
+  getDocumentInvoiceAmount,
+  needsInvoiceAttention,
+  sumInvoicedDocuments,
+} from '../lib/construction-invoice';
 import { isMobileDevice, isPdfContentType } from '../lib/device';
 import { ReceiptViewerModal } from './ReceiptViewerModal';
 
@@ -96,9 +101,8 @@ export function ConstructionProjectView({
     void load();
   }, [load]);
 
-  const invoiced = documents
-    .filter((d) => d.type === 'invoice' && d.amount)
-    .reduce((s, d) => s + (d.amount ?? 0), 0);
+  const invoiced = sumInvoicedDocuments(documents);
+  const invoiceAttentionCount = documents.filter((d) => needsInvoiceAttention(d)).length;
 
   const filteredDocuments = documents.filter((d) => matchesFilter(d, docFilter));
 
@@ -202,6 +206,12 @@ export function ConstructionProjectView({
           <div className="bg-slate-950/50 rounded-2xl p-4 border border-slate-800">
             <p className="text-[10px] font-bold text-slate-500 uppercase">Invoiced to date</p>
             <p className="text-2xl font-black text-amber-400 mt-1">{formatCurrency(invoiced)}</p>
+            {invoiceAttentionCount > 0 && (
+              <p className="text-[10px] text-amber-500/90 mt-1 font-bold">
+                {invoiceAttentionCount} invoice{invoiceAttentionCount > 1 ? 's' : ''} need type or
+                amount — use Re-analyze below
+              </p>
+            )}
           </div>
         </div>
         {project.budgetTarget > 0 && (
@@ -362,6 +372,9 @@ export function ConstructionProjectView({
                 doc={d}
                 onDelete={() => void onDelete(d.id)}
                 onToast={onToast}
+                onRefresh={load}
+                onError={onError}
+                countsAsInvoice={getDocumentInvoiceAmount(d) != null}
               />
             ))}
           </ul>
@@ -371,21 +384,35 @@ export function ConstructionProjectView({
   );
 }
 
+const DOC_TYPES = ['plan', 'invoice', 'estimate', 'bid', 'contract', 'engineering', 'other'] as const;
+
 function DocumentRow({
   doc,
   onDelete,
   onToast,
+  onRefresh,
+  onError,
+  countsAsInvoice,
 }: {
   doc: ConstructionDocument;
   onDelete: () => void;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
+  onRefresh: () => Promise<void>;
+  onError: (msg: string) => void;
+  countsAsInvoice: boolean;
 }) {
   const hasFile = Boolean(doc.storagePath);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerSrc, setViewerSrc] = useState<string | null>(null);
   const [viewerContentType, setViewerContentType] = useState<string | null>(null);
   const [loadingFile, setLoadingFile] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const [savingMeta, setSavingMeta] = useState(false);
+  const [amountInput, setAmountInput] = useState(
+    doc.amount != null ? String(doc.amount) : '',
+  );
   const fileEndpoint = api.constructionDocumentFileUrl(doc.id);
+  const showInvoiceHelp = needsInvoiceAttention(doc);
   const pdf = docIsPdf(doc);
   const photo = docIsPhoto(doc);
 
@@ -413,6 +440,32 @@ function DocumentRow({
       onToast(e instanceof Error ? e.message : 'Could not open file', 'info');
     } finally {
       setLoadingFile(false);
+    }
+  };
+
+  const saveMeta = async (patch: { type?: string; amount?: number }) => {
+    setSavingMeta(true);
+    try {
+      await api.updateConstructionDocument(doc.id, patch);
+      onToast('Document updated', 'success');
+      await onRefresh();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not update document');
+    } finally {
+      setSavingMeta(false);
+    }
+  };
+
+  const reanalyze = async () => {
+    setReanalyzing(true);
+    try {
+      await api.reanalyzeConstructionDocument(doc.id);
+      onToast('Invoice analyzed — check type and amount', 'success');
+      await onRefresh();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Re-analyze failed');
+    } finally {
+      setReanalyzing(false);
     }
   };
 
@@ -445,7 +498,43 @@ function DocumentRow({
         )}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-[10px] font-bold uppercase text-slate-500">{doc.type}</span>
+            <select
+              value={doc.type}
+              disabled={savingMeta}
+              onChange={(e) => void saveMeta({ type: e.target.value })}
+              className="text-[10px] font-bold uppercase bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-300"
+              aria-label="Document type"
+            >
+              {DOC_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+            {countsAsInvoice && (
+              <span className="text-[10px] font-bold uppercase text-emerald-500">In budget</span>
+            )}
+            {showInvoiceHelp && (
+              <span className="text-[10px] font-bold uppercase text-amber-500">Not in budget</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2 items-center mt-2">
+            <label className="text-[10px] font-bold uppercase text-slate-500">Total $</label>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={amountInput}
+              onChange={(e) => setAmountInput(e.target.value)}
+              onBlur={() => {
+                const n = parseFloat(amountInput);
+                if (Number.isFinite(n) && n > 0 && n !== doc.amount) {
+                  void saveMeta({ type: 'invoice', amount: n });
+                }
+              }}
+              className="w-28 px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-sm text-white"
+              placeholder="Amount"
+            />
             {doc.amount != null && (
               <span className="text-xs font-bold text-amber-400">{formatCurrency(doc.amount)}</span>
             )}
@@ -453,21 +542,36 @@ function DocumentRow({
           <p className="font-bold text-slate-200 text-sm truncate">{doc.title}</p>
           {doc.vendor && <p className="text-xs text-slate-500">{doc.vendor}</p>}
           <p className="text-xs text-slate-500 mt-1 line-clamp-2">{doc.extractedSummary}</p>
-          {hasFile && (
-            <button
-              type="button"
-              disabled={loadingFile}
-              onClick={() => void openFile()}
-              className="inline-flex items-center gap-1.5 mt-2 px-3 py-2 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider"
-            >
-              {loadingFile ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
-              {pdf ? 'Open PDF' : 'Open'}
-            </button>
-          )}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {hasFile && (
+              <button
+                type="button"
+                disabled={loadingFile}
+                onClick={() => void openFile()}
+                className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider"
+              >
+                {loadingFile ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+                {pdf ? 'Open PDF' : 'Open'}
+              </button>
+            )}
+            {hasFile && showInvoiceHelp && (
+              <button
+                type="button"
+                disabled={reanalyzing}
+                onClick={() => void reanalyze()}
+                className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider"
+              >
+                {reanalyzing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : null}
+                Re-analyze
+              </button>
+            )}
+          </div>
         </div>
         <button
           type="button"

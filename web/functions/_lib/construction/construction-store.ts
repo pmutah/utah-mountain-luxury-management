@@ -1,6 +1,7 @@
 import { kvGet, kvPut, newId } from '../kv-json';
 import type { SettingsEnv } from '../kv';
 import { buildDocumentDigest } from './document-catalog';
+import { parseMoneyAmount } from './construction-invoice';
 import { DEFAULT_CONSTRUCTION_STAGES } from './types';
 import type {
   ConstructionDecision,
@@ -138,10 +139,33 @@ export async function dismissConstructionRecommendation(
   return true;
 }
 
-export function sumInvoicedAmount(docs: ConstructionDocument[]): number {
-  return docs
-    .filter((d) => d.type === 'invoice' && d.amount)
-    .reduce((s, d) => s + (d.amount ?? 0), 0);
+export { sumInvoicedAmount } from './construction-invoice';
+
+export async function updateConstructionDocument(
+  env: SettingsEnv,
+  id: string,
+  patch: Partial<
+    Pick<
+      ConstructionDocument,
+      'type' | 'amount' | 'title' | 'vendor' | 'extractedSummary' | 'extractedFields'
+    >
+  >,
+): Promise<ConstructionDocument | null> {
+  const list = await loadConstructionDocuments(env);
+  const idx = list.findIndex((d) => d.id === id);
+  if (idx < 0) return null;
+  const current = list[idx]!;
+  const next: ConstructionDocument = {
+    ...current,
+    ...patch,
+    amount:
+      patch.amount !== undefined
+        ? (parseMoneyAmount(patch.amount) ?? current.amount)
+        : current.amount,
+  };
+  list[idx] = next;
+  await saveConstructionDocuments(env, list);
+  return next;
 }
 
 export function newConstructionDocId(): string {
