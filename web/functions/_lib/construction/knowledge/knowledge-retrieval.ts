@@ -1,4 +1,5 @@
-import { getChunkById, MASTER_INDEX, PLAYBOOK_CHUNKS, type PlaybookChunk } from './playbooks';
+import { getChunkById, MASTER_INDEX } from './master-index';
+import { PLAYBOOK_CHUNKS, type PlaybookChunk } from './playbooks';
 
 function scoreEntry(
   entry: (typeof MASTER_INDEX)[0],
