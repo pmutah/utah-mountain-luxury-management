@@ -2,12 +2,14 @@ import { PROPERTIES, calculateMetrics, corsJson } from '../../_lib/data';
 import { mergeAllExpenses, withReceiptUrls } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { addMonths, currentYearMonth } from '../../_lib/months';
+import { syncIcalIfStale } from '../../_lib/calendar-store';
 import { getAllReservations } from '../../_lib/reservations-store';
 
 export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   const url = new URL(request.url);
   const month = url.searchParams.get('month') ?? currentYearMonth();
   const compare = url.searchParams.get('compare') === '1';
+  await syncIcalIfStale(env);
   const fees = await loadExtraCleaningFees(env);
   const allExpenses = withReceiptUrls(await mergeAllExpenses(env));
   const reservations = await getAllReservations(env);

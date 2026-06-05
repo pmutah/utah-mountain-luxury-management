@@ -50,7 +50,8 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
   },
   {
     name: 'manage_calendar',
-    description: 'Calendar blocks, iCal sync, find gaps, check discrepancies.',
+    description:
+      'Calendar blocks, Hospitable iCal sync (imports VRBO/Airbnb/Booking.com into reservations), find gaps, check discrepancies.',
     parameters: {
       type: 'object',
       properties: {

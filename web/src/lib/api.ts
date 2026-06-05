@@ -244,6 +244,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ password }),
     }),
+  syncCalendar: () =>
+    request<{
+      eventCount: number;
+      fetchedAt: string;
+      reservationSync: {
+        created: number;
+        updated: number;
+        linkedToSeed: number;
+        cancelled: number;
+      };
+      discrepancies: unknown[];
+    }>('/api/calendar/sync', { method: 'POST' }),
   getPortfolio: (month: string, compare = true) =>
     request<PortfolioData>(
       `/api/portfolio/metrics?month=${encodeURIComponent(month)}${compare ? '&compare=1' : ''}`,

@@ -13,6 +13,8 @@ export interface ReservationRecord {
   status?: ReservationStatus;
   note?: string;
   createdAt?: string;
+  /** Stable id from Hospitable / OTA iCal VEVENT UID */
+  icalUid?: string;
 }
 
 export interface CalendarBlock {

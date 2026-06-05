@@ -37,7 +37,21 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
       .map(([id]) => id),
   );
 
-  const activeSeed = merged.filter((r) => !cancelledIds.has(r.id) || r.status !== 'cancelled');
+  const icalSyncedCustom = custom.filter((r) => r.icalUid && r.status !== 'cancelled');
+
+  const activeSeed = merged.filter((r) => {
+    if (cancelledIds.has(r.id) && r.status === 'cancelled') return false;
+    // Drop seed row when an iCal-imported custom row already represents the same stay.
+    const duplicatedByIcal = icalSyncedCustom.some(
+      (ic) =>
+        ic.propertyId === r.propertyId &&
+        ic.checkIn === r.checkIn &&
+        ic.checkOut === r.checkOut &&
+        !overrides[r.id]?.icalUid,
+    );
+    return !duplicatedByIcal;
+  });
+
   const seedIds = new Set(activeSeed.map((r) => r.id));
   const extraCustom = custom.filter((r) => !seedIds.has(r.id) && r.status !== 'cancelled');
 
