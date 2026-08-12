@@ -10,7 +10,7 @@ import {
 import {
   loadCalendarBlocks,
   addCalendarBlock,
-  syncIcalFeeds,
+  syncIcalAndReservations,
   findCalendarGaps,
   checkCalendarDiscrepancies,
   loadIcalFeeds,
@@ -261,8 +261,14 @@ async function handleCalendar(
   }
 
   if (action === 'sync_ical') {
-    const result = await syncIcalFeeds(env);
-    return { ok: true, eventCount: result.events.length, fetchedAt: result.fetchedAt };
+    const result = await syncIcalAndReservations(env);
+    return {
+      ok: true,
+      eventCount: result.events.length,
+      fetchedAt: result.fetchedAt,
+      reservationSync: result.reservationSync,
+      discrepancyCount: result.discrepancies.length,
+    };
   }
 
   if (action === 'find_gaps') {

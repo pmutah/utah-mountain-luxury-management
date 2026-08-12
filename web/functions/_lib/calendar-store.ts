@@ -1,6 +1,7 @@
 import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { CalendarBlock, ICalEvent, ICalFeedConfig, PropertyId } from './agent/types';
+import { syncReservationsFromIcal } from './ical-reservation-sync';
 import { getAllReservations } from './reservations-store';
 
 const KV_BLOCKS = 'calendarBlocks';
@@ -56,8 +57,8 @@ export function parseIcalEvents(text: string, propertyId?: PropertyId): ICalEven
   const events: ICalEvent[] = [];
   const chunks = text.split('BEGIN:VEVENT');
   for (const chunk of chunks.slice(1)) {
-    const dtStart = chunk.match(/DTSTART(?:;VALUE=DATE)?:(\d{8})/)?.[1];
-    const dtEnd = chunk.match(/DTEND(?:;VALUE=DATE)?:(\d{8})/)?.[1];
+    const dtStart = chunk.match(/DTSTART(?:;[^:\r\n]*)?:(\d{8})/)?.[1];
+    const dtEnd = chunk.match(/DTEND(?:;[^:\r\n]*)?:(\d{8})/)?.[1];
     const uid = chunk.match(/UID:([^\r\n]+)/)?.[1]?.trim();
     const summary = chunk.match(/SUMMARY:([^\r\n]+)/)?.[1]?.trim();
     if (!dtStart || !uid) continue;
@@ -86,6 +87,34 @@ export async function syncIcalFeeds(env: SettingsEnv): Promise<{ events: ICalEve
   }
   await saveIcalFeeds(env, { ...feeds, lastSyncedAt: new Date().toISOString() });
   return saveIcalCache(env, all);
+}
+
+const STALE_SYNC_MS = 30 * 60 * 1000;
+
+export function isIcalSyncStale(lastSyncedAt?: string): boolean {
+  if (!lastSyncedAt) return true;
+  return Date.now() - new Date(lastSyncedAt).getTime() > STALE_SYNC_MS;
+}
+
+/** Fetch Hospitable iCal feeds and merge events into the reservation calendar. */
+export async function syncIcalAndReservations(env: SettingsEnv): Promise<{
+  events: ICalEvent[];
+  fetchedAt: string;
+  reservationSync: Awaited<ReturnType<typeof syncReservationsFromIcal>>;
+  discrepancies: Awaited<ReturnType<typeof checkCalendarDiscrepancies>>;
+}> {
+  const { events, fetchedAt } = await syncIcalFeeds(env);
+  const reservationSync = await syncReservationsFromIcal(env, events);
+  const discrepancies = await checkCalendarDiscrepancies(env);
+  return { events, fetchedAt, reservationSync, discrepancies };
+}
+
+/** Sync when feeds are configured and cache is older than 30 minutes. */
+export async function syncIcalIfStale(env: SettingsEnv): Promise<void> {
+  const feeds = await loadIcalFeeds(env);
+  if (!feeds.ranch && !feeds.lindon) return;
+  if (!isIcalSyncStale(feeds.lastSyncedAt)) return;
+  await syncIcalAndReservations(env);
 }
 
 export function findCalendarGaps(
