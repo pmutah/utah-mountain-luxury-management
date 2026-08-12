@@ -19,6 +19,25 @@ export function namesSimilar(a: string, b: string): boolean {
   return tokensA.some((t) => tokensB.has(t) && t.length >= 4);
 }
 
+export function findSeedStay(
+  propertyId: PropertyId,
+  guestName: string,
+  checkIn: string,
+  checkOut: string,
+) {
+  const stay = { checkIn, checkOut };
+  const exact = RESERVATIONS.find(
+    (s) => s.propertyId === propertyId && s.checkIn === checkIn && s.checkOut === checkOut,
+  );
+  if (exact) return exact;
+  return RESERVATIONS.find(
+    (s) =>
+      s.propertyId === propertyId &&
+      namesSimilar(s.guestName, guestName) &&
+      datesOverlap(s, stay),
+  );
+}
+
 /** Host net already recorded for a matching stay (after Airbnb/VRBO taxes and fees). */
 export function findSeedBankPayout(
   propertyId: PropertyId,
@@ -26,20 +45,8 @@ export function findSeedBankPayout(
   checkIn: string,
   checkOut: string,
 ): number | undefined {
-  const stay = { checkIn, checkOut };
-  const exact = RESERVATIONS.find(
-    (s) => s.propertyId === propertyId && s.checkIn === checkIn && s.checkOut === checkOut,
-  );
-  if (exact && exact.payout > 0) return exact.payout;
-
-  const named = RESERVATIONS.find(
-    (s) =>
-      s.propertyId === propertyId &&
-      s.payout > 0 &&
-      namesSimilar(s.guestName, guestName) &&
-      datesOverlap(s, stay),
-  );
-  if (named) return named.payout;
+  const seed = findSeedStay(propertyId, guestName, checkIn, checkOut);
+  if (seed && seed.payout > 0) return seed.payout;
   return undefined;
 }
 

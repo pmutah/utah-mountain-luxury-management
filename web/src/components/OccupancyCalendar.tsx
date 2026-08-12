@@ -25,11 +25,20 @@ function sourceLabel(source: string): string {
 
 function sourceClass(source: string): string {
   const label = sourceLabel(source);
-  if (label === 'Airbnb') return 'bg-rose-500/90 text-white';
-  if (label === 'VRBO') return 'bg-sky-500/90 text-white';
-  if (label === 'Booking.com') return 'bg-indigo-500/90 text-white';
-  if (label === 'Direct') return 'bg-amber-500/90 text-white';
-  return 'bg-slate-500/90 text-white';
+  if (label === 'Airbnb') return 'bg-red-600 border-red-400/60 text-white';
+  if (label === 'VRBO') return 'bg-blue-600 border-blue-400/60 text-white';
+  if (label === 'Booking.com') return 'bg-indigo-600 border-indigo-400/60 text-white';
+  if (label === 'Direct') return 'bg-amber-600 border-amber-400/60 text-white';
+  return 'bg-slate-600 border-slate-400/50 text-white';
+}
+
+function sourceBadgeClass(source: string): string {
+  const label = sourceLabel(source);
+  if (label === 'Airbnb') return 'bg-red-800/90 text-white';
+  if (label === 'VRBO') return 'bg-blue-800/90 text-white';
+  if (label === 'Booking.com') return 'bg-indigo-800/90 text-white';
+  if (label === 'Direct') return 'bg-amber-800/90 text-white';
+  return 'bg-black/40 text-white';
 }
 
 function occupyingNights(res: Reservation, yearMonth: string): Set<number> {
@@ -59,7 +68,7 @@ function StayCard({ res }: { res: Reservation }) {
         {nights} {nights === 1 ? 'night' : 'nights'}
       </p>
       <span
-        className={`inline-block mt-0.5 rounded px-1 py-px text-[7px] font-black uppercase tracking-wide ${sourceClass(res.source)}`}
+        className={`inline-block mt-0.5 rounded px-1 py-px text-[7px] font-black uppercase tracking-wide ${sourceBadgeClass(res.source)}`}
       >
         {source}
       </span>
@@ -105,14 +114,6 @@ export function OccupancyCalendar({
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
-  const isRanch = propertyId === 'ranch';
-  const occupiedClass = isRanch
-    ? 'bg-blue-600/80 border-blue-400/40'
-    : 'bg-emerald-600/80 border-emerald-400/40';
-  const checkInClass = isRanch
-    ? 'bg-blue-600 border-blue-300/50 ring-1 ring-blue-300/40'
-    : 'bg-emerald-600 border-emerald-300/50 ring-1 ring-emerald-300/40';
-
   return (
     <div className="bg-slate-900 rounded-[40px] border border-slate-800 overflow-hidden">
       <div className="p-6 border-b border-slate-800 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -136,16 +137,15 @@ export function OccupancyCalendar({
             const occupying = nightsByDay.get(day) ?? [];
             const checkIns = checkInByDay.get(day) ?? [];
             const occupied = occupying.length > 0;
+            const toneSource = (checkIns[0] ?? occupying[0])?.source ?? '';
             return (
               <div
                 key={day}
                 className={`min-h-[4.5rem] sm:min-h-[6.5rem] rounded-lg border p-1 flex flex-col ${
-                  checkIns.length
-                    ? checkInClass
-                    : occupied
-                      ? occupiedClass
-                      : 'bg-slate-950/50 text-slate-600 border-slate-800/50'
-                } ${occupied ? 'text-white' : ''}`}
+                  occupied
+                    ? `${sourceClass(toneSource)}${checkIns.length ? ' ring-1 ring-white/30' : ' opacity-90'}`
+                    : 'bg-slate-950/50 text-slate-600 border-slate-800/50'
+                }`}
               >
                 <span
                   className={`text-[10px] font-black leading-none ${occupied ? 'text-white/90' : 'text-slate-500'}`}
@@ -166,10 +166,10 @@ export function OccupancyCalendar({
           </span>
           <span className="hidden sm:inline text-slate-700">·</span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-rose-500" /> Airbnb
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-600" /> Airbnb
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-sky-500" /> VRBO
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-600" /> VRBO
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block w-2 h-2 rounded-sm bg-indigo-500" /> Booking.com
