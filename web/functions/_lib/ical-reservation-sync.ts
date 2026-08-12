@@ -1,5 +1,6 @@
 import { RESERVATIONS } from './data';
-import { parseIcalSummary } from './ical-summary';
+import { resolveIcalPayout, findSeedStay } from './reservation-match';
+import { parseIcalSummary, resolveIcalSource } from './ical-summary';
 import { kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { ICalEvent, PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
@@ -8,7 +9,6 @@ import {
   loadCustomReservations,
   loadReservationOverrides,
 } from './reservations-store';
-import { datesOverlap, namesSimilar, resolveIcalPayout } from './reservation-match';
 import { ensureTurnoverCleaningExpenses } from './expenses';
 
 export interface IcalReservationSyncResult {
@@ -28,17 +28,7 @@ function findSeedIdByIcalUid(
 
 function findFuzzySeed(ev: ICalEvent, guestName: string) {
   if (!ev.propertyId) return undefined;
-  const stay = { checkIn: ev.start, checkOut: ev.end };
-  const exact = RESERVATIONS.find(
-    (s) => s.propertyId === ev.propertyId && s.checkIn === ev.start && s.checkOut === ev.end,
-  );
-  if (exact) return exact;
-  return RESERVATIONS.find(
-    (s) =>
-      s.propertyId === ev.propertyId &&
-      namesSimilar(s.guestName, guestName) &&
-      datesOverlap(s, stay),
-  );
+  return findSeedStay(ev.propertyId, guestName, ev.start, ev.end);
 }
 
 /** Apply Hospitable iCal events to the website reservation calendar. */
@@ -61,7 +51,14 @@ export async function syncReservationsFromIcal(
   for (const ev of events) {
     if (!ev.propertyId) continue;
 
-    const { guestName, source, blocked } = parseIcalSummary(ev.summary);
+    const { guestName, blocked } = parseIcalSummary(ev.summary, ev.description);
+    const seedHint = findFuzzySeed(ev, guestName);
+    const source = resolveIcalSource(
+      ev.summary,
+      ev.description,
+      undefined,
+      seedHint?.source,
+    );
     const status: ReservationStatus = blocked ? 'blocked' : 'confirmed';
     const patch: Partial<ReservationRecord> = {
       guestName,
@@ -79,6 +76,7 @@ export async function syncReservationsFromIcal(
       custom[customIdx] = {
         ...prev,
         ...patch,
+        source: resolveIcalSource(ev.summary, ev.description, prev.source, seedHint?.source),
         payout: resolveIcalPayout(ev, guestName, prev.payout),
       };
       stats.updated++;
@@ -91,6 +89,12 @@ export async function syncReservationsFromIcal(
       overrides[linkedSeedId] = {
         ...overrides[linkedSeedId],
         ...patch,
+        source: resolveIcalSource(
+          ev.summary,
+          ev.description,
+          overrides[linkedSeedId]?.source,
+          seedRow?.source,
+        ),
         payout: resolveIcalPayout(
           ev,
           guestName,
@@ -106,6 +110,12 @@ export async function syncReservationsFromIcal(
       overrides[seedMatch.id] = {
         ...overrides[seedMatch.id],
         ...patch,
+        source: resolveIcalSource(
+          ev.summary,
+          ev.description,
+          overrides[seedMatch.id]?.source,
+          seedMatch.source,
+        ),
         payout: resolveIcalPayout(ev, guestName, seedMatch.payout),
       };
       stats.linkedToSeed++;
