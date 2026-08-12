@@ -1,4 +1,13 @@
-const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:8080');
+/** Same-origin `/api` — Vite proxies to Pages in dev; Pages Functions handle it in prod. */
+function resolveApiUrl(): string {
+  const raw = import.meta.env.VITE_API_URL?.trim() ?? '';
+  if (!raw) return '';
+  // Old local .env pointed at NestJS (:8080), which is not the hosted app.
+  if (/localhost:8080|127\.0\.0\.1:8080/.test(raw)) return '';
+  return raw.replace(/\/$/, '');
+}
+
+const API_URL = resolveApiUrl();
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
