@@ -63,7 +63,8 @@ export function ExtraCleaningInput({
         </div>
       </div>
       <p className="text-[9px] text-slate-600 font-bold italic">
-        Base fee of {formatCurrency(PROPERTIES[propertyId].cleaningFee)}/stay is already included.
+        Base turnover of {formatCurrency(PROPERTIES[propertyId].cleaningFee)}/stay is logged as a
+        Cleaning expense. Use this field only for extra cleans.
       </p>
     </div>
   );

@@ -16,9 +16,9 @@ export function Header({
             <Home className="text-white w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white">Portfolio</h1>
+            <h1 className="text-2xl font-black text-white">Utah Mountain Luxury</h1>
             <p className="text-xs text-slate-500 font-bold uppercase tracking-tighter">
-              Utah Mountain Luxury Portfolio
+              Ranch House · Lindon House
             </p>
           </div>
         </div>

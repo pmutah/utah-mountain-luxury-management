@@ -54,7 +54,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
           </div>
           <div>
             <h1 className="text-xl font-black text-white">Sign in</h1>
-            <p className="text-xs text-slate-500 font-bold uppercase">Utah Mountain Luxury Portfolio</p>
+            <p className="text-xs text-slate-500 font-bold uppercase">Utah Mountain Luxury</p>
           </div>
         </div>
         <input

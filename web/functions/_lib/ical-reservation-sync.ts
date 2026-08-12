@@ -4,15 +4,19 @@ import { kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { ICalEvent, PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
 import {
+  getAllReservations,
   loadCustomReservations,
   loadReservationOverrides,
 } from './reservations-store';
+import { datesOverlap, namesSimilar, resolveIcalPayout } from './reservation-match';
+import { ensureTurnoverCleaningExpenses } from './expenses';
 
 export interface IcalReservationSyncResult {
   created: number;
   updated: number;
   linkedToSeed: number;
   cancelled: number;
+  cleaningExpenses: number;
 }
 
 function findSeedIdByIcalUid(
@@ -20,6 +24,21 @@ function findSeedIdByIcalUid(
   uid: string,
 ): string | undefined {
   return Object.entries(overrides).find(([, o]) => o.icalUid === uid)?.[0];
+}
+
+function findFuzzySeed(ev: ICalEvent, guestName: string) {
+  if (!ev.propertyId) return undefined;
+  const stay = { checkIn: ev.start, checkOut: ev.end };
+  const exact = RESERVATIONS.find(
+    (s) => s.propertyId === ev.propertyId && s.checkIn === ev.start && s.checkOut === ev.end,
+  );
+  if (exact) return exact;
+  return RESERVATIONS.find(
+    (s) =>
+      s.propertyId === ev.propertyId &&
+      namesSimilar(s.guestName, guestName) &&
+      datesOverlap(s, stay),
+  );
 }
 
 /** Apply Hospitable iCal events to the website reservation calendar. */
@@ -32,6 +51,7 @@ export async function syncReservationsFromIcal(
     updated: 0,
     linkedToSeed: 0,
     cancelled: 0,
+    cleaningExpenses: 0,
   };
 
   const custom = await loadCustomReservations(env);
@@ -59,7 +79,7 @@ export async function syncReservationsFromIcal(
       custom[customIdx] = {
         ...prev,
         ...patch,
-        payout: prev.payout,
+        payout: resolveIcalPayout(ev, guestName, prev.payout),
       };
       stats.updated++;
       continue;
@@ -71,22 +91,22 @@ export async function syncReservationsFromIcal(
       overrides[linkedSeedId] = {
         ...overrides[linkedSeedId],
         ...patch,
-        payout: overrides[linkedSeedId]?.payout ?? seedRow?.payout,
+        payout: resolveIcalPayout(
+          ev,
+          guestName,
+          overrides[linkedSeedId]?.payout ?? seedRow?.payout,
+        ),
       };
       stats.updated++;
       continue;
     }
 
-    const seedMatch = RESERVATIONS.find(
-      (s) =>
-        s.propertyId === ev.propertyId &&
-        s.checkIn === ev.start &&
-        s.checkOut === ev.end,
-    );
+    const seedMatch = findFuzzySeed(ev, guestName);
     if (seedMatch) {
       overrides[seedMatch.id] = {
         ...overrides[seedMatch.id],
         ...patch,
+        payout: resolveIcalPayout(ev, guestName, seedMatch.payout),
       };
       stats.linkedToSeed++;
       continue;
@@ -98,7 +118,7 @@ export async function syncReservationsFromIcal(
       propertyId: ev.propertyId as PropertyId,
       checkIn: ev.start,
       checkOut: ev.end,
-      payout: 0,
+      payout: resolveIcalPayout(ev, guestName, 0),
       source,
       status,
       icalUid: ev.uid,
@@ -124,5 +144,8 @@ export async function syncReservationsFromIcal(
 
   await kvPut(env, 'reservations', custom);
   await kvPut(env, 'reservationOverrides', overrides);
+
+  const all = await getAllReservations(env);
+  stats.cleaningExpenses = await ensureTurnoverCleaningExpenses(env, all);
   return stats;
 }

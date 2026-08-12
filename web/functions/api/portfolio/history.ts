@@ -1,19 +1,23 @@
-import { calculateMetrics, RESERVATIONS, PROPERTIES, corsJson } from '../../_lib/data';
-import { mergeAllExpenses } from '../../_lib/expenses';
+import { calculateMetrics, PROPERTIES, corsJson } from '../../_lib/data';
+import { mergeAllExpenses, ensureTurnoverCleaningExpenses } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { currentYearMonth, monthRange } from '../../_lib/months';
+import { getAllReservations, backfillZeroPayouts } from '../../_lib/reservations-store';
 
 export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   const url = new URL(request.url);
   const endMonth = url.searchParams.get('end') ?? url.searchParams.get('month') ?? currentYearMonth();
   const count = Math.min(24, Math.max(1, Number(url.searchParams.get('count') ?? 12)));
   const fees = await loadExtraCleaningFees(env);
+  await backfillZeroPayouts(env);
+  const reservations = await getAllReservations(env);
+  await ensureTurnoverCleaningExpenses(env, reservations);
   const allExpenses = await mergeAllExpenses(env);
   const months = monthRange(endMonth, count);
 
   const history = months.map((month) => {
-    const ranch = calculateMetrics('ranch', month, fees, allExpenses);
-    const lindon = calculateMetrics('lindon', month, fees, allExpenses);
+    const ranch = calculateMetrics('ranch', month, fees, allExpenses, reservations);
+    const lindon = calculateMetrics('lindon', month, fees, allExpenses, reservations);
     return {
       month,
       ranch: {
@@ -34,7 +38,7 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     };
   });
 
-  return corsJson(request, { endMonth, count, history, reservations: RESERVATIONS, properties: Object.values(PROPERTIES) });
+  return corsJson(request, { endMonth, count, history, reservations, properties: Object.values(PROPERTIES) });
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

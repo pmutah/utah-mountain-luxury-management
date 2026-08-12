@@ -60,12 +60,14 @@ export function parseIcalEvents(text: string, propertyId?: PropertyId): ICalEven
     const dtStart = chunk.match(/DTSTART(?:;[^:\r\n]*)?:(\d{8})/)?.[1];
     const dtEnd = chunk.match(/DTEND(?:;[^:\r\n]*)?:(\d{8})/)?.[1];
     const uid = chunk.match(/UID:([^\r\n]+)/)?.[1]?.trim();
-    const summary = chunk.match(/SUMMARY:([^\r\n]+)/)?.[1]?.trim();
+    const unfolded = chunk.replace(/\r?\n[ \t]/g, '');
+    const summary = unfolded.match(/SUMMARY:([^\r\n]+)/)?.[1]?.trim();
+    const description = unfolded.match(/DESCRIPTION:([^\r\n]+)/)?.[1]?.trim();
     if (!dtStart || !uid) continue;
     const start = `${dtStart.slice(0, 4)}-${dtStart.slice(4, 6)}-${dtStart.slice(6, 8)}`;
     const endRaw = dtEnd ?? dtStart;
     const end = `${endRaw.slice(0, 4)}-${endRaw.slice(4, 6)}-${endRaw.slice(6, 8)}`;
-    events.push({ uid, start, end, summary, propertyId, source: 'ical' });
+    events.push({ uid, start, end, summary, description, propertyId, source: 'ical' });
   }
   return events;
 }
