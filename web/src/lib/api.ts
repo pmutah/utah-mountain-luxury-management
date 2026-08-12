@@ -51,8 +51,10 @@ export interface Reservation {
   propertyId: string;
   checkIn: string;
   checkOut: string;
+  /** Host net after Airbnb/VRBO taxes and fees. */
   payout: number;
   source: string;
+  status?: string;
 }
 
 export interface Expense {
