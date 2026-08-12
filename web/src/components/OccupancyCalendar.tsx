@@ -108,7 +108,10 @@ export function RevenueLog({
               {res.checkIn.slice(5)} to {res.checkOut.slice(5)} • {res.source}
             </p>
           </div>
-          <p className="font-black text-sm text-slate-300 shrink-0 ml-2">{formatCurrency(res.payout)}</p>
+          <div className="text-right shrink-0 ml-2">
+            <p className="font-black text-sm text-slate-300">{formatCurrency(res.payout)}</p>
+            <p className="text-[8px] text-slate-600 font-bold uppercase">Host payout</p>
+          </div>
         </div>
       ))}
     </div>

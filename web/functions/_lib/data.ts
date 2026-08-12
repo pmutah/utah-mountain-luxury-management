@@ -123,27 +123,47 @@ export function calculateMetrics(
   currentMonth: string,
   extraCleaningFees: Record<string, number> = DEFAULT_EXTRA_CLEANING,
   expenseList: Array<{ propertyId: string; month: string; category: string; amount: number }> = EXPENSES,
+  reservationList: Array<{
+    propertyId: string;
+    checkIn: string;
+    checkOut: string;
+    payout: number;
+    status?: string;
+  }> = RESERVATIONS,
 ) {
   let revenue = 0;
-  let baseCleaning = 0;
   let occupied = 0;
   let stayCount = 0;
 
-  for (const res of RESERVATIONS.filter((r) => r.propertyId === propId)) {
+  const stays = reservationList.filter(
+    (r) => r.propertyId === propId && r.status !== 'cancelled' && r.status !== 'blocked',
+  );
+
+  for (const res of stays) {
     if (res.checkIn.startsWith(currentMonth)) {
-      revenue += Number(res.payout);
-      baseCleaning += PROPERTIES[propId].cleaningFee;
+      revenue += Number(res.payout) || 0;
       stayCount++;
     }
     occupied += getOverlappingNights(res.checkIn, res.checkOut, currentMonth);
   }
 
   const extra = Number(extraCleaningFees[`${propId}-${currentMonth}`] || 0);
+  const cleaningExpenses = expenseList
+    .filter((e) => e.propertyId === propId && e.month === currentMonth && e.category === 'Cleaning')
+    .reduce((sum, e) => sum + e.amount, 0);
+  const baseCleaning =
+    cleaningExpenses > 0 ? cleaningExpenses : stayCount * PROPERTIES[propId].cleaningFee;
   const totalCleaning = baseCleaning + extra;
   const mortgage = PROPERTIES[propId].mortgage;
-  const operationalExpenses = expenseList.filter(
-    (e) => e.propertyId === propId && e.month === currentMonth && e.category !== 'Mortgage',
-  ).reduce((sum, e) => sum + e.amount, 0);
+  const operationalExpenses = expenseList
+    .filter(
+      (e) =>
+        e.propertyId === propId &&
+        e.month === currentMonth &&
+        e.category !== 'Mortgage' &&
+        e.category !== 'Cleaning',
+    )
+    .reduce((sum, e) => sum + e.amount, 0);
   const [yearStr, monthStr] = currentMonth.split('-');
   const days = new Date(Number(yearStr), Number(monthStr), 0).getDate();
   const profit = revenue - (mortgage + totalCleaning + operationalExpenses);

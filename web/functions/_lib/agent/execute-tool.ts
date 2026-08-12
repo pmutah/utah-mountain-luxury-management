@@ -95,6 +95,7 @@ async function handleFinances(
 ): Promise<Record<string, unknown>> {
   const fees = await loadExtraCleaningFees(env);
   const allExpenses = await mergeAllExpenses(env);
+  const reservations = await getAllReservations(env);
 
   if (action === 'log_expense') {
     const propertyId = args.propertyId as PropertyId;
@@ -150,7 +151,7 @@ async function handleFinances(
     const byProperty: Record<string, { revenue: number; profit: number }> = {};
     for (const month of months) {
       for (const pid of ['ranch', 'lindon'] as PropertyId[]) {
-        const metrics = calculateMetrics(pid, month, fees, allExpenses);
+        const metrics = calculateMetrics(pid, month, fees, allExpenses, reservations);
         totalRevenue += metrics.revenue;
         totalProfit += metrics.profit;
         byProperty[pid] = byProperty[pid] ?? { revenue: 0, profit: 0 };

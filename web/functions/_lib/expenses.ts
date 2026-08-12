@@ -1,5 +1,6 @@
-import { EXPENSES } from './data';
+import { EXPENSES, PROPERTIES } from './data';
 import type { SettingsEnv } from './kv';
+import type { ReservationRecord } from './agent/types';
 
 export interface ExpenseRecord {
   id: string;
@@ -56,4 +57,59 @@ export function withReceiptUrls(expenses: ExpenseRecord[]): ExpenseWithReceipt[]
 
 export function newExpenseId(): string {
   return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+const CLEAN_PREFIX = 'clean-';
+
+/** One turnover Cleaning expense per stay (what we pay the cleaner). Idempotent. */
+export async function ensureTurnoverCleaningExpenses(
+  env: SettingsEnv,
+  reservations: ReservationRecord[],
+): Promise<number> {
+  const custom = await loadCustomExpenses(env);
+  const byId = new Map(custom.map((e) => [e.id, e]));
+  let written = 0;
+
+  const active = reservations.filter(
+    (r) => r.status !== 'cancelled' && r.status !== 'blocked' && r.propertyId !== undefined,
+  );
+
+  const keepIds = new Set(active.map((r) => `${CLEAN_PREFIX}${r.id}`));
+
+  for (const r of active) {
+    const fee = PROPERTIES[r.propertyId].cleaningFee;
+    if (!fee) continue;
+    const id = `${CLEAN_PREFIX}${r.id}`;
+    const month = r.checkOut.slice(0, 7);
+    const next: ExpenseRecord = {
+      id,
+      month,
+      propertyId: r.propertyId,
+      category: 'Cleaning',
+      amount: fee,
+      vendor: 'Turnover cleaning',
+      note: `${r.guestName} · ${r.checkIn} to ${r.checkOut}`,
+      createdAt: byId.get(id)?.createdAt ?? new Date().toISOString(),
+    };
+    const prev = byId.get(id);
+    if (
+      !prev ||
+      prev.amount !== next.amount ||
+      prev.month !== next.month ||
+      prev.note !== next.note
+    ) {
+      byId.set(id, { ...prev, ...next });
+      written++;
+    }
+  }
+
+  const merged = [...byId.values()].filter((e) => {
+    if (!e.id.startsWith(CLEAN_PREFIX)) return true;
+    return keepIds.has(e.id);
+  });
+
+  if (written > 0 || merged.length !== custom.length) {
+    await saveCustomExpenses(env, merged);
+  }
+  return written;
 }

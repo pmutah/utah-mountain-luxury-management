@@ -1,4 +1,4 @@
-# Utah Mountain Luxury Portfolio
+# Utah Mountain Luxury
 
 Vacation rental portfolio dashboard for **The Ranch House** and **The Lindon House**.
 

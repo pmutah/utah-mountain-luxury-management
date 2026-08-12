@@ -2,6 +2,7 @@ import { RESERVATIONS } from './data';
 import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
+import { datesOverlap, findSeedBankPayout } from './reservation-match';
 
 const KV_RES = 'reservations';
 const KV_OVERRIDES = 'reservationOverrides';
@@ -43,11 +44,7 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
     if (cancelledIds.has(r.id) && r.status === 'cancelled') return false;
     // Drop seed row when an iCal-imported custom row already represents the same stay.
     const duplicatedByIcal = icalSyncedCustom.some(
-      (ic) =>
-        ic.propertyId === r.propertyId &&
-        ic.checkIn === r.checkIn &&
-        ic.checkOut === r.checkOut &&
-        !overrides[r.id]?.icalUid,
+      (ic) => ic.propertyId === r.propertyId && datesOverlap(ic, r) && !overrides[r.id]?.icalUid,
     );
     return !duplicatedByIcal;
   });
@@ -56,6 +53,23 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
   const extraCustom = custom.filter((r) => !seedIds.has(r.id) && r.status !== 'cancelled');
 
   return [...activeSeed, ...extraCustom].sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+}
+
+/** Copy known bank payouts onto iCal rows that synced at $0. */
+export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {
+  const custom = await loadCustomReservations(env);
+  let n = 0;
+  for (let i = 0; i < custom.length; i++) {
+    const r = custom[i]!;
+    if ((r.payout ?? 0) > 0 || r.status === 'cancelled' || r.status === 'blocked') continue;
+    const found = findSeedBankPayout(r.propertyId, r.guestName, r.checkIn, r.checkOut);
+    if (found && found > 0) {
+      custom[i] = { ...r, payout: found };
+      n++;
+    }
+  }
+  if (n > 0) await kvPut(env, KV_RES, custom);
+  return n;
 }
 
 export async function createReservation(
@@ -80,10 +94,18 @@ export async function updateReservationStatus(
   status: ReservationStatus,
   patch?: Partial<ReservationRecord>,
 ): Promise<ReservationRecord | null> {
+  return updateReservation(env, id, { ...patch, status });
+}
+
+export async function updateReservation(
+  env: SettingsEnv,
+  id: string,
+  patch: Partial<ReservationRecord>,
+): Promise<ReservationRecord | null> {
   const custom = await loadCustomReservations(env);
   const idx = custom.findIndex((r) => r.id === id);
   if (idx >= 0) {
-    custom[idx] = { ...custom[idx]!, ...patch, status };
+    custom[idx] = { ...custom[idx]!, ...patch };
     await kvPut(env, KV_RES, custom);
     return custom[idx]!;
   }
@@ -92,9 +114,14 @@ export async function updateReservationStatus(
   if (!seedMatch) return null;
 
   const overrides = await loadReservationOverrides(env);
-  overrides[id] = { ...overrides[id], ...patch, status };
+  overrides[id] = { ...overrides[id], ...patch };
   await kvPut(env, KV_OVERRIDES, overrides);
-  return { ...seedMatch, propertyId: seedMatch.propertyId as PropertyId, ...overrides[id], status };
+  return {
+    ...seedMatch,
+    propertyId: seedMatch.propertyId as PropertyId,
+    ...overrides[id],
+    status: (overrides[id]?.status ?? 'confirmed') as ReservationStatus,
+  };
 }
 
 export function filterReservations(

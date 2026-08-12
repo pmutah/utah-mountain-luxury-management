@@ -8,6 +8,7 @@ export interface ReservationRecord {
   propertyId: PropertyId;
   checkIn: string;
   checkOut: string;
+  /** Host net after Airbnb/VRBO taxes and fees — what we keep from the booking. */
   payout: number;
   source: string;
   status?: ReservationStatus;
@@ -39,6 +40,7 @@ export interface ICalEvent {
   start: string;
   end: string;
   summary?: string;
+  description?: string;
   source: 'ical';
 }
 
