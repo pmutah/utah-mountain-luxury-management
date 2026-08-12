@@ -2,7 +2,7 @@ import { RESERVATIONS } from './data';
 import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
-import { datesOverlap, findSeedBankPayout, findSeedStay } from './reservation-match';
+import { applyHostNetFromSeed, datesOverlap } from './reservation-match';
 
 const KV_RES = 'reservations';
 const KV_OVERRIDES = 'reservationOverrides';
@@ -52,7 +52,9 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
   const seedIds = new Set(activeSeed.map((r) => r.id));
   const extraCustom = custom.filter((r) => !seedIds.has(r.id) && r.status !== 'cancelled');
 
-  return [...activeSeed, ...extraCustom].sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+  return [...activeSeed, ...extraCustom]
+    .map((r) => applyHostNetFromSeed(r))
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
 }
 
 /** Copy known host payouts and Airbnb/VRBO channel onto iCal rows. */
@@ -62,20 +64,11 @@ export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {
   for (let i = 0; i < custom.length; i++) {
     const r = custom[i]!;
     if (r.status === 'cancelled' || r.status === 'blocked') continue;
-    const seed = findSeedStay(r.propertyId, r.guestName, r.checkIn, r.checkOut);
-    const next = { ...r };
-    if ((r.payout ?? 0) <= 0) {
-      const found = findSeedBankPayout(r.propertyId, r.guestName, r.checkIn, r.checkOut);
-      if (found && found > 0) {
-        next.payout = found;
-        n++;
-      }
-    }
-    if ((!r.source || r.source === 'Hospitable') && seed?.source) {
-      next.source = seed.source;
+    const next = applyHostNetFromSeed(r);
+    if (next.payout !== r.payout || next.source !== r.source) {
+      custom[i] = next;
       n++;
     }
-    custom[i] = next;
   }
   if (n > 0) await kvPut(env, KV_RES, custom);
 
@@ -84,16 +77,19 @@ export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {
   for (const [id, o] of Object.entries(overrides)) {
     const seed = RESERVATIONS.find((s) => s.id === id);
     if (!seed) continue;
-    const next = { ...o };
-    if ((!o.source || o.source === 'Hospitable') && seed.source) {
-      next.source = seed.source;
+    const applied = applyHostNetFromSeed({
+      propertyId: seed.propertyId,
+      guestName: o.guestName ?? seed.guestName,
+      checkIn: o.checkIn ?? seed.checkIn,
+      checkOut: o.checkOut ?? seed.checkOut,
+      payout: Number(o.payout ?? seed.payout),
+      source: o.source ?? seed.source,
+    });
+    const next = { ...o, payout: applied.payout, source: applied.source };
+    if (next.payout !== o.payout || next.source !== o.source) {
+      overrides[id] = next;
       oChanged++;
     }
-    if (!(Number(o.payout) > 0) && seed.payout > 0) {
-      next.payout = seed.payout;
-      oChanged++;
-    }
-    overrides[id] = next;
   }
   if (oChanged > 0) await kvPut(env, KV_OVERRIDES, overrides);
   return n + oChanged;

@@ -62,7 +62,7 @@ function StayCard({ res }: { res: Reservation }) {
     >
       <p className="text-[9px] sm:text-[10px] font-black text-white truncate">{res.guestName}</p>
       <p className="text-[8px] sm:text-[9px] font-bold text-white/95 tabular-nums">
-        {formatCurrency(res.payout)}
+        {res.payout > 0 ? formatCurrency(res.payout) : 'TBD'}
       </p>
       <p className="text-[8px] font-bold text-white/80">
         {nights} {nights === 1 ? 'night' : 'nights'}
@@ -122,7 +122,7 @@ export function OccupancyCalendar({
           <p className="text-[10px] text-slate-500 font-bold mt-1">{PROPERTIES[propertyId]?.name}</p>
         </div>
         <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wide">
-          Check-in day shows guest, host payout, nights, and channel
+          Check-in shows guest and host-net after taxes and fees
         </p>
       </div>
       <div className="p-3 sm:p-4">
@@ -214,8 +214,10 @@ export function RevenueLog({
               </p>
             </div>
             <div className="text-right shrink-0 ml-2">
-              <p className="font-black text-sm text-slate-300">{formatCurrency(res.payout)}</p>
-              <p className="text-[8px] text-slate-600 font-bold uppercase">Host payout</p>
+              <p className="font-black text-sm text-slate-300">
+                {res.payout > 0 ? formatCurrency(res.payout) : 'TBD'}
+              </p>
+              <p className="text-[8px] text-slate-600 font-bold uppercase">Host-net</p>
             </div>
           </div>
         );

@@ -50,6 +50,44 @@ export function findSeedBankPayout(
   return undefined;
 }
 
+function channelFromSeed(current: string | undefined, seedSource: string): string {
+  if (!current || current === 'Hospitable' || current === 'Calendar' || current === 'Direct') {
+    return seedSource;
+  }
+  return current;
+}
+
+/** Overlay Airbnb/VRBO host-net onto an iCal row. Exact date match always wins. */
+export function applyHostNetFromSeed<
+  T extends {
+    propertyId: string;
+    guestName: string;
+    checkIn: string;
+    checkOut: string;
+    payout: number;
+    source: string;
+  },
+>(row: T): T {
+  const exact = RESERVATIONS.find(
+    (s) => s.propertyId === row.propertyId && s.checkIn === row.checkIn && s.checkOut === row.checkOut,
+  );
+  if (exact && exact.payout > 0) {
+    return {
+      ...row,
+      payout: exact.payout,
+      source: channelFromSeed(row.source, exact.source),
+    };
+  }
+  if ((row.payout ?? 0) > 0) return row;
+  const seed = findSeedStay(row.propertyId as PropertyId, row.guestName, row.checkIn, row.checkOut);
+  if (!seed || seed.payout <= 0) return row;
+  return {
+    ...row,
+    payout: seed.payout,
+    source: channelFromSeed(row.source, seed.source),
+  };
+}
+
 export function payoutFromIcalText(text?: string): number | undefined {
   if (!text) return undefined;
   const patterns = [
@@ -67,9 +105,10 @@ export function payoutFromIcalText(text?: string): number | undefined {
 }
 
 export function resolveIcalPayout(ev: ICalEvent, guestName: string, existing?: number): number {
-  if (existing && existing > 0) return existing;
   const fromText = payoutFromIcalText(ev.description) ?? payoutFromIcalText(ev.summary);
   if (fromText) return fromText;
   if (!ev.propertyId) return existing ?? 0;
-  return findSeedBankPayout(ev.propertyId, guestName, ev.start, ev.end) ?? existing ?? 0;
+  const fromSeed = findSeedBankPayout(ev.propertyId, guestName, ev.start, ev.end);
+  if (fromSeed) return fromSeed;
+  return existing ?? 0;
 }
