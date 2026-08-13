@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Lock } from 'lucide-react';
+import { APP_NAME, APP_TAGLINE } from '../lib/brand';
 import { api } from '../lib/api';
 
 export function LoginGate({ children }: { children: ReactNode }) {
@@ -54,7 +55,8 @@ export function LoginGate({ children }: { children: ReactNode }) {
           </div>
           <div>
             <h1 className="text-xl font-black text-white">Sign in</h1>
-            <p className="text-xs text-slate-500 font-bold uppercase">Utah Mountain Luxury</p>
+            <p className="text-xs text-slate-500 font-bold uppercase">{APP_NAME}</p>
+            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">{APP_TAGLINE}</p>
           </div>
         </div>
         <input

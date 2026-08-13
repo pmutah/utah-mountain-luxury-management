@@ -24,7 +24,7 @@ export interface ParsedExpenseBatch {
   expenses: ParsedExpense[];
 }
 
-const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
+const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Management.
 
 ${ADDRESS_RULES_PROMPT}
 

@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
+import { APP_NAME } from '../lib/brand';
 import { formatCurrency, PROPERTIES, type Expense, type Reservation } from '../lib/api';
 import { formatMonthLabel } from '../lib/months';
 import {
@@ -57,7 +58,7 @@ function reportSummaryText(report: PortfolioReportModel): string {
   const air = t.channels.Airbnb;
   const vrbo = t.channels.VRBO;
   const lines = [
-    `Utah Mountain Luxury — ${reportPeriodLabel(report.period)} (${periodRangeLabel(report)})`,
+    `${APP_NAME} — ${reportPeriodLabel(report.period)} (${periodRangeLabel(report)})`,
     `Revenue: ${formatCurrency(t.revenue)}`,
     `Net profit: ${formatCurrency(t.profit)}`,
     `Occupancy: ${fmtPct(t.occupancy)} · ${fmtNights(t.occupiedNights)} of ${t.availableNights.toLocaleString()} available`,
@@ -214,8 +215,8 @@ export function PortfolioReport({
       <section className="bg-slate-900 rounded-[40px] border border-slate-800 overflow-hidden shadow-xl">
         <div className="p-6 sm:p-8 border-b border-slate-800 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Utah Mountain Luxury</p>
-            <h2 className="text-2xl font-black text-white mt-1">Portfolio report</h2>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{APP_NAME}</p>
+            <h2 className="text-2xl font-black text-white mt-1">Management report</h2>
             <p className="text-xs text-slate-500 mt-2 max-w-xl">
               Host-net payouts land in the check-in month. Occupied nights are split when a stay crosses months.
               River House occupancy starts October 2026.

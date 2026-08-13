@@ -10,7 +10,7 @@ import {
 import { applyRockyMountainPowerVendor } from './expense-vendors';
 import { generateGeminiJson, type GeminiPart } from './gemini-call';
 
-const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Portfolio.
+const PROMPT = `You extract vacation-rental expenses for Utah Mountain Luxury Management.
 ${ADDRESS_RULES_PROMPT}
 ${MONTH_ASSIGNMENT_PROMPT}
 Categories: Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other

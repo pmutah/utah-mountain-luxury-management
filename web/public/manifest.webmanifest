@@ -1,7 +1,7 @@
 {
-  "name": "Utah Mountain Luxury Portfolio",
-  "short_name": "UM Luxury",
-  "description": "Vacation rental portfolio dashboard for The Ranch House and The Lindon House",
+  "name": "Utah Mountain Luxury Management",
+  "short_name": "UML Management",
+  "description": "Short-term rental management for The Ranch House, The Lindon House, and The River House",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",

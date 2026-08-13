@@ -1,6 +1,6 @@
-# Utah Mountain Luxury
+# Utah Mountain Luxury Management
 
-Vacation rental portfolio dashboard for **The Ranch House** and **The Lindon House**.
+Short-term rental management board for **The Ranch House**, **The Lindon House**, and **The River House**.
 
 - **Frontend:** Vite + React + Tailwind CSS
 - **Backend:** Cloudflare Pages Functions (`web/functions`)
@@ -36,4 +36,4 @@ Repo: https://github.com/pmutah/wilhite-portfolio
 
 ## License
 
-Private — Utah Mountain Luxury Portfolio
+Private — Utah Mountain Luxury Management

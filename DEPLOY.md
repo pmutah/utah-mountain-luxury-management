@@ -1,4 +1,4 @@
-# Deployment Guide — Utah Mountain Luxury Portfolio
+# Deployment Guide — Utah Mountain Luxury Management
 
 ## What's live
 

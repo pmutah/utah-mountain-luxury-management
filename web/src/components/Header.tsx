@@ -1,4 +1,5 @@
 import { Home } from 'lucide-react';
+import { APP_NAME, APP_TAGLINE } from '../lib/brand';
 import { MonthPicker } from './MonthPicker';
 
 export function Header({
@@ -16,9 +17,9 @@ export function Header({
             <Home className="text-white w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white">Utah Mountain Luxury</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">{APP_NAME}</h1>
             <p className="text-xs text-slate-500 font-bold uppercase tracking-tighter">
-              Ranch House · Lindon House · River House
+              {APP_TAGLINE} · Ranch · Lindon · River
             </p>
           </div>
         </div>
