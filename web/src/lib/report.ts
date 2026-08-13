@@ -11,7 +11,29 @@ export const REPORT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'rive
 export const RIVER_OPEN_MONTH = '2026-10';
 
 export type ReportPeriod = 'month' | 'ytd' | 'ttm';
+export type ReportPropertyFilter = 'all' | RentalPropertyId;
+export type ReportOwnerFilter = 'all' | 'brandon' | 'todd';
 export type ChannelName = 'Airbnb' | 'VRBO' | 'Other';
+
+export const OWNER_LABELS: Record<Exclude<ReportOwnerFilter, 'all'>, string> = {
+  brandon: 'Brandon Pierce',
+  todd: 'Todd Wilhite',
+};
+
+/** Todd is 50/50 on Ranch and River only. Lindon is Brandon’s. */
+export function ownerPropertyIds(owner: ReportOwnerFilter): RentalPropertyId[] {
+  if (owner === 'todd') return ['ranch', 'river'];
+  return [...REPORT_PROPERTY_IDS];
+}
+
+export function resolveReportProperties(
+  property: ReportPropertyFilter,
+  owner: ReportOwnerFilter,
+): RentalPropertyId[] {
+  const allowed = ownerPropertyIds(owner);
+  if (property === 'all') return allowed;
+  return allowed.includes(property) ? [property] : [];
+}
 
 export type ChannelSlice = {
   channel: ChannelName;
@@ -58,6 +80,9 @@ export type MonthlyReportPoint = {
 
 export type PortfolioReportModel = {
   period: ReportPeriod;
+  propertyFilter: ReportPropertyFilter;
+  ownerFilter: ReportOwnerFilter;
+  propertyIds: RentalPropertyId[];
   startMonth: string;
   endMonth: string;
   months: string[];
@@ -263,6 +288,61 @@ function sumDist(rows: PropertyReportRow[]): OwnerDistribution | null {
   );
 }
 
+function ownerTake(row: PropertyReportRow, owner: ReportOwnerFilter): number {
+  if (owner === 'all') return row.profit;
+  if (row.dist) return owner === 'brandon' ? row.dist.brandon : row.dist.todd;
+  return owner === 'brandon' ? row.profit : 0;
+}
+
+function applyOwnerView(row: PropertyReportRow, owner: ReportOwnerFilter): PropertyReportRow {
+  if (owner === 'all') return row;
+  return finalizeRow({
+    propertyId: row.propertyId,
+    name: row.name,
+    revenue: row.revenue,
+    profit: ownerTake(row, owner),
+    stayCount: row.stayCount,
+    stayNights: row.stayNights,
+    occupiedNights: row.occupiedNights,
+    availableNights: row.availableNights,
+    mortgage: row.mortgage,
+    cleaning: row.cleaning,
+    operating: row.operating,
+    dist: row.dist,
+    channels: row.channels,
+  });
+}
+
+function scopeTitle(
+  ids: RentalPropertyId[],
+  owner: ReportOwnerFilter,
+): string {
+  const homes =
+    ids.length === REPORT_PROPERTY_IDS.length
+      ? 'All properties'
+      : ids.map((id) => PROPERTIES[id].name.replace(/^The /, '')).join(' · ');
+  if (owner === 'all') return homes;
+  return `${owner === 'brandon' ? 'Brandon' : 'Todd'} · ${homes}`;
+}
+
+function emptyRow(name: string, propertyId: PropertyReportRow['propertyId']): PropertyReportRow {
+  return finalizeRow({
+    propertyId,
+    name,
+    revenue: 0,
+    profit: 0,
+    stayCount: 0,
+    stayNights: 0,
+    occupiedNights: 0,
+    availableNights: 0,
+    mortgage: 0,
+    cleaning: 0,
+    operating: 0,
+    dist: null,
+    channels: emptyChannels(),
+  });
+}
+
 function sumRows(rows: PropertyReportRow[], name: string, propertyId: PropertyReportRow['propertyId']): PropertyReportRow {
   const channels = emptyChannels();
   let revenue = 0;
@@ -311,24 +391,48 @@ export function buildPortfolioReport(
   reservations: Reservation[],
   expenses: Expense[],
   extraCleaningFees: Record<string, number> = {},
+  propertyFilter: ReportPropertyFilter = 'all',
+  ownerFilter: ReportOwnerFilter = 'all',
 ): PortfolioReportModel {
   const months = periodMonths(period, endMonth);
   const startMonth = months[0] ?? endMonth;
-  const propertyAcc: Record<RentalPropertyId, PropertyReportRow[]> = {
-    ranch: [],
-    lindon: [],
-    river: [],
-  };
+  const propertyIds = resolveReportProperties(propertyFilter, ownerFilter);
+  const idSet = new Set(propertyIds);
+  const title = scopeTitle(propertyIds, ownerFilter);
+
+  if (propertyIds.length === 0) {
+    return {
+      period,
+      propertyFilter,
+      ownerFilter,
+      propertyIds,
+      startMonth,
+      endMonth,
+      months,
+      properties: [],
+      totals: emptyRow(title || 'No properties', 'portfolio'),
+      monthly: [],
+      expensesByCategory: [],
+      forward: { stays: 0, nights: 0, revenue: 0 },
+      topStays: [],
+    };
+  }
+
+  const propertyAcc: Partial<Record<RentalPropertyId, PropertyReportRow[]>> = {};
+  for (const id of propertyIds) propertyAcc[id] = [];
   const monthly: MonthlyReportPoint[] = [];
 
   for (const month of months) {
-    const monthRows = REPORT_PROPERTY_IDS.map((id) =>
-      monthPropertyMetrics(id, month, reservations, expenses, extraCleaningFees),
+    const monthRows = propertyIds.map((id) =>
+      applyOwnerView(
+        monthPropertyMetrics(id, month, reservations, expenses, extraCleaningFees),
+        ownerFilter,
+      ),
     );
     for (const row of monthRows) {
-      if (row.propertyId !== 'portfolio') propertyAcc[row.propertyId].push(row);
+      if (row.propertyId !== 'portfolio') propertyAcc[row.propertyId]?.push(row);
     }
-    const tot = sumRows(monthRows, 'Portfolio', 'portfolio');
+    const tot = sumRows(monthRows, title, 'portfolio');
     monthly.push({
       month,
       revenue: tot.revenue,
@@ -343,8 +447,10 @@ export function buildPortfolioReport(
     });
   }
 
-  const properties = REPORT_PROPERTY_IDS.map((id) => sumRows(propertyAcc[id], PROPERTIES[id].name, id));
-  const totals = sumRows(properties, 'All properties', 'portfolio');
+  const properties = propertyIds.map((id) =>
+    sumRows(propertyAcc[id] ?? [], PROPERTIES[id].name, id),
+  );
+  const totals = sumRows(properties, title, 'portfolio');
 
   const monthSet = new Set(months);
   const expensesByCategory = new Map<string, number>();
@@ -353,25 +459,29 @@ export function buildPortfolioReport(
   for (const e of expenses) {
     if (!monthSet.has(e.month)) continue;
     if (e.category === 'Mortgage' || e.category === 'Cleaning') continue;
-    if (!REPORT_PROPERTY_IDS.includes(e.propertyId as RentalPropertyId)) continue;
+    if (!idSet.has(e.propertyId as RentalPropertyId)) continue;
     expensesByCategory.set(e.category, (expensesByCategory.get(e.category) ?? 0) + e.amount);
   }
 
   const periodEnd = lastDayOfMonth(endMonth);
+  const inScope = (propertyId: string) => idSet.has(propertyId as RentalPropertyId);
   const forwardStays = reservations.filter(
-    (r) => isActiveStay(r) && r.checkIn > periodEnd && REPORT_PROPERTY_IDS.includes(r.propertyId as RentalPropertyId),
+    (r) => isActiveStay(r) && r.checkIn > periodEnd && inScope(r.propertyId),
   );
   const checkInStays = reservations
     .filter(
       (r) =>
         isActiveStay(r) &&
-        REPORT_PROPERTY_IDS.includes(r.propertyId as RentalPropertyId) &&
+        inScope(r.propertyId) &&
         months.some((m) => r.checkIn.startsWith(m)),
     )
     .sort((a, b) => b.payout - a.payout);
 
   return {
     period,
+    propertyFilter,
+    ownerFilter,
+    propertyIds,
     startMonth,
     endMonth,
     months,
@@ -395,4 +505,10 @@ export function reportPeriodLabel(period: ReportPeriod): string {
   if (period === 'month') return 'This month';
   if (period === 'ytd') return 'Year to date';
   return 'Trailing 12 months';
+}
+
+export function reportOwnerLabel(owner: ReportOwnerFilter): string {
+  if (owner === 'brandon') return OWNER_LABELS.brandon;
+  if (owner === 'todd') return OWNER_LABELS.todd;
+  return 'All owners';
 }

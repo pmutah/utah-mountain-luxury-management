@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   BarChart3,
   CalendarDays,
@@ -14,11 +14,14 @@ import { formatCurrency, PROPERTIES, type Expense, type Reservation } from '../l
 import { formatMonthLabel } from '../lib/months';
 import {
   buildPortfolioReport,
+  reportOwnerLabel,
   reportPeriodLabel,
   type ChannelName,
   type PortfolioReportModel,
   type PropertyReportRow,
+  type ReportOwnerFilter,
   type ReportPeriod,
+  type ReportPropertyFilter,
 } from '../lib/report';
 
 const PERIODS: Array<{ id: ReportPeriod; label: string }> = [
@@ -32,6 +35,50 @@ const CHANNEL_STYLE: Record<ChannelName, { bar: string; text: string }> = {
   VRBO: { bar: 'bg-blue-600', text: 'text-blue-400' },
   Other: { bar: 'bg-slate-500', text: 'text-slate-400' },
 };
+
+const PROPERTY_FILTERS: Array<{ id: ReportPropertyFilter; label: string; activeClass: string }> = [
+  { id: 'all', label: 'All together', activeClass: 'bg-violet-600 text-white shadow-xl' },
+  { id: 'ranch', label: 'Ranch', activeClass: 'bg-blue-600 text-white shadow-xl' },
+  { id: 'lindon', label: 'Lindon', activeClass: 'bg-emerald-600 text-white shadow-xl' },
+  { id: 'river', label: 'River', activeClass: 'bg-cyan-600 text-white shadow-xl' },
+];
+
+const OWNER_FILTERS: Array<{ id: ReportOwnerFilter; label: string; activeClass: string }> = [
+  { id: 'all', label: 'All together', activeClass: 'bg-violet-600 text-white shadow-xl' },
+  { id: 'brandon', label: 'Brandon', activeClass: 'bg-blue-600 text-white shadow-xl' },
+  { id: 'todd', label: 'Todd', activeClass: 'bg-slate-600 text-white shadow-xl' },
+];
+
+function FilterChip({
+  active,
+  disabled,
+  onClick,
+  activeClass,
+  children,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  activeClass: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] ${
+        disabled
+          ? 'bg-slate-950 text-slate-700 border border-slate-800 cursor-not-allowed'
+          : active
+            ? activeClass
+            : 'bg-slate-950 text-slate-500 border border-slate-800'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 const PROPERTY_ACCENT: Record<string, string> = {
   ranch: 'text-blue-400',
@@ -59,6 +106,7 @@ function reportSummaryText(report: PortfolioReportModel): string {
   const vrbo = t.channels.VRBO;
   const lines = [
     `${APP_NAME} — ${reportPeriodLabel(report.period)} (${periodRangeLabel(report)})`,
+    `Scope: ${report.totals.name} · ${reportOwnerLabel(report.ownerFilter)}`,
     `Revenue: ${formatCurrency(t.revenue)}`,
     `Net profit: ${formatCurrency(t.profit)}`,
     `Occupancy: ${fmtPct(t.occupancy)} · ${fmtNights(t.occupiedNights)} of ${t.availableNights.toLocaleString()} available`,
@@ -141,7 +189,8 @@ function ChannelBars({ row }: { row: PropertyReportRow }) {
 }
 
 function PropertyTable({ report }: { report: PortfolioReportModel }) {
-  const rows = [...report.properties, report.totals];
+  const rows =
+    report.properties.length > 1 ? [...report.properties, report.totals] : report.properties;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left min-w-[720px]">
@@ -203,12 +252,36 @@ export function PortfolioReport({
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
 }) {
   const [period, setPeriod] = useState<ReportPeriod>('ytd');
+  const [propertyFilter, setPropertyFilter] = useState<ReportPropertyFilter>('all');
+  const [ownerFilter, setOwnerFilter] = useState<ReportOwnerFilter>('all');
   const report = useMemo(
-    () => buildPortfolioReport(month, period, reservations, expenses, extraCleaningFees),
-    [month, period, reservations, expenses, extraCleaningFees],
+    () =>
+      buildPortfolioReport(
+        month,
+        period,
+        reservations,
+        expenses,
+        extraCleaningFees,
+        propertyFilter,
+        ownerFilter,
+      ),
+    [month, period, reservations, expenses, extraCleaningFees, propertyFilter, ownerFilter],
   );
   const t = report.totals;
   const expenseMax = Math.max(...report.expensesByCategory.map((e) => e.amount), 1);
+  const profitLabel =
+    ownerFilter === 'brandon' ? "Brandon's take" : ownerFilter === 'todd' ? "Todd's take" : 'Net profit';
+  const profitHint =
+    ownerFilter === 'brandon'
+      ? 'Lindon profit + ranch/river fee and 50% leftover'
+      : ownerFilter === 'todd'
+        ? '50% leftover after Brandon’s 20% fee'
+        : 'After mortgage, cleaning, opex';
+
+  const selectOwner = (owner: ReportOwnerFilter) => {
+    setOwnerFilter(owner);
+    if (owner === 'todd' && propertyFilter === 'lindon') setPropertyFilter('all');
+  };
 
   return (
     <div className="space-y-6">
@@ -222,6 +295,7 @@ export function PortfolioReport({
               River House occupancy starts October 2026.
             </p>
             <p className="text-xs text-slate-400 font-bold mt-2">{periodRangeLabel(report)}</p>
+            <p className="text-xs text-slate-500 mt-1">{report.totals.name}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {PERIODS.map((p) => (
@@ -254,14 +328,55 @@ export function PortfolioReport({
           </div>
         </div>
 
+        <div className="px-6 sm:px-8 py-4 border-b border-slate-800 space-y-4">
+          <div>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Property</p>
+            <div className="flex flex-wrap gap-2">
+              {PROPERTY_FILTERS.map((p) => (
+                <FilterChip
+                  key={p.id}
+                  active={propertyFilter === p.id}
+                  disabled={ownerFilter === 'todd' && p.id === 'lindon'}
+                  activeClass={p.activeClass}
+                  onClick={() => setPropertyFilter(p.id)}
+                >
+                  {p.label}
+                </FilterChip>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Owner</p>
+            <div className="flex flex-wrap gap-2">
+              {OWNER_FILTERS.map((o) => (
+                <FilterChip
+                  key={o.id}
+                  active={ownerFilter === o.id}
+                  activeClass={o.activeClass}
+                  onClick={() => selectOwner(o.id)}
+                >
+                  {o.label}
+                </FilterChip>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-600 font-bold mt-2">
+              {ownerFilter === 'todd'
+                ? 'Todd: Ranch and River 50/50 after Brandon’s 20% fee. Lindon is Brandon’s.'
+                : ownerFilter === 'brandon'
+                  ? 'Brandon: Lindon in full, plus ranch/river management fee and 50% leftover.'
+                  : 'All together: full property P&L. Switch owner to see each person’s take.'}
+            </p>
+          </div>
+        </div>
+
         <div className="p-6 sm:p-8 grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Kpi label="Total revenue" value={formatCurrency(t.revenue)} icon={BarChart3} hint="Host-net, check-in month" />
           <Kpi
-            label="Net profit"
+            label={profitLabel}
             value={formatCurrency(t.profit)}
             icon={DollarSign}
             color={t.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}
-            hint="After mortgage, cleaning, opex"
+            hint={profitHint}
           />
           <Kpi
             label="Occupancy"
@@ -310,10 +425,12 @@ export function PortfolioReport({
         </div>
       </section>
 
+      {report.properties.length > 0 && (
       <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">By property</h3>
         <PropertyTable report={report} />
       </section>
+      )}
 
       {report.monthly.length > 1 && (
         <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
@@ -362,12 +479,28 @@ export function PortfolioReport({
             Ranch and River: 20% management fee to Brandon, then leftover 50/50. Lindon is not in this split.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-slate-950/60 p-5 rounded-3xl border border-slate-800">
+            <div
+              className={`bg-slate-950/60 p-5 rounded-3xl border ${
+                ownerFilter === 'all'
+                  ? 'border-slate-800'
+                  : ownerFilter === 'brandon'
+                    ? 'border-blue-700/60'
+                    : 'border-slate-800 opacity-50'
+              }`}
+            >
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Brandon</p>
               <p className="text-2xl font-black text-blue-400 mt-1">{formatCurrency(t.dist.brandon)}</p>
               <p className="text-[10px] text-slate-600 font-bold mt-1">Mgmt fee + 50% leftover</p>
             </div>
-            <div className="bg-slate-950/60 p-5 rounded-3xl border border-slate-800">
+            <div
+              className={`bg-slate-950/60 p-5 rounded-3xl border ${
+                ownerFilter === 'all'
+                  ? 'border-slate-800'
+                  : ownerFilter === 'todd'
+                    ? 'border-slate-500'
+                    : 'border-slate-800 opacity-50'
+              }`}
+            >
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Todd</p>
               <p className="text-2xl font-black text-white mt-1">{formatCurrency(t.dist.todd)}</p>
               <p className="text-[10px] text-slate-600 font-bold mt-1">50% leftover</p>
