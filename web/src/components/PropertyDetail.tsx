@@ -1,6 +1,5 @@
-import { Brush } from 'lucide-react';
+import { Brush, CalendarX } from 'lucide-react';
 import {
-  api,
   formatCurrency,
   PROPERTIES,
   type PortfolioData,
@@ -12,8 +11,7 @@ import { ExtraCleaningInput } from './ExtraCleaningInput';
 import { ExpenseScanner } from './ExpenseScanner';
 import { OccupancyCalendar, RevenueLog } from './OccupancyCalendar';
 import { EmptyState } from './EmptyState';
-import { CalendarX } from 'lucide-react';
-import { ExpenseRow } from './ExpenseRow';
+import { PropertyExpensesByMonth } from './PropertyExpensesByMonth';
 
 type TabId = RentalPropertyId;
 
@@ -99,44 +97,18 @@ export function PropertyDetail({
             onError={onError}
             onToast={onToast}
           />
-
-          {data.expenses.filter(
-            (e) =>
-              e.propertyId === tab &&
-              e.month === data.month &&
-              e.category !== 'Mortgage' &&
-              !e.id.startsWith('exp-'),
-          ).length > 0 && (
-            <div className="pt-4 border-t border-slate-800/50">
-              <p className="text-[10px] font-bold text-slate-500 uppercase mb-3">Other operational expenses</p>
-              {data.expenses
-                .filter(
-                  (e) =>
-                    e.propertyId === tab &&
-                    e.month === data.month &&
-                    e.category !== 'Mortgage' &&
-                    !e.id.startsWith('exp-'),
-                )
-                .map((e) => (
-                  <ExpenseRow
-                    key={e.id}
-                    expense={e}
-                    onDelete={
-                      e.id.startsWith('exp-')
-                        ? async (id) => {
-                            await api.deleteExpense(id);
-                            onRefresh();
-                          }
-                        : undefined
-                    }
-                    onError={onError}
-                    onToast={onToast}
-                  />
-                ))}
-            </div>
-          )}
         </div>
       </div>
+
+      <PropertyExpensesByMonth
+        propertyId={tab}
+        month={data.month}
+        expenses={data.expenses}
+        extraCleaningFees={extraCleaningFees}
+        onRefresh={onRefresh}
+        onToast={onToast}
+        onError={onError}
+      />
 
       <div className="bg-slate-900 rounded-[40px] border border-slate-800 overflow-hidden">
         <div className="p-6 border-b border-slate-800 flex justify-between items-center px-8">
