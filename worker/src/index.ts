@@ -3,6 +3,7 @@
 const PROPERTIES = {
   ranch: { id: 'ranch', name: 'The Ranch House', address: '270 East Center Street, Lindon, Utah 84042', cleaningFee: 350, accentColor: 'bg-blue-500', mortgage: 3133.36 },
   lindon: { id: 'lindon', name: 'The Lindon House', address: '143 Harcliff Circle, Lindon, Utah 84042', cleaningFee: 160, accentColor: 'bg-emerald-500', mortgage: 1265.14 },
+  river: { id: 'river', name: 'The River House', address: 'Vivian Park, Provo Canyon, Utah 84604', cleaningFee: 0, accentColor: 'bg-cyan-500', mortgage: 0 },
 } as const;
 
 type PropertyId = keyof typeof PROPERTIES;
@@ -114,7 +115,7 @@ function calculateMetrics(propId: PropertyId, currentMonth: string) {
   const profit = revenue - (mortgage + totalCleaning + operationalExpenses);
 
   let dist = null;
-  if (propId === 'ranch') {
+  if (propId === 'ranch' || propId === 'river') {
     const basis = revenue - totalCleaning;
     const mgtFee = basis > 0 ? basis * 0.2 : 0;
     const leftover = basis - mgtFee - (mortgage + operationalExpenses);

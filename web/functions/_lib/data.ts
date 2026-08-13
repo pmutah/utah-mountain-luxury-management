@@ -17,6 +17,15 @@ export const PROPERTIES = {
     mortgage: 1265.14,
     status: 'active' as const,
   },
+  river: {
+    id: 'river',
+    name: 'The River House',
+    address: 'Vivian Park, Provo Canyon, Utah 84604',
+    cleaningFee: 0,
+    accentColor: 'bg-cyan-500',
+    mortgage: 0,
+    status: 'active' as const,
+  },
   construction: {
     id: 'construction',
     name: 'Construction Project',
@@ -29,12 +38,15 @@ export const PROPERTIES = {
 } as const;
 
 export type PropertyId = keyof typeof PROPERTIES;
-export type RentalPropertyId = 'ranch' | 'lindon';
+export type RentalPropertyId = 'ranch' | 'lindon' | 'river';
 
-export const RENTAL_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon'];
+export const RENTAL_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
+
+/** 50/50 Brandon–Todd after a 20% management fee to Brandon. */
+export const OWNER_SPLIT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'river'];
 
 export function isRentalProperty(id: string): id is RentalPropertyId {
-  return id === 'ranch' || id === 'lindon';
+  return id === 'ranch' || id === 'lindon' || id === 'river';
 }
 
 /** Host-net after Airbnb/VRBO taxes and fees (what we keep). Dates match Hospitable iCal. */
@@ -187,7 +199,7 @@ export function calculateMetrics(
   const profit = revenue - (mortgage + totalCleaning + operationalExpenses);
 
   let dist = null;
-  if (propId === 'ranch') {
+  if (OWNER_SPLIT_PROPERTY_IDS.includes(propId)) {
     const basis = revenue - totalCleaning;
     const mgtFee = basis > 0 ? basis * 0.2 : 0;
     const leftover = basis - mgtFee - (mortgage + operationalExpenses);
@@ -208,6 +220,21 @@ export function calculateMetrics(
     stayCount,
     dist,
   };
+}
+
+/** River House first stays Oct 15, 2026 — omit it from portfolio occupancy until then. */
+export const RIVER_OPEN_MONTH = '2026-10';
+
+export function portfolioAvgOccupancy(
+  month: string,
+  ranchOcc: number,
+  lindonOcc: number,
+  riverOcc: number,
+): number {
+  if (month >= RIVER_OPEN_MONTH) {
+    return (ranchOcc + lindonOcc + riverOcc) / 3;
+  }
+  return (ranchOcc + lindonOcc) / 2;
 }
 
 export function corsJson(

@@ -35,6 +35,11 @@ export function TrendCharts({ history }: { history: HistoryData }) {
                   style={{ height: `${(h.lindon.revenue / maxRev) * 100}%` }}
                   title={`Lindon ${formatCurrency(h.lindon.revenue)}`}
                 />
+                <div
+                  className="w-full bg-cyan-600 rounded-t-sm"
+                  style={{ height: `${((h.river?.revenue ?? 0) / maxRev) * 100}%` }}
+                  title={`River ${formatCurrency(h.river?.revenue ?? 0)}`}
+                />
               </div>
               <span className="text-[8px] font-bold text-slate-600 truncate w-full text-center">
                 {shortMonth(h.month)}
@@ -45,6 +50,7 @@ export function TrendCharts({ history }: { history: HistoryData }) {
         <div className="flex gap-4 justify-center mt-4 text-[9px] font-bold uppercase text-slate-500">
           <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-600 rounded-sm" /> Ranch</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-600 rounded-sm" /> Lindon</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 bg-cyan-600 rounded-sm" /> River</span>
         </div>
       </div>
 

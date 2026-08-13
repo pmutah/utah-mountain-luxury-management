@@ -14,7 +14,7 @@ export interface ParsedExpense {
   amount: number;
   category: string;
   month: string;
-  propertyId: 'ranch' | 'lindon' | null;
+  propertyId: 'ranch' | 'lindon' | 'river' | null;
   vendor?: string;
   note?: string;
   confidence?: 'high' | 'low';
@@ -33,7 +33,7 @@ ${MONTH_ASSIGNMENT_PROMPT}
 Categories (pick one): Maintenance, Supplies, Utilities, Cleaning, Insurance, HOA, Landscaping, Other
 
 Return ONLY valid JSON:
-{"expenses":[{"amount":number,"category":string,"month":"YYYY-MM","propertyId":"ranch"|"lindon"|null,"vendor":string,"note":string,"confidence":"high"|"low"}]}
+{"expenses":[{"amount":number,"category":string,"month":"YYYY-MM","propertyId":"ranch"|"lindon"|"river"|null,"vendor":string,"note":string,"confidence":"high"|"low"}]}
 
 Rules:
 - A document may contain ZERO, ONE, or TWO expenses — only for 270 East Center Street and/or 143 Harcliff Circle (never other addresses)
@@ -74,7 +74,7 @@ function normalizeExpense(raw: ParsedExpense, context: MonthInferenceContext = {
   parsed.month = month;
   if (confidencePenalty) parsed.confidence = 'low';
 
-  if (parsed.propertyId !== 'ranch' && parsed.propertyId !== 'lindon') {
+  if (parsed.propertyId !== 'ranch' && parsed.propertyId !== 'lindon' && parsed.propertyId !== 'river') {
     parsed.propertyId = null;
     parsed.confidence = 'low';
   }

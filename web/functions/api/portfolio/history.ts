@@ -1,4 +1,4 @@
-import { calculateMetrics, PROPERTIES, corsJson } from '../../_lib/data';
+import { calculateMetrics, PROPERTIES, corsJson, portfolioAvgOccupancy } from '../../_lib/data';
 import { mergeAllExpenses, ensureTurnoverCleaningExpenses } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { currentYearMonth, monthRange } from '../../_lib/months';
@@ -18,6 +18,7 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   const history = months.map((month) => {
     const ranch = calculateMetrics('ranch', month, fees, allExpenses, reservations);
     const lindon = calculateMetrics('lindon', month, fees, allExpenses, reservations);
+    const river = calculateMetrics('river', month, fees, allExpenses, reservations);
     return {
       month,
       ranch: {
@@ -32,9 +33,15 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
         occupancy: lindon.occupancy,
         stayCount: lindon.stayCount,
       },
-      totalRevenue: ranch.revenue + lindon.revenue,
-      totalProfit: ranch.profit + lindon.profit,
-      avgOccupancy: (ranch.occupancy + lindon.occupancy) / 2,
+      river: {
+        revenue: river.revenue,
+        profit: river.profit,
+        occupancy: river.occupancy,
+        stayCount: river.stayCount,
+      },
+      totalRevenue: ranch.revenue + lindon.revenue + river.revenue,
+      totalProfit: ranch.profit + lindon.profit + river.profit,
+      avgOccupancy: portfolioAvgOccupancy(month, ranch.occupancy, lindon.occupancy, river.occupancy),
     };
   });
 

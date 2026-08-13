@@ -7,6 +7,14 @@ export const PROPERTIES = {
     accentColor: 'bg-blue-500',
     mortgage: 3133.36,
   },
+  river: {
+    id: 'river',
+    name: 'The River House',
+    address: 'Vivian Park, Provo Canyon, Utah 84604',
+    cleaningFee: 0,
+    accentColor: 'bg-cyan-500',
+    mortgage: 0,
+  },
   lindon: {
     id: 'lindon',
     name: 'The Lindon House',

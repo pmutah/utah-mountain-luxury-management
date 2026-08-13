@@ -39,19 +39,32 @@ export async function updateOpsTask(
   return list[idx]!;
 }
 
+const DEFAULT_PROPERTY_CONFIG: Record<PropertyId, PropertyOpsConfig> = {
+  ranch: {
+    houseRules: 'Quiet hours 10pm–8am. No parties. Max occupancy per listing.',
+    lockCodeTemplate: 'Your door code is {code}. Check-in after 4pm.',
+  },
+  lindon: {
+    houseRules: 'Quiet hours 10pm–8am. No smoking indoors.',
+    lockCodeTemplate: 'Your door code is {code}. Check-in after 4pm.',
+  },
+  river: {
+    houseRules:
+      'Quiet hours in this mountain neighborhood. Whole-house rental only. No parties without written approval. Follow septic drain and trash guidelines in the house manual.',
+    lockCodeTemplate:
+      'Your door code is {code}. Check-in after 4pm. House manual and lock details are sent after booking.',
+  },
+};
+
 export async function loadPropertyConfig(
   env: SettingsEnv,
 ): Promise<Record<PropertyId, PropertyOpsConfig>> {
-  return kvGet(env, KV_CONFIG, {
-    ranch: {
-      houseRules: 'Quiet hours 10pm–8am. No parties. Max occupancy per listing.',
-      lockCodeTemplate: 'Your door code is {code}. Check-in after 4pm.',
-    },
-    lindon: {
-      houseRules: 'Quiet hours 10pm–8am. No smoking indoors.',
-      lockCodeTemplate: 'Your door code is {code}. Check-in after 4pm.',
-    },
-  });
+  const stored = await kvGet<Partial<Record<PropertyId, PropertyOpsConfig>>>(env, KV_CONFIG, {});
+  return {
+    ranch: { ...DEFAULT_PROPERTY_CONFIG.ranch, ...stored.ranch },
+    lindon: { ...DEFAULT_PROPERTY_CONFIG.lindon, ...stored.lindon },
+    river: { ...DEFAULT_PROPERTY_CONFIG.river, ...stored.river },
+  };
 }
 
 export async function savePropertyConfig(

@@ -1,4 +1,4 @@
-export type PropertyId = 'ranch' | 'lindon';
+export type PropertyId = 'ranch' | 'lindon' | 'river';
 
 export type ReservationStatus = 'confirmed' | 'cancelled' | 'blocked' | 'pending';
 
@@ -31,6 +31,7 @@ export interface CalendarBlock {
 export interface ICalFeedConfig {
   ranch?: string;
   lindon?: string;
+  river?: string;
   lastSyncedAt?: string;
 }
 

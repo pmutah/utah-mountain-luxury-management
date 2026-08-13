@@ -150,7 +150,7 @@ async function handleFinances(
     let totalProfit = 0;
     const byProperty: Record<string, { revenue: number; profit: number }> = {};
     for (const month of months) {
-      for (const pid of ['ranch', 'lindon'] as PropertyId[]) {
+      for (const pid of ['ranch', 'lindon', 'river'] as PropertyId[]) {
         const metrics = calculateMetrics(pid, month, fees, allExpenses, reservations);
         totalRevenue += metrics.revenue;
         totalProfit += metrics.profit;

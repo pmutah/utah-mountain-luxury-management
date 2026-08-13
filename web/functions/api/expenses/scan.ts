@@ -17,7 +17,7 @@ export const onRequestPost: PagesFunction<ScanEnv> = async ({ request, env }) =>
     text?: string;
     imageBase64?: string;
     mimeType?: string;
-    propertyId?: 'ranch' | 'lindon';
+    propertyId?: 'ranch' | 'lindon' | 'river';
     month?: string;
   };
 

@@ -9,7 +9,8 @@ export function portfolioToCsv(data: PortfolioData): string {
     'Property,Revenue,Profit,Occupancy %,Stays',
     `Ranch,${data.ranch.revenue},${data.ranch.profit},${data.ranch.occupancy.toFixed(1)},${data.ranch.stayCount}`,
     `Lindon,${data.lindon.revenue},${data.lindon.profit},${data.lindon.occupancy.toFixed(1)},${data.lindon.stayCount}`,
-    `Total,${data.totalRevenue ?? data.ranch.revenue + data.lindon.revenue},${data.totalProfit ?? data.ranch.profit + data.lindon.profit},,`,
+    `River,${data.river.revenue},${data.river.profit},${data.river.occupancy.toFixed(1)},${data.river.stayCount}`,
+    `Total,${data.totalRevenue ?? data.ranch.revenue + data.lindon.revenue + data.river.revenue},${data.totalProfit ?? data.ranch.profit + data.lindon.profit + data.river.profit},,`,
     '',
     'Guest,Property,Check-in,Check-out,Payout,Source',
   ];
@@ -22,14 +23,15 @@ export function portfolioToCsv(data: PortfolioData): string {
 }
 
 export function portfolioSummaryText(data: PortfolioData): string {
-  const rev = data.ranch.revenue + data.lindon.revenue;
-  const profit = data.ranch.profit + data.lindon.profit;
+  const rev = data.ranch.revenue + data.lindon.revenue + data.river.revenue;
+  const profit = data.ranch.profit + data.lindon.profit + data.river.profit;
   return [
     `Utah Mountain Luxury — ${formatMonthLabel(data.month)}`,
     `Revenue: ${formatCurrency(rev)}`,
     `Net profit: ${formatCurrency(profit)}`,
     `Ranch: ${formatCurrency(data.ranch.revenue)} (${data.ranch.stayCount} stays)`,
     `Lindon: ${formatCurrency(data.lindon.revenue)} (${data.lindon.stayCount} stays)`,
+    `River: ${formatCurrency(data.river.revenue)} (${data.river.stayCount} stays)`,
   ].join('\n');
 }
 

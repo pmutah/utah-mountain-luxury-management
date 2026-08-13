@@ -1,4 +1,4 @@
-import { PROPERTIES, calculateMetrics, corsJson } from '../../_lib/data';
+import { PROPERTIES, calculateMetrics, corsJson, portfolioAvgOccupancy } from '../../_lib/data';
 import { mergeAllExpenses, withReceiptUrls, ensureTurnoverCleaningExpenses } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { addMonths, currentYearMonth } from '../../_lib/months';
@@ -18,14 +18,16 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   reservations = await getAllReservations(env);
   const ranch = calculateMetrics('ranch', month, fees, allExpenses, reservations);
   const lindon = calculateMetrics('lindon', month, fees, allExpenses, reservations);
+  const river = calculateMetrics('river', month, fees, allExpenses, reservations);
 
   const payload: Record<string, unknown> = {
     month,
     ranch,
     lindon,
-    totalRevenue: ranch.revenue + lindon.revenue,
-    totalProfit: ranch.profit + lindon.profit,
-    avgOccupancy: (ranch.occupancy + lindon.occupancy) / 2,
+    river,
+    totalRevenue: ranch.revenue + lindon.revenue + river.revenue,
+    totalProfit: ranch.profit + lindon.profit + river.profit,
+    avgOccupancy: portfolioAvgOccupancy(month, ranch.occupancy, lindon.occupancy, river.occupancy),
     reservations,
     expenses: allExpenses,
     extraCleaningFees: fees,
@@ -36,13 +38,20 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     const prevMonth = addMonths(month, -1);
     const prevRanch = calculateMetrics('ranch', prevMonth, fees, allExpenses, reservations);
     const prevLindon = calculateMetrics('lindon', prevMonth, fees, allExpenses, reservations);
+    const prevRiver = calculateMetrics('river', prevMonth, fees, allExpenses, reservations);
     payload.previousMonth = prevMonth;
     payload.previous = {
       ranch: prevRanch,
       lindon: prevLindon,
-      totalRevenue: prevRanch.revenue + prevLindon.revenue,
-      totalProfit: prevRanch.profit + prevLindon.profit,
-      avgOccupancy: (prevRanch.occupancy + prevLindon.occupancy) / 2,
+      river: prevRiver,
+      totalRevenue: prevRanch.revenue + prevLindon.revenue + prevRiver.revenue,
+      totalProfit: prevRanch.profit + prevLindon.profit + prevRiver.profit,
+      avgOccupancy: portfolioAvgOccupancy(
+        prevMonth,
+        prevRanch.occupancy,
+        prevLindon.occupancy,
+        prevRiver.occupancy,
+      ),
     };
   }
 

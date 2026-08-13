@@ -103,7 +103,7 @@ export function calculateMetrics(
   const profit = revenue - totalCosts;
 
   let dist: OwnerDistribution | null = null;
-  if (propId === 'ranch') {
+  if (propId === 'ranch' || propId === 'river') {
     const basis = revenue - totalCleaning;
     const mgtFee = basis > 0 ? basis * 0.2 : 0;
     const leftover = basis - mgtFee - (mortgage + operationalExpenses);

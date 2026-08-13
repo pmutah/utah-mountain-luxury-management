@@ -9,7 +9,7 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
   const body = (await request.json()) as {
-    propertyId: 'ranch' | 'lindon';
+    propertyId: 'ranch' | 'lindon' | 'river';
     start: string;
     end: string;
     type?: 'maintenance' | 'owner' | 'blocked';

@@ -21,10 +21,10 @@ export function PortfolioOverview({
   onRefresh: () => void;
   onError: (msg: string) => void;
 }) {
-  const { ranch, lindon, previous } = data;
-  const rev = ranch.revenue + lindon.revenue;
-  const profit = ranch.profit + lindon.profit;
-  const occ = (ranch.occupancy + lindon.occupancy) / 2;
+  const { ranch, lindon, river, previous, avgOccupancy } = data;
+  const rev = ranch.revenue + lindon.revenue + river.revenue;
+  const profit = ranch.profit + lindon.profit + river.profit;
+  const occ = avgOccupancy ?? (ranch.occupancy + lindon.occupancy) / 2;
 
   const revDelta = previous ? pctChange(rev, previous.totalRevenue) : undefined;
   const profitDelta = previous ? pctChange(profit, previous.totalProfit) : undefined;
@@ -63,6 +63,11 @@ export function PortfolioOverview({
           <div className="text-center">
             <p className="text-3xl font-black text-emerald-500">{formatCurrency(lindon.revenue)}</p>
             <p className="text-[10px] font-bold uppercase mt-2 text-slate-500">Lindon House</p>
+          </div>
+          <div className="h-12 w-px bg-slate-800 hidden sm:block" />
+          <div className="text-center">
+            <p className="text-3xl font-black text-cyan-500">{formatCurrency(river.revenue)}</p>
+            <p className="text-[10px] font-bold uppercase mt-2 text-slate-500">River House</p>
           </div>
         </div>
       </div>

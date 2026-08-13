@@ -171,8 +171,8 @@ export function filterReservations(
 }
 
 export function getOccupancySummary(list: ReservationRecord[], today: string): Record<PropertyId, string> {
-  const summary: Record<PropertyId, string> = { ranch: 'Vacant', lindon: 'Vacant' };
-  for (const pid of ['ranch', 'lindon'] as PropertyId[]) {
+  const summary = { ranch: 'Vacant', lindon: 'Vacant', river: 'Vacant' } as Record<PropertyId, string>;
+  for (const pid of ['ranch', 'lindon', 'river'] as PropertyId[]) {
     const current = list.find(
       (r) => r.propertyId === pid && r.checkIn <= today && r.checkOut > today && r.status !== 'cancelled',
     );

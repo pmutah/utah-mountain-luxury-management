@@ -8,7 +8,7 @@ import type { AgentEnv } from '../../_lib/agent/types';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
   const url = new URL(request.url);
-  const propertyId = url.searchParams.get('propertyId') as 'ranch' | 'lindon' | null;
+  const propertyId = url.searchParams.get('propertyId') as 'ranch' | 'lindon' | 'river' | null;
   const when = url.searchParams.get('when') as 'upcoming' | 'current' | 'past' | null;
 
   let list = await getAllReservations(env);
@@ -24,7 +24,7 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
   const body = (await request.json()) as {
     guestName: string;
-    propertyId: 'ranch' | 'lindon';
+    propertyId: 'ranch' | 'lindon' | 'river';
     checkIn: string;
     checkOut: string;
     payout?: number;

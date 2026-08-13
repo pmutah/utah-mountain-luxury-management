@@ -19,6 +19,7 @@ export async function buildAgentContext(
 
   const ranchAddr = PROPERTIES.ranch.address;
   const lindonAddr = PROPERTIES.lindon.address;
+  const riverAddr = PROPERTIES.river.address;
 
   let pricingSummary = '';
   try {
@@ -42,7 +43,8 @@ export async function buildAgentContext(
     `Properties:`,
     `- Ranch House (ranch): ${ranchAddr}`,
     `- Lindon House (lindon): ${lindonAddr}`,
-    `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}`,
+    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24, first stays Oct 15 2026; 50/50 Brandon & Todd, Brandon 20% management fee`,
+    `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : '',
     uiContext.activeTab ? `Active tab: ${uiContext.activeTab}` : '',
     pricingSummary,
@@ -50,13 +52,14 @@ export async function buildAgentContext(
       ? `Open pricing alerts: ${alerts.map((a) => a.message).join('; ')}`
       : 'Open pricing alerts: none',
     discLine,
-    `You are a proactive co-host for these two Airbnb/VRBO vacation rentals. Use tools to take action. Be concise and practical.`,
+    `You are a proactive co-host for these three Airbnb/VRBO vacation rentals. Use tools to take action. Be concise and practical.`,
   ]
     .filter(Boolean)
     .join('\n');
 }
 
-export const AGENT_PERSONA = `You are the AI Property Management co-host for Utah Mountain Luxury (Ranch House and Lindon House in Lindon, Utah).
+export const AGENT_PERSONA = `You are the AI Property Management co-host for Utah Mountain Luxury (Ranch House and Lindon House in Lindon, plus The River House / Provo Riverhouse in Vivian Park).
 Help with guest relations, finances, reservations, calendar, turnover ops, Gmail drafts, and competitive pricing.
 Always use tools when you need data or to make changes. Never invent reservation or expense data.
-For destructive actions (cancel reservation, send email), require explicit user confirmation or create drafts for approval.`;
+For destructive actions (cancel reservation, send email), require explicit user confirmation or create drafts for approval.
+The River House is 50% Brandon Pierce / 50% Todd Wilhite; Brandon is paid a 20% management fee (same split as the Ranch House).`;

@@ -12,7 +12,7 @@ import { ConstructionProjectView } from './components/ConstructionProject';
 import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
-type TabId = 'portfolio' | 'ranch' | 'lindon' | 'construction';
+type TabId = 'portfolio' | 'ranch' | 'lindon' | 'river' | 'construction';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
@@ -68,7 +68,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-thin">
-          {(['portfolio', 'ranch', 'lindon', 'construction'] as const).map((id) => (
+          {(['portfolio', 'ranch', 'lindon', 'river', 'construction'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -77,7 +77,9 @@ function Dashboard() {
                 activeTab === id
                   ? id === 'construction'
                     ? 'bg-amber-600 text-white shadow-xl'
-                    : 'bg-blue-600 text-white shadow-xl'
+                    : id === 'river'
+                      ? 'bg-cyan-600 text-white shadow-xl'
+                      : 'bg-blue-600 text-white shadow-xl'
                   : 'bg-slate-900 text-slate-500 border border-slate-800'
               }`}
             >
@@ -110,7 +112,7 @@ function Dashboard() {
                 onError={(msg) => showToast(msg, 'error')}
               />
             )}
-            {(activeTab === 'ranch' || activeTab === 'lindon') && (
+            {(activeTab === 'ranch' || activeTab === 'lindon' || activeTab === 'river') && (
               <PropertyDetail
                 tab={activeTab}
                 data={data}

@@ -5,7 +5,7 @@ import type { ReservationRecord } from './agent/types';
 export interface ExpenseRecord {
   id: string;
   month: string;
-  propertyId: 'ranch' | 'lindon';
+  propertyId: 'ranch' | 'lindon' | 'river';
   category: string;
   amount: number;
   note?: string;
@@ -43,7 +43,7 @@ export async function mergeAllExpenses(env: SettingsEnv): Promise<ExpenseRecord[
   const custom = await loadCustomExpenses(env);
   const base = EXPENSES.map((e) => ({
     ...e,
-    propertyId: e.propertyId as 'ranch' | 'lindon',
+    propertyId: e.propertyId as 'ranch' | 'lindon' | 'river',
   }));
   return [...base, ...custom];
 }

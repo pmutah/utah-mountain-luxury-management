@@ -13,6 +13,7 @@ import {
   type BulkExpenseInput,
   type Expense,
   type ExpenseScanResult,
+  type RentalPropertyId,
 } from '../lib/api';
 import { ExpenseRow } from './ExpenseRow';
 import { filterPortfolioExpenses, isPortfolioExpense } from '../lib/expense-address';
@@ -38,7 +39,7 @@ type ReviewRow = ExpenseScanResult & {
   key: string;
   sourceFile: string;
   selected: boolean;
-  propertyId: 'ranch' | 'lindon';
+  propertyId: RentalPropertyId;
   receiptBase64: string;
   receiptMimeType: string;
 };
@@ -440,7 +441,7 @@ export function BatchBillImporter({
                         setReviewRows((rows) =>
                           rows.map((r) =>
                             r.key === row.key
-                              ? { ...r, propertyId: e.target.value as 'ranch' | 'lindon' }
+                              ? { ...r, propertyId: e.target.value as RentalPropertyId }
                               : r,
                           ),
                         )
@@ -449,6 +450,7 @@ export function BatchBillImporter({
                     >
                       <option value="ranch">{PROPERTIES.ranch.name}</option>
                       <option value="lindon">{PROPERTIES.lindon.name}</option>
+                      <option value="river">{PROPERTIES.river.name}</option>
                     </select>
                   </label>
                   <label className="text-[9px] text-slate-500 uppercase font-bold">

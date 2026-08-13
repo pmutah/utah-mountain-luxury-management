@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Camera, ImagePlus, Loader2, ScanLine, Type } from 'lucide-react';
-import { api, formatCurrency, PROPERTIES, type Expense, type ExpenseScanResult } from '../lib/api';
+import { api, formatCurrency, PROPERTIES, type Expense, type ExpenseScanResult, type RentalPropertyId } from '../lib/api';
 import { ExpenseRow } from './ExpenseRow';
 
 const CATEGORIES = [
@@ -33,7 +33,7 @@ export function ExpenseScanner({
   onError,
   onToast,
 }: {
-  propertyId: 'ranch' | 'lindon';
+  propertyId: RentalPropertyId;
   month: string;
   expenses: Expense[];
   onSaved: () => void;
@@ -44,7 +44,7 @@ export function ExpenseScanner({
   const [text, setText] = useState('');
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [preview, setPreview] = useState<(ExpenseScanResult & { propertyId: 'ranch' | 'lindon' }) | null>(null);
+  const [preview, setPreview] = useState<(ExpenseScanResult & { propertyId: RentalPropertyId }) | null>(null);
   const [pendingReceipt, setPendingReceipt] = useState<{
     base64: string;
     mimeType: string;
@@ -67,7 +67,7 @@ export function ExpenseScanner({
       }
       try {
         const result = await api.scanExpense(payload);
-        const prop = (result.propertyId ?? propertyId) as 'ranch' | 'lindon';
+        const prop = (result.propertyId ?? propertyId) as RentalPropertyId;
         setPreview({
           ...result,
           propertyId: prop,
@@ -310,12 +310,13 @@ export function ExpenseScanner({
                   <select
                     value={preview.propertyId}
                     onChange={(e) =>
-                      setPreview({ ...preview, propertyId: e.target.value as 'ranch' | 'lindon' })
+                      setPreview({ ...preview, propertyId: e.target.value as RentalPropertyId })
                     }
                     className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-sm font-black text-white"
                   >
-                    <option value="ranch">The Ranch House</option>
-                    <option value="lindon">The Lindon House</option>
+                    <option value="ranch">{PROPERTIES.ranch.name}</option>
+                    <option value="lindon">{PROPERTIES.lindon.name}</option>
+                    <option value="river">{PROPERTIES.river.name}</option>
                   </select>
                 </label>
                 {preview.vendor && (

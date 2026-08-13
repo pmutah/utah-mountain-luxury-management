@@ -11,7 +11,7 @@ import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
 
 type BulkInput = {
-  propertyId: 'ranch' | 'lindon';
+  propertyId: 'ranch' | 'lindon' | 'river';
   month: string;
   category: string;
   amount: number;

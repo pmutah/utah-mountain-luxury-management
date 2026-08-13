@@ -72,11 +72,13 @@ export interface Expense {
   receiptUrl?: string | null;
 }
 
+export type RentalPropertyId = 'ranch' | 'lindon' | 'river';
+
 export interface ExpenseScanResult {
   amount: number;
   category: string;
   month: string;
-  propertyId: 'ranch' | 'lindon' | null;
+  propertyId: RentalPropertyId | null;
   vendor?: string;
   note?: string;
   confidence?: 'high' | 'low';
@@ -87,7 +89,7 @@ export interface BatchScannedExpense extends ExpenseScanResult {
 }
 
 export interface BulkExpenseInput {
-  propertyId: 'ranch' | 'lindon';
+  propertyId: RentalPropertyId;
   month: string;
   category: string;
   amount: number;
@@ -121,6 +123,7 @@ export interface PortfolioData {
   month: string;
   ranch: PropertyMetrics;
   lindon: PropertyMetrics;
+  river: PropertyMetrics;
   totalRevenue: number;
   totalProfit: number;
   avgOccupancy: number;
@@ -131,6 +134,7 @@ export interface PortfolioData {
   previous?: {
     ranch: PropertyMetrics;
     lindon: PropertyMetrics;
+    river: PropertyMetrics;
     totalRevenue: number;
     totalProfit: number;
     avgOccupancy: number;
@@ -141,6 +145,7 @@ export interface MonthHistoryPoint {
   month: string;
   ranch: { revenue: number; profit: number; occupancy: number; stayCount: number };
   lindon: { revenue: number; profit: number; occupancy: number; stayCount: number };
+  river: { revenue: number; profit: number; occupancy: number; stayCount: number };
   totalRevenue: number;
   totalProfit: number;
   avgOccupancy: number;
@@ -285,7 +290,7 @@ export const api = {
     text?: string;
     imageBase64?: string;
     mimeType?: string;
-    propertyId?: 'ranch' | 'lindon';
+    propertyId?: RentalPropertyId;
     month?: string;
   }) =>
     request<ExpenseScanResult>('/api/expenses/scan', {
@@ -435,6 +440,15 @@ export const PROPERTIES: Record<string, Property> = {
     mortgage: 1265.14,
     status: 'active',
   },
+  river: {
+    id: 'river',
+    name: 'The River House',
+    address: 'Vivian Park, Provo Canyon, Utah 84604',
+    cleaningFee: 0,
+    accentColor: 'bg-cyan-500',
+    mortgage: 0,
+    status: 'active',
+  },
   construction: {
     id: 'construction',
     name: 'Construction Project',
@@ -448,6 +462,7 @@ export const PROPERTIES: Record<string, Property> = {
 
 export const RANCH_MORTGAGE = 3133.36;
 export const LINDON_MORTGAGE = 1265.14;
+export const RIVER_MORTGAGE = 0;
 
 export function formatCurrency(val: number) {
   return new Intl.NumberFormat('en-US', {

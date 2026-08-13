@@ -29,7 +29,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
   }
 
   let body: {
-    propertyId: 'ranch' | 'lindon';
+    propertyId: 'ranch' | 'lindon' | 'river';
     month: string;
     category: string;
     amount: number;
