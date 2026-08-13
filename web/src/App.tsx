@@ -3,6 +3,7 @@ import { api, PROPERTIES, type HistoryData, type PortfolioData } from './lib/api
 import { LoginGate } from './components/LoginGate';
 import { Header } from './components/Header';
 import { PortfolioOverview } from './components/PortfolioOverview';
+import { PortfolioReport } from './components/PortfolioReport';
 import { PropertyDetail } from './components/PropertyDetail';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { ToastStack } from './components/Toast';
@@ -12,7 +13,7 @@ import { ConstructionProjectView } from './components/ConstructionProject';
 import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
-type TabId = 'portfolio' | 'ranch' | 'lindon' | 'river' | 'construction';
+type TabId = 'portfolio' | 'report' | 'ranch' | 'lindon' | 'river' | 'construction';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
@@ -68,7 +69,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-thin">
-          {(['portfolio', 'ranch', 'lindon', 'river', 'construction'] as const).map((id) => (
+          {(['portfolio', 'report', 'ranch', 'lindon', 'river', 'construction'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -79,15 +80,19 @@ function Dashboard() {
                     ? 'bg-amber-600 text-white shadow-xl'
                     : id === 'river'
                       ? 'bg-cyan-600 text-white shadow-xl'
-                      : 'bg-blue-600 text-white shadow-xl'
+                      : id === 'report'
+                        ? 'bg-violet-600 text-white shadow-xl'
+                        : 'bg-blue-600 text-white shadow-xl'
                   : 'bg-slate-900 text-slate-500 border border-slate-800'
               }`}
             >
               {id === 'portfolio'
                 ? 'Overview'
-                : id === 'construction'
-                  ? PROPERTIES.construction.name
-                  : PROPERTIES[id].name}
+                : id === 'report'
+                  ? 'Report'
+                  : id === 'construction'
+                    ? PROPERTIES.construction.name
+                    : PROPERTIES[id].name}
             </button>
           ))}
         </nav>
@@ -110,6 +115,15 @@ function Dashboard() {
                 onToast={showToast}
                 onRefresh={() => void load()}
                 onError={(msg) => showToast(msg, 'error')}
+              />
+            )}
+            {activeTab === 'report' && (
+              <PortfolioReport
+                month={currentMonth}
+                reservations={data.reservations}
+                expenses={data.expenses}
+                extraCleaningFees={extraCleaningFees}
+                onToast={showToast}
               />
             )}
             {(activeTab === 'ranch' || activeTab === 'lindon' || activeTab === 'river') && (
