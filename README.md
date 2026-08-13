@@ -32,7 +32,7 @@ npm run dev:api    # API :8080 + web :5173 (does not match hosted Pages)
 
 Push to `main` — GitHub Action deploys `web/` (including Functions) to Cloudflare Pages.
 
-Repo: https://github.com/pmutah/wilhite-portfolio
+Repo: https://github.com/pmutah/utah-mountain-luxury-management
 
 ## License
 

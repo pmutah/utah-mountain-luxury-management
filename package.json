@@ -1,8 +1,8 @@
 {
-  "name": "wilhite-portfolio",
+  "name": "utah-mountain-luxury-management",
   "version": "1.0.0",
   "private": true,
-  "description": "Utah Mountain Luxury — vacation rental dashboard",
+  "description": "Utah Mountain Luxury Management — short-term rental operations board",
   "workspaces": [
     "api",
     "web"

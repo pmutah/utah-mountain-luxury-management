@@ -3,7 +3,7 @@
 ## What's live
 
 - **Website:** https://wilhite-portfolio.pages.dev
-- **GitHub:** https://github.com/pmutah/wilhite-portfolio
+- **GitHub:** https://github.com/pmutah/utah-mountain-luxury-management
 - **Firebase project:** `wilhite-portfolio` (Firestore rules deployed)
 - **API:** Same-origin Pages Functions at `/api/portfolio/metrics`
 - **CI/CD:** GitHub Actions deploys on every push to `main` (secrets configured)
@@ -12,7 +12,7 @@
 
 | Item | Value |
 |------|-------|
-| Pages project | `wilhite-portfolio` |
+| Pages project | `wilhite-portfolio` (slug kept so https://wilhite-portfolio.pages.dev does not change) |
 | Account ID | `513c82ca37c8d7e83926801120de3eee` |
 | GitHub secrets | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
 | Auto-deploy | Push to `main` → GitHub Actions → Cloudflare Pages |
@@ -129,7 +129,7 @@ Set **Pages → Settings → Environment variables:**
 
 ## 3. API hosting (Render — free tier)
 
-1. Go to https://render.com → **New → Blueprint** → connect `pmutah/wilhite-portfolio`
+1. Go to https://render.com → **New → Blueprint** → connect `pmutah/utah-mountain-luxury-management`
 2. Render reads `render.yaml` and creates **wilhite-portfolio-api**
 3. Add secret env var `FIREBASE_SERVICE_ACCOUNT_JSON` (full JSON)
 4. After deploy, copy the service URL (e.g. `https://wilhite-portfolio-api.onrender.com`)
@@ -140,8 +140,8 @@ Health check: `GET https://wilhite-portfolio-api.onrender.com/health`
 ## 4. Local development
 
 ```bash
-git clone https://github.com/pmutah/wilhite-portfolio.git
-cd wilhite-portfolio
+git clone https://github.com/pmutah/utah-mountain-luxury-management.git
+cd utah-mountain-luxury-management
 npm install
 cp .env.example .env
 cp web/.env.example web/.env
