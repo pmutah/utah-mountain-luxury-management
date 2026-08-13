@@ -157,14 +157,12 @@ function Kpi({
 }
 
 function ChannelBars({ row }: { row: PropertyReportRow }) {
-  const slices = [row.channels.Airbnb, row.channels.VRBO, row.channels.Other].filter((s) => s.revenue > 0 || s.stays > 0);
-  const max = Math.max(...slices.map((s) => s.revenue), 1);
-  if (slices.length === 0) {
-    return <p className="text-xs text-slate-600 font-bold">No stays in this period.</p>;
-  }
+  const slices = [row.channels.Airbnb, row.channels.VRBO, row.channels.Other];
+  const visible = slices.filter((s) => s.channel !== 'Other' || s.revenue > 0 || s.stays > 0);
+  const max = Math.max(...visible.map((s) => s.revenue), 1);
   return (
     <div className="space-y-4">
-      {slices.map((s) => (
+      {visible.map((s) => (
         <div key={s.channel}>
           <div className="flex justify-between items-baseline gap-2 mb-1">
             <p className={`text-xs font-black uppercase tracking-widest ${CHANNEL_STYLE[s.channel].text}`}>
@@ -175,7 +173,7 @@ function ChannelBars({ row }: { row: PropertyReportRow }) {
           <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${CHANNEL_STYLE[s.channel].bar}`}
-              style={{ width: `${(s.revenue / max) * 100}%` }}
+              style={{ width: `${s.revenue > 0 ? (s.revenue / max) * 100 : 0}%` }}
             />
           </div>
           <p className="text-[10px] text-slate-500 font-bold mt-1">
@@ -186,6 +184,10 @@ function ChannelBars({ row }: { row: PropertyReportRow }) {
       ))}
     </div>
   );
+}
+
+function isRiverPreOpening(row: PropertyReportRow): boolean {
+  return row.propertyId === 'river' && row.stayCount === 0 && row.revenue === 0;
 }
 
 function PropertyTable({ report }: { report: PortfolioReportModel }) {
@@ -208,30 +210,44 @@ function PropertyTable({ report }: { report: PortfolioReportModel }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.propertyId}
-              className={`border-b border-slate-800/60 ${row.propertyId === 'portfolio' ? 'bg-slate-950/40' : ''}`}
-            >
-              <td className={`py-3 pr-3 text-xs font-black ${PROPERTY_ACCENT[row.propertyId] ?? 'text-white'}`}>
-                {row.name}
-              </td>
-              <td className="py-3 px-2 text-right text-sm font-black text-white">{formatCurrency(row.revenue)}</td>
-              <td className={`py-3 px-2 text-right text-sm font-black ${row.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {formatCurrency(row.profit)}
-              </td>
-              <td className="py-3 px-2 text-right text-xs font-bold text-slate-400">{fmtPct(row.margin)}</td>
-              <td className="py-3 px-2 text-right text-xs font-bold text-slate-300">{row.stayCount}</td>
-              <td className="py-3 px-2 text-right text-xs font-bold text-slate-300">{row.occupiedNights}</td>
-              <td className="py-3 px-2 text-right text-xs font-bold text-slate-300">{fmtPct(row.occupancy)}</td>
-              <td className="py-3 px-2 text-right text-xs font-bold text-slate-300">{formatCurrency(row.adr)}</td>
-              <td className="py-3 pl-2 text-right text-[10px] font-bold">
-                <span className="text-red-400">{formatCurrency(row.channels.Airbnb.revenue)}</span>
-                <span className="text-slate-600"> / </span>
-                <span className="text-blue-400">{formatCurrency(row.channels.VRBO.revenue)}</span>
-              </td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const pre = isRiverPreOpening(row);
+            return (
+              <tr
+                key={row.propertyId}
+                className={`border-b border-slate-800/60 ${row.propertyId === 'portfolio' ? 'bg-slate-950/40' : ''}`}
+              >
+                <td className={`py-3 pr-3 text-xs font-black ${PROPERTY_ACCENT[row.propertyId] ?? 'text-white'}`}>
+                  {row.name}
+                  {pre && (
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      First stays Oct 15, 2026
+                    </span>
+                  )}
+                </td>
+                <td className="py-3 px-2 text-right text-sm font-black text-white">{formatCurrency(row.revenue)}</td>
+                <td className={`py-3 px-2 text-right text-sm font-black ${row.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {formatCurrency(row.profit)}
+                </td>
+                <td className="py-3 px-2 text-right text-xs font-bold text-slate-400">
+                  {pre ? '—' : fmtPct(row.margin)}
+                </td>
+                <td className="py-3 px-2 text-right text-xs font-bold text-slate-300">{row.stayCount}</td>
+                <td className="py-3 px-2 text-right text-xs font-bold text-slate-300">{row.occupiedNights}</td>
+                <td className="py-3 px-2 text-right text-xs font-bold text-slate-300">
+                  {pre ? '—' : fmtPct(row.occupancy)}
+                </td>
+                <td className="py-3 px-2 text-right text-xs font-bold text-slate-300">
+                  {pre ? '—' : formatCurrency(row.adr)}
+                </td>
+                <td className="py-3 pl-2 text-right text-[10px] font-bold">
+                  <span className="text-red-400">{formatCurrency(row.channels.Airbnb.revenue)}</span>
+                  <span className="text-slate-600"> / </span>
+                  <span className="text-blue-400">{formatCurrency(row.channels.VRBO.revenue)}</span>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -396,6 +412,24 @@ export function PortfolioReport({
             hint={`${formatCurrency(t.cleaning + t.mortgage + t.operating)} costs`}
           />
         </div>
+        <div className="px-6 sm:px-8 pb-8">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Revenue by property</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {report.properties.map((row) => (
+              <div key={row.propertyId} className="bg-slate-950/60 p-4 rounded-3xl border border-slate-800 text-center">
+                <p className={`text-2xl font-black ${PROPERTY_ACCENT[row.propertyId] ?? 'text-white'}`}>
+                  {formatCurrency(row.revenue)}
+                </p>
+                <p className="text-[10px] font-bold uppercase mt-2 text-slate-500">{row.name.replace(/^The /, '')}</p>
+                {isRiverPreOpening(row) && (
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600 mt-1">
+                    First stays Oct 15, 2026
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -440,6 +474,15 @@ export function PortfolioReport({
               <thead>
                 <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-800">
                   <th className="py-3 pr-3">Month</th>
+                  {report.propertyIds.includes('ranch') && (
+                    <th className="py-3 px-2 text-right text-blue-400">Ranch</th>
+                  )}
+                  {report.propertyIds.includes('lindon') && (
+                    <th className="py-3 px-2 text-right text-emerald-400">Lindon</th>
+                  )}
+                  {report.propertyIds.includes('river') && (
+                    <th className="py-3 px-2 text-right text-cyan-400">River</th>
+                  )}
                   <th className="py-3 px-2 text-right">Revenue</th>
                   <th className="py-3 px-2 text-right">Profit</th>
                   <th className="py-3 px-2 text-right">Stays</th>
@@ -452,6 +495,15 @@ export function PortfolioReport({
                 {report.monthly.map((m) => (
                   <tr key={m.month} className="border-b border-slate-800/60">
                     <td className="py-3 pr-3 text-xs font-black text-white">{formatMonthLabel(m.month)}</td>
+                    {report.propertyIds.includes('ranch') && (
+                      <td className="py-3 px-2 text-right text-xs font-bold text-blue-400">{formatCurrency(m.ranch)}</td>
+                    )}
+                    {report.propertyIds.includes('lindon') && (
+                      <td className="py-3 px-2 text-right text-xs font-bold text-emerald-400">{formatCurrency(m.lindon)}</td>
+                    )}
+                    {report.propertyIds.includes('river') && (
+                      <td className="py-3 px-2 text-right text-xs font-bold text-cyan-400">{formatCurrency(m.river)}</td>
+                    )}
                     <td className="py-3 px-2 text-right text-sm font-black text-white">{formatCurrency(m.revenue)}</td>
                     <td className={`py-3 px-2 text-right text-sm font-black ${m.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {formatCurrency(m.profit)}

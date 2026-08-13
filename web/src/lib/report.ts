@@ -76,6 +76,9 @@ export type MonthlyReportPoint = {
   airbnb: number;
   vrbo: number;
   other: number;
+  ranch: number;
+  lindon: number;
+  river: number;
 };
 
 export type PortfolioReportModel = {
@@ -433,6 +436,8 @@ export function buildPortfolioReport(
       if (row.propertyId !== 'portfolio') propertyAcc[row.propertyId]?.push(row);
     }
     const tot = sumRows(monthRows, title, 'portfolio');
+    const revFor = (id: RentalPropertyId) =>
+      monthRows.find((r) => r.propertyId === id)?.revenue ?? 0;
     monthly.push({
       month,
       revenue: tot.revenue,
@@ -444,6 +449,9 @@ export function buildPortfolioReport(
       airbnb: tot.channels.Airbnb.revenue,
       vrbo: tot.channels.VRBO.revenue,
       other: tot.channels.Other.revenue,
+      ranch: revFor('ranch'),
+      lindon: revFor('lindon'),
+      river: revFor('river'),
     });
   }
 
