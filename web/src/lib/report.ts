@@ -185,7 +185,7 @@ function ownerSplit(
   const basis = revenue - cleaning;
   const mgtFee = basis > 0 ? basis * 0.2 : 0;
   const leftover = basis - mgtFee - (mortgage + operating);
-  const share = leftover > 0 ? leftover / 2 : 0;
+  const share = leftover / 2;
   return { brandon: mgtFee + share, todd: share, mgtFee };
 }
 

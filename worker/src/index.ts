@@ -119,7 +119,7 @@ function calculateMetrics(propId: PropertyId, currentMonth: string) {
     const basis = revenue - totalCleaning;
     const mgtFee = basis > 0 ? basis * 0.2 : 0;
     const leftover = basis - mgtFee - (mortgage + operationalExpenses);
-    const share = leftover > 0 ? leftover / 2 : 0;
+    const share = leftover / 2;
     dist = { brandon: mgtFee + share, todd: share, mgtFee };
   }
 

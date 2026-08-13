@@ -275,7 +275,7 @@ export function PortfolioReport({
     ownerFilter === 'brandon'
       ? 'Lindon profit + ranch/river fee and 50% leftover'
       : ownerFilter === 'todd'
-        ? '50% leftover after Brandon’s 20% fee'
+        ? '50% leftover after Brandon’s 20% fee, including losses'
         : 'After mortgage, cleaning, opex';
 
   const selectOwner = (owner: ReportOwnerFilter) => {
@@ -361,9 +361,9 @@ export function PortfolioReport({
             </div>
             <p className="text-[10px] text-slate-600 font-bold mt-2">
               {ownerFilter === 'todd'
-                ? 'Todd: Ranch and River 50/50 after Brandon’s 20% fee. Lindon is Brandon’s.'
+                ? 'Todd: Ranch and River 50/50 after Brandon’s 20% fee, including losses. Lindon is Brandon’s.'
                 : ownerFilter === 'brandon'
-                  ? 'Brandon: Lindon in full, plus ranch/river management fee and 50% leftover.'
+                  ? 'Brandon: Lindon in full, plus ranch/river management fee and 50% leftover (including losses).'
                   : 'All together: full property P&L. Switch owner to see each person’s take.'}
             </p>
           </div>
@@ -475,9 +475,14 @@ export function PortfolioReport({
       {t.dist && (
         <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
           <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">Owner split</h3>
-          <p className="text-xs text-slate-500 mb-6">
-            Ranch and River: 20% management fee to Brandon, then leftover 50/50. Lindon is not in this split.
+          <p className="text-xs text-slate-500 mb-4">
+            Ranch and River: 20% management fee to Brandon, then leftover 50/50 — including losses. Lindon is not in this split.
           </p>
+          {t.dist.todd < 0 && (
+            <p className="text-xs font-bold text-red-400 mb-6">
+              Loss after the fee: {formatCurrency(t.dist.todd * 2)} split between the partners.
+            </p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div
               className={`bg-slate-950/60 p-5 rounded-3xl border ${
@@ -489,7 +494,7 @@ export function PortfolioReport({
               }`}
             >
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Brandon</p>
-              <p className="text-2xl font-black text-blue-400 mt-1">{formatCurrency(t.dist.brandon)}</p>
+              <p className={`text-2xl font-black mt-1 ${t.dist.brandon < 0 ? 'text-red-400' : 'text-blue-400'}`}>{formatCurrency(t.dist.brandon)}</p>
               <p className="text-[10px] text-slate-600 font-bold mt-1">Mgmt fee + 50% leftover</p>
             </div>
             <div
@@ -502,8 +507,8 @@ export function PortfolioReport({
               }`}
             >
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Todd</p>
-              <p className="text-2xl font-black text-white mt-1">{formatCurrency(t.dist.todd)}</p>
-              <p className="text-[10px] text-slate-600 font-bold mt-1">50% leftover</p>
+              <p className={`text-2xl font-black mt-1 ${t.dist.todd < 0 ? 'text-red-400' : 'text-white'}`}>{formatCurrency(t.dist.todd)}</p>
+              <p className="text-[10px] text-slate-600 font-bold mt-1">50% leftover (profit or loss)</p>
             </div>
             <div className="bg-slate-950/60 p-5 rounded-3xl border border-slate-800">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Management fee</p>

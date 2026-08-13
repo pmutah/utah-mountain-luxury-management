@@ -42,7 +42,7 @@ export type RentalPropertyId = 'ranch' | 'lindon' | 'river';
 
 export const RENTAL_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
 
-/** 50/50 Brandon–Todd after a 20% management fee to Brandon. */
+/** 50/50 Brandon–Todd after a 20% management fee to Brandon. Losses after the fee are split the same way (negative shares). */
 export const OWNER_SPLIT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'river'];
 
 export function isRentalProperty(id: string): id is RentalPropertyId {
@@ -203,7 +203,7 @@ export function calculateMetrics(
     const basis = revenue - totalCleaning;
     const mgtFee = basis > 0 ? basis * 0.2 : 0;
     const leftover = basis - mgtFee - (mortgage + operationalExpenses);
-    const share = leftover > 0 ? leftover / 2 : 0;
+    const share = leftover / 2;
     dist = { brandon: mgtFee + share, todd: share, mgtFee };
   }
 
