@@ -2,10 +2,12 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   BarChart3,
   CalendarDays,
+  ChevronDown,
   Copy,
   DollarSign,
   Home,
   Percent,
+  Receipt,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -17,8 +19,10 @@ import {
   reportOwnerLabel,
   reportPeriodLabel,
   type ChannelName,
+  type ExpenseMonthGroup,
   type PortfolioReportModel,
   type PropertyReportRow,
+  type ReportExpenseItem,
   type ReportOwnerFilter,
   type ReportPeriod,
   type ReportPropertyFilter,
@@ -112,10 +116,23 @@ function reportSummaryText(report: PortfolioReportModel): string {
     `Occupancy: ${fmtPct(t.occupancy)} · ${fmtNights(t.occupiedNights)} of ${t.availableNights.toLocaleString()} available`,
     `Stays: ${t.stayCount} · ADR ${formatCurrency(t.adr)} · Avg stay ${t.avgLos.toFixed(1)} nights`,
     `Airbnb: ${formatCurrency(air.revenue)} (${air.stays} stays) · VRBO: ${formatCurrency(vrbo.revenue)} (${vrbo.stays} stays)`,
+    `Costs: ${formatCurrency(t.mortgage + t.cleaning + t.operating)} (mortgage ${formatCurrency(t.mortgage)} · cleaning ${formatCurrency(t.cleaning)} · other ${formatCurrency(t.operating)})`,
   ];
+  for (const cat of report.expensesByCategory) {
+    lines.push(`  ${cat.category}: ${formatCurrency(cat.amount)}`);
+  }
+  for (const group of report.expensesByMonth) {
+    const entered = group.items.filter((item) => item.source !== 'cleaning');
+    if (entered.length === 0) continue;
+    lines.push(`${formatMonthLabel(group.month)} expenses: ${formatCurrency(group.enteredTotal)}`);
+    for (const item of entered) {
+      const who = item.vendor ? `${item.vendor} · ${item.category}` : item.category;
+      lines.push(`  ${item.propertyName}: ${who} ${formatCurrency(item.amount)}`);
+    }
+  }
   for (const p of report.properties) {
     lines.push(
-      `${p.name}: ${formatCurrency(p.revenue)} rev · ${formatCurrency(p.profit)} profit · ${p.stayCount} stays · ${fmtPct(p.occupancy)} occ`,
+      `${p.name}: ${formatCurrency(p.revenue)} rev · ${formatCurrency(costsTotal(p))} costs · ${formatCurrency(p.profit)} profit · ${p.stayCount} stays · ${fmtPct(p.occupancy)} occ`,
     );
   }
   if (t.dist) {
@@ -200,6 +217,7 @@ function PropertyTable({ report }: { report: PortfolioReportModel }) {
           <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-800">
             <th className="py-3 pr-3">Property</th>
             <th className="py-3 px-2 text-right">Revenue</th>
+            <th className="py-3 px-2 text-right">Costs</th>
             <th className="py-3 px-2 text-right">Profit</th>
             <th className="py-3 px-2 text-right">Margin</th>
             <th className="py-3 px-2 text-right">Stays</th>
@@ -226,6 +244,9 @@ function PropertyTable({ report }: { report: PortfolioReportModel }) {
                   )}
                 </td>
                 <td className="py-3 px-2 text-right text-sm font-black text-white">{formatCurrency(row.revenue)}</td>
+                <td className="py-3 px-2 text-right text-xs font-bold text-amber-400">
+                  {formatCurrency(row.mortgage + row.cleaning + row.operating)}
+                </td>
                 <td className={`py-3 px-2 text-right text-sm font-black ${row.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {formatCurrency(row.profit)}
                 </td>
@@ -251,6 +272,135 @@ function PropertyTable({ report }: { report: PortfolioReportModel }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function costsTotal(row: { mortgage: number; cleaning: number; operating: number }): number {
+  return row.mortgage + row.cleaning + row.operating;
+}
+
+function ExpenseLine({ item }: { item: ReportExpenseItem }) {
+  const muted = item.source === 'cleaning';
+  return (
+    <li className="flex justify-between gap-3 py-3 border-b border-slate-800/60 last:border-0">
+      <div className="min-w-0">
+        <p className={`text-sm font-black truncate ${muted ? 'text-slate-400' : 'text-white'}`}>
+          {item.vendor || item.category}
+        </p>
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">
+          <span className={PROPERTY_ACCENT[item.propertyId] ?? 'text-slate-500'}>{item.propertyName}</span>
+          {' · '}
+          {item.category}
+          {item.source === 'cleaning' ? ' · turnover' : ''}
+          {item.note ? ` · ${item.note}` : ''}
+        </p>
+      </div>
+      <p className={`text-sm font-black shrink-0 tabular-nums ${muted ? 'text-slate-400' : 'text-white'}`}>
+        {formatCurrency(item.amount)}
+      </p>
+    </li>
+  );
+}
+
+function ExpensesByMonth({
+  groups,
+  endMonth,
+  period,
+}: {
+  groups: ExpenseMonthGroup[];
+  endMonth: string;
+  period: ReportPeriod;
+}) {
+  const [showCleaning, setShowCleaning] = useState(false);
+  const [openMonths, setOpenMonths] = useState<string[]>(() => {
+    if (period === 'month') return [endMonth];
+    const withEntered = groups
+      .filter((group) => group.items.some((item) => item.source !== 'cleaning'))
+      .map((group) => group.month);
+    return withEntered.length > 0 ? withEntered : [endMonth];
+  });
+
+  const visibleGroups = groups
+    .map((group) => ({
+      ...group,
+      items: showCleaning ? group.items : group.items.filter((item) => item.source !== 'cleaning'),
+    }))
+    .map((group) => ({
+      ...group,
+      total: group.items.reduce((sum, item) => sum + item.amount, 0),
+    }))
+    .filter((group) => group.items.length > 0 || (period === 'month' && group.month === endMonth));
+
+  const toggle = (month: string) => {
+    setOpenMonths((prev) => (prev.includes(month) ? prev.filter((m) => m !== month) : [...prev, month]));
+  };
+
+  return (
+    <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+            <Receipt className="w-4 h-4" />
+            Expenses by month
+          </h3>
+          <p className="text-xs text-slate-500 mt-2">
+            Bills and costs logged for each month. These are included in profit.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCleaning((v) => !v)}
+          className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] ${
+            showCleaning
+              ? 'bg-amber-600 text-white shadow-xl'
+              : 'bg-slate-950 text-slate-500 border border-slate-800'
+          }`}
+        >
+          {showCleaning ? 'Showing cleaning' : 'Entered only'}
+        </button>
+      </div>
+      {visibleGroups.every((g) => g.items.length === 0) ? (
+        <p className="text-xs text-slate-600 font-bold">No expenses logged in this period.</p>
+      ) : (
+        <div className="space-y-3">
+          {visibleGroups.map((group) => {
+            const open = period === 'month' || openMonths.includes(group.month);
+            return (
+              <div key={group.month} className="bg-slate-950/60 rounded-3xl border border-slate-800 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggle(group.month)}
+                  className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left min-h-[52px]"
+                >
+                  <span className="text-sm font-black text-white">{formatMonthLabel(group.month)}</span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-sm font-black text-amber-400 tabular-nums">
+                      {formatCurrency(group.total)}
+                    </span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`}
+                    />
+                  </span>
+                </button>
+                {open && (
+                  <div className="px-5 pb-4">
+                    {group.items.length === 0 ? (
+                      <p className="text-xs text-slate-600 font-bold">No expenses this month.</p>
+                    ) : (
+                      <ul>
+                        {group.items.map((item) => (
+                          <ExpenseLine key={item.id} item={item} />
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -405,11 +555,18 @@ export function PortfolioReport({
           <Kpi label="ADR" value={formatCurrency(t.adr)} icon={TrendingUp} hint="Revenue ÷ stay nights" />
           <Kpi label="RevPAR" value={formatCurrency(t.revpar)} icon={Home} hint="Revenue ÷ available nights" />
           <Kpi
+            label="Costs"
+            value={formatCurrency(costsTotal(t))}
+            icon={Receipt}
+            color="text-amber-400"
+            hint={`Mortgage ${formatCurrency(t.mortgage)} · cleaning ${formatCurrency(t.cleaning)} · other ${formatCurrency(t.operating)}`}
+          />
+          <Kpi
             label="Profit margin"
             value={fmtPct(t.margin)}
             icon={Percent}
             color={t.margin >= 0 ? 'text-white' : 'text-red-400'}
-            hint={`${formatCurrency(t.cleaning + t.mortgage + t.operating)} costs`}
+            hint={`${formatCurrency(costsTotal(t))} costs`}
           />
         </div>
         <div className="px-6 sm:px-8 pb-8">
@@ -438,7 +595,10 @@ export function PortfolioReport({
           <ChannelBars row={t} />
         </div>
         <div className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Costs</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">Costs by category</h3>
+          <p className="text-xs text-slate-500 mb-6">
+            Mortgage, cleaning, and every bill logged for this period — included in profit.
+          </p>
           {report.expensesByCategory.length === 0 ? (
             <p className="text-xs text-slate-600 font-bold">No costs in this period.</p>
           ) : (
@@ -454,10 +614,21 @@ export function PortfolioReport({
                   </div>
                 </div>
               ))}
+              <div className="flex justify-between text-xs font-black pt-2 border-t border-slate-800">
+                <span className="text-slate-400 uppercase tracking-widest">Total</span>
+                <span className="text-amber-400">{formatCurrency(costsTotal(t))}</span>
+              </div>
             </div>
           )}
         </div>
       </section>
+
+      <ExpensesByMonth
+        key={`${period}-${report.endMonth}-${report.propertyFilter}-${report.ownerFilter}`}
+        groups={report.expensesByMonth}
+        endMonth={report.endMonth}
+        period={period}
+      />
 
       {report.properties.length > 0 && (
       <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
@@ -470,7 +641,7 @@ export function PortfolioReport({
         <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
           <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Month by month</h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-left min-w-[640px]">
+            <table className="w-full text-left min-w-[720px]">
               <thead>
                 <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-800">
                   <th className="py-3 pr-3">Month</th>
@@ -484,6 +655,7 @@ export function PortfolioReport({
                     <th className="py-3 px-2 text-right text-cyan-400">River</th>
                   )}
                   <th className="py-3 px-2 text-right">Revenue</th>
+                  <th className="py-3 px-2 text-right">Costs</th>
                   <th className="py-3 px-2 text-right">Profit</th>
                   <th className="py-3 px-2 text-right">Stays</th>
                   <th className="py-3 px-2 text-right">Nights</th>
@@ -505,6 +677,7 @@ export function PortfolioReport({
                       <td className="py-3 px-2 text-right text-xs font-bold text-cyan-400">{formatCurrency(m.river)}</td>
                     )}
                     <td className="py-3 px-2 text-right text-sm font-black text-white">{formatCurrency(m.revenue)}</td>
+                    <td className="py-3 px-2 text-right text-xs font-bold text-amber-400">{formatCurrency(m.costs)}</td>
                     <td className={`py-3 px-2 text-right text-sm font-black ${m.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {formatCurrency(m.profit)}
                     </td>

@@ -79,6 +79,31 @@ export type MonthlyReportPoint = {
   ranch: number;
   lindon: number;
   river: number;
+  mortgage: number;
+  cleaning: number;
+  operating: number;
+  costs: number;
+};
+
+export type ReportExpenseSource = 'entered' | 'cleaning' | 'other';
+
+export type ReportExpenseItem = {
+  id: string;
+  month: string;
+  propertyId: RentalPropertyId;
+  propertyName: string;
+  category: string;
+  amount: number;
+  vendor?: string;
+  note?: string;
+  source: ReportExpenseSource;
+};
+
+export type ExpenseMonthGroup = {
+  month: string;
+  total: number;
+  enteredTotal: number;
+  items: ReportExpenseItem[];
 };
 
 export type PortfolioReportModel = {
@@ -93,6 +118,7 @@ export type PortfolioReportModel = {
   totals: PropertyReportRow;
   monthly: MonthlyReportPoint[];
   expensesByCategory: Array<{ category: string; amount: number }>;
+  expensesByMonth: ExpenseMonthGroup[];
   forward: { stays: number; nights: number; revenue: number };
   topStays: Reservation[];
 };
@@ -346,6 +372,97 @@ function emptyRow(name: string, propertyId: PropertyReportRow['propertyId']): Pr
   });
 }
 
+function expenseSource(expense: Expense): ReportExpenseSource {
+  if (expense.id.startsWith('exp-')) return 'entered';
+  if (expense.id.startsWith('clean-') || expense.category === 'Cleaning') return 'cleaning';
+  return 'other';
+}
+
+function toReportExpenseItem(expense: Expense): ReportExpenseItem | null {
+  const propertyId = expense.propertyId as RentalPropertyId;
+  if (!REPORT_PROPERTY_IDS.includes(propertyId)) return null;
+  if (expense.category === 'Mortgage') return null;
+  return {
+    id: expense.id,
+    month: expense.month,
+    propertyId,
+    propertyName: PROPERTIES[propertyId].name.replace(/^The /, ''),
+    category: expense.category,
+    amount: expense.amount,
+    vendor: expense.vendor,
+    note: expense.note,
+    source: expenseSource(expense),
+  };
+}
+
+function extraCleaningItems(
+  months: string[],
+  propertyIds: RentalPropertyId[],
+  extraCleaningFees: Record<string, number>,
+): ReportExpenseItem[] {
+  const items: ReportExpenseItem[] = [];
+  for (const month of months) {
+    for (const propertyId of propertyIds) {
+      const amount = Number(extraCleaningFees[`${propertyId}-${month}`] || 0);
+      if (amount <= 0) continue;
+      items.push({
+        id: `extra-clean-${propertyId}-${month}`,
+        month,
+        propertyId,
+        propertyName: PROPERTIES[propertyId].name.replace(/^The /, ''),
+        category: 'Cleaning',
+        amount,
+        vendor: 'Extra cleaning',
+        note: 'Manual extra cleaning fee',
+        source: 'cleaning',
+      });
+    }
+  }
+  return items;
+}
+
+export function groupExpensesByMonth(
+  expenses: Expense[],
+  months: string[],
+  propertyIds: RentalPropertyId[],
+  extraCleaningFees: Record<string, number> = {},
+): ExpenseMonthGroup[] {
+  const monthSet = new Set(months);
+  const idSet = new Set(propertyIds);
+  const items = [
+    ...expenses.map(toReportExpenseItem).filter((item): item is ReportExpenseItem => item != null),
+    ...extraCleaningItems(months, propertyIds, extraCleaningFees),
+  ].filter((item) => monthSet.has(item.month) && idSet.has(item.propertyId));
+
+  const byMonth = new Map<string, ReportExpenseItem[]>();
+  for (const month of months) byMonth.set(month, []);
+  for (const item of items) {
+    byMonth.get(item.month)?.push(item);
+  }
+
+  const propertyOrder = new Map(propertyIds.map((id, i) => [id, i]));
+  return months.map((month) => {
+    const monthItems = [...(byMonth.get(month) ?? [])].sort((a, b) => {
+      const pa = propertyOrder.get(a.propertyId) ?? 99;
+      const pb = propertyOrder.get(b.propertyId) ?? 99;
+      if (pa !== pb) return pa - pb;
+      if (a.source !== b.source) {
+        if (a.source === 'entered') return -1;
+        if (b.source === 'entered') return 1;
+      }
+      return b.amount - a.amount;
+    });
+    return {
+      month,
+      total: monthItems.reduce((sum, item) => sum + item.amount, 0),
+      enteredTotal: monthItems
+        .filter((item) => item.source === 'entered' || item.source === 'other')
+        .reduce((sum, item) => sum + item.amount, 0),
+      items: monthItems,
+    };
+  });
+}
+
 function sumRows(rows: PropertyReportRow[], name: string, propertyId: PropertyReportRow['propertyId']): PropertyReportRow {
   const channels = emptyChannels();
   let revenue = 0;
@@ -416,6 +533,7 @@ export function buildPortfolioReport(
       totals: emptyRow(title || 'No properties', 'portfolio'),
       monthly: [],
       expensesByCategory: [],
+      expensesByMonth: [],
       forward: { stays: 0, nights: 0, revenue: 0 },
       topStays: [],
     };
@@ -452,6 +570,10 @@ export function buildPortfolioReport(
       ranch: revFor('ranch'),
       lindon: revFor('lindon'),
       river: revFor('river'),
+      mortgage: tot.mortgage,
+      cleaning: tot.cleaning,
+      operating: tot.operating,
+      costs: tot.mortgage + tot.cleaning + tot.operating,
     });
   }
 
@@ -500,6 +622,7 @@ export function buildPortfolioReport(
       .map(([category, amount]) => ({ category, amount }))
       .filter((row) => row.amount !== 0)
       .sort((a, b) => b.amount - a.amount),
+    expensesByMonth: groupExpensesByMonth(expenses, months, propertyIds, extraCleaningFees),
     forward: {
       stays: forwardStays.length,
       nights: forwardStays.reduce((sum, r) => sum + stayNights(r.checkIn, r.checkOut), 0),
