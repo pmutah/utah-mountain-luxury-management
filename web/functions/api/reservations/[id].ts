@@ -9,11 +9,15 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
     note?: string;
     payout?: number;
     guestName?: string;
+    guestEmail?: string;
+    guestPhone?: string;
   };
 
   const patch: Partial<ReservationRecord> = {};
   if (body.note !== undefined) patch.note = body.note;
   if (body.guestName !== undefined) patch.guestName = body.guestName;
+  if (body.guestEmail !== undefined) patch.guestEmail = body.guestEmail.trim();
+  if (body.guestPhone !== undefined) patch.guestPhone = body.guestPhone.trim();
   if (body.payout !== undefined) {
     const payout = Number(body.payout);
     if (!Number.isFinite(payout) || payout < 0) {
@@ -29,7 +33,7 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
   }
 
   if (Object.keys(patch).length === 0) {
-    return corsJson(request, { error: 'status, payout, guestName, or note required' }, 400);
+    return corsJson(request, { error: 'Nothing to update' }, 400);
   }
 
   const updated = await updateReservation(env, id, patch);

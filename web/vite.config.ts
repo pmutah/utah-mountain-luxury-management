@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite';
 const PAGES_ORIGIN = 'https://wilhite-portfolio.pages.dev';
 
 export default defineConfig({
+  appType: 'spa',
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,

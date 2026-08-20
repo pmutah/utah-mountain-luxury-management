@@ -120,7 +120,21 @@ export const RESERVATIONS = [
   { id: 'l-jake', guestName: 'Jake Maughan', propertyId: 'lindon', checkIn: '2026-08-06', checkOut: '2026-08-09', payout: 732.64, source: 'VRBO' },
   { id: 'l23', guestName: 'Doeeen Gardner', propertyId: 'lindon', checkIn: '2026-08-13', checkOut: '2026-08-17', payout: 1110.65, source: 'Airbnb' },
   { id: 'l-joanne', guestName: 'Joanne OHara', propertyId: 'lindon', checkIn: '2026-09-03', checkOut: '2026-09-06', payout: 729.24, source: 'Airbnb' },
+  { id: 'l-debra', guestName: 'Debra Adimey', propertyId: 'lindon', checkIn: '2026-08-18', checkOut: '2026-08-21', payout: 0, source: 'Airbnb', guestPhone: '+17023764054', note: 'HA-PGD5TF · 9 guests · host payout not in confirmation' },
+  { id: 'l-laura', guestName: 'Laura Mullis', propertyId: 'lindon', checkIn: '2026-08-20', checkOut: '2026-08-28', payout: 0, source: 'Airbnb', guestPhone: '+19122931122', note: 'HMTJ9SR2SF · 2 guests · overlaps Debra Aug 18–21 — confirm if one cancelled' },
+  { id: 'l-marcy', guestName: 'Marcy Eckmier', propertyId: 'lindon', checkIn: '2026-10-07', checkOut: '2026-10-11', payout: 0, source: 'VRBO', guestPhone: '+15109109739', note: '5441941976 · 6 guests · host payout not in confirmation' },
   { id: 'l25', guestName: 'Jason Parkin', propertyId: 'lindon', checkIn: '2026-11-22', checkOut: '2026-11-29', payout: 1299.78, source: 'Airbnb' },
+  {
+    id: 'rh-melanie',
+    guestName: 'Melanie Larisch',
+    propertyId: 'river',
+    checkIn: '2026-12-10',
+    checkOut: '2026-12-13',
+    payout: 5016,
+    source: 'VRBO',
+    guestPhone: '+18015805653',
+    note: 'HA-W4X608 · 18 adults · first Riverhouse booking · estimated host payout $5,016 (processing fees TBD)',
+  },
 ];
 
 export const EXPENSES = [

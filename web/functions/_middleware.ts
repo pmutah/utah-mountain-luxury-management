@@ -5,6 +5,7 @@ export const onRequest: PagesFunction<{ DASHBOARD_PASSWORD?: string }> = async (
   if (!url.pathname.startsWith('/api/')) return context.next();
   if (
     url.pathname.startsWith('/api/auth/') ||
+    url.pathname.startsWith('/api/stay-preferences/') ||
     url.pathname === '/health' ||
     context.request.method === 'OPTIONS'
   ) {

@@ -22,6 +22,7 @@ export function gmailOAuthUrl(env: SettingsEnv, redirectUri: string): string | n
   const scopes = [
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.compose',
+    'https://www.googleapis.com/auth/gmail.send',
   ].join(' ');
   const params = new URLSearchParams({
     client_id: clientId,
@@ -152,4 +153,36 @@ export async function gmailCreateDraft(
   if (!res.ok) return { error: `Draft failed: ${res.status}` };
   const json = (await res.json()) as { id?: string };
   return { draftId: json.id };
+}
+
+export async function gmailSend(
+  env: SettingsEnv,
+  to: string,
+  subject: string,
+  body: string,
+): Promise<{ id?: string; error?: string }> {
+  const tokens = await getValidGmailToken(env);
+  if (!tokens) return { error: 'Gmail is not connected. Connect utahmountainluxury@gmail.com in the dashboard.' };
+
+  const raw = btoa(
+    `To: ${to}\r\nFrom: Utah Mountain Luxury <${tokens.email}>\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${body}`,
+  )
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokens.accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ raw }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    return { error: `Gmail send failed (${res.status})${detail ? `: ${detail.slice(0, 180)}` : ''}` };
+  }
+  const json = (await res.json()) as { id?: string };
+  return { id: json.id };
 }

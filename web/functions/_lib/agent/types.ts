@@ -16,6 +16,12 @@ export interface ReservationRecord {
   createdAt?: string;
   /** Stable id from Hospitable / OTA iCal VEVENT UID */
   icalUid?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  surveyToken?: string;
+  surveySentAt?: string;
+  surveyChannel?: 'email' | 'sms';
+  surveyCompletedAt?: string;
 }
 
 export interface CalendarBlock {
@@ -151,4 +157,8 @@ export interface AgentEnv {
   OPENAI_API_KEY?: string;
   PRICELABS_API_KEY?: string;
   SETTINGS?: KVNamespace;
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  UML_TWILIO_SMS_FROM?: string;
+  TWILIO_SMS_FROM?: string;
 }

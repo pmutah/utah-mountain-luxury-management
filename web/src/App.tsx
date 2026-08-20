@@ -10,10 +10,12 @@ import { ToastStack } from './components/Toast';
 import { AgentChat } from './components/AgentChat';
 import { ConstructionManagerChat } from './components/ConstructionManagerChat';
 import { ConstructionProjectView } from './components/ConstructionProject';
+import { GuestsPanel } from './components/GuestsPanel';
+import { GuestPreferenceForm } from './components/GuestPreferenceForm';
 import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
-type TabId = 'portfolio' | 'report' | 'ranch' | 'lindon' | 'river' | 'construction';
+type TabId = 'portfolio' | 'report' | 'guests' | 'ranch' | 'lindon' | 'river' | 'construction';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
@@ -69,7 +71,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-thin">
-          {(['portfolio', 'report', 'ranch', 'lindon', 'river', 'construction'] as const).map((id) => (
+          {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'construction'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -82,7 +84,9 @@ function Dashboard() {
                       ? 'bg-cyan-600 text-white shadow-xl'
                       : id === 'report'
                         ? 'bg-violet-600 text-white shadow-xl'
-                        : 'bg-blue-600 text-white shadow-xl'
+                        : id === 'guests'
+                          ? 'bg-teal-600 text-white shadow-xl'
+                          : 'bg-blue-600 text-white shadow-xl'
                   : 'bg-slate-900 text-slate-500 border border-slate-800'
               }`}
             >
@@ -90,9 +94,11 @@ function Dashboard() {
                 ? 'Overview'
                 : id === 'report'
                   ? 'Report'
-                  : id === 'construction'
-                    ? PROPERTIES.construction.name
-                    : PROPERTIES[id].name}
+                  : id === 'guests'
+                    ? 'Guests'
+                    : id === 'construction'
+                      ? PROPERTIES.construction.name
+                      : PROPERTIES[id].name}
             </button>
           ))}
         </nav>
@@ -108,6 +114,7 @@ function Dashboard() {
           <LoadingSkeleton />
         ) : data ? (
           <main className={loading ? 'opacity-60 pointer-events-none' : ''}>
+            {activeTab === 'guests' && <GuestsPanel onToast={showToast} />}
             {activeTab === 'portfolio' && (
               <PortfolioOverview
                 data={data}
@@ -142,7 +149,7 @@ function Dashboard() {
       <ToastStack toasts={toasts} />
       <AgentChat
         month={currentMonth}
-        activeTab={activeTab === 'construction' ? 'construction' : activeTab}
+        activeTab={activeTab === 'construction' || activeTab === 'guests' ? 'portfolio' : activeTab}
         onError={(msg) => showToast(msg, 'error')}
       />
       <ConstructionManagerChat
@@ -154,6 +161,10 @@ function Dashboard() {
 }
 
 export default function App() {
+  const stayMatch = window.location.pathname.match(/^\/stay\/([^/]+)/);
+  if (stayMatch?.[1]) {
+    return <GuestPreferenceForm token={stayMatch[1]} />;
+  }
   return (
     <LoginGate>
       <Dashboard />

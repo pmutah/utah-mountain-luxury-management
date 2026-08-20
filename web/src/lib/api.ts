@@ -55,6 +55,69 @@ export interface Reservation {
   payout: number;
   source: string;
   status?: string;
+  note?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  surveyToken?: string;
+  surveySentAt?: string;
+  surveyChannel?: 'email' | 'sms';
+  surveyCompletedAt?: string;
+}
+
+export interface GuestPreferenceAnswers {
+  leadName?: string;
+  cell?: string;
+  adults?: string;
+  children?: string;
+  childAges?: string;
+  celebration?: string;
+  celebrationDetail?: string;
+  dogs?: string;
+  accessibility?: string;
+  arrivalWindow?: string;
+  arrivingHow?: string;
+  codeRecipients?: string;
+  codeChannel?: string;
+  earlyLate?: string;
+  tripWhy?: string[];
+  insideOutside?: string;
+  evenings?: string;
+  topAmenities?: string[];
+  houseTemp?: string;
+  scentNotes?: string;
+  masterSuite?: string;
+  guestSuite?: string;
+  extraPillows?: string;
+  kidsSleep?: string;
+  quietRoom?: string;
+  allergies?: string;
+  doNotLeave?: string;
+  favoriteFood?: string;
+  favoriteSnack?: string;
+  favoriteNaDrink?: string;
+  favoriteAlcohol?: string;
+  coffeeStyle?: string;
+  coffeeMilk?: string;
+  coffeeDecaf?: string;
+  coffeeBrand?: string;
+  kidsSnack?: string;
+  smileItem?: string;
+  anythingElse?: string;
+  whyChose?: string;
+}
+
+export interface GuestSurveyRecord {
+  token: string;
+  reservationId: string;
+  propertyId: string;
+  guestName: string;
+  checkIn: string;
+  checkOut: string;
+  createdAt: string;
+  sentAt?: string;
+  channel?: 'email' | 'sms';
+  completedAt?: string;
+  answers?: GuestPreferenceAnswers;
 }
 
 export interface Expense {
@@ -418,6 +481,45 @@ export const api = {
     request<ConstructionChatResponse>('/api/agent/construction/chat', {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+  getGuestSurveys: () =>
+    request<{
+      surveys: GuestSurveyRecord[];
+      reservations: Reservation[];
+      gmail: { connected: boolean; email: string | null };
+      sms: { configured: boolean; from: string | null };
+    }>('/api/surveys'),
+  updateReservationContacts: (
+    id: string,
+    body: { guestEmail?: string; guestPhone?: string },
+  ) =>
+    request<Reservation>(`/api/reservations/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  sendGuestSurvey: (body: {
+    reservationId: string;
+    channel: 'email' | 'sms';
+    guestEmail?: string;
+    guestPhone?: string;
+  }) =>
+    request<{ ok: boolean; token: string; link: string; channel: string }>('/api/surveys/send', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getPublicStayPreference: (token: string) =>
+    request<{
+      guestName: string;
+      propertyName: string;
+      checkIn: string;
+      checkOut: string;
+      completed: boolean;
+      answers: GuestPreferenceAnswers | null;
+    }>(`/api/stay-preferences/${encodeURIComponent(token)}`),
+  submitPublicStayPreference: (token: string, answers: GuestPreferenceAnswers) =>
+    request<{ ok: boolean }>(`/api/stay-preferences/${encodeURIComponent(token)}`, {
+      method: 'POST',
+      body: JSON.stringify(answers),
     }),
 };
 

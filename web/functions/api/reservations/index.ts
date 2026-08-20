@@ -31,6 +31,8 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     source?: string;
     note?: string;
     status?: 'confirmed' | 'blocked';
+    guestEmail?: string;
+    guestPhone?: string;
   };
 
   if (!body.propertyId || !body.checkIn || !body.checkOut) {
@@ -46,6 +48,8 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     source: body.source ?? 'Direct',
     note: body.note,
     status: body.status ?? 'confirmed',
+    guestEmail: body.guestEmail,
+    guestPhone: body.guestPhone,
   });
   return corsJson(request, item, 201);
 };

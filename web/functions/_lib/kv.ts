@@ -4,6 +4,12 @@ const KEY = 'extraCleaningFees';
 
 export interface SettingsEnv {
   SETTINGS?: KVNamespace;
+  GOOGLE_OAUTH_CLIENT_ID?: string;
+  GOOGLE_OAUTH_CLIENT_SECRET?: string;
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  UML_TWILIO_SMS_FROM?: string;
+  TWILIO_SMS_FROM?: string;
 }
 
 export async function loadExtraCleaningFees(env: SettingsEnv): Promise<Record<string, number>> {
