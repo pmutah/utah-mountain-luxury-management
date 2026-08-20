@@ -7,11 +7,45 @@ import {
   type Reservation,
 } from '../lib/api';
 
+type HouseFilter = 'all' | 'ranch' | 'lindon' | 'river';
+
+const HOUSE_FILTERS: Array<{ id: HouseFilter; label: string; activeClass: string }> = [
+  { id: 'all', label: 'All houses', activeClass: 'bg-teal-600 text-white shadow-xl' },
+  { id: 'ranch', label: 'Ranch House', activeClass: 'bg-blue-600 text-white shadow-xl' },
+  { id: 'lindon', label: 'Lindon House', activeClass: 'bg-emerald-600 text-white shadow-xl' },
+  { id: 'river', label: 'River House', activeClass: 'bg-cyan-600 text-white shadow-xl' },
+];
+
 function statusLabel(stay: Reservation, survey?: GuestSurveyRecord) {
   if (survey?.completedAt) return 'Completed';
   if (survey?.sentAt || stay.surveySentAt) return 'Sent';
   if (stay.guestEmail || stay.guestPhone) return 'Ready';
   return 'Need contact';
+}
+
+function houseSearchHaystack(stay: Reservation): string {
+  const property = PROPERTIES[stay.propertyId];
+  const aliases =
+    stay.propertyId === 'lindon'
+      ? 'lindon house linden house the lindon house'
+      : stay.propertyId === 'ranch'
+        ? 'ranch house the ranch house'
+        : stay.propertyId === 'river'
+          ? 'river house riverhouse the river house provo riverhouse'
+          : stay.propertyId;
+  return [
+    stay.guestName,
+    stay.guestEmail,
+    stay.guestPhone,
+    stay.source,
+    stay.note,
+    stay.propertyId,
+    property?.name,
+    aliases,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
 }
 
 export function GuestsPanel({
@@ -33,6 +67,8 @@ export function GuestsPanel({
   const [drafts, setDrafts] = useState<Record<string, { email: string; phone: string }>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [houseFilter, setHouseFilter] = useState<HouseFilter>('all');
+  const [houseQuery, setHouseQuery] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +102,15 @@ export function GuestsPanel({
     const map = new Map(surveys.map((s) => [s.reservationId, s]));
     return map;
   }, [surveys]);
+
+  const visibleStays = useMemo(() => {
+    const q = houseQuery.trim().toLowerCase();
+    return reservations.filter((stay) => {
+      if (houseFilter !== 'all' && stay.propertyId !== houseFilter) return false;
+      if (q && !houseSearchHaystack(stay).includes(q)) return false;
+      return true;
+    });
+  }, [reservations, houseFilter, houseQuery]);
 
   async function saveContacts(stay: Reservation) {
     const draft = drafts[stay.id] ?? { email: '', phone: '' };
@@ -118,11 +163,45 @@ export function GuestsPanel({
         </p>
       </div>
 
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {HOUSE_FILTERS.map((house) => {
+            const active = houseFilter === house.id;
+            return (
+              <button
+                key={house.id}
+                type="button"
+                onClick={() => setHouseFilter(house.id)}
+                className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest min-h-[44px] ${
+                  active ? house.activeClass : 'bg-slate-900 text-slate-500 border border-slate-800'
+                }`}
+              >
+                {house.label}
+              </button>
+            );
+          })}
+        </div>
+        <input
+          className="w-full rounded-2xl bg-slate-900 border border-slate-800 px-4 py-3 text-sm text-white placeholder:text-slate-500"
+          placeholder="Search Lindon House, Ranch House, River House, or guest name"
+          value={houseQuery}
+          onChange={(e) => setHouseQuery(e.target.value)}
+        />
+        <p className="text-xs text-slate-500">
+          {visibleStays.length} stay{visibleStays.length === 1 ? '' : 's'}
+          {houseFilter !== 'all' ? ` · ${HOUSE_FILTERS.find((h) => h.id === houseFilter)?.label}` : ''}
+        </p>
+      </div>
+
       {reservations.length === 0 && (
         <p className="text-slate-500">No upcoming stays.</p>
       )}
 
-      {reservations.map((stay) => {
+      {reservations.length > 0 && visibleStays.length === 0 && (
+        <p className="text-slate-500">No stays match that house search.</p>
+      )}
+
+      {visibleStays.map((stay) => {
         const survey = byId.get(stay.id);
         const draft = drafts[stay.id] ?? { email: stay.guestEmail ?? '', phone: stay.guestPhone ?? '' };
         const property = PROPERTIES[stay.propertyId]?.name ?? stay.propertyId;
