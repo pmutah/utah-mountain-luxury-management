@@ -131,7 +131,7 @@ export function ExpenseScanner({
         note: preview.note,
         vendor: preview.vendor,
         paidBy: tracksPartnerContributions(preview.propertyId) ? preview.paidBy : undefined,
-        ...(pendingReceipt)
+        ...(pendingReceipt
           ? {
               receiptBase64: pendingReceipt.base64,
               receiptMimeType: pendingReceipt.mimeType,
