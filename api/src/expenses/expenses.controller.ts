@@ -85,7 +85,7 @@ export class ExpensesController {
     const skipped: Array<{ reason: string; expense: BulkExpenseInput }> = [];
 
     for (const row of incoming) {
-      if (row.propertyId !== 'ranch' && row.propertyId !== 'lindon') {
+      if (row.propertyId !== 'ranch' && row.propertyId !== 'lindon' && row.propertyId !== 'river') {
         skipped.push({ reason: 'Invalid propertyId', expense: row });
         continue;
       }

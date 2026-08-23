@@ -1,5 +1,6 @@
 import { calculateMetrics, PROPERTIES } from '../data';
 import { mergeAllExpenses, saveCustomExpenses, loadCustomExpenses, newExpenseId } from '../expenses';
+import { parsePaidBy, summarizePartnerContributions, tracksPartnerContributions } from '../paid-by';
 import { loadExtraCleaningFees } from '../kv';
 import {
   getAllReservations,
@@ -70,6 +71,7 @@ function step(tool: string, action: string): ToolStep {
     log_expense: 'Logging expense',
     list_expenses: 'Listing expenses',
     get_profit_summary: 'Calculating profit',
+    get_partner_contributions: 'Checking partner contributions',
     list: 'Checking reservations',
     get: 'Fetching reservation',
     create: 'Creating reservation',
@@ -104,6 +106,7 @@ async function handleFinances(
     if (!propertyId || !Number.isFinite(amount) || amount <= 0) {
       return { error: 'propertyId and positive amount required' };
     }
+    const paidBy = parsePaidBy(args.paidBy);
     const item = {
       id: newExpenseId(),
       propertyId,
@@ -112,6 +115,7 @@ async function handleFinances(
       amount,
       vendor: args.vendor ? String(args.vendor) : undefined,
       note: args.note ? String(args.note) : undefined,
+      paidBy: tracksPartnerContributions(propertyId) ? (paidBy ?? 'brandon') : paidBy,
       createdAt: new Date().toISOString(),
     };
     const custom = await loadCustomExpenses(env);
@@ -123,13 +127,30 @@ async function handleFinances(
   if (action === 'list_expenses') {
     const propertyId = args.propertyId as PropertyId | undefined;
     const month = args.month ? String(args.month) : undefined;
+    const paidBy = parsePaidBy(args.paidBy);
     const list = allExpenses.filter((e) => {
       if (propertyId && e.propertyId !== propertyId) return false;
       if (month && e.month !== month) return false;
+      if (paidBy && e.paidBy !== paidBy) return false;
       if (e.category === 'Mortgage') return false;
       return true;
     });
     return { expenses: list.slice(0, 50), count: list.length };
+  }
+
+  if (action === 'get_partner_contributions') {
+    const propertyId = (args.propertyId as PropertyId | undefined) ?? 'river';
+    if (!tracksPartnerContributions(propertyId)) {
+      return { error: 'Partner contributions are tracked on ranch and river only' };
+    }
+    const month = args.month ? String(args.month) : undefined;
+    const summary = summarizePartnerContributions(allExpenses, propertyId, month);
+    return {
+      propertyId,
+      month: month ?? 'all-time',
+      labels: { brandon: 'Brandon & Stephanie', todd: 'Todd' },
+      ...summary,
+    };
   }
 
   if (action === 'get_profit_summary') {

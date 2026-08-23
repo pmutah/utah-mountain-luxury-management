@@ -120,6 +120,8 @@ export interface GuestSurveyRecord {
   answers?: GuestPreferenceAnswers;
 }
 
+export type PaidBy = 'brandon' | 'todd';
+
 export interface Expense {
   id: string;
   month: string;
@@ -128,6 +130,8 @@ export interface Expense {
   amount: number;
   note?: string;
   vendor?: string;
+  /** Who fronted the bill. Brandon & Stephanie share one side of the 50/50. */
+  paidBy?: PaidBy;
   createdAt?: string;
   receiptStoragePath?: string | null;
   receiptContentType?: string | null;
@@ -158,6 +162,7 @@ export interface BulkExpenseInput {
   amount: number;
   note?: string;
   vendor?: string;
+  paidBy?: PaidBy;
   receiptBase64?: string;
   receiptMimeType?: string;
 }
@@ -382,6 +387,11 @@ export const api = {
   deleteExpense: (id: string) =>
     request<{ ok: boolean }>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'DELETE',
+    }),
+  updateExpense: (id: string, body: { paidBy?: PaidBy | null }) =>
+    request<Expense>(`/api/expenses/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
     }),
   expenseReceiptUrl: (expenseId: string) =>
     `${API_URL}/api/expenses/${encodeURIComponent(expenseId)}/receipt`,

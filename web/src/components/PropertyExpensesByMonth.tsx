@@ -3,6 +3,7 @@ import { ChevronDown, Receipt } from 'lucide-react';
 import { api, formatCurrency, type Expense, type RentalPropertyId } from '../lib/api';
 import { formatMonthLabel } from '../lib/months';
 import { groupExpensesByMonth, monthRangeInclusive, type ReportExpenseItem } from '../lib/report';
+import { tracksPartnerContributions } from '../lib/paid-by';
 import { ExpenseRow } from './ExpenseRow';
 
 function rangeForProperty(expenses: Expense[], propertyId: RentalPropertyId, selectedMonth: string): string[] {
@@ -71,6 +72,7 @@ export function PropertyExpensesByMonth({
             onDelete={expense.id.startsWith('exp-') ? deleteExpense : undefined}
             onToast={onToast}
             onError={onError}
+            showPaidBy={tracksPartnerContributions(propertyId)}
           />
         </li>
       );

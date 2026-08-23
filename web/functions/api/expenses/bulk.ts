@@ -1,4 +1,4 @@
-import { corsJson } from '../../_lib/data';
+import { corsJson, isRentalProperty } from '../../_lib/data';
 import {
   loadCustomExpenses,
   newExpenseId,
@@ -6,6 +6,7 @@ import {
   withReceiptUrls,
   type ExpenseRecord,
 } from '../../_lib/expenses';
+import { parsePaidBy } from '../../_lib/paid-by';
 import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt-store';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
@@ -17,6 +18,7 @@ type BulkInput = {
   amount: number;
   note?: string;
   vendor?: string;
+  paidBy?: string;
   receiptBase64?: string;
   receiptMimeType?: string;
 };
@@ -58,7 +60,7 @@ export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) =>
   const warnings: string[] = [];
 
   for (const row of incoming) {
-    if (row.propertyId !== 'ranch' && row.propertyId !== 'lindon') {
+    if (!isRentalProperty(row.propertyId)) {
       skipped.push({ reason: 'Invalid propertyId', expense: row });
       continue;
     }
@@ -83,6 +85,7 @@ export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) =>
       amount,
       note: row.note?.trim() || undefined,
       vendor: row.vendor?.trim() || undefined,
+      paidBy: parsePaidBy(row.paidBy),
     };
 
     const key = expenseKey(candidate);

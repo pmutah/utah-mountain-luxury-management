@@ -2,10 +2,12 @@ import {
   PROPERTIES,
   type Expense,
   type OwnerDistribution,
+  type PaidBy,
   type RentalPropertyId,
   type Reservation,
 } from './api';
 import { addMonths } from './months';
+import { summarizePartnerContributions, type PartnerContributionSummary } from './paid-by';
 
 export const REPORT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
 export const RIVER_OPEN_MONTH = '2026-10';
@@ -16,7 +18,7 @@ export type ReportOwnerFilter = 'all' | 'brandon' | 'todd';
 export type ChannelName = 'Airbnb' | 'VRBO' | 'Other';
 
 export const OWNER_LABELS: Record<Exclude<ReportOwnerFilter, 'all'>, string> = {
-  brandon: 'Brandon Pierce',
+  brandon: 'Brandon & Stephanie',
   todd: 'Todd Wilhite',
 };
 
@@ -97,6 +99,7 @@ export type ReportExpenseItem = {
   vendor?: string;
   note?: string;
   source: ReportExpenseSource;
+  paidBy?: PaidBy;
 };
 
 export type ExpenseMonthGroup = {
@@ -119,6 +122,7 @@ export type PortfolioReportModel = {
   monthly: MonthlyReportPoint[];
   expensesByCategory: Array<{ category: string; amount: number }>;
   expensesByMonth: ExpenseMonthGroup[];
+  riverContributions: PartnerContributionSummary;
   forward: { stays: number; nights: number; revenue: number };
   topStays: Reservation[];
 };
@@ -351,7 +355,7 @@ function scopeTitle(
       ? 'All properties'
       : ids.map((id) => PROPERTIES[id].name.replace(/^The /, '')).join(' · ');
   if (owner === 'all') return homes;
-  return `${owner === 'brandon' ? 'Brandon' : 'Todd'} · ${homes}`;
+  return `${owner === 'brandon' ? 'Brandon & Stephanie' : 'Todd'} · ${homes}`;
 }
 
 function emptyRow(name: string, propertyId: PropertyReportRow['propertyId']): PropertyReportRow {
@@ -392,6 +396,7 @@ function toReportExpenseItem(expense: Expense): ReportExpenseItem | null {
     vendor: expense.vendor,
     note: expense.note,
     source: expenseSource(expense),
+    paidBy: expense.paidBy,
   };
 }
 
@@ -534,6 +539,7 @@ export function buildPortfolioReport(
       monthly: [],
       expensesByCategory: [],
       expensesByMonth: [],
+      riverContributions: summarizePartnerContributions([], 'river'),
       forward: { stays: 0, nights: 0, revenue: 0 },
       topStays: [],
     };
@@ -623,6 +629,7 @@ export function buildPortfolioReport(
       .filter((row) => row.amount !== 0)
       .sort((a, b) => b.amount - a.amount),
     expensesByMonth: groupExpensesByMonth(expenses, months, propertyIds, extraCleaningFees),
+    riverContributions: summarizePartnerContributions(expenses, 'river'),
     forward: {
       stays: forwardStays.length,
       nights: forwardStays.reduce((sum, r) => sum + stayNights(r.checkIn, r.checkOut), 0),

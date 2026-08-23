@@ -1,10 +1,46 @@
 import { corsJson } from '../../_lib/data';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
-import { loadCustomExpenses, saveCustomExpenses } from '../../_lib/expenses';
+import { loadCustomExpenses, saveCustomExpenses, withReceiptUrls } from '../../_lib/expenses';
+import { isPaidBy } from '../../_lib/paid-by';
 import { deleteStoredReceipt } from '../../_lib/receipt-store';
 import type { SettingsEnv } from '../../_lib/kv';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
+
+export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
+  const id = params.id as string;
+  if (!id) return corsJson(request, { error: 'id required' }, 400);
+  if (!env.SETTINGS) {
+    return corsJson(request, { error: 'Expense storage not available' }, 503);
+  }
+
+  let body: { paidBy?: string | null };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return corsJson(request, { error: 'Invalid JSON body' }, 400);
+  }
+
+  const custom = await loadCustomExpenses(env);
+  const idx = custom.findIndex((e) => e.id === id);
+  if (idx === -1) {
+    return corsJson(request, { error: 'Expense not found' }, 404);
+  }
+
+  if (body.paidBy === null || body.paidBy === '') {
+    const next = { ...custom[idx]! };
+    delete next.paidBy;
+    custom[idx] = next;
+  } else if (isPaidBy(body.paidBy)) {
+    custom[idx] = { ...custom[idx]!, paidBy: body.paidBy };
+  } else if (body.paidBy !== undefined) {
+    return corsJson(request, { error: 'paidBy must be brandon or todd' }, 400);
+  }
+
+  await saveCustomExpenses(env, custom);
+  const [enriched] = withReceiptUrls([custom[idx]!]);
+  return corsJson(request, enriched);
+};
 
 export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
   const id = params.id as string;

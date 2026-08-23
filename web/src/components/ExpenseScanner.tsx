@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { Camera, ImagePlus, Loader2, ScanLine, Type } from 'lucide-react';
-import { api, formatCurrency, PROPERTIES, type Expense, type ExpenseScanResult, type RentalPropertyId } from '../lib/api';
+import { api, formatCurrency, PROPERTIES, type Expense, type ExpenseScanResult, type PaidBy, type RentalPropertyId } from '../lib/api';
 import { ExpenseRow } from './ExpenseRow';
+import { PAID_BY_LABELS, tracksPartnerContributions } from '../lib/paid-by';
 
 const CATEGORIES = [
   'Maintenance',
@@ -44,7 +45,7 @@ export function ExpenseScanner({
   const [text, setText] = useState('');
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [preview, setPreview] = useState<(ExpenseScanResult & { propertyId: RentalPropertyId }) | null>(null);
+  const [preview, setPreview] = useState<(ExpenseScanResult & { propertyId: RentalPropertyId; paidBy: PaidBy }) | null>(null);
   const [pendingReceipt, setPendingReceipt] = useState<{
     base64: string;
     mimeType: string;
@@ -72,6 +73,7 @@ export function ExpenseScanner({
           ...result,
           propertyId: prop,
           month: result.month,
+          paidBy: 'brandon',
         });
         onToast('Receipt scanned — review and save', 'info');
       } catch (e) {
@@ -128,7 +130,8 @@ export function ExpenseScanner({
         amount: preview.amount,
         note: preview.note,
         vendor: preview.vendor,
-        ...(pendingReceipt
+        paidBy: tracksPartnerContributions(preview.propertyId) ? preview.paidBy : undefined,
+        ...(pendingReceipt)
           ? {
               receiptBase64: pendingReceipt.base64,
               receiptMimeType: pendingReceipt.mimeType,
@@ -319,6 +322,21 @@ export function ExpenseScanner({
                     <option value="river">{PROPERTIES.river.name}</option>
                   </select>
                 </label>
+                {tracksPartnerContributions(preview.propertyId) && (
+                  <label className="text-[9px] text-slate-500 uppercase font-bold col-span-2">
+                    Who paid
+                    <select
+                      value={preview.paidBy}
+                      onChange={(e) =>
+                        setPreview({ ...preview, paidBy: e.target.value as PaidBy })
+                      }
+                      className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-sm font-black text-white"
+                    >
+                      <option value="brandon">{PAID_BY_LABELS.brandon}</option>
+                      <option value="todd">{PAID_BY_LABELS.todd}</option>
+                    </select>
+                  </label>
+                )}
                 {preview.vendor && (
                   <p className="col-span-2 text-xs text-slate-400">
                     Vendor: <span className="text-white font-bold">{preview.vendor}</span>
@@ -363,6 +381,7 @@ export function ExpenseScanner({
                   onDelete={deleteExpense}
                   onError={onError}
                   onToast={onToast}
+                  showPaidBy={tracksPartnerContributions(propertyId)}
                 />
               ))}
             </div>

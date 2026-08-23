@@ -7,9 +7,9 @@ export function OwnerDistributionPanel({ dist }: { dist: Dist }) {
   const pct = (v: number) => (barTotal > 0 && v > 0 ? (v / barTotal) * 100 : 0);
 
   const rows = [
-    { name: 'Brandon Pierce', role: 'Owner & PM', val: dist.brandon, color: 'text-blue-400', bg: 'bg-blue-600' },
+    { name: 'Brandon & Stephanie', role: 'Owners & PM', val: dist.brandon, color: 'text-blue-400', bg: 'bg-blue-600' },
     { name: 'Todd Wilhite', role: 'Equity Partner', val: dist.todd, color: 'text-white', bg: 'bg-slate-700' },
-    { name: 'Management fee (20%)', role: 'Included in Brandon', val: dist.mgtFee, color: 'text-amber-400', bg: 'bg-amber-600' },
+    { name: 'Management fee (20%)', role: 'Included in Brandon & Stephanie', val: dist.mgtFee, color: 'text-amber-400', bg: 'bg-amber-600' },
   ];
 
   return (

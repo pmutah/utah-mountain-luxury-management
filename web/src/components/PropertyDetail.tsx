@@ -9,8 +9,10 @@ import {
 import { OwnerDistributionPanel } from './OwnerDistribution';
 import { ExtraCleaningInput } from './ExtraCleaningInput';
 import { ExpenseScanner } from './ExpenseScanner';
+import { ManualExpenseForm } from './ManualExpenseForm';
 import { OccupancyCalendar, RevenueLog } from './OccupancyCalendar';
 import { EmptyState } from './EmptyState';
+import { PartnerContributions } from './PartnerContributions';
 import { PropertyExpensesByMonth } from './PropertyExpensesByMonth';
 
 type TabId = RentalPropertyId;
@@ -49,8 +51,8 @@ export function PropertyDetail({
         </div>
         {tab === 'river' && (
           <p className="text-xs text-slate-400">
-            Provo Riverhouse · sleeps 24 · 7 bedrooms · first stays Oct 15, 2026 · 50/50 Brandon &amp; Todd, 20%
-            management fee
+            Provo Riverhouse · sleeps 24 · 7 bedrooms · first stays Oct 15, 2026 · 50/50 Brandon &amp;
+            Stephanie and Todd, 20% management fee
           </p>
         )}
       </div>
@@ -78,6 +80,14 @@ export function PropertyDetail({
             </div>
           </div>
 
+          <ManualExpenseForm
+            propertyId={tab}
+            month={data.month}
+            onSaved={onRefresh}
+            onError={onError}
+            onToast={onToast}
+          />
+
           <ExtraCleaningInput
             propertyId={tab}
             month={data.month}
@@ -99,6 +109,17 @@ export function PropertyDetail({
           />
         </div>
       </div>
+
+      {(tab === 'ranch' || tab === 'river') && (
+        <PartnerContributions
+          propertyId={tab}
+          expenses={data.expenses}
+          month={data.month}
+          onRefresh={onRefresh}
+          onToast={onToast}
+          onError={onError}
+        />
+      )}
 
       <PropertyExpensesByMonth
         propertyId={tab}
