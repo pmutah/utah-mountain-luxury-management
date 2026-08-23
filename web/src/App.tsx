@@ -4,6 +4,8 @@ import { LoginGate } from './components/LoginGate';
 import { Header } from './components/Header';
 import { PortfolioOverview } from './components/PortfolioOverview';
 import { PortfolioReport } from './components/PortfolioReport';
+import { DocumentsVault } from './components/DocumentsVault';
+import { EsignCeremony } from './components/EsignCeremony';
 import { PropertyDetail } from './components/PropertyDetail';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { ToastStack } from './components/Toast';
@@ -16,9 +18,11 @@ import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
 type TabId = 'portfolio' | 'report' | 'guests' | 'ranch' | 'lindon' | 'river' | 'construction';
+type ReportView = 'pnl' | 'documents';
 
 function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('portfolio');
+  const [reportView, setReportView] = useState<ReportView>('pnl');
   const [currentMonth, setCurrentMonth] = useState(currentYearMonth);
   const [data, setData] = useState<PortfolioData | null>(null);
   const [history, setHistory] = useState<HistoryData | null>(null);
@@ -110,6 +114,25 @@ function Dashboard() {
               onError={(msg) => showToast(msg, 'error')}
             />
           </main>
+        ) : activeTab === 'report' && reportView === 'documents' ? (
+          <main className="space-y-6">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setReportView('pnl')}
+                className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-slate-900 text-slate-500 border border-slate-800"
+              >
+                Management
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-violet-600 text-white shadow-xl"
+              >
+                Documents
+              </button>
+            </div>
+            <DocumentsVault onToast={showToast} />
+          </main>
         ) : loading && !data ? (
           <LoadingSkeleton />
         ) : data ? (
@@ -125,13 +148,30 @@ function Dashboard() {
               />
             )}
             {activeTab === 'report' && (
-              <PortfolioReport
-                month={currentMonth}
-                reservations={data.reservations}
-                expenses={data.expenses}
-                extraCleaningFees={extraCleaningFees}
-                onToast={showToast}
-              />
+              <div className="space-y-6">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-violet-600 text-white shadow-xl"
+                  >
+                    Management
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportView('documents')}
+                    className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-slate-900 text-slate-500 border border-slate-800"
+                  >
+                    Documents
+                  </button>
+                </div>
+                <PortfolioReport
+                  month={currentMonth}
+                  reservations={data.reservations}
+                  expenses={data.expenses}
+                  extraCleaningFees={extraCleaningFees}
+                  onToast={showToast}
+                />
+              </div>
             )}
             {(activeTab === 'ranch' || activeTab === 'lindon' || activeTab === 'river') && (
               <PropertyDetail
@@ -164,6 +204,10 @@ export default function App() {
   const stayMatch = window.location.pathname.match(/^\/stay\/([^/]+)/);
   if (stayMatch?.[1]) {
     return <GuestPreferenceForm token={stayMatch[1]} />;
+  }
+  const esignMatch = window.location.pathname.match(/^\/esign\/([^/]+)/);
+  if (esignMatch?.[1]) {
+    return <EsignCeremony token={esignMatch[1]} />;
   }
   return (
     <LoginGate>

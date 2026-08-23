@@ -292,6 +292,91 @@ export interface ConstructionDocument {
   sourceFileName?: string;
 }
 
+export type VaultFolder = 'esign' | 'contractor' | 'important';
+export type EsignStatus = 'stored' | 'pending' | 'completed' | 'cancelled';
+export type SignerRole = 'contractor' | 'owner' | 'staff' | 'vendor' | 'other';
+export type VaultPropertyScope = 'all' | 'ranch' | 'lindon' | 'river' | 'construction';
+export type FormCategory = 'lien' | 'contractor' | 'vendor' | 'guest' | 'owner';
+export type FormFieldType =
+  | 'text'
+  | 'textarea'
+  | 'email'
+  | 'tel'
+  | 'number'
+  | 'date'
+  | 'select'
+  | 'property';
+
+export interface FormFieldDef {
+  key: string;
+  label: string;
+  type: FormFieldType;
+  required?: boolean;
+  placeholder?: string;
+  options?: Array<{ value: string; label: string }>;
+  span?: 1 | 2;
+}
+
+export interface FormPreset {
+  id: string;
+  label: string;
+  values: Record<string, string | number>;
+}
+
+export interface FormTemplate {
+  id: string;
+  title: string;
+  category: FormCategory;
+  categoryLabel: string;
+  description: string;
+  folder: VaultFolder;
+  defaultSignerRole: SignerRole;
+  defaultPropertyId: VaultPropertyScope;
+  lockProperty: boolean;
+  signerField: string;
+  fields: FormFieldDef[];
+  presets: FormPreset[];
+}
+
+export interface LienReleaseFields {
+  contractorName: string;
+  contractorAddress?: string;
+  phone?: string;
+  email?: string;
+  invoiceNo?: string;
+  invoiceDate?: string;
+  description: string;
+  amountUsd: number;
+}
+
+export interface VaultDocument {
+  id: string;
+  title: string;
+  folder: VaultFolder;
+  status: EsignStatus;
+  sourceFileName: string;
+  contentType: string;
+  storagePath: string | null;
+  signedStoragePath?: string | null;
+  uploadedAt: string;
+  notes?: string;
+  propertyId?: VaultPropertyScope;
+  signerName?: string;
+  signerEmail?: string;
+  signerPhone?: string;
+  signerRole?: SignerRole;
+  sentChannel?: 'email' | 'sms';
+  kind?: 'upload' | 'lien-release' | 'form';
+  lienRelease?: LienReleaseFields;
+  formTemplateId?: string;
+  formValues?: Record<string, string | number>;
+  sessionId?: string;
+  viewerToken?: string;
+  sentAt?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+}
+
 export interface ConstructionRecommendation {
   id: string;
   stage: string;
@@ -530,6 +615,136 @@ export const api = {
     request<{ ok: boolean }>(`/api/stay-preferences/${encodeURIComponent(token)}`, {
       method: 'POST',
       body: JSON.stringify(answers),
+    }),
+  getVaultDocuments: () =>
+    request<{
+      documents: VaultDocument[];
+      limits?: { maxMb: number; firebaseConfigured: boolean };
+      gmail?: { connected: boolean; email: string | null };
+      sms?: { configured: boolean; from: string | null };
+    }>('/api/esign/documents'),
+  getFormTemplates: () =>
+    request<{
+      templates: FormTemplate[];
+      categories: Array<{ id: FormCategory; label: string }>;
+    }>('/api/esign/templates'),
+  createFormFromTemplate: (
+    templateId: string,
+    body: {
+      fields: Record<string, string | number>;
+      sendChannel?: 'email' | 'sms' | 'none';
+    },
+  ) =>
+    request<{
+      document: VaultDocument;
+      link?: string;
+      emailed?: boolean;
+      texted?: boolean;
+      templateId: string;
+    }>(`/api/esign/templates/${encodeURIComponent(templateId)}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  createLienRelease: (
+    body: LienReleaseFields & { sendEmail?: boolean; sendChannel?: 'email' | 'sms' | 'none'; preset?: 'jm-lt' },
+  ) =>
+    request<{
+      document: VaultDocument;
+      link?: string;
+      emailed?: boolean;
+      texted?: boolean;
+      property: {
+        jobSite: string;
+        owners: string;
+        propertyName: string;
+      };
+    }>('/api/esign/lien-release', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  uploadVaultDocument: (body: {
+    fileBase64: string;
+    mimeType: string;
+    fileName?: string;
+    title?: string;
+    folder?: VaultFolder;
+    notes?: string;
+    propertyId?: VaultPropertyScope;
+    signerName?: string;
+    signerEmail?: string;
+    signerPhone?: string;
+    signerRole?: SignerRole;
+  }) =>
+    request<VaultDocument>('/api/esign/documents', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateVaultDocument: (
+    id: string,
+    body: Partial<
+      Pick<
+        VaultDocument,
+        | 'title'
+        | 'folder'
+        | 'notes'
+        | 'propertyId'
+        | 'signerName'
+        | 'signerEmail'
+        | 'signerPhone'
+        | 'signerRole'
+        | 'status'
+      >
+    >,
+  ) =>
+    request<VaultDocument>(`/api/esign/documents/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  deleteVaultDocument: (id: string) =>
+    request<{ ok: boolean }>(`/api/esign/documents/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  vaultDocumentFileUrl: (id: string, kind: 'original' | 'signed' = 'original') =>
+    `${API_URL}/api/esign/documents/${encodeURIComponent(id)}/file${kind === 'signed' ? '?kind=signed' : ''}`,
+  sendVaultEsign: (
+    id: string,
+    body: {
+      signerName?: string;
+      signerEmail?: string;
+      signerPhone?: string;
+      channel?: 'email' | 'sms' | 'none';
+      sendEmail?: boolean;
+    },
+  ) =>
+    request<{ document: VaultDocument; link: string; emailed: boolean; texted: boolean }>(
+      `/api/esign/documents/${encodeURIComponent(id)}/send`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+  signVaultDocumentNow: (
+    id: string,
+    body: { signerName: string; signatureDataUrl: string; consentAccepted: boolean },
+  ) =>
+    request<VaultDocument>(`/api/esign/documents/${encodeURIComponent(id)}/sign-now`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getPublicEsign: (token: string) =>
+    request<{
+      title: string;
+      folderLabel: string;
+      signerName: string;
+      completed: boolean;
+      expired: boolean;
+      cancelled: boolean;
+    }>(`/api/esign/sign/${encodeURIComponent(token)}`),
+  publicEsignFileUrl: (token: string) => `${API_URL}/api/esign/sign/${encodeURIComponent(token)}/file`,
+  completePublicEsign: (
+    token: string,
+    body: { signerName: string; signatureDataUrl: string; consentAccepted: boolean },
+  ) =>
+    request<{ ok: boolean; completedAt?: string }>(`/api/esign/sign/${encodeURIComponent(token)}`, {
+      method: 'POST',
+      body: JSON.stringify(body),
     }),
 };
 
