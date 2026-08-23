@@ -39,8 +39,10 @@ export function AgentChat({
     return (
       <button
         type="button"
+        data-bot="open-cohost"
+        aria-label="Open co-host chat"
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-4 z-50 flex items-center gap-2 px-5 py-3 min-h-[52px] rounded-2xl bg-violet-600 hover:bg-violet-500 text-white shadow-2xl text-xs font-black uppercase tracking-wider"
+        className="fixed bottom-6 right-4 z-40 pointer-events-auto flex items-center gap-2 px-5 py-3 min-h-[52px] rounded-2xl bg-violet-600 hover:bg-violet-500 text-white shadow-2xl text-xs font-black uppercase tracking-wider"
       >
         <Bot className="w-5 h-5" />
         Co-host
@@ -49,7 +51,10 @@ export function AgentChat({
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 sm:inset-x-auto sm:right-4 sm:bottom-6 z-50 flex flex-col sm:w-[420px] sm:max-h-[min(640px,calc(100dvh-2rem))] bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
+    <div
+      data-bot="cohost-panel"
+      className="fixed inset-x-0 bottom-0 sm:inset-x-auto sm:right-4 sm:bottom-6 z-50 pointer-events-auto flex flex-col sm:w-[420px] sm:max-h-[min(640px,calc(100dvh-2rem))] bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
+    >
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/90">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-violet-400" />

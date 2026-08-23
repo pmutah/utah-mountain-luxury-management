@@ -61,6 +61,9 @@ export function LoginGate({ children }: { children: ReactNode }) {
         </div>
         <input
           type="password"
+          data-bot="login-password"
+          name="password"
+          aria-label="Dashboard password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Dashboard password"
@@ -70,6 +73,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
         {error && <p className="text-red-400 text-sm font-bold">{error}</p>}
         <button
           type="submit"
+          data-bot="login-submit"
           className="w-full py-3 bg-blue-600 rounded-2xl text-sm font-black uppercase tracking-widest text-white"
         >
           Continue

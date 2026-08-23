@@ -7,7 +7,6 @@ import {
   type Reservation,
 } from './api';
 import { addMonths } from './months';
-import { summarizePartnerContributions, type PartnerContributionSummary } from './paid-by';
 
 export const REPORT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
 export const RIVER_OPEN_MONTH = '2026-10';
@@ -122,7 +121,6 @@ export type PortfolioReportModel = {
   monthly: MonthlyReportPoint[];
   expensesByCategory: Array<{ category: string; amount: number }>;
   expensesByMonth: ExpenseMonthGroup[];
-  riverContributions: PartnerContributionSummary;
   forward: { stays: number; nights: number; revenue: number };
   topStays: Reservation[];
 };
@@ -539,7 +537,6 @@ export function buildPortfolioReport(
       monthly: [],
       expensesByCategory: [],
       expensesByMonth: [],
-      riverContributions: summarizePartnerContributions([], 'river'),
       forward: { stays: 0, nights: 0, revenue: 0 },
       topStays: [],
     };
@@ -629,7 +626,6 @@ export function buildPortfolioReport(
       .filter((row) => row.amount !== 0)
       .sort((a, b) => b.amount - a.amount),
     expensesByMonth: groupExpensesByMonth(expenses, months, propertyIds, extraCleaningFees),
-    riverContributions: summarizePartnerContributions(expenses, 'river'),
     forward: {
       stays: forwardStays.length,
       nights: forwardStays.reduce((sum, r) => sum + stayNights(r.checkIn, r.checkOut), 0),

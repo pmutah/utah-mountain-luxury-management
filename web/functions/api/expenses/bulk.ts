@@ -1,4 +1,5 @@
-import { corsJson, isRentalProperty } from '../../_lib/data';
+import { corsJson, isExpenseProperty } from '../../_lib/data';
+import { parseConstructionStage } from '../../_lib/construction/types';
 import {
   loadCustomExpenses,
   newExpenseId,
@@ -12,12 +13,13 @@ import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
 
 type BulkInput = {
-  propertyId: 'ranch' | 'lindon' | 'river';
+  propertyId: string;
   month: string;
   category: string;
   amount: number;
   note?: string;
   vendor?: string;
+  stage?: string;
   paidBy?: string;
   receiptBase64?: string;
   receiptMimeType?: string;
@@ -60,7 +62,7 @@ export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) =>
   const warnings: string[] = [];
 
   for (const row of incoming) {
-    if (!isRentalProperty(row.propertyId)) {
+    if (!isExpenseProperty(row.propertyId)) {
       skipped.push({ reason: 'Invalid propertyId', expense: row });
       continue;
     }
@@ -85,6 +87,7 @@ export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) =>
       amount,
       note: row.note?.trim() || undefined,
       vendor: row.vendor?.trim() || undefined,
+      stage: parseConstructionStage(row.stage),
       paidBy: parsePaidBy(row.paidBy),
     };
 

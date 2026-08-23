@@ -1,4 +1,4 @@
-import { EXPENSES, PROPERTIES } from './data';
+import { EXPENSES, PROPERTIES, type ExpensePropertyId } from './data';
 import type { SettingsEnv } from './kv';
 import type { ReservationRecord } from './agent/types';
 import type { PaidBy } from './paid-by';
@@ -6,11 +6,13 @@ import type { PaidBy } from './paid-by';
 export interface ExpenseRecord {
   id: string;
   month: string;
-  propertyId: 'ranch' | 'lindon' | 'river';
+  propertyId: ExpensePropertyId;
   category: string;
   amount: number;
   note?: string;
   vendor?: string;
+  /** Construction phase (construction expenses only). */
+  stage?: string;
   /** Who fronted the bill. Brandon & Stephanie share one side of the 50/50. */
   paidBy?: PaidBy;
   createdAt?: string;
@@ -46,7 +48,7 @@ export async function mergeAllExpenses(env: SettingsEnv): Promise<ExpenseRecord[
   const custom = await loadCustomExpenses(env);
   const base = EXPENSES.map((e) => ({
     ...e,
-    propertyId: e.propertyId as 'ranch' | 'lindon' | 'river',
+    propertyId: e.propertyId as ExpensePropertyId,
   }));
   return [...base, ...custom];
 }

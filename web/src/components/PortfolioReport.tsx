@@ -141,19 +141,6 @@ function reportSummaryText(report: PortfolioReportModel): string {
       `Owners: Brandon & Stephanie ${formatCurrency(t.dist.brandon)} · Todd ${formatCurrency(t.dist.todd)} · Mgmt fee ${formatCurrency(t.dist.mgtFee)}`,
     );
   }
-  const river = report.riverContributions;
-  if (report.propertyIds.includes('river') && river.totalAssigned > 0) {
-    lines.push(
-      `River House contributions: Brandon & Stephanie ${formatCurrency(river.brandon)} · Todd ${formatCurrency(river.todd)} · each share ${formatCurrency(river.eachShare)}`,
-    );
-    if (river.toddStillOwes > 0.005) {
-      lines.push(`  Todd still needs to contribute ${formatCurrency(river.toddStillOwes)} to stay 50/50`);
-    } else if (river.toddStillOwes < -0.005) {
-      lines.push(
-        `  Brandon & Stephanie still need to contribute ${formatCurrency(Math.abs(river.toddStillOwes))} to stay 50/50`,
-      );
-    }
-  }
   if (report.forward.stays > 0) {
     lines.push(
       `On the books after this period: ${report.forward.stays} stays · ${formatCurrency(report.forward.revenue)} · ${fmtNights(report.forward.nights)}`,
@@ -637,49 +624,6 @@ export function PortfolioReport({
           )}
         </div>
       </section>
-
-      {report.propertyIds.includes('river') && (
-        <section className="bg-cyan-950/30 p-6 sm:p-8 rounded-[40px] border border-cyan-800/50 shadow-xl">
-          <h3 className="text-sm font-black uppercase tracking-widest text-cyan-300 mb-2">
-            River House — Brandon &amp; Stephanie ledger
-          </h3>
-          <p className="text-xs text-slate-500 mb-6">
-            All tagged River House bills Brandon &amp; Stephanie or Todd fronted. Settlement is 50/50 on those
-            amounts.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            <div className="bg-slate-950/70 p-5 rounded-3xl border border-blue-800/40">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                Brandon &amp; Stephanie
-              </p>
-              <p className="text-2xl font-black text-blue-400 mt-1">
-                {formatCurrency(report.riverContributions.brandon)}
-              </p>
-            </div>
-            <div className="bg-slate-950/70 p-5 rounded-3xl border border-slate-700">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Todd</p>
-              <p className="text-2xl font-black text-white mt-1">
-                {formatCurrency(report.riverContributions.todd)}
-              </p>
-            </div>
-            <div className="bg-slate-950/70 p-5 rounded-3xl border border-slate-800">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Each 50% share</p>
-              <p className="text-2xl font-black text-cyan-400 mt-1">
-                {formatCurrency(report.riverContributions.eachShare)}
-              </p>
-            </div>
-          </div>
-          <p className="text-sm font-black text-white">
-            {report.riverContributions.totalAssigned <= 0
-              ? 'No tagged River House bills yet — add them on the River House tab.'
-              : report.riverContributions.toddStillOwes > 0.005
-                ? `Todd still needs to contribute ${formatCurrency(report.riverContributions.toddStillOwes)} to stay 50/50.`
-                : report.riverContributions.toddStillOwes < -0.005
-                  ? `Brandon & Stephanie still need to contribute ${formatCurrency(Math.abs(report.riverContributions.toddStillOwes))} to stay 50/50.`
-                  : 'River House contributions are even.'}
-          </p>
-        </section>
-      )}
 
       <ExpensesByMonth
         key={`${period}-${report.endMonth}-${report.propertyFilter}-${report.ownerFilter}`}

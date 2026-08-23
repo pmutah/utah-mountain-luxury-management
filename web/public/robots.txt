@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /llms.txt
+Allow: /api/agent/map
+Disallow: /api/

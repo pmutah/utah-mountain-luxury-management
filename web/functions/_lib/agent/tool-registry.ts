@@ -11,7 +11,7 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
           type: 'string',
           enum: ['log_expense', 'list_expenses', 'get_profit_summary', 'get_partner_contributions'],
         },
-        propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river'] },
+        propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river', 'construction'] },
         month: { type: 'string', description: 'YYYY-MM for log/list' },
         startMonth: { type: 'string', description: 'YYYY-MM range start for profit summary' },
         endMonth: { type: 'string', description: 'YYYY-MM range end for profit summary' },
@@ -19,11 +19,15 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
         category: { type: 'string' },
         vendor: { type: 'string' },
         note: { type: 'string', description: 'What the expense was (required for a useful manual log)' },
+        stage: {
+          type: 'string',
+          description: 'Construction phase for construction expenses (e.g. Framing, Permits).',
+        },
         paidBy: {
           type: 'string',
           enum: ['brandon', 'todd'],
           description:
-            'Who fronted the bill. brandon = Brandon & Stephanie. todd = Todd. Use on ranch and river.',
+            'Who fronted the bill. brandon = Brandon & Stephanie. todd = Todd. Use on the construction project.',
         },
       },
       required: ['action'],

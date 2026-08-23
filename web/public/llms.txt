@@ -1,0 +1,49 @@
+# Utah Mountain Luxury Management
+
+This is a private operations dashboard for short-term rentals (Ranch House, Lindon House, River House) and a construction project. Live: https://wilhite-portfolio.pages.dev
+
+## For browser agents (Grok / Cursor)
+
+1. Read `/api/agent/map` (JSON) or this file.
+2. Prefer **hash routes** or `window.UML.navigate(...)` over clicking the top nav. Overlay widgets can intercept clicks.
+3. After login, `document.documentElement.dataset.umlTab` is the current screen.
+4. Primary controls use `data-bot="..."` attributes.
+
+### Hash routes
+
+- `#/overview` — portfolio
+- `#/report` — P&L report
+- `#/report/documents` — e-sign / document vault
+- `#/guests`
+- `#/ranch` `#/lindon` `#/river`
+- `#/construction` — construction docs + partner spend (Todd vs Brandon & Stephanie)
+
+### JavaScript bridge
+
+```
+UML.navigate("construction")
+UML.navigate("report", "documents")
+UML.setMonth("2026-08")
+UML.state()
+UML.help()
+```
+
+### Login
+
+POST `/api/auth/login` with `{ "password": "..." }` (cookie). Form: `[data-bot="login-password"]` and `[data-bot="login-submit"]`.
+
+### Do not
+
+- Put construction partner bills on ranch/lindon/river. Partner spend is construction only.
+- Treat Lindon as 50/50 with Todd; Lindon is Brandon’s rental P&L.
+- Use Firecrawl unless the user asked.
+
+### Useful APIs (cookie auth)
+
+- GET `/api/portfolio/metrics?month=YYYY-MM`
+- GET `/api/expenses`
+- POST `/api/expenses` — construction: `propertyId: "construction"`, `paidBy: "brandon"|"todd"`, `stage`
+- POST `/api/agent/chat` — rental co-host tools
+- POST `/api/agent/construction/chat` — construction manager
+- GET `/api/construction/project`
+- GET `/api/esign/templates`

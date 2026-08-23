@@ -12,7 +12,6 @@ import { ExpenseScanner } from './ExpenseScanner';
 import { ManualExpenseForm } from './ManualExpenseForm';
 import { OccupancyCalendar, RevenueLog } from './OccupancyCalendar';
 import { EmptyState } from './EmptyState';
-import { PartnerContributions } from './PartnerContributions';
 import { PropertyExpensesByMonth } from './PropertyExpensesByMonth';
 
 type TabId = RentalPropertyId;
@@ -109,17 +108,6 @@ export function PropertyDetail({
           />
         </div>
       </div>
-
-      {(tab === 'ranch' || tab === 'river') && (
-        <PartnerContributions
-          propertyId={tab}
-          expenses={data.expenses}
-          month={data.month}
-          onRefresh={onRefresh}
-          onToast={onToast}
-          onError={onError}
-        />
-      )}
 
       <PropertyExpensesByMonth
         propertyId={tab}

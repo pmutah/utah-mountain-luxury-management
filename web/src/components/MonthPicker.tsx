@@ -24,6 +24,7 @@ export function MonthPicker({
         onChange={(e) => onChange(e.target.value)}
         className="bg-slate-900 border border-slate-800 text-white px-4 py-3 rounded-2xl font-black focus:ring-2 focus:ring-blue-600 outline-none flex-1 sm:flex-none min-w-0 cursor-pointer text-center"
         aria-label="Select month"
+        data-bot="month"
       />
       <button
         type="button"

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, PROPERTIES, type HistoryData, type PortfolioData } from './lib/api';
+import {
+  parseDashboardHash,
+  type DashboardTab,
+  type ReportView,
+} from './lib/bot-nav';
+import { installUmlBridge, syncDocumentView } from './lib/uml-bridge';
 import { LoginGate } from './components/LoginGate';
 import { Header } from './components/Header';
 import { PortfolioOverview } from './components/PortfolioOverview';
@@ -17,12 +23,10 @@ import { GuestPreferenceForm } from './components/GuestPreferenceForm';
 import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
-type TabId = 'portfolio' | 'report' | 'guests' | 'ranch' | 'lindon' | 'river' | 'construction';
-type ReportView = 'pnl' | 'documents';
-
 function Dashboard() {
-  const [activeTab, setActiveTab] = useState<TabId>('portfolio');
-  const [reportView, setReportView] = useState<ReportView>('pnl');
+  const initial = parseDashboardHash(window.location.hash);
+  const [activeTab, setActiveTab] = useState<DashboardTab>(initial.tab);
+  const [reportView, setReportView] = useState<ReportView>(initial.reportView);
   const [currentMonth, setCurrentMonth] = useState(currentYearMonth);
   const [data, setData] = useState<PortfolioData | null>(null);
   const [history, setHistory] = useState<HistoryData | null>(null);
@@ -54,6 +58,33 @@ function Dashboard() {
     void load();
   }, [load]);
 
+  const go = useCallback((tab: DashboardTab, view: ReportView = 'pnl') => {
+    setActiveTab(tab);
+    setReportView(tab === 'report' ? view : 'pnl');
+  }, []);
+
+  useEffect(() => {
+    const onHash = () => {
+      const next = parseDashboardHash(window.location.hash);
+      setActiveTab(next.tab);
+      setReportView(next.reportView);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  useEffect(() => {
+    syncDocumentView({ tab: activeTab, reportView }, currentMonth);
+  }, [activeTab, reportView, currentMonth]);
+
+  useEffect(() => {
+    installUmlBridge({
+      getState: () => ({ tab: activeTab, reportView, month: currentMonth }),
+      navigate: (loc) => go(loc.tab, loc.reportView),
+      setMonth: setCurrentMonth,
+    });
+  }, [activeTab, reportView, currentMonth, go]);
+
   if (error && !data) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col items-center justify-center gap-4 p-6">
@@ -70,16 +101,18 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4 pb-24">
+    <div id="uml-app" className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4 pb-24">
       <div className="max-w-4xl mx-auto">
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
-        <nav className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-thin">
+        <nav aria-label="Dashboard screens" className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-thin">
           {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'construction'] as const).map((id) => (
             <button
               key={id}
               type="button"
-              onClick={() => setActiveTab(id)}
+              data-bot={`nav-${id}`}
+              aria-current={activeTab === id ? 'page' : undefined}
+              onClick={() => go(id, id === 'report' ? reportView : 'pnl')}
               className={`px-6 sm:px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap min-h-[44px] ${
                 activeTab === id
                   ? id === 'construction'
@@ -119,13 +152,15 @@ function Dashboard() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setReportView('pnl')}
+                data-bot="report-pnl"
+                onClick={() => go('report', 'pnl')}
                 className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-slate-900 text-slate-500 border border-slate-800"
               >
                 Management
               </button>
               <button
                 type="button"
+                data-bot="report-documents"
                 className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-violet-600 text-white shadow-xl"
               >
                 Documents
@@ -136,7 +171,7 @@ function Dashboard() {
         ) : loading && !data ? (
           <LoadingSkeleton />
         ) : data ? (
-          <main className={loading ? 'opacity-60 pointer-events-none' : ''}>
+          <main className={loading ? 'opacity-60' : ''}>
             {activeTab === 'guests' && <GuestsPanel onToast={showToast} />}
             {activeTab === 'portfolio' && (
               <PortfolioOverview
@@ -152,13 +187,15 @@ function Dashboard() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
+                    data-bot="report-pnl"
                     className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-violet-600 text-white shadow-xl"
                   >
                     Management
                   </button>
                   <button
                     type="button"
-                    onClick={() => setReportView('documents')}
+                    data-bot="report-documents"
+                    onClick={() => go('report', 'documents')}
                     className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-slate-900 text-slate-500 border border-slate-800"
                   >
                     Documents

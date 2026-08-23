@@ -1,6 +1,7 @@
 import { corsJson } from '../../_lib/data';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import { loadCustomExpenses, saveCustomExpenses, withReceiptUrls } from '../../_lib/expenses';
+import { parseConstructionStage } from '../../_lib/construction/types';
 import { isPaidBy } from '../../_lib/paid-by';
 import { deleteStoredReceipt } from '../../_lib/receipt-store';
 import type { SettingsEnv } from '../../_lib/kv';
@@ -14,7 +15,7 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     return corsJson(request, { error: 'Expense storage not available' }, 503);
   }
 
-  let body: { paidBy?: string | null };
+  let body: { paidBy?: string | null; stage?: string | null };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -35,6 +36,14 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     custom[idx] = { ...custom[idx]!, paidBy: body.paidBy };
   } else if (body.paidBy !== undefined) {
     return corsJson(request, { error: 'paidBy must be brandon or todd' }, 400);
+  }
+
+  if (body.stage === null || body.stage === '') {
+    const next = { ...custom[idx]! };
+    delete next.stage;
+    custom[idx] = next;
+  } else if (body.stage !== undefined) {
+    custom[idx] = { ...custom[idx]!, stage: parseConstructionStage(body.stage) };
   }
 
   await saveCustomExpenses(env, custom);

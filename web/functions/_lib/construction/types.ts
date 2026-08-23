@@ -32,6 +32,12 @@ export const DEFAULT_CONSTRUCTION_STAGES: ConstructionStage[] = [
   'Certificate of Occupancy',
 ];
 
+export function parseConstructionStage(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
 export interface ConstructionProject {
   id: string;
   name: string;

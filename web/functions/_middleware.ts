@@ -7,6 +7,7 @@ export const onRequest: PagesFunction<{ DASHBOARD_PASSWORD?: string }> = async (
     url.pathname.startsWith('/api/auth/') ||
     url.pathname.startsWith('/api/stay-preferences/') ||
     url.pathname.startsWith('/api/esign/sign/') ||
+    url.pathname === '/api/agent/map' ||
     url.pathname === '/health' ||
     context.request.method === 'OPTIONS'
   ) {

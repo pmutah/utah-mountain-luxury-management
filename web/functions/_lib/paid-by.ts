@@ -15,7 +15,7 @@ export function parsePaidBy(value: unknown): PaidBy | undefined {
 }
 
 export function tracksPartnerContributions(propertyId: string): boolean {
-  return propertyId === 'ranch' || propertyId === 'river';
+  return propertyId === 'construction';
 }
 
 export function isPartnerLoggedExpense(expense: { id: string; category: string }): boolean {

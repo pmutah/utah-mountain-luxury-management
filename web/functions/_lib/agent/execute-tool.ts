@@ -1,6 +1,7 @@
-import { calculateMetrics, PROPERTIES } from '../data';
+import { calculateMetrics, isExpenseProperty, PROPERTIES } from '../data';
 import { mergeAllExpenses, saveCustomExpenses, loadCustomExpenses, newExpenseId } from '../expenses';
 import { parsePaidBy, summarizePartnerContributions, tracksPartnerContributions } from '../paid-by';
+import { parseConstructionStage } from '../construction/types';
 import { loadExtraCleaningFees } from '../kv';
 import {
   getAllReservations,
@@ -100,22 +101,26 @@ async function handleFinances(
   const reservations = await getAllReservations(env);
 
   if (action === 'log_expense') {
-    const propertyId = args.propertyId as PropertyId;
+    const propertyIdRaw = String(args.propertyId ?? '');
+    if (!isExpenseProperty(propertyIdRaw)) {
+      return { error: 'propertyId must be ranch, lindon, river, or construction' };
+    }
     const month = String(args.month ?? new Date().toISOString().slice(0, 7));
     const amount = Number(args.amount);
-    if (!propertyId || !Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       return { error: 'propertyId and positive amount required' };
     }
     const paidBy = parsePaidBy(args.paidBy);
     const item = {
       id: newExpenseId(),
-      propertyId,
+      propertyId: propertyIdRaw,
       month,
       category: String(args.category ?? 'Other'),
       amount,
       vendor: args.vendor ? String(args.vendor) : undefined,
       note: args.note ? String(args.note) : undefined,
-      paidBy: tracksPartnerContributions(propertyId) ? (paidBy ?? 'brandon') : paidBy,
+      stage: parseConstructionStage(args.stage),
+      paidBy: tracksPartnerContributions(propertyIdRaw) ? (paidBy ?? 'brandon') : paidBy,
       createdAt: new Date().toISOString(),
     };
     const custom = await loadCustomExpenses(env);
@@ -139,9 +144,9 @@ async function handleFinances(
   }
 
   if (action === 'get_partner_contributions') {
-    const propertyId = (args.propertyId as PropertyId | undefined) ?? 'river';
+    const propertyId = String(args.propertyId ?? 'construction');
     if (!tracksPartnerContributions(propertyId)) {
-      return { error: 'Partner contributions are tracked on ranch and river only' };
+      return { error: 'Partner contributions are tracked on the construction project only' };
     }
     const month = args.month ? String(args.month) : undefined;
     const summary = summarizePartnerContributions(allExpenses, propertyId, month);

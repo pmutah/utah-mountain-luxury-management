@@ -1,0 +1,21 @@
+---
+description: How Grokbots and browser agents should navigate the UML dashboard
+alwaysApply: true
+---
+
+# Dashboard navigation for Grokbots
+
+This app is Utah Mountain Luxury Management (`wilhite-portfolio`). Live: https://wilhite-portfolio.pages.dev
+
+When operating the **dashboard in a browser**, do not depend on clicking the rounded nav chips first. They are often covered by chat FABs or overlays.
+
+**Preferred:**
+
+1. Open `https://wilhite-portfolio.pages.dev/#/construction` (or the matching hash).
+2. Or evaluate `window.UML.navigate("construction")` / `UML.setMonth("2026-08")` / `UML.state()`.
+3. Click `[data-bot="…"]` controls (see `UML.selectors` and `/llms.txt`).
+4. For data changes, prefer REST (`GET /api/agent/map` lists endpoints) or the in-app Co-host / Build chats.
+
+Hash routes: `#/overview` `#/report` `#/report/documents` `#/guests` `#/ranch` `#/lindon` `#/river` `#/construction`.
+
+Partner contribution tracking is **construction only**, not rental properties.

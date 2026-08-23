@@ -1,4 +1,5 @@
-import { corsJson, isRentalProperty } from '../../_lib/data';
+import { corsJson, isExpenseProperty } from '../../_lib/data';
+import { parseConstructionStage } from '../../_lib/construction/types';
 import {
   loadCustomExpenses,
   mergeAllExpenses,
@@ -30,12 +31,13 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
   }
 
   let body: {
-    propertyId: 'ranch' | 'lindon' | 'river';
+    propertyId: string;
     month: string;
     category: string;
     amount: number;
     note?: string;
     vendor?: string;
+    stage?: string;
     paidBy?: string;
     receiptBase64?: string;
     receiptMimeType?: string;
@@ -47,7 +49,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     return corsJson(request, { error: 'Request too large or invalid JSON' }, 413);
   }
 
-  if (!isRentalProperty(body.propertyId) || !body.month || !body.category) {
+  if (!isExpenseProperty(body.propertyId) || !body.month || !body.category) {
     return corsJson(request, { error: 'propertyId, month, and category required' }, 400);
   }
   const amount = Number(body.amount);
@@ -75,6 +77,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     amount,
     note: appendReceiptWarning(body.note?.trim(), warning),
     vendor: body.vendor?.trim() || undefined,
+    stage: parseConstructionStage(body.stage),
     paidBy: parsePaidBy(body.paidBy),
     createdAt: new Date().toISOString(),
     ...meta,

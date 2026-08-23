@@ -132,6 +132,8 @@ export interface Expense {
   vendor?: string;
   /** Who fronted the bill. Brandon & Stephanie share one side of the 50/50. */
   paidBy?: PaidBy;
+  /** Construction phase (construction expenses only). */
+  stage?: string;
   createdAt?: string;
   receiptStoragePath?: string | null;
   receiptContentType?: string | null;
@@ -155,13 +157,16 @@ export interface BatchScannedExpense extends ExpenseScanResult {
   sourceFile?: string;
 }
 
+export type ExpensePropertyId = RentalPropertyId | 'construction';
+
 export interface BulkExpenseInput {
-  propertyId: RentalPropertyId;
+  propertyId: ExpensePropertyId;
   month: string;
   category: string;
   amount: number;
   note?: string;
   vendor?: string;
+  stage?: string;
   paidBy?: PaidBy;
   receiptBase64?: string;
   receiptMimeType?: string;
@@ -469,11 +474,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  getExpenses: () => request<{ expenses: Expense[]; custom: Expense[] }>('/api/expenses'),
   deleteExpense: (id: string) =>
     request<{ ok: boolean }>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
-  updateExpense: (id: string, body: { paidBy?: PaidBy | null }) =>
+  updateExpense: (id: string, body: { paidBy?: PaidBy | null; stage?: string | null }) =>
     request<Expense>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(body),

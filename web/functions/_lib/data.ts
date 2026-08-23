@@ -49,6 +49,13 @@ export function isRentalProperty(id: string): id is RentalPropertyId {
   return id === 'ranch' || id === 'lindon' || id === 'river';
 }
 
+export type ExpensePropertyId = RentalPropertyId | 'construction';
+
+/** Rental P&L properties plus the construction project spend ledger. */
+export function isExpenseProperty(id: string): id is ExpensePropertyId {
+  return isRentalProperty(id) || id === 'construction';
+}
+
 /** Host-net after Airbnb/VRBO taxes and fees (what we keep). Dates match Hospitable iCal. */
 export const RESERVATIONS = [
   { id: 'r1', guestName: "Kristin's Group", propertyId: 'ranch', checkIn: '2026-01-15', checkOut: '2026-01-19', payout: 2232.94, source: 'Airbnb' },

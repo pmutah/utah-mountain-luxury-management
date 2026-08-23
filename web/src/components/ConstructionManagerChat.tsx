@@ -82,8 +82,10 @@ export function ConstructionManagerChat({
     return (
       <button
         type="button"
+        data-bot="open-build"
+        aria-label="Open construction manager chat"
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 z-50 flex items-center gap-2 px-5 py-3 min-h-[52px] rounded-2xl bg-amber-600 hover:bg-amber-500 text-white shadow-2xl text-xs font-black uppercase tracking-wider"
+        className="fixed bottom-24 right-4 z-40 pointer-events-auto flex items-center gap-2 px-5 py-3 min-h-[52px] rounded-2xl bg-amber-600 hover:bg-amber-500 text-white shadow-2xl text-xs font-black uppercase tracking-wider"
       >
         <HardHat className="w-5 h-5" />
         Build

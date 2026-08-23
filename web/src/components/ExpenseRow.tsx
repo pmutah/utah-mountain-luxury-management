@@ -60,6 +60,7 @@ export function ExpenseRow({
   const title = expense.vendor || expense.note || expense.category;
   const subtitleParts = [
     expense.vendor && expense.note && expense.note !== expense.vendor ? expense.note : null,
+    expense.stage ? expense.stage : null,
     expense.category !== 'Other' ? expense.category : null,
   ].filter(Boolean);
 

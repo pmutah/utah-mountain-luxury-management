@@ -6,7 +6,9 @@ import {
   type ConstructionDocument,
   type ConstructionProject as Project,
   type ConstructionRecommendation,
+  type Expense,
 } from '../lib/api';
+import { ConstructionPartnerLedger } from './ConstructionPartnerLedger';
 import { CONSTRUCTION_MAX_BYTES, CONSTRUCTION_MAX_MB } from '../lib/construction-limits';
 import {
   getDocumentInvoiceAmount,
@@ -67,6 +69,7 @@ export function ConstructionProjectView({
   const [project, setProject] = useState<Project | null>(null);
   const [documents, setDocuments] = useState<ConstructionDocument[]>([]);
   const [recommendations, setRecommendations] = useState<ConstructionRecommendation[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(
@@ -81,15 +84,17 @@ export function ConstructionProjectView({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, docs, recs] = await Promise.all([
+      const [p, docs, recs, exp] = await Promise.all([
         api.getConstructionProject(),
         api.getConstructionDocuments(),
         api.getConstructionRecommendations(),
+        api.getExpenses().catch(() => ({ expenses: [] as Expense[] })),
       ]);
       setProject(p);
       setDocuments(docs.documents);
       setFirebaseStorage(docs.limits?.firebaseConfigured ?? null);
       setRecommendations(recs.recommendations);
+      setExpenses(exp.expenses);
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Failed to load construction project');
     } finally {
@@ -223,6 +228,13 @@ export function ConstructionProjectView({
           </div>
         )}
       </section>
+
+      <ConstructionPartnerLedger
+        expenses={expenses}
+        onRefresh={() => void load()}
+        onError={onError}
+        onToast={onToast}
+      />
 
       {recommendations.length > 0 && (
         <section className="bg-slate-900 rounded-[40px] border border-slate-800 p-6">
