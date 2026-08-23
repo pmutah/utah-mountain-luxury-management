@@ -9,7 +9,7 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
       properties: {
         action: {
           type: 'string',
-          enum: ['log_expense', 'list_expenses', 'get_profit_summary'],
+          enum: ['log_expense', 'list_expenses', 'get_profit_summary', 'get_partner_contributions'],
         },
         propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river'] },
         month: { type: 'string', description: 'YYYY-MM for log/list' },
@@ -18,7 +18,13 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
         amount: { type: 'number' },
         category: { type: 'string' },
         vendor: { type: 'string' },
-        note: { type: 'string' },
+        note: { type: 'string', description: 'What the expense was (required for a useful manual log)' },
+        paidBy: {
+          type: 'string',
+          enum: ['brandon', 'todd'],
+          description:
+            'Who fronted the bill. brandon = Brandon & Stephanie. todd = Todd. Use on ranch and river.',
+        },
       },
       required: ['action'],
     },

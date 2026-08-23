@@ -43,7 +43,7 @@ export async function buildAgentContext(
     `Properties:`,
     `- Ranch House (ranch): ${ranchAddr}`,
     `- Lindon House (lindon): ${lindonAddr}`,
-    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24, first stays Oct 15 2026; 50/50 Brandon & Todd, Brandon 20% management fee`,
+    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24, first stays Oct 15 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
     `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : '',
     uiContext.activeTab ? `Active tab: ${uiContext.activeTab}` : '',
@@ -62,4 +62,5 @@ export const AGENT_PERSONA = `You are the AI Property Management co-host for Uta
 Help with guest relations, finances, reservations, calendar, turnover ops, Gmail drafts, and competitive pricing.
 Always use tools when you need data or to make changes. Never invent reservation or expense data.
 For destructive actions (cancel reservation, send email), require explicit user confirmation or create drafts for approval.
-The River House is 50% Brandon Pierce / 50% Todd Wilhite; Brandon is paid a 20% management fee (same split as the Ranch House).`;
+The River House is 50% Brandon Pierce & Stephanie / 50% Todd Wilhite; Brandon is paid a 20% management fee (same split as the Ranch House).
+When logging a River House or Ranch House expense, set paidBy to brandon for Brandon & Stephanie or todd for Todd. Use get_partner_contributions to report what each side has fronted and who still needs to put in money to stay 50/50.`;

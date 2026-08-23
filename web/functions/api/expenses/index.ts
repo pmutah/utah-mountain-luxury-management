@@ -1,4 +1,4 @@
-import { corsJson } from '../../_lib/data';
+import { corsJson, isRentalProperty } from '../../_lib/data';
 import {
   loadCustomExpenses,
   mergeAllExpenses,
@@ -7,6 +7,7 @@ import {
   withReceiptUrls,
   type ExpenseRecord,
 } from '../../_lib/expenses';
+import { parsePaidBy } from '../../_lib/paid-by';
 import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt-store';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
@@ -35,6 +36,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     amount: number;
     note?: string;
     vendor?: string;
+    paidBy?: string;
     receiptBase64?: string;
     receiptMimeType?: string;
   };
@@ -45,7 +47,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     return corsJson(request, { error: 'Request too large or invalid JSON' }, 413);
   }
 
-  if (!body.propertyId || !body.month || !body.category) {
+  if (!isRentalProperty(body.propertyId) || !body.month || !body.category) {
     return corsJson(request, { error: 'propertyId, month, and category required' }, 400);
   }
   const amount = Number(body.amount);
@@ -73,6 +75,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     amount,
     note: appendReceiptWarning(body.note?.trim(), warning),
     vendor: body.vendor?.trim() || undefined,
+    paidBy: parsePaidBy(body.paidBy),
     createdAt: new Date().toISOString(),
     ...meta,
   };

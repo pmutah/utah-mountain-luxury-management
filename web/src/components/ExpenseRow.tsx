@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import { Eye, Hammer, Loader2, Paperclip, Trash2 } from 'lucide-react';
-import { api, formatCurrency, type Expense } from '../lib/api';
+import { api, formatCurrency, type Expense, type PaidBy } from '../lib/api';
 import { expenseReceiptIsPdf, isMobileDevice } from '../lib/device';
 import { ReceiptViewerModal } from './ReceiptViewerModal';
+import { PAID_BY_LABELS, tracksPartnerContributions } from '../lib/paid-by';
 
 function hasStoredReceipt(expense: Expense): boolean {
   return Boolean(expense.receiptStoragePath || expense.receiptUrl);
@@ -26,6 +27,7 @@ export function ExpenseRow({
   onError,
   onToast,
   showMissingReceiptHint = false,
+  showPaidBy = false,
 }: {
   expense: Expense;
   onDelete?: (id: string) => Promise<void>;
@@ -33,6 +35,7 @@ export function ExpenseRow({
   onError: (msg: string) => void;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
   showMissingReceiptHint?: boolean;
+  showPaidBy?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -41,6 +44,7 @@ export function ExpenseRow({
   const [loadingReceipt, setLoadingReceipt] = useState(false);
   const [attaching, setAttaching] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [savingPaidBy, setSavingPaidBy] = useState(false);
 
   const storedReceipt = hasStoredReceipt(expense);
   const receiptEndpoint = api.expenseReceiptUrl(expense.id);
@@ -48,6 +52,16 @@ export function ExpenseRow({
   const mobilePdfLink = pdfReceipt && isMobileDevice();
   const canDelete = expense.id.startsWith('exp-') && onDelete;
   const canAttach = expense.id.startsWith('exp-') && !storedReceipt && onRefresh;
+  const canTagPaidBy =
+    showPaidBy &&
+    expense.id.startsWith('exp-') &&
+    tracksPartnerContributions(expense.propertyId) &&
+    onRefresh;
+  const title = expense.vendor || expense.note || expense.category;
+  const subtitleParts = [
+    expense.vendor && expense.note && expense.note !== expense.vendor ? expense.note : null,
+    expense.category !== 'Other' ? expense.category : null,
+  ].filter(Boolean);
 
   const viewButtonClass =
     'inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider';
@@ -111,6 +125,20 @@ export function ExpenseRow({
     setViewerContentType(null);
   };
 
+  const setPaidBy = async (paidBy: PaidBy) => {
+    if (!onRefresh || expense.paidBy === paidBy) return;
+    setSavingPaidBy(true);
+    try {
+      await api.updateExpense(expense.id, { paidBy });
+      onToast(`Marked as ${PAID_BY_LABELS[paidBy]}`, 'success');
+      onRefresh();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not update who paid');
+    } finally {
+      setSavingPaidBy(false);
+    }
+  };
+
   const remove = async () => {
     if (!onDelete || !window.confirm(`Delete this expense (${formatCurrency(expense.amount)})?`)) return;
     setDeleting(true);
@@ -140,11 +168,21 @@ export function ExpenseRow({
         <span className="text-slate-400 flex items-center gap-2 min-w-0">
           <Hammer className="w-3 h-3 shrink-0" />
           <span className="min-w-0">
-            <span className="block truncate">
-              {expense.vendor ? `${expense.vendor} · ` : ''}
-              {expense.category}
-              {expense.note ? ` — ${expense.note}` : ''}
-            </span>
+            <span className="block truncate">{title}</span>
+            {subtitleParts.length > 0 && (
+              <span className="block text-[10px] text-slate-600 font-bold mt-0.5 truncate">
+                {subtitleParts.join(' · ')}
+              </span>
+            )}
+            {expense.paidBy && (
+              <span
+                className={`block text-[10px] font-black uppercase tracking-widest mt-0.5 ${
+                  expense.paidBy === 'brandon' ? 'text-blue-400' : 'text-slate-400'
+                }`}
+              >
+                {PAID_BY_LABELS[expense.paidBy]}
+              </span>
+            )}
             {showMissingReceiptHint && !storedReceipt && expense.id.startsWith('exp-') && (
               <span className="block text-[10px] text-amber-500/90 font-bold mt-0.5">
                 Amount saved — tap Attach bill to add the PDF
@@ -153,6 +191,27 @@ export function ExpenseRow({
           </span>
         </span>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          {canTagPaidBy && (
+            <div className="flex gap-1">
+              {(['brandon', 'todd'] as const).map((who) => (
+                <button
+                  key={who}
+                  type="button"
+                  disabled={savingPaidBy}
+                  onClick={() => void setPaidBy(who)}
+                  className={`px-2 py-2 min-h-[40px] rounded-xl text-[9px] font-black uppercase tracking-wider ${
+                    expense.paidBy === who
+                      ? who === 'brandon'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-600 text-white'
+                      : 'bg-slate-800 text-slate-500 hover:text-white'
+                  }`}
+                >
+                  {who === 'brandon' ? 'B&S' : 'Todd'}
+                </button>
+              ))}
+            </div>
+          )}
           {canAttach && (
             <button
               type="button"

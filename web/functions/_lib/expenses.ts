@@ -1,6 +1,7 @@
 import { EXPENSES, PROPERTIES } from './data';
 import type { SettingsEnv } from './kv';
 import type { ReservationRecord } from './agent/types';
+import type { PaidBy } from './paid-by';
 
 export interface ExpenseRecord {
   id: string;
@@ -10,6 +11,8 @@ export interface ExpenseRecord {
   amount: number;
   note?: string;
   vendor?: string;
+  /** Who fronted the bill. Brandon & Stephanie share one side of the 50/50. */
+  paidBy?: PaidBy;
   createdAt?: string;
   receiptStoragePath?: string | null;
   receiptContentType?: string | null;
