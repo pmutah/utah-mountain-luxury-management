@@ -208,43 +208,7 @@ export async function buildLienReleasePdf(fields: LienReleaseFields): Promise<Ui
     y2.y -= 26;
   }
 
-  y2.y -= 10;
-  page2.drawLine({
-    start: { x: margin, y: y2.y },
-    end: { x: margin + width, y: y2.y },
-    thickness: 1,
-    color: rule,
-  });
   y2.y -= 24;
-  page2.drawText('NOTARY ACKNOWLEDGMENT', { x: margin, y: y2.y, size: 12, font: bold, color: ink });
-  y2.y -= 20;
-  drawWrapped(page2, y2, 'State of Utah', { size: 11, bold: true, gap: 2 });
-  drawWrapped(page2, y2, ') ss.', { size: 11, gap: 2 });
-  drawWrapped(page2, y2, 'County of ________', { size: 11, gap: 14 });
-  drawWrapped(
-    page2,
-    y2,
-    'On this ____ day of ______________, 20__, before me, a notary public, personally appeared ________________________________, who proved on the basis of satisfactory evidence to be the person whose name is signed on this instrument, and acknowledged that he/she executed the same for the purposes stated therein.',
-    { size: 11, gap: 18 },
-  );
-  page2.drawText('Notary Public: ________________________________________', {
-    x: margin,
-    y: y2.y,
-    size: 11,
-    font,
-    color: ink,
-  });
-  y2.y -= 26;
-  page2.drawText('My Commission Expires: _______________________________', {
-    x: margin,
-    y: y2.y,
-    size: 11,
-    font,
-    color: ink,
-  });
-  y2.y -= 26;
-  page2.drawText('(Seal)', { x: margin, y: y2.y, size: 11, font: italic, color: muted });
-  y2.y -= 36;
   page2.drawText('Utah Mountain Luxury Management  ·  The River House', {
     x: margin,
     y: y2.y,

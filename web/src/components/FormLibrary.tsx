@@ -90,6 +90,14 @@ export function FormLibrary({
       onToast('Add a phone number to text the signing link.', 'error');
       return;
     }
+    if (sendChannel === 'email' && !canEmail) {
+      onToast('Gmail is not connected, so the link cannot be emailed. Store the form, then copy the link from Packets.', 'error');
+      return;
+    }
+    if (sendChannel === 'sms' && !canText) {
+      onToast('SMS is not configured, so the link cannot be texted. Store the form, then copy the link from Packets.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       const result = await api.createFormFromTemplate(selected.id, { fields: values, sendChannel });
@@ -199,6 +207,13 @@ export function FormLibrary({
             <p className="text-xs text-slate-500 mt-2 max-w-2xl">{selected.description}</p>
           </div>
 
+          {(!canEmail || !canText) && (
+            <p className="text-xs text-amber-400/90 font-bold">
+              {!canEmail ? 'Gmail is not connected — Store and email will tell you instead of doing nothing. ' : ''}
+              {!canText ? 'SMS is not configured — Store and text will tell you instead of doing nothing.' : ''}
+            </p>
+          )}
+
           {selected.presets.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {selected.presets.map((preset) => (
@@ -266,7 +281,11 @@ export function FormLibrary({
                   ) : (
                     <input
                       className={inputClass}
-                      type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : field.type === 'tel' ? 'tel' : 'text'}
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      inputMode={
+                        field.type === 'number' ? 'decimal' : field.type === 'email' ? 'email' : field.type === 'tel' ? 'tel' : undefined
+                      }
+                      autoComplete={field.type === 'email' ? 'email' : field.type === 'tel' ? 'tel' : undefined}
                       min={field.type === 'number' ? 0 : undefined}
                       step={field.type === 'number' ? '0.01' : undefined}
                       value={field.type === 'number' ? value || '' : String(value)}
@@ -284,9 +303,10 @@ export function FormLibrary({
             })}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 relative z-20 pb-28 sm:pb-0">
             <button
               type="button"
+              data-bot="form-store"
               disabled={saving}
               onClick={() => void create('none')}
               className="px-6 py-3 rounded-2xl bg-slate-800 text-white text-xs font-black uppercase tracking-widest min-h-[44px] disabled:opacity-60"
@@ -295,7 +315,8 @@ export function FormLibrary({
             </button>
             <button
               type="button"
-              disabled={saving || !canEmail}
+              data-bot="form-email"
+              disabled={saving}
               onClick={() => void create('email')}
               className="px-6 py-3 rounded-2xl bg-cyan-600 text-white text-xs font-black uppercase tracking-widest min-h-[44px] disabled:opacity-60"
             >
@@ -304,7 +325,8 @@ export function FormLibrary({
             </button>
             <button
               type="button"
-              disabled={saving || !canText}
+              data-bot="form-sms"
+              disabled={saving}
               onClick={() => void create('sms')}
               className="px-6 py-3 rounded-2xl bg-violet-600 text-white text-xs font-black uppercase tracking-widest min-h-[44px] disabled:opacity-60"
             >

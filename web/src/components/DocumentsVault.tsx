@@ -220,6 +220,14 @@ export function DocumentsVault({
       onToast('Add a phone number to text the signing link.', 'error');
       return;
     }
+    if (channel === 'email' && !gmail.connected) {
+      onToast('Gmail is not connected, so the link cannot be emailed. Use Copy only, then send the link yourself.', 'error');
+      return;
+    }
+    if (channel === 'sms' && !sms.configured) {
+      onToast('SMS is not configured, so the link cannot be texted. Use Copy only, then send the link yourself.', 'error');
+      return;
+    }
     setSending(true);
     try {
       const result = await api.sendVaultEsign(sendDoc.id, {
@@ -685,7 +693,9 @@ export function DocumentsVault({
               </span>
               <input
                 className={inputClass}
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 value={sendEmail}
                 onChange={(e) => setSendEmail(e.target.value)}
                 placeholder="contractor@email.com"
@@ -706,7 +716,7 @@ export function DocumentsVault({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                disabled={sending || !gmail.connected}
+                disabled={sending}
                 onClick={() => void sendLink('email')}
                 className="flex-1 px-4 py-3 rounded-2xl bg-violet-600 text-white text-xs font-black uppercase tracking-widest min-h-[44px] disabled:opacity-60"
               >
@@ -721,7 +731,7 @@ export function DocumentsVault({
               </button>
               <button
                 type="button"
-                disabled={sending || !sms.configured}
+                disabled={sending}
                 onClick={() => void sendLink('sms')}
                 className="flex-1 px-4 py-3 rounded-2xl bg-cyan-600 text-white text-xs font-black uppercase tracking-widest min-h-[44px] disabled:opacity-60"
               >
