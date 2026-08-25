@@ -587,7 +587,7 @@ export const api = {
     request<{
       surveys: GuestSurveyRecord[];
       reservations: Reservation[];
-      gmail: { connected: boolean; email: string | null };
+      gmail: { connected: boolean; email: string | null; oauthConfigured?: boolean };
       sms: { configured: boolean; from: string | null };
     }>('/api/surveys'),
   updateReservationContacts: (
@@ -626,7 +626,7 @@ export const api = {
     request<{
       documents: VaultDocument[];
       limits?: { maxMb: number; firebaseConfigured: boolean };
-      gmail?: { connected: boolean; email: string | null };
+      gmail?: { connected: boolean; email: string | null; oauthConfigured?: boolean };
       sms?: { configured: boolean; from: string | null };
     }>('/api/esign/documents'),
   getFormTemplates: () =>

@@ -18,7 +18,11 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
   return corsJson(request, {
     surveys,
     reservations: upcoming,
-    gmail: { connected: Boolean(gmail), email: gmail?.email ?? null },
+    gmail: {
+      connected: Boolean(gmail),
+      email: gmail?.email ?? null,
+      oauthConfigured: Boolean(env.GOOGLE_OAUTH_CLIENT_ID?.trim() && env.GOOGLE_OAUTH_CLIENT_SECRET?.trim()),
+    },
     sms: { configured: isTwilioConfigured(env), from: twilioFromNumber(env) },
   });
 };

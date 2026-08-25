@@ -108,7 +108,11 @@ export function DocumentsVault({
   const [signerEmail, setSignerEmail] = useState('');
   const [signerPhone, setSignerPhone] = useState('');
   const [signerRole, setSignerRole] = useState<SignerRole>('contractor');
-  const [gmail, setGmail] = useState<{ connected: boolean; email: string | null }>({
+  const [gmail, setGmail] = useState<{
+    connected: boolean;
+    email: string | null;
+    oauthConfigured?: boolean;
+  }>({
     connected: false,
     email: null,
   });
@@ -303,19 +307,31 @@ export function DocumentsVault({
             email or text the link. Signed packets stay here with a certificate of completion. You
             can still upload a one-off PDF if it is not in the library yet.
           </p>
-          <div className="mt-4 text-xs text-slate-400 space-y-1">
+          <div className="mt-4 text-xs text-slate-400 space-y-2">
             <p>
               Gmail:{' '}
               {gmail.connected
                 ? gmail.email
-                : 'not connected — connect utahmountainluxury@gmail.com to email signing links'}
+                : 'not connected — sign in as utahmountainluxury@gmail.com'}
             </p>
             <p>
               SMS:{' '}
               {sms.configured
                 ? `Twilio ${sms.from}`
-                : 'not configured — add Twilio SID/token/From in Pages env to text signing links'}
+                : 'waiting on Twilio env — same SID as the shop, lodge From when set'}
             </p>
+            {!gmail.connected && (
+              <button
+                type="button"
+                data-bot="connect-gmail"
+                onClick={() => {
+                  window.location.assign('/api/integrations/gmail/connect');
+                }}
+                className="px-4 py-2 rounded-2xl bg-cyan-700 text-white text-[10px] font-black uppercase tracking-widest min-h-[40px]"
+              >
+                Connect Gmail
+              </button>
+            )}
           </div>
         </div>
         <div className="p-6 sm:p-8 flex flex-wrap gap-2">

@@ -16,7 +16,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   return corsJson(request, {
     documents,
     limits: { maxMb: ESIGN_MAX_MB, firebaseConfigured: storageConfigured(env) },
-    gmail: { connected: Boolean(gmail), email: gmail?.email ?? null },
+    gmail: {
+      connected: Boolean(gmail),
+      email: gmail?.email ?? null,
+      oauthConfigured: Boolean(env.GOOGLE_OAUTH_CLIENT_ID?.trim() && env.GOOGLE_OAUTH_CLIENT_SECRET?.trim()),
+    },
     sms: { configured: isTwilioConfigured(env), from: twilioFromNumber(env) },
   });
 };

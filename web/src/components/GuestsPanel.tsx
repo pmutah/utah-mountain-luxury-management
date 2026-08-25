@@ -156,11 +156,22 @@ export function GuestsPanel({
     <div className="space-y-6">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-sm text-slate-400">
         <p>
-          Gmail: {gmail.connected ? gmail.email : 'not connected — connect utahmountainluxury@gmail.com for Send email'}
+          Gmail: {gmail.connected ? gmail.email : 'not connected — sign in as utahmountainluxury@gmail.com'}
         </p>
         <p className="mt-1">
-          SMS: {sms.configured ? `Twilio ${sms.from}` : 'not configured — add Twilio SID/token/From in Pages env'}
+          SMS: {sms.configured ? `Twilio ${sms.from}` : 'waiting on Twilio env'}
         </p>
+        {!gmail.connected && (
+          <button
+            type="button"
+            className="mt-3 px-4 py-2 rounded-2xl bg-cyan-700 text-white text-[10px] font-black uppercase tracking-widest min-h-[40px]"
+            onClick={() => {
+              window.location.assign('/api/integrations/gmail/connect');
+            }}
+          >
+            Connect Gmail
+          </button>
+        )}
       </div>
 
       <div className="space-y-3">

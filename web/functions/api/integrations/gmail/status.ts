@@ -7,6 +7,7 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
   return corsJson(request, {
     connected: Boolean(tokens?.email),
     email: tokens?.email ?? null,
+    oauthConfigured: Boolean(env.GOOGLE_OAUTH_CLIENT_ID?.trim() && env.GOOGLE_OAUTH_CLIENT_SECRET?.trim()),
   });
 };
 
