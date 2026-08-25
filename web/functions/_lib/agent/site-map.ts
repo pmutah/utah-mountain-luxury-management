@@ -57,6 +57,7 @@ export const AGENT_SITE_MAP = {
       'Insulation / Dry-in',
       'Drywall',
       'Finishes',
+      'Furnishings',
       'Punch',
       'Certificate of Occupancy',
     ],

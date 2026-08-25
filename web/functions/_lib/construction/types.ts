@@ -16,6 +16,7 @@ export type ConstructionStage =
   | 'Insulation / Dry-in'
   | 'Drywall'
   | 'Finishes'
+  | 'Furnishings'
   | 'Punch'
   | 'Certificate of Occupancy';
 
@@ -28,6 +29,7 @@ export const DEFAULT_CONSTRUCTION_STAGES: ConstructionStage[] = [
   'Insulation / Dry-in',
   'Drywall',
   'Finishes',
+  'Furnishings',
   'Punch',
   'Certificate of Occupancy',
 ];

@@ -175,6 +175,7 @@ export function ConstructionPartnerLedger({
           <button
             key={name}
             type="button"
+            data-bot={`phase-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
             onClick={() => setPhaseFilter(name)}
             className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider min-h-[36px] ${
               phaseFilter === name ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400'
@@ -207,7 +208,7 @@ export function ConstructionPartnerLedger({
               data-bot="expense-what"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Framing lumber, permit fee, plumber"
+              placeholder="e.g. Framing lumber, sofa, plumber"
               className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white placeholder:text-slate-600"
             />
           </label>

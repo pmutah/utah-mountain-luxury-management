@@ -7,6 +7,7 @@ export const CONSTRUCTION_STAGES = [
   'Insulation / Dry-in',
   'Drywall',
   'Finishes',
+  'Furnishings',
   'Punch',
   'Certificate of Occupancy',
 ] as const;
