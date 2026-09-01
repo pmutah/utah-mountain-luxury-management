@@ -147,7 +147,7 @@ export interface ExpenseScanResult {
   amount: number;
   category: string;
   month: string;
-  propertyId: RentalPropertyId | null;
+  propertyId: RentalPropertyId | 'household' | null;
   vendor?: string;
   note?: string;
   confidence?: 'high' | 'low';
@@ -451,7 +451,7 @@ export const api = {
     text?: string;
     imageBase64?: string;
     mimeType?: string;
-    propertyId?: RentalPropertyId;
+    propertyId?: RentalPropertyId | 'household';
     month?: string;
   }) =>
     request<ExpenseScanResult>('/api/expenses/scan', {

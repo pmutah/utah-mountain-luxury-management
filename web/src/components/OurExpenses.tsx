@@ -1,25 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ImagePlus, Loader2, Plus, Sofa } from 'lucide-react';
+import { Camera, ImagePlus, Loader2, Plus, Sofa, Type } from 'lucide-react';
 import {
   api,
   formatCurrency,
   HOUSEHOLD_PROPERTY_ID,
   type Expense,
+  type ExpenseScanResult,
 } from '../lib/api';
+import {
+  isHouseholdCategory,
+  looksLikeReceiptText,
+  parseHouseholdText,
+} from '../lib/household-text';
 import { currentYearMonth, formatMonthLabel } from '../lib/months';
+import { fileFromClipboard, isChatPasteTarget, prepareReceiptFile } from '../lib/receipt-image';
 import { ExpenseRow } from './ExpenseRow';
 
 const CATEGORIES = ['Furnishings', 'Decor', 'Supplies', 'Other'] as const;
 
-async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
-  const mimeType =
-    file.type ||
-    (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-  return { base64: btoa(binary), mimeType };
+function mentionsRentalAddress(value: string): boolean {
+  return /270|harcliff|ranch house|lindon house|river house/i.test(value);
 }
 
 export function OurExpenses({
@@ -34,6 +34,7 @@ export function OurExpenses({
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('Furnishings');
+  const [receiptText, setReceiptText] = useState('');
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [receipt, setReceipt] = useState<{
@@ -74,57 +75,208 @@ export function OurExpenses({
     [expenses],
   );
 
-  const attachFile = async (file: File | undefined) => {
-    if (!file) return;
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!file.type.startsWith('image/') && !isPdf) {
-      onError('Use a photo or PDF of the receipt');
-      return;
+  const applyLocalParse = (text: string) => {
+    const parsed = parseHouseholdText(text);
+    if (parsed.amount != null) setAmount(String(parsed.amount));
+    if (parsed.description) setDescription(parsed.description);
+    if (parsed.category) setCategory(parsed.category);
+    return parsed;
+  };
+
+  const fieldsFromScan = (result: ExpenseScanResult) => {
+    const vendor = result.vendor?.trim() || '';
+    const note = result.note?.trim() || '';
+    const rentalLike = mentionsRentalAddress(`${vendor} ${note}`);
+    const parts = [vendor, note].filter(Boolean);
+    const unique = parts.filter(
+      (part, index) => parts.findIndex((other) => other.toLowerCase() === part.toLowerCase()) === index,
+    );
+    const description = rentalLike
+      ? mentionsRentalAddress(vendor)
+        ? ''
+        : vendor
+      : unique.join(' — ');
+    return {
+      amount: Number.isFinite(result.amount) && result.amount > 0 ? result.amount : null,
+      description,
+      category: isHouseholdCategory(result.category) ? result.category : undefined,
+    };
+  };
+
+  const applyScan = (result: ExpenseScanResult) => {
+    const fields = fieldsFromScan(result);
+    if (fields.amount != null) setAmount(String(fields.amount));
+    if (fields.description) setDescription(fields.description);
+    if (fields.category) setCategory(fields.category);
+    return fields;
+  };
+
+  const resetForm = () => {
+    setDescription('');
+    setAmount('');
+    setCategory('Furnishings');
+    setReceiptText('');
+    setReceipt(null);
+  };
+
+  const saveExpense = async (input: {
+    what: string;
+    value: number;
+    category: (typeof CATEGORIES)[number];
+    receipt?: { base64: string; mimeType: string } | null;
+  }) => {
+    const saved = await api.addExpense({
+      propertyId: HOUSEHOLD_PROPERTY_ID,
+      month: currentYearMonth(),
+      category: input.category,
+      amount: input.value,
+      note: input.what,
+      paidBy: 'brandon',
+      receiptBase64: input.receipt?.base64,
+      receiptMimeType: input.receipt?.mimeType,
+    });
+    if (saved.receiptWarning) onToast(saved.receiptWarning, 'info');
+    resetForm();
+    onToast(`Saved ${formatCurrency(input.value)}`, 'success');
+    await load();
+  };
+
+  const commitIfReady = async (input: {
+    what: string;
+    value: number | null;
+    category?: (typeof CATEGORIES)[number];
+    receipt?: { base64: string; mimeType: string } | null;
+    readyToast: string;
+  }) => {
+    const what = input.what.trim();
+    const value = input.value;
+    const nextCategory = input.category ?? category;
+    if (what && value != null && value > 0) {
+      await saveExpense({
+        what,
+        value,
+        category: nextCategory,
+        receipt: input.receipt,
+      });
+      return true;
     }
+    onToast(input.readyToast, 'info');
+    return false;
+  };
+
+  const readPastedText = async (raw: string) => {
+    const text = raw.replace(/\u00a0/g, ' ').trim();
+    if (!text) return;
+    setReceiptText(text);
+    const local = applyLocalParse(text);
+    setScanning(true);
     try {
-      const { base64, mimeType } = await fileToBase64(file);
-      const previewUrl = mimeType.startsWith('image/') ? `data:${mimeType};base64,${base64}` : '';
-      setReceipt({ base64, mimeType, name: file.name, previewUrl });
-      if (mimeType.startsWith('image/')) {
-        setScanning(true);
-        try {
-          const result = await api.scanExpense({
-            type: 'image',
-            imageBase64: base64,
-            mimeType,
-          });
-          if (Number.isFinite(result.amount) && result.amount > 0) {
-            setAmount(String(result.amount));
-          }
-          const what = result.vendor || result.note;
-          if (what && !description.trim()) setDescription(what);
-          if (result.category && (CATEGORIES as readonly string[]).includes(result.category)) {
-            setCategory(result.category as (typeof CATEGORIES)[number]);
-          }
-          onToast('Receipt read — check the amount and save', 'info');
-        } catch {
-          onToast('Photo attached — type the amount if it did not read', 'info');
-        } finally {
-          setScanning(false);
-        }
+      const result = await api.scanExpense({
+        type: 'text',
+        text,
+        propertyId: HOUSEHOLD_PROPERTY_ID,
+        month: currentYearMonth(),
+      });
+      const fields = applyScan(result);
+      await commitIfReady({
+        what: fields.description || local.description,
+        value: fields.amount ?? local.amount,
+        category: fields.category ?? local.category ?? undefined,
+        readyToast: 'Text read — check the amount and save',
+      });
+    } catch (e) {
+      const saved = await commitIfReady({
+        what: local.description,
+        value: local.amount,
+        category: local.category ?? undefined,
+        readyToast:
+          local.amount != null || local.description
+            ? 'Text pasted — check the amount and save'
+            : e instanceof Error
+              ? e.message
+              : 'Could not read that text — type what it was and the amount',
+      });
+      if (!saved && !local.description && local.amount == null) {
+        onError(e instanceof Error ? e.message : 'Could not read that text');
       }
-    } catch {
-      onError('Could not read that photo');
+    } finally {
+      setScanning(false);
     }
   };
 
-  const onPaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) void attachFile(file);
-        return;
+  const attachFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const prepared = await prepareReceiptFile(file);
+      setReceipt(prepared);
+      setScanning(true);
+      try {
+        const result = await api.scanExpense({
+          type: 'image',
+          imageBase64: prepared.base64,
+          mimeType: prepared.mimeType,
+          propertyId: HOUSEHOLD_PROPERTY_ID,
+          month: currentYearMonth(),
+        });
+        const fields = applyScan(result);
+        await commitIfReady({
+          what: fields.description,
+          value: fields.amount,
+          category: fields.category,
+          receipt: prepared,
+          readyToast: 'Receipt read — check the amount and save',
+        });
+      } catch (e) {
+        onToast(
+          e instanceof Error
+            ? `${e.message} Screenshot is attached — type the amount and save.`
+            : 'Screenshot attached — type the amount and save',
+          'info',
+        );
+      } finally {
+        setScanning(false);
       }
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not read that photo');
     }
   };
+
+  const handleClipboard = (data: DataTransfer | null, target: EventTarget | null) => {
+    if (isChatPasteTarget(target)) return false;
+    const file = fileFromClipboard(data);
+    if (file) {
+      void attachFile(file);
+      return true;
+    }
+    const pasted = data?.getData('text/plain') ?? '';
+    if (!pasted.trim()) return false;
+
+    const el = target instanceof Element ? target : null;
+    const field = el?.closest('input, textarea, select') as HTMLElement | null;
+    const pasteBox = field?.getAttribute('data-bot') === 'ours-expense-text';
+    const whatField = field?.getAttribute('data-bot') === 'ours-expense-what';
+    if (pasteBox || !field || (whatField && looksLikeReceiptText(pasted))) {
+      void readPastedText(pasted);
+      return true;
+    }
+    return false;
+  };
+
+  const handleClipboardRef = useRef(handleClipboard);
+
+  useEffect(() => {
+    handleClipboardRef.current = handleClipboard;
+  });
+
+  useEffect(() => {
+    const onWindowPaste = (e: ClipboardEvent) => {
+      if (handleClipboardRef.current(e.clipboardData, e.target)) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('paste', onWindowPaste);
+    return () => window.removeEventListener('paste', onWindowPaste);
+  }, []);
 
   const save = async () => {
     const what = description.trim();
@@ -139,23 +291,7 @@ export function OurExpenses({
     }
     setSaving(true);
     try {
-      const saved = await api.addExpense({
-        propertyId: HOUSEHOLD_PROPERTY_ID,
-        month: currentYearMonth(),
-        category,
-        amount: value,
-        note: what,
-        paidBy: 'brandon',
-        receiptBase64: receipt?.base64,
-        receiptMimeType: receipt?.mimeType,
-      });
-      if (saved.receiptWarning) onToast(saved.receiptWarning, 'info');
-      setDescription('');
-      setAmount('');
-      setCategory('Furnishings');
-      setReceipt(null);
-      onToast(`Saved ${formatCurrency(value)}`, 'success');
-      await load();
+      await saveExpense({ what, value, category, receipt });
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not save expense');
     } finally {
@@ -169,12 +305,12 @@ export function OurExpenses({
   };
 
   return (
-    <div className="space-y-8" data-bot="our-expenses" onPaste={onPaste}>
+    <div className="space-y-8" data-bot="our-expenses">
       <div>
         <h2 className="text-3xl font-black text-white">Our expenses</h2>
         <p className="text-xs text-slate-400 mt-2">
           Brandon &amp; Stephanie — furnishings and things we buy for the house. Take a photo, paste a
-          screenshot, or type it in. These stay off the rental profit report.
+          screenshot or receipt text, or type it in. These stay off the rental profit report.
         </p>
       </div>
 
@@ -201,7 +337,13 @@ export function OurExpenses({
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
-            void attachFile(e.dataTransfer.files[0]);
+            const file = e.dataTransfer.files[0];
+            if (file) {
+              void attachFile(file);
+              return;
+            }
+            const dropped = e.dataTransfer.getData('text/plain');
+            if (dropped.trim()) void readPastedText(dropped);
           }}
           className={`border-2 border-dashed rounded-2xl p-6 text-center mb-6 transition-colors ${
             dragOver ? 'border-rose-400 bg-rose-500/10' : 'border-slate-700 bg-slate-950/50'
@@ -216,7 +358,7 @@ export function OurExpenses({
             <>
               <ImagePlus className="w-8 h-8 mx-auto text-slate-500 mb-3" />
               <p className="text-sm font-bold text-slate-300 mb-4">
-                Drop a photo, paste (Ctrl+V), or take a picture
+                Drop a photo, paste a screenshot or text (Ctrl+V), or take a picture
               </p>
               <div className="flex flex-wrap gap-2 justify-center">
                 <button
@@ -271,6 +413,29 @@ export function OurExpenses({
           />
         </div>
 
+        <div className="flex flex-col gap-2 mb-6">
+          <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
+            <Type className="w-3 h-3" /> Or paste receipt text
+          </label>
+          <textarea
+            data-bot="ours-expense-text"
+            value={receiptText}
+            onChange={(e) => setReceiptText(e.target.value)}
+            placeholder="e.g. Wayfair dresser $899 — or paste an order confirmation"
+            rows={3}
+            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white placeholder:text-slate-600 resize-none"
+          />
+          <button
+            type="button"
+            data-bot="ours-expense-read-text"
+            disabled={!receiptText.trim() || scanning}
+            onClick={() => void readPastedText(receiptText)}
+            className="self-end px-4 py-2 bg-rose-700 disabled:opacity-40 rounded-xl text-xs font-black uppercase min-h-[44px] text-white"
+          >
+            Read text
+          </button>
+        </div>
+
         <form
           className="flex flex-col gap-4"
           onSubmit={(e) => {
@@ -280,13 +445,13 @@ export function OurExpenses({
         >
           <label className="text-[10px] font-bold text-slate-500 uppercase">
             What it was
-            <input
-              type="text"
+            <textarea
               data-bot="ours-expense-what"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Master bedroom dresser, Costco towels, lamps"
-              className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white placeholder:text-slate-600"
+              rows={2}
+              className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white placeholder:text-slate-600 resize-none"
             />
           </label>
 
@@ -343,7 +508,7 @@ export function OurExpenses({
           <p className="text-xs text-slate-600 font-bold">Loading…</p>
         ) : expenses.length === 0 ? (
           <p className="text-xs text-slate-600 font-bold">
-            Nothing logged yet. Add a photo or type the first purchase above.
+            Nothing logged yet. Paste text, add a photo, or type the first purchase above.
           </p>
         ) : (
           <ul>

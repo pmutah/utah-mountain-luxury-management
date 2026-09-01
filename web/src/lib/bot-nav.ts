@@ -60,5 +60,7 @@ export const BOT_SELECTORS = {
   expenseSave: '[data-bot="expense-save"]',
   oursExpenseWhat: '[data-bot="ours-expense-what"]',
   oursExpenseAmount: '[data-bot="ours-expense-amount"]',
+  oursExpenseText: '[data-bot="ours-expense-text"]',
+  oursExpenseReadText: '[data-bot="ours-expense-read-text"]',
   oursExpenseSave: '[data-bot="ours-expense-save"]',
 } as const;

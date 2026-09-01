@@ -16,7 +16,7 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 - `#/report/documents` — e-sign / document vault
 - `#/guests`
 - `#/ranch` `#/lindon` `#/river`
-- `#/ours` — Brandon & Stephanie household / furnishings (photo or manual; off rental P&L)
+- `#/ours` — Brandon & Stephanie household / furnishings (photo, paste text, or manual; off rental P&L)
 - `#/construction` — construction docs + partner spend (Todd vs Brandon & Stephanie)
 
 ### JavaScript bridge
