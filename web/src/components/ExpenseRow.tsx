@@ -175,7 +175,7 @@ export function ExpenseRow({
                 {subtitleParts.join(' · ')}
               </span>
             )}
-            {expense.paidBy && (
+            {expense.paidBy && tracksPartnerContributions(expense.propertyId) && (
               <span
                 className={`block text-[10px] font-black uppercase tracking-widest mt-0.5 ${
                   expense.paidBy === 'brandon' ? 'text-blue-400' : 'text-slate-400'
