@@ -7,6 +7,7 @@ export const DASHBOARD_TABS = [
   'ranch',
   'lindon',
   'river',
+  'ours',
   'construction',
 ] as const;
 
@@ -26,9 +27,13 @@ export function parseDashboardHash(hash: string): DashboardLocation {
   const raw = hash.replace(/^#/, '').replace(/^\//, '').trim();
   const parts = raw.split('/').filter(Boolean);
   const tabPart = parts[0] || 'portfolio';
-  const tab: DashboardTab = isDashboardTab(tabPart)
-    ? tabPart
-    : tabPart === 'overview'
+  const aliased =
+    tabPart === 'household' || tabPart === 'furnishings' || tabPart === 'our-expenses'
+      ? 'ours'
+      : tabPart;
+  const tab: DashboardTab = isDashboardTab(aliased)
+    ? aliased
+    : aliased === 'overview'
       ? 'portfolio'
       : 'portfolio';
   const reportView: ReportView =

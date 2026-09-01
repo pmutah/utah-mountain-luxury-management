@@ -157,7 +157,10 @@ export interface BatchScannedExpense extends ExpenseScanResult {
   sourceFile?: string;
 }
 
-export type ExpensePropertyId = RentalPropertyId | 'construction';
+export type ExpensePropertyId = RentalPropertyId | 'construction' | 'household';
+
+/** Brandon & Stephanie furnishings / house purchases — off the rental P&L. */
+export const HOUSEHOLD_PROPERTY_ID = 'household' as const;
 
 export interface BulkExpenseInput {
   propertyId: ExpensePropertyId;

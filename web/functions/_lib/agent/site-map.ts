@@ -12,6 +12,7 @@ export const AGENT_SITE_MAP = {
     ranch: '#/ranch',
     lindon: '#/lindon',
     river: '#/river',
+    ours: '#/ours',
     construction: '#/construction',
   },
   browser: {
@@ -27,6 +28,7 @@ export const AGENT_SITE_MAP = {
     river: 'The River House - 50/50 after 20% mgmt fee to Brandon',
     construction:
       'Construction project - partner spend (Todd vs Brandon & Stephanie), documents, phases',
+    household: 'Brandon & Stephanie furnishings and house purchases — tab Our expenses (#/ours)',
   },
   apis: {
     session: 'GET /api/auth/session',
@@ -36,6 +38,8 @@ export const AGENT_SITE_MAP = {
     expenses: 'GET /api/expenses  POST /api/expenses  PATCH/DELETE /api/expenses/:id',
     constructionExpense:
       'POST /api/expenses { propertyId:"construction", month, category, amount, note, stage, paidBy:"brandon"|"todd", receiptBase64?, receiptMimeType? }',
+    householdExpense:
+      'POST /api/expenses { propertyId:"household", month, category:"Furnishings", amount, note, paidBy:"brandon", receiptBase64?, receiptMimeType? }',
     reservations: 'GET/POST /api/reservations',
     calendarSync: 'POST /api/calendar/sync',
     cohost: 'POST /api/agent/chat { message, sessionId?, context?: { month, activeTab } }',

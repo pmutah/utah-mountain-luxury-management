@@ -9,7 +9,6 @@ import {
 import { OwnerDistributionPanel } from './OwnerDistribution';
 import { ExtraCleaningInput } from './ExtraCleaningInput';
 import { ExpenseScanner } from './ExpenseScanner';
-import { ManualExpenseForm } from './ManualExpenseForm';
 import { OccupancyCalendar, RevenueLog } from './OccupancyCalendar';
 import { EmptyState } from './EmptyState';
 import { PropertyExpensesByMonth } from './PropertyExpensesByMonth';
@@ -78,14 +77,6 @@ export function PropertyDetail({
               <p className="text-lg font-black text-red-500">{formatCurrency(metrics.totalCleaning)}</p>
             </div>
           </div>
-
-          <ManualExpenseForm
-            propertyId={tab}
-            month={data.month}
-            onSaved={onRefresh}
-            onError={onError}
-            onToast={onToast}
-          />
 
           <ExtraCleaningInput
             propertyId={tab}

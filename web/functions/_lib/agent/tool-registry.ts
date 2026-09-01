@@ -11,7 +11,7 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
           type: 'string',
           enum: ['log_expense', 'list_expenses', 'get_profit_summary', 'get_partner_contributions'],
         },
-        propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river', 'construction'] },
+        propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river', 'construction', 'household'] },
         month: { type: 'string', description: 'YYYY-MM for log/list' },
         startMonth: { type: 'string', description: 'YYYY-MM range start for profit summary' },
         endMonth: { type: 'string', description: 'YYYY-MM range end for profit summary' },

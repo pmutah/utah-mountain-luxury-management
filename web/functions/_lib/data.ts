@@ -49,11 +49,14 @@ export function isRentalProperty(id: string): id is RentalPropertyId {
   return id === 'ranch' || id === 'lindon' || id === 'river';
 }
 
-export type ExpensePropertyId = RentalPropertyId | 'construction';
+export type ExpensePropertyId = RentalPropertyId | 'construction' | 'household';
 
-/** Rental P&L properties plus the construction project spend ledger. */
+/** Brandon & Stephanie furnishings / house purchases — off the rental P&L. */
+export const HOUSEHOLD_PROPERTY_ID = 'household' as const;
+
+/** Rental P&L, construction partner spend, and Brandon & Stephanie household ledger. */
 export function isExpenseProperty(id: string): id is ExpensePropertyId {
-  return isRentalProperty(id) || id === 'construction';
+  return isRentalProperty(id) || id === 'construction' || id === 'household';
 }
 
 /** Host-net after Airbnb/VRBO taxes and fees (what we keep). Dates match Hospitable iCal. */

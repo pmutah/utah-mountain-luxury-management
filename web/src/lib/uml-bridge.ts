@@ -53,7 +53,7 @@ export function installUmlBridge(opts: {
         'Navigate: UML.navigate("construction") or UML.navigate("report", "documents")',
         'Month: UML.setMonth("2026-08")',
         'State: UML.state()',
-        'Hash routes: #/overview #/report #/report/documents #/guests #/ranch #/lindon #/river #/construction',
+        'Hash routes: #/overview #/report #/report/documents #/guests #/ranch #/lindon #/river #/ours #/construction',
         'Map: GET /api/agent/map  ·  Guide: GET /llms.txt',
       ].join('\n'),
   };
