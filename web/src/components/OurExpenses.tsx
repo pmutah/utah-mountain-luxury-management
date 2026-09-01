@@ -13,20 +13,10 @@ import {
   parseHouseholdText,
 } from '../lib/household-text';
 import { currentYearMonth, formatMonthLabel } from '../lib/months';
+import { fileFromClipboard, isChatPasteTarget, prepareReceiptFile } from '../lib/receipt-image';
 import { ExpenseRow } from './ExpenseRow';
 
 const CATEGORIES = ['Furnishings', 'Decor', 'Supplies', 'Other'] as const;
-
-async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
-  const mimeType =
-    file.type ||
-    (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-  return { base64: btoa(binary), mimeType };
-}
 
 function mentionsRentalAddress(value: string): boolean {
   return /270|harcliff|ranch house|lindon house|river house/i.test(value);
@@ -93,17 +83,85 @@ export function OurExpenses({
     return parsed;
   };
 
-  const applyScan = (result: ExpenseScanResult) => {
-    if (Number.isFinite(result.amount) && result.amount > 0) {
-      setAmount(String(result.amount));
-    }
+  const fieldsFromScan = (result: ExpenseScanResult) => {
     const vendor = result.vendor?.trim() || '';
     const note = result.note?.trim() || '';
     const rentalLike = mentionsRentalAddress(`${vendor} ${note}`);
-    let what = vendor || note;
-    if (rentalLike) what = mentionsRentalAddress(vendor) ? '' : vendor;
-    if (what) setDescription(what);
-    if (isHouseholdCategory(result.category)) setCategory(result.category);
+    const parts = [vendor, note].filter(Boolean);
+    const unique = parts.filter(
+      (part, index) => parts.findIndex((other) => other.toLowerCase() === part.toLowerCase()) === index,
+    );
+    const description = rentalLike
+      ? mentionsRentalAddress(vendor)
+        ? ''
+        : vendor
+      : unique.join(' — ');
+    return {
+      amount: Number.isFinite(result.amount) && result.amount > 0 ? result.amount : null,
+      description,
+      category: isHouseholdCategory(result.category) ? result.category : undefined,
+    };
+  };
+
+  const applyScan = (result: ExpenseScanResult) => {
+    const fields = fieldsFromScan(result);
+    if (fields.amount != null) setAmount(String(fields.amount));
+    if (fields.description) setDescription(fields.description);
+    if (fields.category) setCategory(fields.category);
+    return fields;
+  };
+
+  const resetForm = () => {
+    setDescription('');
+    setAmount('');
+    setCategory('Furnishings');
+    setReceiptText('');
+    setReceipt(null);
+  };
+
+  const saveExpense = async (input: {
+    what: string;
+    value: number;
+    category: (typeof CATEGORIES)[number];
+    receipt?: { base64: string; mimeType: string } | null;
+  }) => {
+    const saved = await api.addExpense({
+      propertyId: HOUSEHOLD_PROPERTY_ID,
+      month: currentYearMonth(),
+      category: input.category,
+      amount: input.value,
+      note: input.what,
+      paidBy: 'brandon',
+      receiptBase64: input.receipt?.base64,
+      receiptMimeType: input.receipt?.mimeType,
+    });
+    if (saved.receiptWarning) onToast(saved.receiptWarning, 'info');
+    resetForm();
+    onToast(`Saved ${formatCurrency(input.value)}`, 'success');
+    await load();
+  };
+
+  const commitIfReady = async (input: {
+    what: string;
+    value: number | null;
+    category?: (typeof CATEGORIES)[number];
+    receipt?: { base64: string; mimeType: string } | null;
+    readyToast: string;
+  }) => {
+    const what = input.what.trim();
+    const value = input.value;
+    const nextCategory = input.category ?? category;
+    if (what && value != null && value > 0) {
+      await saveExpense({
+        what,
+        value,
+        category: nextCategory,
+        receipt: input.receipt,
+      });
+      return true;
+    }
+    onToast(input.readyToast, 'info');
+    return false;
   };
 
   const readPastedText = async (raw: string) => {
@@ -113,14 +171,33 @@ export function OurExpenses({
     const local = applyLocalParse(text);
     setScanning(true);
     try {
-      const result = await api.scanExpense({ type: 'text', text });
-      applyScan(result);
-      onToast('Text read — check the amount and save', 'info');
-    } catch {
-      if (local.amount != null || local.description) {
-        onToast('Text pasted — check the amount and save', 'info');
-      } else {
-        onToast('Could not read that text — type what it was and the amount', 'info');
+      const result = await api.scanExpense({
+        type: 'text',
+        text,
+        propertyId: HOUSEHOLD_PROPERTY_ID,
+        month: currentYearMonth(),
+      });
+      const fields = applyScan(result);
+      await commitIfReady({
+        what: fields.description || local.description,
+        value: fields.amount ?? local.amount,
+        category: fields.category ?? local.category ?? undefined,
+        readyToast: 'Text read — check the amount and save',
+      });
+    } catch (e) {
+      const saved = await commitIfReady({
+        what: local.description,
+        value: local.amount,
+        category: local.category ?? undefined,
+        readyToast:
+          local.amount != null || local.description
+            ? 'Text pasted — check the amount and save'
+            : e instanceof Error
+              ? e.message
+              : 'Could not read that text — type what it was and the amount',
+      });
+      if (!saved && !local.description && local.amount == null) {
+        onError(e instanceof Error ? e.message : 'Could not read that text');
       }
     } finally {
       setScanning(false);
@@ -129,68 +206,77 @@ export function OurExpenses({
 
   const attachFile = async (file: File | undefined) => {
     if (!file) return;
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!file.type.startsWith('image/') && !isPdf) {
-      onError('Use a photo or PDF of the receipt');
-      return;
-    }
     try {
-      const { base64, mimeType } = await fileToBase64(file);
-      const previewUrl = mimeType.startsWith('image/') ? `data:${mimeType};base64,${base64}` : '';
-      setReceipt({ base64, mimeType, name: file.name, previewUrl });
-      if (mimeType.startsWith('image/')) {
-        setScanning(true);
-        try {
-          const result = await api.scanExpense({
-            type: 'image',
-            imageBase64: base64,
-            mimeType,
-          });
-          applyScan(result);
-          onToast('Receipt read — check the amount and save', 'info');
-        } catch {
-          onToast('Photo attached — type the amount if it did not read', 'info');
-        } finally {
-          setScanning(false);
-        }
+      const prepared = await prepareReceiptFile(file);
+      setReceipt(prepared);
+      setScanning(true);
+      try {
+        const result = await api.scanExpense({
+          type: 'image',
+          imageBase64: prepared.base64,
+          mimeType: prepared.mimeType,
+          propertyId: HOUSEHOLD_PROPERTY_ID,
+          month: currentYearMonth(),
+        });
+        const fields = applyScan(result);
+        await commitIfReady({
+          what: fields.description,
+          value: fields.amount,
+          category: fields.category,
+          receipt: prepared,
+          readyToast: 'Receipt read — check the amount and save',
+        });
+      } catch (e) {
+        onToast(
+          e instanceof Error
+            ? `${e.message} Screenshot is attached — type the amount and save.`
+            : 'Screenshot attached — type the amount and save',
+          'info',
+        );
+      } finally {
+        setScanning(false);
       }
-    } catch {
-      onError('Could not read that photo');
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not read that photo');
     }
   };
 
-  const onPaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (items) {
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const file = item.getAsFile();
-          if (file) void attachFile(file);
-          return;
-        }
-      }
+  const handleClipboard = (data: DataTransfer | null, target: EventTarget | null) => {
+    if (isChatPasteTarget(target)) return false;
+    const file = fileFromClipboard(data);
+    if (file) {
+      void attachFile(file);
+      return true;
     }
+    const pasted = data?.getData('text/plain') ?? '';
+    if (!pasted.trim()) return false;
 
-    const pasted = e.clipboardData.getData('text/plain');
-    if (!pasted.trim()) return;
-
-    const target = e.target as HTMLElement | null;
-    const field = target?.closest('input, textarea, select') as HTMLElement | null;
+    const el = target instanceof Element ? target : null;
+    const field = el?.closest('input, textarea, select') as HTMLElement | null;
     const pasteBox = field?.getAttribute('data-bot') === 'ours-expense-text';
     const whatField = field?.getAttribute('data-bot') === 'ours-expense-what';
-
-    if (pasteBox || !field) {
-      e.preventDefault();
+    if (pasteBox || !field || (whatField && looksLikeReceiptText(pasted))) {
       void readPastedText(pasted);
-      return;
+      return true;
     }
-
-    if (whatField && looksLikeReceiptText(pasted)) {
-      e.preventDefault();
-      void readPastedText(pasted);
-    }
+    return false;
   };
+
+  const handleClipboardRef = useRef(handleClipboard);
+
+  useEffect(() => {
+    handleClipboardRef.current = handleClipboard;
+  });
+
+  useEffect(() => {
+    const onWindowPaste = (e: ClipboardEvent) => {
+      if (handleClipboardRef.current(e.clipboardData, e.target)) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('paste', onWindowPaste);
+    return () => window.removeEventListener('paste', onWindowPaste);
+  }, []);
 
   const save = async () => {
     const what = description.trim();
@@ -205,24 +291,7 @@ export function OurExpenses({
     }
     setSaving(true);
     try {
-      const saved = await api.addExpense({
-        propertyId: HOUSEHOLD_PROPERTY_ID,
-        month: currentYearMonth(),
-        category,
-        amount: value,
-        note: what,
-        paidBy: 'brandon',
-        receiptBase64: receipt?.base64,
-        receiptMimeType: receipt?.mimeType,
-      });
-      if (saved.receiptWarning) onToast(saved.receiptWarning, 'info');
-      setDescription('');
-      setAmount('');
-      setCategory('Furnishings');
-      setReceiptText('');
-      setReceipt(null);
-      onToast(`Saved ${formatCurrency(value)}`, 'success');
-      await load();
+      await saveExpense({ what, value, category, receipt });
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not save expense');
     } finally {
@@ -236,7 +305,7 @@ export function OurExpenses({
   };
 
   return (
-    <div className="space-y-8" data-bot="our-expenses" onPaste={onPaste}>
+    <div className="space-y-8" data-bot="our-expenses">
       <div>
         <h2 className="text-3xl font-black text-white">Our expenses</h2>
         <p className="text-xs text-slate-400 mt-2">
