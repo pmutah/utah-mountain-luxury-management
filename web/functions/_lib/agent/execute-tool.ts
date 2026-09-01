@@ -103,7 +103,7 @@ async function handleFinances(
   if (action === 'log_expense') {
     const propertyIdRaw = String(args.propertyId ?? '');
     if (!isExpenseProperty(propertyIdRaw)) {
-      return { error: 'propertyId must be ranch, lindon, river, or construction' };
+      return { error: 'propertyId must be ranch, lindon, river, construction, or household' };
     }
     const month = String(args.month ?? new Date().toISOString().slice(0, 7));
     const amount = Number(args.amount);
@@ -115,12 +115,17 @@ async function handleFinances(
       id: newExpenseId(),
       propertyId: propertyIdRaw,
       month,
-      category: String(args.category ?? 'Other'),
+      category: String(args.category ?? (propertyIdRaw === 'household' ? 'Furnishings' : 'Other')),
       amount,
       vendor: args.vendor ? String(args.vendor) : undefined,
       note: args.note ? String(args.note) : undefined,
       stage: parseConstructionStage(args.stage),
-      paidBy: tracksPartnerContributions(propertyIdRaw) ? (paidBy ?? 'brandon') : paidBy,
+      paidBy:
+        propertyIdRaw === 'household'
+          ? 'brandon'
+          : tracksPartnerContributions(propertyIdRaw)
+            ? (paidBy ?? 'brandon')
+            : paidBy,
       createdAt: new Date().toISOString(),
     };
     const custom = await loadCustomExpenses(env);

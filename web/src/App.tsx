@@ -18,6 +18,7 @@ import { ToastStack } from './components/Toast';
 import { AgentChat } from './components/AgentChat';
 import { ConstructionManagerChat } from './components/ConstructionManagerChat';
 import { ConstructionProjectView } from './components/ConstructionProject';
+import { OurExpenses } from './components/OurExpenses';
 import { GuestsPanel } from './components/GuestsPanel';
 import { GuestPreferenceForm } from './components/GuestPreferenceForm';
 import { useToast } from './hooks/useToast';
@@ -106,7 +107,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav aria-label="Dashboard screens" className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-thin">
-          {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'construction'] as const).map((id) => (
+          {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'ours', 'construction'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -117,13 +118,15 @@ function Dashboard() {
                 activeTab === id
                   ? id === 'construction'
                     ? 'bg-amber-600 text-white shadow-xl'
-                    : id === 'river'
-                      ? 'bg-cyan-600 text-white shadow-xl'
-                      : id === 'report'
-                        ? 'bg-violet-600 text-white shadow-xl'
-                        : id === 'guests'
-                          ? 'bg-teal-600 text-white shadow-xl'
-                          : 'bg-blue-600 text-white shadow-xl'
+                    : id === 'ours'
+                      ? 'bg-rose-600 text-white shadow-xl'
+                      : id === 'river'
+                        ? 'bg-cyan-600 text-white shadow-xl'
+                        : id === 'report'
+                          ? 'bg-violet-600 text-white shadow-xl'
+                          : id === 'guests'
+                            ? 'bg-teal-600 text-white shadow-xl'
+                            : 'bg-blue-600 text-white shadow-xl'
                   : 'bg-slate-900 text-slate-500 border border-slate-800'
               }`}
             >
@@ -133,14 +136,23 @@ function Dashboard() {
                   ? 'Report'
                   : id === 'guests'
                     ? 'Guests'
-                    : id === 'construction'
-                      ? PROPERTIES.construction.name
-                      : PROPERTIES[id].name}
+                    : id === 'ours'
+                      ? 'Our expenses'
+                      : id === 'construction'
+                        ? PROPERTIES.construction.name
+                        : PROPERTIES[id].name}
             </button>
           ))}
         </nav>
 
-        {activeTab === 'construction' ? (
+        {activeTab === 'ours' ? (
+          <main>
+            <OurExpenses
+              onToast={showToast}
+              onError={(msg) => showToast(msg, 'error')}
+            />
+          </main>
+        ) : activeTab === 'construction' ? (
           <main>
             <ConstructionProjectView
               onToast={showToast}
@@ -226,7 +238,11 @@ function Dashboard() {
       <ToastStack toasts={toasts} />
       <AgentChat
         month={currentMonth}
-        activeTab={activeTab === 'construction' || activeTab === 'guests' ? 'portfolio' : activeTab}
+        activeTab={
+          activeTab === 'construction' || activeTab === 'guests' || activeTab === 'ours'
+            ? 'portfolio'
+            : activeTab
+        }
         onError={(msg) => showToast(msg, 'error')}
       />
       <ConstructionManagerChat

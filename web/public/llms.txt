@@ -16,6 +16,7 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 - `#/report/documents` — e-sign / document vault
 - `#/guests`
 - `#/ranch` `#/lindon` `#/river`
+- `#/ours` — Brandon & Stephanie household / furnishings (photo or manual; off rental P&L)
 - `#/construction` — construction docs + partner spend (Todd vs Brandon & Stephanie)
 
 ### JavaScript bridge
@@ -43,6 +44,7 @@ POST `/api/auth/login` with `{ "password": "..." }` (cookie). Form: `[data-bot="
 - GET `/api/portfolio/metrics?month=YYYY-MM`
 - GET `/api/expenses`
 - POST `/api/expenses` — construction: `propertyId: "construction"`, `paidBy: "brandon"|"todd"`, `stage`
+- POST `/api/expenses` — Brandon & Stephanie household: `propertyId: "household"`, `paidBy: "brandon"`, `category` Furnishings/Decor/Supplies/Other
 - POST `/api/agent/chat` — rental co-host tools
 - POST `/api/agent/construction/chat` — construction manager
 - GET `/api/construction/project`
