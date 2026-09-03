@@ -1,6 +1,7 @@
 import { corsJson } from '../../_lib/data';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import { loadCustomExpenses, saveCustomExpenses, withReceiptUrls } from '../../_lib/expenses';
+import { parsePaidDate } from '../../_lib/expense-month';
 import { parseConstructionStage } from '../../_lib/construction/types';
 import { isPaidBy } from '../../_lib/paid-by';
 import { deleteStoredReceipt } from '../../_lib/receipt-store';
@@ -15,7 +16,7 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     return corsJson(request, { error: 'Expense storage not available' }, 503);
   }
 
-  let body: { paidBy?: string | null; stage?: string | null };
+  let body: { paidBy?: string | null; stage?: string | null; paidDate?: string | null };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -44,6 +45,18 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     custom[idx] = next;
   } else if (body.stage !== undefined) {
     custom[idx] = { ...custom[idx]!, stage: parseConstructionStage(body.stage) };
+  }
+
+  if (body.paidDate === null || body.paidDate === '') {
+    const next = { ...custom[idx]! };
+    delete next.paidDate;
+    custom[idx] = next;
+  } else if (body.paidDate !== undefined) {
+    const paidDate = parsePaidDate(body.paidDate);
+    if (!paidDate) {
+      return corsJson(request, { error: 'paidDate must be YYYY-MM-DD' }, 400);
+    }
+    custom[idx] = { ...custom[idx]!, paidDate };
   }
 
   await saveCustomExpenses(env, custom);
