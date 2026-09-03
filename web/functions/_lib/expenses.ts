@@ -22,6 +22,16 @@ export interface ExpenseRecord {
   receiptStoragePath?: string | null;
   receiptContentType?: string | null;
   receiptUploadedAt?: string | null;
+  /** Product / item photos (separate from the store receipt). */
+  itemPhotos?: ItemPhoto[];
+}
+
+export interface ItemPhoto {
+  id: string;
+  storagePath: string;
+  contentType: string;
+  uploadedAt: string;
+  url?: string;
 }
 
 /** Client-facing expense with optional same-origin receipt URL. */
@@ -70,6 +80,10 @@ export function withReceiptUrls(expenses: ExpenseRecord[]): ExpenseWithReceipt[]
       receiptUrl: hydrated.receiptStoragePath
         ? `/api/expenses/${encodeURIComponent(hydrated.id)}/receipt`
         : null,
+      itemPhotos: (hydrated.itemPhotos ?? []).map((photo) => ({
+        ...photo,
+        url: `/api/expenses/${encodeURIComponent(hydrated.id)}/photos/${encodeURIComponent(photo.id)}`,
+      })),
     };
   });
 }

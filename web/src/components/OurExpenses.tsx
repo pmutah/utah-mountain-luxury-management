@@ -13,8 +13,9 @@ import {
   parseHouseholdText,
 } from '../lib/household-text';
 import { currentYearMonth } from '../lib/months';
+import { todayInUtah } from '../lib/paid-date';
 import { fileFromClipboard, isChatPasteTarget, prepareReceiptFile } from '../lib/receipt-image';
-import { ExpenseRow } from './ExpenseRow';
+import { HouseholdExpenseRow } from './HouseholdExpenseRow';
 
 const CATEGORIES = ['Furnishings', 'Decor', 'Supplies', 'Other'] as const;
 
@@ -43,6 +44,10 @@ export function OurExpenses({
     name: string;
     previewUrl: string;
   } | null>(null);
+  const [itemPhotos, setItemPhotos] = useState<
+    Array<{ base64: string; mimeType: string; name: string; previewUrl: string }>
+  >([]);
+  const itemPhotoRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -117,6 +122,7 @@ export function OurExpenses({
     setCategory('Furnishings');
     setReceiptText('');
     setReceipt(null);
+    setItemPhotos([]);
   };
 
   const saveExpense = async (input: {
@@ -124,18 +130,31 @@ export function OurExpenses({
     value: number;
     category: (typeof CATEGORIES)[number];
     receipt?: { base64: string; mimeType: string } | null;
+    photos?: Array<{ base64: string; mimeType: string }>;
   }) => {
+    const paidDate = todayInUtah();
     const saved = await api.addExpense({
       propertyId: HOUSEHOLD_PROPERTY_ID,
-      month: currentYearMonth(),
+      month: paidDate.slice(0, 7) || currentYearMonth(),
       category: input.category,
       amount: input.value,
       note: input.what,
       paidBy: 'brandon',
+      paidDate,
       receiptBase64: input.receipt?.base64,
       receiptMimeType: input.receipt?.mimeType,
     });
     if (saved.receiptWarning) onToast(saved.receiptWarning, 'info');
+    for (const photo of input.photos ?? []) {
+      try {
+        await api.addExpensePhoto(saved.id, {
+          imageBase64: photo.base64,
+          mimeType: photo.mimeType,
+        });
+      } catch {
+        onToast('Expense saved, but one item photo did not attach', 'info');
+      }
+    }
     resetForm();
     onToast(`Saved ${formatCurrency(input.value)}`, 'success');
     await load();
@@ -291,7 +310,7 @@ export function OurExpenses({
     }
     setSaving(true);
     try {
-      await saveExpense({ what, value, category, receipt });
+      await saveExpense({ what, value, category, receipt, photos: itemPhotos });
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not save expense');
     } finally {
@@ -492,6 +511,69 @@ export function OurExpenses({
             {saving ? 'Saving…' : 'Save'}
           </button>
         </form>
+
+        <div className="mt-4 rounded-2xl border border-dashed border-rose-800/50 bg-rose-950/10 p-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-rose-200 mb-2">
+            Item photos
+          </p>
+          <p className="text-xs text-slate-500 mb-2">
+            Pictures of the thing itself — not the receipt. You can add more after you save.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {itemPhotos.map((photo, index) => (
+              <div key={`${photo.name}-${index}`} className="relative">
+                {photo.previewUrl ? (
+                  <img
+                    src={photo.previewUrl}
+                    alt=""
+                    className="h-16 w-16 object-cover rounded-lg border border-slate-700"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-lg border border-slate-700 bg-slate-950" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => setItemPhotos((prev) => prev.filter((_, i) => i !== index))}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-900 text-slate-300 border border-slate-600 text-[10px] font-black"
+                  aria-label="Remove photo"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => itemPhotoRef.current?.click()}
+              className="h-16 px-3 rounded-lg border border-dashed border-rose-800/70 text-[10px] font-black uppercase tracking-wider text-rose-200 inline-flex items-center gap-1.5"
+            >
+              <ImagePlus className="w-4 h-4" />
+              Add photos
+            </button>
+            <input
+              ref={itemPhotoRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = e.target.files ? [...e.target.files] : [];
+                void (async () => {
+                  const next: Array<{
+                    base64: string;
+                    mimeType: string;
+                    name: string;
+                    previewUrl: string;
+                  }> = [];
+                  for (const file of files) {
+                    next.push(await prepareReceiptFile(file));
+                  }
+                  setItemPhotos((prev) => [...prev, ...next]);
+                })();
+                if (itemPhotoRef.current) itemPhotoRef.current.value = '';
+              }}
+            />
+          </div>
+        </div>
       </section>
 
       <section className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-800">
@@ -511,7 +593,7 @@ export function OurExpenses({
               <thead>
                 <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-700">
                   <th className="text-left py-2 pr-3 font-black">Paid</th>
-                  <th className="text-left py-2 pr-3 font-black">What</th>
+                  <th className="text-left py-2 pr-3 font-black">What / photos</th>
                   <th className="text-left py-2 pr-3 font-black">Type</th>
                   <th className="text-right py-2 pr-3 font-black">Amount</th>
                   <th className="text-left py-2 pr-3 font-black">Who</th>
@@ -520,10 +602,9 @@ export function OurExpenses({
               </thead>
               <tbody>
                 {expenses.map((expense) => (
-                  <ExpenseRow
+                  <HouseholdExpenseRow
                     key={expense.id}
-                    expense={{ ...expense, stage: expense.category }}
-                    variant="sheet"
+                    expense={expense}
                     onRefresh={() => void load()}
                     onDelete={deleteExpense}
                     onToast={onToast}

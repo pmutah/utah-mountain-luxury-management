@@ -141,6 +141,13 @@ export interface Expense {
   receiptContentType?: string | null;
   receiptUploadedAt?: string | null;
   receiptUrl?: string | null;
+  itemPhotos?: Array<{
+    id: string;
+    storagePath: string;
+    contentType: string;
+    uploadedAt: string;
+    url?: string;
+  }>;
 }
 
 export type RentalPropertyId = 'ranch' | 'lindon' | 'river';
@@ -487,7 +494,15 @@ export const api = {
     }),
   updateExpense: (
     id: string,
-    body: { paidBy?: PaidBy | null; stage?: string | null; paidDate?: string | null },
+    body: {
+      paidBy?: PaidBy | null;
+      stage?: string | null;
+      paidDate?: string | null;
+      note?: string | null;
+      vendor?: string | null;
+      category?: string;
+      amount?: number;
+    },
   ) =>
     request<Expense>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'PATCH',
@@ -495,6 +510,21 @@ export const api = {
     }),
   expenseReceiptUrl: (expenseId: string) =>
     `${API_URL}/api/expenses/${encodeURIComponent(expenseId)}/receipt`,
+  expensePhotoUrl: (expenseId: string, photoId: string) =>
+    `${API_URL}/api/expenses/${encodeURIComponent(expenseId)}/photos/${encodeURIComponent(photoId)}`,
+  addExpensePhoto: (id: string, body: { imageBase64: string; mimeType: string }) =>
+    request<Expense & { photoWarning?: string | null }>(
+      `/api/expenses/${encodeURIComponent(id)}/photos`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    ),
+  deleteExpensePhoto: (id: string, photoId: string) =>
+    request<Expense>(
+      `/api/expenses/${encodeURIComponent(id)}/photos/${encodeURIComponent(photoId)}`,
+      { method: 'DELETE' },
+    ),
   attachExpenseReceipt: (
     id: string,
     body: { receiptBase64: string; receiptMimeType: string },

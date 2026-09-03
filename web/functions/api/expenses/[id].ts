@@ -16,7 +16,15 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     return corsJson(request, { error: 'Expense storage not available' }, 503);
   }
 
-  let body: { paidBy?: string | null; stage?: string | null; paidDate?: string | null };
+  let body: {
+    paidBy?: string | null;
+    stage?: string | null;
+    paidDate?: string | null;
+    note?: string | null;
+    vendor?: string | null;
+    category?: string;
+    amount?: number | string;
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -47,6 +55,36 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     custom[idx] = { ...custom[idx]!, stage: parseConstructionStage(body.stage) };
   }
 
+  if (body.note !== undefined) {
+    const note = body.note == null ? '' : String(body.note).trim();
+    const next = { ...custom[idx]! };
+    if (note) next.note = note;
+    else delete next.note;
+    custom[idx] = next;
+  }
+
+  if (body.vendor !== undefined) {
+    const vendor = body.vendor == null ? '' : String(body.vendor).trim();
+    const next = { ...custom[idx]! };
+    if (vendor) next.vendor = vendor;
+    else delete next.vendor;
+    custom[idx] = next;
+  }
+
+  if (body.category !== undefined) {
+    const category = String(body.category).trim();
+    if (!category) return corsJson(request, { error: 'category is required' }, 400);
+    custom[idx] = { ...custom[idx]!, category };
+  }
+
+  if (body.amount !== undefined) {
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return corsJson(request, { error: 'amount must be a positive number' }, 400);
+    }
+    custom[idx] = { ...custom[idx]!, amount };
+  }
+
   if (body.paidDate === null || body.paidDate === '') {
     const next = { ...custom[idx]! };
     delete next.paidDate;
@@ -56,7 +94,7 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     if (!paidDate) {
       return corsJson(request, { error: 'paidDate must be YYYY-MM-DD' }, 400);
     }
-    custom[idx] = { ...custom[idx]!, paidDate };
+    custom[idx] = { ...custom[idx]!, paidDate, month: paidDate.slice(0, 7) };
   }
 
   await saveCustomExpenses(env, custom);
@@ -80,6 +118,16 @@ export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env,
       await deleteStoredReceipt(env, expense);
     } catch {
       // continue even if storage delete fails
+    }
+  }
+  for (const photo of expense.itemPhotos ?? []) {
+    try {
+      await deleteStoredReceipt(env, {
+        id: `${expense.id}--${photo.id}`,
+        receiptStoragePath: photo.storagePath,
+      });
+    } catch {
+      // continue
     }
   }
 
