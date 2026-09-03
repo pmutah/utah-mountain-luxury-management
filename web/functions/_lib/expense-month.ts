@@ -1,5 +1,14 @@
 /** Infer YYYY-MM for expenses from bills, filenames, and model output. */
 
+const PAID_DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+/** Calendar paid date (YYYY-MM-DD) for construction carrying-cost tracking. */
+export function parsePaidDate(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return PAID_DATE_RE.test(trimmed) ? trimmed : undefined;
+}
+
 const YM_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const MONTH_NAMES: Record<string, string> = {

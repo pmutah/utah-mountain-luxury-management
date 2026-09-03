@@ -15,6 +15,8 @@ export interface ExpenseRecord {
   stage?: string;
   /** Who fronted the bill. Brandon & Stephanie share one side of the 50/50. */
   paidBy?: PaidBy;
+  /** Calendar date the bill was paid (YYYY-MM-DD). Used for carrying-cost / interest. */
+  paidDate?: string;
   createdAt?: string;
   receiptStoragePath?: string | null;
   receiptContentType?: string | null;

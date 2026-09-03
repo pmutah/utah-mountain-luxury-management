@@ -11,7 +11,7 @@ export function Header({
 }) {
   return (
     <header className="sticky top-0 z-40 -mx-4 px-4 py-4 mb-6 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
-      <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-3 rounded-2xl shadow-lg shadow-blue-900/30">
             <Home className="text-white w-6 h-6" />

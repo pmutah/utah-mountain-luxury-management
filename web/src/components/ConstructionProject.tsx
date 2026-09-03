@@ -490,12 +490,12 @@ function DocumentRow({
 
   return (
     <>
-      <li className="flex gap-3 items-start bg-slate-950/40 rounded-2xl p-3 border border-slate-800/50">
+      <li className="flex items-center gap-3 bg-slate-950/40 rounded-xl px-3 py-2 border border-slate-800/50">
         {photo && hasFile ? (
           <button
             type="button"
             onClick={() => void openFile()}
-            className="shrink-0 w-14 h-14 rounded-xl overflow-hidden border border-slate-700 bg-slate-900"
+            className="shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-slate-700 bg-slate-900"
             aria-label="Open photo"
           >
             <img
@@ -506,32 +506,31 @@ function DocumentRow({
             />
           </button>
         ) : (
-          <FileText className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <FileText className="w-4 h-4 text-amber-500 shrink-0" />
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap gap-2 items-center">
-            <select
-              value={doc.type}
-              disabled={savingMeta}
-              onChange={(e) => void saveMeta({ type: e.target.value })}
-              className="text-[10px] font-bold uppercase bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-slate-300"
-              aria-label="Document type"
-            >
-              {DOC_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            {countsAsInvoice && (
-              <span className="text-[10px] font-bold uppercase text-emerald-500">In budget</span>
-            )}
-            {showInvoiceHelp && (
-              <span className="text-[10px] font-bold uppercase text-amber-500">Not in budget</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2 items-center mt-2">
-            <label className="text-[10px] font-bold uppercase text-slate-500">Total $</label>
+          <p className="font-bold text-slate-200 text-sm truncate">{doc.title}</p>
+          <p className="text-[11px] text-slate-500 truncate">
+            {[doc.vendor, doc.amount != null ? formatCurrency(doc.amount) : null]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <select
+            value={doc.type}
+            disabled={savingMeta}
+            onChange={(e) => void saveMeta({ type: e.target.value })}
+            className="text-[10px] font-bold uppercase bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 max-w-[7.5rem]"
+            aria-label="Document type"
+          >
+            {DOC_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          {(doc.type === 'invoice' || doc.type === 'estimate' || doc.type === 'bid' || doc.amount != null) && (
             <input
               type="number"
               min={0}
@@ -541,58 +540,47 @@ function DocumentRow({
               onBlur={() => {
                 const n = parseFloat(amountInput);
                 if (Number.isFinite(n) && n > 0 && n !== doc.amount) {
-                  void saveMeta({ type: 'invoice', amount: n });
+                  void saveMeta({ type: doc.type === 'plan' ? 'invoice' : doc.type, amount: n });
                 }
               }}
-              className="w-28 px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-sm text-white"
+              className="w-24 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white tabular-nums"
               placeholder="Amount"
+              aria-label="Amount"
             />
-            {doc.amount != null && (
-              <span className="text-xs font-bold text-amber-400">{formatCurrency(doc.amount)}</span>
-            )}
-          </div>
-          <p className="font-bold text-slate-200 text-sm truncate">{doc.title}</p>
-          {doc.vendor && <p className="text-xs text-slate-500">{doc.vendor}</p>}
-          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{doc.extractedSummary}</p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {hasFile && (
-              <button
-                type="button"
-                disabled={loadingFile}
-                onClick={() => void openFile()}
-                className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider"
-              >
-                {loadingFile ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-                {pdf ? 'Open PDF' : 'Open'}
-              </button>
-            )}
-            {hasFile && showInvoiceHelp && (
-              <button
-                type="button"
-                disabled={reanalyzing}
-                onClick={() => void reanalyze()}
-                className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-wider"
-              >
-                {reanalyzing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : null}
-                Re-analyze
-              </button>
-            )}
-          </div>
+          )}
+          {countsAsInvoice && (
+            <span className="hidden sm:inline text-[10px] font-bold uppercase text-emerald-500">In</span>
+          )}
+          {hasFile && (
+            <button
+              type="button"
+              disabled={loadingFile}
+              onClick={() => void openFile()}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase"
+            >
+              {loadingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+              {pdf ? 'PDF' : 'Open'}
+            </button>
+          )}
+          {hasFile && showInvoiceHelp && (
+            <button
+              type="button"
+              disabled={reanalyzing}
+              onClick={() => void reanalyze()}
+              className="hidden sm:inline-flex items-center px-2.5 py-1.5 min-h-[36px] rounded-lg bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-[10px] font-black uppercase"
+            >
+              {reanalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Fix'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            className="p-1.5 text-slate-500 hover:text-red-400 min-h-[36px] min-w-[36px]"
+            aria-label="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="p-2 text-slate-500 hover:text-red-400 min-h-[44px] min-w-[44px]"
-          aria-label="Delete"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
       </li>
       {viewerOpen && viewerSrc && (
         <ReceiptViewerModal

@@ -7,6 +7,7 @@ import {
   withReceiptUrls,
   type ExpenseRecord,
 } from '../../_lib/expenses';
+import { parsePaidDate } from '../../_lib/expense-month';
 import { parsePaidBy } from '../../_lib/paid-by';
 import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt-store';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
@@ -21,6 +22,7 @@ type BulkInput = {
   vendor?: string;
   stage?: string;
   paidBy?: string;
+  paidDate?: string;
   receiptBase64?: string;
   receiptMimeType?: string;
 };
@@ -89,6 +91,7 @@ export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) =>
       vendor: row.vendor?.trim() || undefined,
       stage: parseConstructionStage(row.stage),
       paidBy: parsePaidBy(row.paidBy),
+      paidDate: parsePaidDate(row.paidDate),
     };
 
     const key = expenseKey(candidate);

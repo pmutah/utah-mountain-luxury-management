@@ -134,6 +134,8 @@ export interface Expense {
   paidBy?: PaidBy;
   /** Construction phase (construction expenses only). */
   stage?: string;
+  /** Calendar date the bill was paid (YYYY-MM-DD). */
+  paidDate?: string;
   createdAt?: string;
   receiptStoragePath?: string | null;
   receiptContentType?: string | null;
@@ -171,6 +173,7 @@ export interface BulkExpenseInput {
   vendor?: string;
   stage?: string;
   paidBy?: PaidBy;
+  paidDate?: string;
   receiptBase64?: string;
   receiptMimeType?: string;
 }
@@ -482,7 +485,10 @@ export const api = {
     request<{ ok: boolean }>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     }),
-  updateExpense: (id: string, body: { paidBy?: PaidBy | null; stage?: string | null }) =>
+  updateExpense: (
+    id: string,
+    body: { paidBy?: PaidBy | null; stage?: string | null; paidDate?: string | null },
+  ) =>
     request<Expense>(`/api/expenses/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(body),

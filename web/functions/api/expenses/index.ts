@@ -8,6 +8,7 @@ import {
   withReceiptUrls,
   type ExpenseRecord,
 } from '../../_lib/expenses';
+import { parsePaidDate } from '../../_lib/expense-month';
 import { parsePaidBy } from '../../_lib/paid-by';
 import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt-store';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
@@ -39,6 +40,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     vendor?: string;
     stage?: string;
     paidBy?: string;
+    paidDate?: string;
     receiptBase64?: string;
     receiptMimeType?: string;
   };
@@ -79,6 +81,7 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     vendor: body.vendor?.trim() || undefined,
     stage: parseConstructionStage(body.stage),
     paidBy: parsePaidBy(body.paidBy),
+    paidDate: parsePaidDate(body.paidDate),
     createdAt: new Date().toISOString(),
     ...meta,
   };

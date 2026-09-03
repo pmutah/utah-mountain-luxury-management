@@ -103,7 +103,7 @@ function Dashboard() {
 
   return (
     <div id="uml-app" className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4 pb-24">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav aria-label="Dashboard screens" className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-thin">

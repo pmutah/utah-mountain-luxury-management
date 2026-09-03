@@ -58,8 +58,14 @@ export function ExpenseRow({
     tracksPartnerContributions(expense.propertyId) &&
     onRefresh;
   const title = expense.vendor || expense.note || expense.category;
+  const paidDate =
+    expense.paidDate ||
+    (expense.note?.match(/\bPaid (\d{4}-\d{2}-\d{2})\b/)?.[1] ?? null);
   const subtitleParts = [
-    expense.vendor && expense.note && expense.note !== expense.vendor ? expense.note : null,
+    paidDate ? `Paid ${paidDate}` : null,
+    expense.vendor && expense.note && expense.note !== expense.vendor
+      ? expense.note.replace(/^Paid \d{4}-\d{2}-\d{2} · /, '')
+      : null,
     expense.stage ? expense.stage : null,
     expense.category !== 'Other' ? expense.category : null,
   ].filter(Boolean);
@@ -165,33 +171,39 @@ export function ExpenseRow({
           if (file) void attachFile(file);
         }}
       />
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-sm mb-3 py-2 border-b border-slate-800/50 last:border-0">
-        <span className="text-slate-400 flex items-center gap-2 min-w-0">
-          <Hammer className="w-3 h-3 shrink-0" />
-          <span className="min-w-0">
-            <span className="block truncate">{title}</span>
-            {subtitleParts.length > 0 && (
-              <span className="block text-[10px] text-slate-600 font-bold mt-0.5 truncate">
-                {subtitleParts.join(' · ')}
-              </span>
-            )}
-            {expense.paidBy && tracksPartnerContributions(expense.propertyId) && (
-              <span
-                className={`block text-[10px] font-black uppercase tracking-widest mt-0.5 ${
-                  expense.paidBy === 'brandon' ? 'text-blue-400' : 'text-slate-400'
-                }`}
-              >
-                {PAID_BY_LABELS[expense.paidBy]}
-              </span>
-            )}
-            {showMissingReceiptHint && !storedReceipt && expense.id.startsWith('exp-') && (
-              <span className="block text-[10px] text-amber-500/90 font-bold mt-0.5">
-                Amount saved — tap Attach bill to add the PDF
-              </span>
-            )}
+      <div className="flex flex-col gap-3 text-sm mb-3 py-3 border-b border-slate-800/50 last:border-0">
+        <div className="flex items-start justify-between gap-6">
+          <span className="text-slate-400 flex items-start gap-2 min-w-0 flex-1 overflow-hidden">
+            <Hammer className="w-3 h-3 shrink-0 mt-1" />
+            <span className="min-w-0 overflow-hidden">
+              <span className="block truncate pr-2">{title}</span>
+              {subtitleParts.length > 0 && (
+                <span className="block text-[10px] text-slate-600 font-bold mt-0.5 line-clamp-2">
+                  {subtitleParts.join(' · ')}
+                </span>
+              )}
+              {expense.paidBy && !canTagPaidBy && (
+                <span
+                  className={`block text-[10px] font-black uppercase tracking-widest mt-0.5 ${
+                    expense.paidBy === 'brandon' ? 'text-blue-400' : 'text-slate-400'
+                  }`}
+                >
+                  {PAID_BY_LABELS[expense.paidBy]}
+                </span>
+              )}
+              {showMissingReceiptHint && !storedReceipt && expense.id.startsWith('exp-') && (
+                <span className="block text-[10px] text-amber-500/90 font-bold mt-0.5">
+                  Amount saved — tap Attach bill to add the PDF
+                </span>
+              )}
+            </span>
           </span>
-        </span>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <span className="font-black text-white tabular-nums shrink-0 text-right leading-6 min-w-[6.5rem]">
+            {formatCurrency(expense.amount)}
+          </span>
+        </div>
+        {(canTagPaidBy || canAttach || storedReceipt || canDelete) && (
+        <div className="flex items-center gap-2 flex-wrap pl-5 pt-1">
           {canTagPaidBy && (
             <div className="flex gap-1">
               {(['brandon', 'todd'] as const).map((who) => (
@@ -266,10 +278,8 @@ export function ExpenseRow({
               <span className="text-[10px] font-black uppercase">Delete</span>
             </button>
           )}
-          <span className="font-black text-white tabular-nums min-w-[4.5rem] text-right">
-            {formatCurrency(expense.amount)}
-          </span>
         </div>
+        )}
       </div>
       {viewerOpen && viewerSrc && (
         <ReceiptViewerModal

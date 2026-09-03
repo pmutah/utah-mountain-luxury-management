@@ -22,7 +22,7 @@ export function ReceiptViewerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-black/95"
+      className="fixed inset-0 z-50 flex flex-col bg-black/95 h-dvh overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -42,7 +42,7 @@ export function ReceiptViewerModal({
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 p-3 flex flex-col">
+      <div className="flex-1 min-h-0 p-3 flex flex-col overflow-hidden">
         {isPdf && mobile ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 text-center min-h-[50dvh]">
             <FileText className="w-16 h-16 text-blue-400" aria-hidden />
@@ -66,9 +66,9 @@ export function ReceiptViewerModal({
           </div>
         ) : isPdf ? (
           <iframe
-            src={pdfHref}
+            src={`${pdfHref}${pdfHref.includes('#') ? '' : '#view=FitH'}`}
             title={title}
-            className="flex-1 w-full min-h-[60dvh] rounded-xl border border-slate-700 bg-white"
+            className="flex-1 w-full h-full min-h-0 rounded-xl border border-slate-700 bg-white"
           />
         ) : (
           <div className="flex-1 flex items-center justify-center overflow-auto min-h-[50dvh]">
