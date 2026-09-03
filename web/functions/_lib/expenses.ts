@@ -2,6 +2,7 @@ import { EXPENSES, PROPERTIES, type ExpensePropertyId } from './data';
 import type { SettingsEnv } from './kv';
 import type { ReservationRecord } from './agent/types';
 import type { PaidBy } from './paid-by';
+import { parsePaidDateFromNote } from './expense-month';
 
 export interface ExpenseRecord {
   id: string;
@@ -55,11 +56,35 @@ export async function mergeAllExpenses(env: SettingsEnv): Promise<ExpenseRecord[
   return [...base, ...custom];
 }
 
+export function hydratePaidDate(expense: ExpenseRecord): ExpenseRecord {
+  if (expense.paidDate) return expense;
+  const fromNote = parsePaidDateFromNote(expense.note);
+  return fromNote ? { ...expense, paidDate: fromNote } : expense;
+}
+
 export function withReceiptUrls(expenses: ExpenseRecord[]): ExpenseWithReceipt[] {
-  return expenses.map((e) => ({
-    ...e,
-    receiptUrl: e.receiptStoragePath ? `/api/expenses/${encodeURIComponent(e.id)}/receipt` : null,
-  }));
+  return expenses.map((e) => {
+    const hydrated = hydratePaidDate(e);
+    return {
+      ...hydrated,
+      receiptUrl: hydrated.receiptStoragePath
+        ? `/api/expenses/${encodeURIComponent(hydrated.id)}/receipt`
+        : null,
+    };
+  });
+}
+
+/** Persist note-derived paid dates in one KV write so later PATCHes don't race. */
+export async function persistMissingPaidDates(env: SettingsEnv): Promise<number> {
+  const custom = await loadCustomExpenses(env);
+  let written = 0;
+  const next = custom.map((e) => {
+    const hydrated = hydratePaidDate(e);
+    if (hydrated.paidDate && hydrated.paidDate !== e.paidDate) written++;
+    return hydrated;
+  });
+  if (written > 0) await saveCustomExpenses(env, next);
+  return written;
 }
 
 export function newExpenseId(): string {

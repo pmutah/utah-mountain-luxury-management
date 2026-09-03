@@ -9,6 +9,7 @@ import {
 import { CONSTRUCTION_STAGES } from '../lib/construction-stages';
 import { currentYearMonth } from '../lib/months';
 import { PAID_BY_LABELS, summarizePartnerContributions } from '../lib/paid-by';
+import { paidDateFromExpense, todayInUtah } from '../lib/paid-date';
 import { ExpenseRow } from './ExpenseRow';
 
 async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
@@ -39,6 +40,7 @@ export function ConstructionPartnerLedger({
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [paidBy, setPaidBy] = useState<PaidBy>('brandon');
+  const [paidDate, setPaidDate] = useState(todayInUtah);
   const [stage, setStage] = useState<string>(CONSTRUCTION_STAGES[0]);
   const [saving, setSaving] = useState(false);
   const [receipt, setReceipt] = useState<{
@@ -53,7 +55,11 @@ export function ConstructionPartnerLedger({
     () =>
       expenses
         .filter((e) => e.propertyId === 'construction' && e.id.startsWith('exp-'))
-        .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')),
+        .sort((a, b) => {
+          const da = paidDateFromExpense(a) || a.createdAt?.slice(0, 10) || '';
+          const db = paidDateFromExpense(b) || b.createdAt?.slice(0, 10) || '';
+          return db.localeCompare(da) || (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
+        }),
     [expenses],
   );
 
@@ -70,9 +76,6 @@ export function ConstructionPartnerLedger({
     [filtered],
   );
 
-  const toddRows = filtered.filter((e) => e.paidBy === 'todd');
-  const brandonRows = filtered.filter((e) => e.paidBy === 'brandon');
-  const unassignedRows = filtered.filter((e) => e.paidBy !== 'todd' && e.paidBy !== 'brandon');
 
   const onPickFile = async (file: File | undefined) => {
     if (!file) return;
@@ -99,18 +102,20 @@ export function ConstructionPartnerLedger({
     try {
       const saved = await api.addExpense({
         propertyId: 'construction',
-        month: currentYearMonth(),
+        month: paidDate.slice(0, 7) || currentYearMonth(),
         category: 'Construction',
         amount: value,
         note: what,
         stage,
         paidBy,
+        paidDate,
         receiptBase64: receipt?.base64,
         receiptMimeType: receipt?.mimeType,
       });
       if (saved.receiptWarning) onToast(saved.receiptWarning, 'info');
       setDescription('');
       setAmount('');
+      setPaidDate(todayInUtah());
       setReceipt(null);
       onRefresh();
       onToast(`Logged ${formatCurrency(value)} for ${PAID_BY_LABELS[paidBy]}`, 'success');
@@ -213,7 +218,7 @@ export function ConstructionPartnerLedger({
             />
           </label>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <label className="text-[10px] font-bold text-slate-500 uppercase">
               Amount
               <div className="mt-1 flex items-center bg-slate-900 rounded-xl px-3 py-2 border border-slate-700">
@@ -229,6 +234,16 @@ export function ConstructionPartnerLedger({
                   className="bg-transparent border-none text-sm font-black text-white w-full p-0 focus:ring-0 outline-none"
                 />
               </div>
+            </label>
+            <label className="text-[10px] font-bold text-slate-500 uppercase">
+              Paid date
+              <input
+                type="date"
+                data-bot="expense-paid-date"
+                value={paidDate}
+                onChange={(e) => setPaidDate(e.target.value)}
+                className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white"
+              />
             </label>
             <label className="text-[10px] font-bold text-slate-500 uppercase">
               Phase
@@ -322,80 +337,42 @@ export function ConstructionPartnerLedger({
         </form>
       </div>
 
-      <div className="grid grid-cols-1 gap-10">
-        <LedgerColumn
-          title="Todd paid"
-          rows={toddRows}
-          empty="No Todd receipts in this phase yet."
-          onRefresh={onRefresh}
-          onError={onError}
-          onToast={onToast}
-        />
-        <LedgerColumn
-          title="Brandon & Stephanie paid"
-          rows={brandonRows}
-          empty="No Brandon & Stephanie receipts in this phase yet."
-          onRefresh={onRefresh}
-          onError={onError}
-          onToast={onToast}
-        />
+      <div className="overflow-x-auto -mx-2 sm:mx-0">
+        {filtered.length === 0 ? (
+          <p className="text-sm text-slate-600 px-2">No receipts in this phase yet.</p>
+        ) : (
+          <table className="w-max max-w-full border-collapse text-sm">
+            <thead>
+              <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-700">
+                <th className="text-left py-2 pr-3 font-black">Paid</th>
+                <th className="text-left py-2 pr-3 font-black">What</th>
+                <th className="text-left py-2 pr-3 font-black">Phase</th>
+                <th className="text-right py-2 pr-3 font-black">Amount</th>
+                <th className="text-left py-2 pr-3 font-black">Who</th>
+                <th className="text-right py-2 font-black">Bill</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((expense) => (
+                <ExpenseRow
+                  key={expense.id}
+                  expense={expense}
+                  variant="sheet"
+                  showPaidBy
+                  onRefresh={onRefresh}
+                  onError={onError}
+                  onToast={onToast}
+                  onDelete={async (id) => {
+                    await api.deleteExpense(id);
+                    onRefresh();
+                    onToast('Expense removed', 'success');
+                  }}
+                />
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-      {unassignedRows.length > 0 && (
-        <div className="mt-6">
-          <LedgerColumn
-            title="Needs who-paid tag"
-            rows={unassignedRows}
-            empty=""
-            onRefresh={onRefresh}
-            onError={onError}
-            onToast={onToast}
-          />
-        </div>
-      )}
     </section>
-  );
-}
-
-function LedgerColumn({
-  title,
-  rows,
-  empty,
-  onRefresh,
-  onError,
-  onToast,
-}: {
-  title: string;
-  rows: Expense[];
-  empty: string;
-  onRefresh: () => void;
-  onError: (msg: string) => void;
-  onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
-}) {
-  return (
-    <div>
-      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">{title}</h4>
-      {rows.length === 0 ? (
-        <p className="text-sm text-slate-600">{empty}</p>
-      ) : (
-        <ul className="space-y-3">
-          {rows.map((expense) => (
-            <li key={expense.id}>
-              <ExpenseRow
-                expense={expense}
-                showPaidBy
-                onRefresh={onRefresh}
-                onError={onError}
-                onToast={onToast}
-                onDelete={async (id) => {
-                  await api.deleteExpense(id);
-                  onRefresh();
-                  onToast('Expense removed', 'success');
-                }}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }

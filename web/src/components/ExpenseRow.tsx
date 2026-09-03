@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Eye, Hammer, Loader2, Paperclip, Trash2 } from 'lucide-react';
 import { api, formatCurrency, type Expense, type PaidBy } from '../lib/api';
 import { expenseReceiptIsPdf, isMobileDevice } from '../lib/device';
+import { formatPaidDate, paidDateFromExpense, stripPaidDatePrefix } from '../lib/paid-date';
 import { ReceiptViewerModal } from './ReceiptViewerModal';
 import { PAID_BY_LABELS, tracksPartnerContributions } from '../lib/paid-by';
 
@@ -28,6 +29,7 @@ export function ExpenseRow({
   onToast,
   showMissingReceiptHint = false,
   showPaidBy = false,
+  variant = 'stack',
 }: {
   expense: Expense;
   onDelete?: (id: string) => Promise<void>;
@@ -36,6 +38,7 @@ export function ExpenseRow({
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
   showMissingReceiptHint?: boolean;
   showPaidBy?: boolean;
+  variant?: 'stack' | 'sheet';
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -45,6 +48,7 @@ export function ExpenseRow({
   const [attaching, setAttaching] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [savingPaidBy, setSavingPaidBy] = useState(false);
+  const [savingPaidDate, setSavingPaidDate] = useState(false);
 
   const storedReceipt = hasStoredReceipt(expense);
   const receiptEndpoint = api.expenseReceiptUrl(expense.id);
@@ -57,15 +61,15 @@ export function ExpenseRow({
     expense.id.startsWith('exp-') &&
     tracksPartnerContributions(expense.propertyId) &&
     onRefresh;
-  const title = expense.vendor || expense.note || expense.category;
-  const paidDate =
-    expense.paidDate ||
-    (expense.note?.match(/\bPaid (\d{4}-\d{2}-\d{2})\b/)?.[1] ?? null);
-  const subtitleParts = [
-    paidDate ? `Paid ${paidDate}` : null,
+  const title = expense.vendor || stripPaidDatePrefix(expense.note) || expense.category;
+  const paidDate = paidDateFromExpense(expense);
+  const detailNote =
     expense.vendor && expense.note && expense.note !== expense.vendor
-      ? expense.note.replace(/^Paid \d{4}-\d{2}-\d{2} · /, '')
-      : null,
+      ? stripPaidDatePrefix(expense.note)
+      : '';
+  const subtitleParts = [
+    paidDate ? `Paid ${formatPaidDate(paidDate)}` : null,
+    detailNote || null,
     expense.stage ? expense.stage : null,
     expense.category !== 'Other' ? expense.category : null,
   ].filter(Boolean);
@@ -146,6 +150,20 @@ export function ExpenseRow({
     }
   };
 
+  const savePaidDate = async (next: string) => {
+    if (!onRefresh || !next || next === paidDate) return;
+    setSavingPaidDate(true);
+    try {
+      await api.updateExpense(expense.id, { paidDate: next });
+      onToast(`Paid date set to ${formatPaidDate(next)}`, 'success');
+      onRefresh();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not update paid date');
+    } finally {
+      setSavingPaidDate(false);
+    }
+  };
+
   const remove = async () => {
     if (!onDelete || !window.confirm(`Delete this expense (${formatCurrency(expense.amount)})?`)) return;
     setDeleting(true);
@@ -159,18 +177,152 @@ export function ExpenseRow({
     }
   };
 
+  const fileInput = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept="application/pdf,image/*"
+      className="hidden"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) void attachFile(file);
+      }}
+    />
+  );
+
+  const viewer = viewerOpen && viewerSrc && (
+    <ReceiptViewerModal
+      title={`${expense.vendor ?? expense.category} bill`}
+      imageUrl={viewerSrc}
+      openUrl={receiptEndpoint}
+      contentType={viewerContentType}
+      onClose={closeViewer}
+    />
+  );
+
+  if (variant === 'sheet') {
+    const iconBtn =
+      'inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-50';
+    return (
+      <>
+        {fileInput}
+        <tr className="border-b border-slate-800/70">
+          <td className="py-2.5 pr-3 align-middle">
+            {onRefresh && expense.id.startsWith('exp-') ? (
+              <input
+                type="date"
+                value={paidDate ?? ''}
+                disabled={savingPaidDate}
+                onChange={(e) => void savePaidDate(e.target.value)}
+                aria-label={`Paid date for ${title}`}
+                className="w-full max-w-[9rem] bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200"
+              />
+            ) : (
+              <span className="text-xs text-slate-300 tabular-nums">{formatPaidDate(paidDate)}</span>
+            )}
+          </td>
+          <td className="py-2.5 pr-6 align-middle min-w-[16rem] max-w-[28rem]">
+            <span className="block font-bold text-slate-100 truncate">{title}</span>
+            {detailNote ? (
+              <span className="block text-[11px] text-slate-500 truncate">{detailNote}</span>
+            ) : null}
+          </td>
+          <td className="py-2.5 pr-3 align-middle text-xs text-slate-500 truncate">
+            {expense.stage || '—'}
+          </td>
+          <td className="py-2.5 pr-3 align-middle text-right font-black text-white tabular-nums">
+            {formatCurrency(expense.amount)}
+          </td>
+          <td className="py-2.5 pr-3 align-middle">
+            {canTagPaidBy ? (
+              <div className="inline-flex gap-1">
+                {(['brandon', 'todd'] as const).map((who) => (
+                  <button
+                    key={who}
+                    type="button"
+                    disabled={savingPaidBy}
+                    onClick={() => void setPaidBy(who)}
+                    className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${
+                      expense.paidBy === who
+                        ? who === 'brandon'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-600 text-white'
+                        : 'bg-slate-800 text-slate-500 hover:text-white'
+                    }`}
+                  >
+                    {who === 'brandon' ? 'B&S' : 'Todd'}
+                  </button>
+                ))}
+              </div>
+            ) : expense.paidBy ? (
+              <span className="text-[10px] font-black uppercase text-slate-500">
+                {PAID_BY_LABELS[expense.paidBy]}
+              </span>
+            ) : (
+              '—'
+            )}
+          </td>
+          <td className="py-2.5 align-middle text-right whitespace-nowrap">
+            <div className="inline-flex items-center justify-end gap-1">
+              {canAttach && (
+                <button
+                  type="button"
+                  disabled={attaching}
+                  onClick={() => fileRef.current?.click()}
+                  className={`${iconBtn} text-emerald-400`}
+                  aria-label="Attach bill"
+                  title="Attach bill"
+                >
+                  {attaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+                </button>
+              )}
+              {storedReceipt && mobilePdfLink && (
+                <a
+                  href={receiptEndpoint}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${iconBtn} text-blue-400`}
+                  aria-label="Open PDF"
+                  title="Open PDF"
+                >
+                  <Eye className="w-4 h-4" />
+                </a>
+              )}
+              {storedReceipt && !mobilePdfLink && (
+                <button
+                  type="button"
+                  disabled={loadingReceipt}
+                  onClick={() => void openReceipt()}
+                  className={`${iconBtn} text-blue-400`}
+                  aria-label={pdfReceipt ? 'View PDF' : 'View receipt'}
+                  title={pdfReceipt ? 'View PDF' : 'View receipt'}
+                >
+                  {loadingReceipt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  disabled={deleting}
+                  onClick={() => void remove()}
+                  className={`${iconBtn} hover:text-red-400`}
+                  aria-label="Delete expense"
+                  title="Delete"
+                >
+                  {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
+        {viewer}
+      </>
+    );
+  }
+
   return (
     <>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="application/pdf,image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) void attachFile(file);
-        }}
-      />
+      {fileInput}
       <div className="flex flex-col gap-3 text-sm mb-3 py-3 border-b border-slate-800/50 last:border-0">
         <div className="flex items-start justify-between gap-6">
           <span className="text-slate-400 flex items-start gap-2 min-w-0 flex-1 overflow-hidden">
@@ -281,15 +433,7 @@ export function ExpenseRow({
         </div>
         )}
       </div>
-      {viewerOpen && viewerSrc && (
-        <ReceiptViewerModal
-          title={`${expense.vendor ?? expense.category} bill`}
-          imageUrl={viewerSrc}
-          openUrl={receiptEndpoint}
-          contentType={viewerContentType}
-          onClose={closeViewer}
-        />
-      )}
+      {viewer}
     </>
   );
 }

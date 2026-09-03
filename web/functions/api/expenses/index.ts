@@ -4,6 +4,7 @@ import {
   loadCustomExpenses,
   mergeAllExpenses,
   newExpenseId,
+  persistMissingPaidDates,
   saveCustomExpenses,
   withReceiptUrls,
   type ExpenseRecord,
@@ -17,6 +18,7 @@ import type { SettingsEnv } from '../../_lib/kv';
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
 
 export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env }) => {
+  await persistMissingPaidDates(env).catch(() => 0);
   const all = withReceiptUrls(await mergeAllExpenses(env));
   const custom = withReceiptUrls(await loadCustomExpenses(env));
   return corsJson(request, { expenses: all, custom });

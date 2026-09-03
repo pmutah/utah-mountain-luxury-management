@@ -9,6 +9,14 @@ export function parsePaidDate(value: unknown): string | undefined {
   return PAID_DATE_RE.test(trimmed) ? trimmed : undefined;
 }
 
+const NOTE_PAID = /\bPaid (\d{4}-\d{2}-\d{2})\b/;
+
+/** Pull YYYY-MM-DD out of a "Paid 2026-08-05 · …" expense note. */
+export function parsePaidDateFromNote(note?: string): string | undefined {
+  if (!note) return undefined;
+  return parsePaidDate(note.match(NOTE_PAID)?.[1]);
+}
+
 const YM_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const MONTH_NAMES: Record<string, string> = {

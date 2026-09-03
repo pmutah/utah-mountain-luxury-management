@@ -16,6 +16,7 @@ import {
   sumInvoicedDocuments,
 } from '../lib/construction-invoice';
 import { isMobileDevice, isPdfContentType } from '../lib/device';
+import { formatPaidDate } from '../lib/paid-date';
 import { ReceiptViewerModal } from './ReceiptViewerModal';
 
 type DocFilter = 'all' | 'plan' | 'bid' | 'invoice' | 'photo';
@@ -377,19 +378,32 @@ export function ConstructionProjectView({
         ) : filteredDocuments.length === 0 ? (
           <p className="text-sm text-slate-600 text-center py-8">No documents match this filter.</p>
         ) : (
-          <ul className="space-y-3">
-            {filteredDocuments.map((d) => (
-              <DocumentRow
-                key={d.id}
-                doc={d}
-                onDelete={() => void onDelete(d.id)}
-                onToast={onToast}
-                onRefresh={load}
-                onError={onError}
-                countsAsInvoice={getDocumentInvoiceAmount(d) != null}
-              />
-            ))}
-          </ul>
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="w-max max-w-full border-collapse text-sm">
+              <thead>
+                <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-700">
+                  <th className="text-left py-2 pr-3 font-black">Document</th>
+                  <th className="text-left py-2 pr-3 font-black">Date</th>
+                  <th className="text-left py-2 pr-3 font-black">Type</th>
+                  <th className="text-right py-2 pr-3 font-black">Amount</th>
+                  <th className="text-right py-2 font-black">File</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDocuments.map((d) => (
+                  <DocumentRow
+                    key={d.id}
+                    doc={d}
+                    onDelete={() => void onDelete(d.id)}
+                    onToast={onToast}
+                    onRefresh={load}
+                    onError={onError}
+                    countsAsInvoice={getDocumentInvoiceAmount(d) != null}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>
@@ -490,38 +504,41 @@ function DocumentRow({
 
   return (
     <>
-      <li className="flex items-center gap-3 bg-slate-950/40 rounded-xl px-3 py-2 border border-slate-800/50">
-        {photo && hasFile ? (
-          <button
-            type="button"
-            onClick={() => void openFile()}
-            className="shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-slate-700 bg-slate-900"
-            aria-label="Open photo"
-          >
-            <img
-              src={fileEndpoint}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          </button>
-        ) : (
-          <FileText className="w-4 h-4 text-amber-500 shrink-0" />
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-slate-200 text-sm truncate">{doc.title}</p>
-          <p className="text-[11px] text-slate-500 truncate">
-            {[doc.vendor, doc.amount != null ? formatCurrency(doc.amount) : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      <tr className="border-b border-slate-800/70">
+        <td className="py-2.5 pr-6 align-middle min-w-[16rem] max-w-[28rem]">
+          <div className="flex items-center gap-2 min-w-0">
+            {photo && hasFile ? (
+              <button
+                type="button"
+                onClick={() => void openFile()}
+                className="shrink-0 w-8 h-8 rounded-md overflow-hidden border border-slate-700 bg-slate-900"
+                aria-label="Open photo"
+              >
+                <img
+                  src={fileEndpoint}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </button>
+            ) : (
+              <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="font-bold text-slate-200 truncate">{doc.title}</p>
+              {doc.vendor ? <p className="text-[11px] text-slate-500 truncate">{doc.vendor}</p> : null}
+            </div>
+          </div>
+        </td>
+        <td className="py-2.5 pr-3 align-middle text-xs text-slate-300">
+          {formatPaidDate(doc.documentDate?.slice(0, 10) || null)}
+        </td>
+        <td className="py-2.5 pr-3 align-middle">
           <select
             value={doc.type}
             disabled={savingMeta}
             onChange={(e) => void saveMeta({ type: e.target.value })}
-            className="text-[10px] font-bold uppercase bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 max-w-[7.5rem]"
+            className="text-[10px] font-bold uppercase bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-slate-300"
             aria-label="Document type"
           >
             {DOC_TYPES.map((t) => (
@@ -530,7 +547,9 @@ function DocumentRow({
               </option>
             ))}
           </select>
-          {(doc.type === 'invoice' || doc.type === 'estimate' || doc.type === 'bid' || doc.amount != null) && (
+        </td>
+        <td className="py-2.5 pr-3 align-middle text-right">
+          {(doc.type === 'invoice' || doc.type === 'estimate' || doc.type === 'bid' || doc.amount != null) ? (
             <input
               type="number"
               min={0}
@@ -543,45 +562,52 @@ function DocumentRow({
                   void saveMeta({ type: doc.type === 'plan' ? 'invoice' : doc.type, amount: n });
                 }
               }}
-              className="w-24 px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white tabular-nums"
+              className="w-28 px-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-xs text-white tabular-nums text-right"
               placeholder="Amount"
               aria-label="Amount"
             />
+          ) : (
+            <span className="text-xs text-slate-600">—</span>
           )}
-          {countsAsInvoice && (
-            <span className="hidden sm:inline text-[10px] font-bold uppercase text-emerald-500">In</span>
-          )}
-          {hasFile && (
+        </td>
+        <td className="py-2.5 align-middle text-right whitespace-nowrap">
+          <div className="inline-flex items-center justify-end gap-1">
+            {countsAsInvoice && (
+              <span className="text-[10px] font-bold uppercase text-emerald-500 mr-1">In</span>
+            )}
+            {hasFile && (
+              <button
+                type="button"
+                disabled={loadingFile}
+                onClick={() => void openFile()}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-blue-400 hover:bg-slate-800 disabled:opacity-50"
+                aria-label={pdf ? 'View PDF' : 'Open file'}
+                title={pdf ? 'View PDF' : 'Open'}
+              >
+                {loadingFile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+              </button>
+            )}
+            {hasFile && showInvoiceHelp && (
+              <button
+                type="button"
+                disabled={reanalyzing}
+                onClick={() => void reanalyze()}
+                className="inline-flex items-center px-2 py-1 rounded-lg bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-[10px] font-black uppercase"
+              >
+                {reanalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Fix'}
+              </button>
+            )}
             <button
               type="button"
-              disabled={loadingFile}
-              onClick={() => void openFile()}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase"
+              onClick={onDelete}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-red-400 hover:bg-slate-800"
+              aria-label="Delete"
             >
-              {loadingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
-              {pdf ? 'PDF' : 'Open'}
+              <Trash2 className="w-4 h-4" />
             </button>
-          )}
-          {hasFile && showInvoiceHelp && (
-            <button
-              type="button"
-              disabled={reanalyzing}
-              onClick={() => void reanalyze()}
-              className="hidden sm:inline-flex items-center px-2.5 py-1.5 min-h-[36px] rounded-lg bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white text-[10px] font-black uppercase"
-            >
-              {reanalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Fix'}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onDelete}
-            className="p-1.5 text-slate-500 hover:text-red-400 min-h-[36px] min-w-[36px]"
-            aria-label="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </li>
+          </div>
+        </td>
+      </tr>
       {viewerOpen && viewerSrc && (
         <ReceiptViewerModal
           title={doc.title}
