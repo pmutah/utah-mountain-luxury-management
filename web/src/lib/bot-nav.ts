@@ -76,4 +76,9 @@ export const BOT_SELECTORS = {
   oursExpenseText: '[data-bot="ours-expense-text"]',
   oursExpenseReadText: '[data-bot="ours-expense-read-text"]',
   oursExpenseSave: '[data-bot="ours-expense-save"]',
+  formImportText: '[data-bot="form-import-text"]',
+  formImportRead: '[data-bot="form-import-read"]',
+  formStore: '[data-bot="form-store"]',
+  formEmail: '[data-bot="form-email"]',
+  formSms: '[data-bot="form-sms"]',
 } as const;

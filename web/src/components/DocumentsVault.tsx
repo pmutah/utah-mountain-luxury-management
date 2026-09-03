@@ -382,6 +382,7 @@ export function DocumentsVault({
             setVaultView('packets');
             setFolder('all');
           }}
+          onStored={load}
           onToast={onToast}
           canEmail={gmail.connected}
           canText={sms.configured}

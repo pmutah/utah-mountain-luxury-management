@@ -186,3 +186,187 @@ export async function gmailSend(
   const json = (await res.json()) as { id?: string };
   return { id: json.id };
 }
+
+export type GmailHeaderMessage = {
+  id: string;
+  subject: string;
+  from: string;
+  date: string;
+};
+
+export type GmailInvoiceSource = {
+  id: string;
+  subject: string;
+  from: string;
+  date: string;
+  text: string;
+  attachment?: { filename: string; mimeType: string; data: string };
+};
+
+type GmailPart = {
+  mimeType?: string;
+  filename?: string;
+  body?: { data?: string; attachmentId?: string; size?: number };
+  parts?: GmailPart[];
+};
+
+function headerValue(headers: Array<{ name?: string; value?: string }> | undefined, name: string): string {
+  const want = name.toLowerCase();
+  return headers?.find((h) => (h.name ?? '').toLowerCase() === want)?.value?.trim() ?? '';
+}
+
+function decodeB64Url(data: string): Uint8Array {
+  const pad = data.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = pad + '='.repeat((4 - (pad.length % 4 || 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function decodeB64UrlText(data: string): string {
+  return new TextDecoder().decode(decodeB64Url(data));
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+function walkParts(
+  part: GmailPart | undefined,
+  acc: { plain: string[]; html: string[]; attachments: Array<{ filename: string; mimeType: string; attachmentId: string }> },
+): void {
+  if (!part) return;
+  const mime = (part.mimeType ?? '').toLowerCase();
+  const filename = part.filename?.trim() ?? '';
+  if (filename && part.body?.attachmentId) {
+    const ok =
+      mime === 'application/pdf' ||
+      mime.startsWith('image/') ||
+      filename.toLowerCase().endsWith('.pdf');
+    if (ok) {
+      acc.attachments.push({
+        filename,
+        mimeType: mime.startsWith('image/') ? mime : 'application/pdf',
+        attachmentId: part.body.attachmentId,
+      });
+    }
+  }
+  if (part.body?.data) {
+    if (mime === 'text/plain') acc.plain.push(decodeB64UrlText(part.body.data));
+    if (mime === 'text/html') acc.html.push(htmlToText(decodeB64UrlText(part.body.data)));
+  }
+  for (const child of part.parts ?? []) walkParts(child, acc);
+}
+
+export async function gmailSearchHeaders(
+  env: SettingsEnv,
+  query: string,
+  max = 8,
+): Promise<GmailHeaderMessage[]> {
+  const tokens = await getValidGmailToken(env);
+  if (!tokens) throw new Error('Gmail is not connected.');
+
+  const listRes = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=${max}`,
+    { headers: { Authorization: `Bearer ${tokens.accessToken}` } },
+  );
+  if (!listRes.ok) throw new Error(`Gmail search failed (${listRes.status})`);
+  const listed = (await listRes.json()) as { messages?: Array<{ id: string }> };
+  const ids = listed.messages?.map((m) => m.id).filter(Boolean) ?? [];
+  const messages: GmailHeaderMessage[] = [];
+
+  for (const id of ids) {
+    const res = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+      { headers: { Authorization: `Bearer ${tokens.accessToken}` } },
+    );
+    if (!res.ok) continue;
+    const json = (await res.json()) as {
+      id?: string;
+      payload?: { headers?: Array<{ name?: string; value?: string }> };
+    };
+    messages.push({
+      id: json.id ?? id,
+      subject: headerValue(json.payload?.headers, 'Subject') || '(no subject)',
+      from: headerValue(json.payload?.headers, 'From'),
+      date: headerValue(json.payload?.headers, 'Date'),
+    });
+  }
+  return messages;
+}
+
+export async function gmailGetInvoiceSource(env: SettingsEnv, messageId: string): Promise<GmailInvoiceSource> {
+  const tokens = await getValidGmailToken(env);
+  if (!tokens) throw new Error('Gmail is not connected.');
+
+  const res = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?format=full`,
+    { headers: { Authorization: `Bearer ${tokens.accessToken}` } },
+  );
+  if (!res.ok) throw new Error(`Could not open that email (${res.status})`);
+  const json = (await res.json()) as {
+    id?: string;
+    payload?: GmailPart & { headers?: Array<{ name?: string; value?: string }> };
+  };
+
+  const acc = {
+    plain: [] as string[],
+    html: [] as string[],
+    attachments: [] as Array<{ filename: string; mimeType: string; attachmentId: string }>,
+  };
+  walkParts(json.payload, acc);
+  const text = (acc.plain.join('\n\n') || acc.html.join('\n\n')).trim();
+  const first = acc.attachments[0];
+  let attachment: GmailInvoiceSource['attachment'];
+
+  if (first) {
+    const attRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(first.attachmentId)}`,
+      { headers: { Authorization: `Bearer ${tokens.accessToken}` } },
+    );
+    if (attRes.ok) {
+      const att = (await attRes.json()) as { data?: string; size?: number };
+      if (att.data && (att.size ?? att.data.length) < 8_000_000) {
+        const bytes = decodeB64Url(att.data);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!);
+        attachment = {
+          filename: first.filename,
+          mimeType: first.mimeType,
+          data: btoa(binary),
+        };
+      }
+    }
+  }
+
+  const headers = json.payload?.headers;
+  const subject = headerValue(headers, 'Subject');
+  const from = headerValue(headers, 'From');
+  const date = headerValue(headers, 'Date');
+  const headerBlock = [`Subject: ${subject}`, `From: ${from}`, `Date: ${date}`].join('\n');
+
+  return {
+    id: json.id ?? messageId,
+    subject: subject || '(no subject)',
+    from,
+    date,
+    text: `${headerBlock}\n\n${text}`.trim(),
+    attachment,
+  };
+}

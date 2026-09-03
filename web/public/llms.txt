@@ -49,3 +49,4 @@ POST `/api/auth/login` with `{ "password": "..." }` (cookie). Form: `[data-bot="
 - POST `/api/agent/construction/chat` — construction manager
 - GET `/api/construction/project`
 - GET `/api/esign/templates`
+- POST `/api/esign/parse-invoice` — import a contractor invoice or email onto a lien waiver (`type`: text / image / gmail / gmail-search)

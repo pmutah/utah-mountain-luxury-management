@@ -643,6 +643,25 @@ export const api = {
       templates: FormTemplate[];
       categories: Array<{ id: FormCategory; label: string }>;
     }>('/api/esign/templates'),
+  parseInvoiceForForm: (body: {
+    type: 'text' | 'image' | 'gmail' | 'gmail-search';
+    text?: string;
+    imageBase64?: string;
+    mimeType?: string;
+    templateId?: string;
+    query?: string;
+    messageId?: string;
+  }) =>
+    request<{
+      fields?: Record<string, string | number>;
+      missing?: string[];
+      parsed?: Record<string, unknown>;
+      templateId?: string;
+      messages?: Array<{ id: string; subject: string; from: string; date: string }>;
+    }>('/api/esign/parse-invoice', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   createFormFromTemplate: (
     templateId: string,
     body: {

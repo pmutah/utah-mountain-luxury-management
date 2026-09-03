@@ -48,6 +48,8 @@ export const AGENT_SITE_MAP = {
     constructionProject: 'GET /api/construction/project',
     constructionDocuments: 'GET/POST /api/construction/documents',
     esignTemplates: 'GET /api/esign/templates',
+    esignParseInvoice:
+      'POST /api/esign/parse-invoice { type:"text"|"image"|"gmail"|"gmail-search", templateId, text?, imageBase64?, mimeType?, query?, messageId? }',
     thisMap: 'GET /api/agent/map',
   },
   partnerSpend: {
