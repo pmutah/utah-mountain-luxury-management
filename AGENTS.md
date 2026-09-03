@@ -7,12 +7,12 @@ Code: `web/` (Vite + Cloudflare Pages Functions).
 
 Do **not** fight the top nav chips if clicks are intercepted. Use:
 
-- Hash: `#/overview` `#/report` `#/report/documents` `#/guests` `#/ranch` `#/lindon` `#/river` `#/construction`
-- `window.UML.navigate("construction")`, `UML.setMonth("YYYY-MM")`, `UML.state()`, `UML.help()`
-- Selectors: `[data-bot="nav-construction"]`, `[data-bot="login-password"]`, `[data-bot="expense-save"]`
+- Hash: `#/overview` `#/report` `#/report/documents` `#/guests` `#/ranch` `#/lindon` `#/river` `#/river/build` `#/ours`
+- `window.UML.navigate("river")`, `UML.navigate("construction")` (opens River → Build costs), `UML.setMonth("YYYY-MM")`, `UML.state()`, `UML.help()`
+- Selectors: `[data-bot="nav-river"]`, `[data-bot="nav-construction"]` (Build costs chip), `[data-bot="login-password"]`, `[data-bot="expense-save"]`
 - Map: `GET /api/agent/map` and `/llms.txt`
 
-`html` exposes `data-uml-tab`, `data-uml-month`, `data-uml-report`.
+`html` exposes `data-uml-tab`, `data-uml-month`, `data-uml-report`, `data-uml-river`.
 
 ## Product facts
 

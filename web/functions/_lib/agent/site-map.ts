@@ -12,22 +12,23 @@ export const AGENT_SITE_MAP = {
     ranch: '#/ranch',
     lindon: '#/lindon',
     river: '#/river',
+    riverBuild: '#/river/build',
     ours: '#/ours',
-    construction: '#/construction',
+    construction: '#/river/build',
   },
   browser: {
     prefer:
       'Call window.UML.navigate(tab) or open the hash URL. Do not rely on clicking nav chips if an overlay intercepts clicks.',
     global: 'window.UML — version, state(), navigate(tab), setMonth("YYYY-MM"), help(), selectors',
-    dataBot: 'Every primary control has data-bot. Example: [data-bot="nav-construction"]',
+    dataBot: 'Every primary control has data-bot. Example: [data-bot="nav-construction"] on River → Build costs',
     documentDataset: 'html[data-uml-tab] [data-uml-month] [data-uml-report]',
   },
   properties: {
     ranch: 'The Ranch House - 50/50 after 20% mgmt fee to Brandon',
     lindon: 'The Lindon House - Brandon rental P&L',
-    river: 'The River House - 50/50 after 20% mgmt fee to Brandon',
+    river: 'The River House - 50/50 after 20% mgmt fee to Brandon. Build costs spreadsheet is #/river/build',
     construction:
-      'Construction project - partner spend (Todd vs Brandon & Stephanie), documents, phases',
+      'River House build costs (same as #/river/build) — partner spend Todd vs Brandon & Stephanie',
     household: 'Brandon & Stephanie furnishings and house purchases — tab Our expenses (#/ours)',
   },
   apis: {

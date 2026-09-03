@@ -1,4 +1,4 @@
-/** Hash routes bots and humans share: `#/construction`, `#/report/documents`. */
+/** Hash routes bots and humans share: `#/river/build`, `#/report/documents`. */
 
 export const DASHBOARD_TABS = [
   'portfolio',
@@ -13,10 +13,12 @@ export const DASHBOARD_TABS = [
 
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 export type ReportView = 'pnl' | 'documents';
+export type RiverView = 'rental' | 'build';
 
 export type DashboardLocation = {
   tab: DashboardTab;
   reportView: ReportView;
+  riverView: RiverView;
 };
 
 export function isDashboardTab(value: string): value is DashboardTab {
@@ -30,7 +32,9 @@ export function parseDashboardHash(hash: string): DashboardLocation {
   const aliased =
     tabPart === 'household' || tabPart === 'furnishings' || tabPart === 'our-expenses'
       ? 'ours'
-      : tabPart;
+      : tabPart === 'construction'
+        ? 'river'
+        : tabPart;
   const tab: DashboardTab = isDashboardTab(aliased)
     ? aliased
     : aliased === 'overview'
@@ -38,11 +42,19 @@ export function parseDashboardHash(hash: string): DashboardLocation {
       : 'portfolio';
   const reportView: ReportView =
     tab === 'report' && (parts[1] === 'documents' || parts[1] === 'docs') ? 'documents' : 'pnl';
-  return { tab, reportView };
+  const riverView: RiverView =
+    tabPart === 'construction' ||
+    (tab === 'river' && (parts[1] === 'build' || parts[1] === 'construction'))
+      ? 'build'
+      : 'rental';
+  return { tab, reportView, riverView };
 }
 
 export function dashboardHash(loc: DashboardLocation): string {
   if (loc.tab === 'report' && loc.reportView === 'documents') return '#/report/documents';
+  if (loc.tab === 'construction' || (loc.tab === 'river' && loc.riverView === 'build')) {
+    return '#/river/build';
+  }
   if (loc.tab === 'portfolio') return '#/overview';
   return `#/${loc.tab}`;
 }
@@ -54,6 +66,7 @@ export const BOT_SELECTORS = {
   loginSubmit: '[data-bot="login-submit"]',
   cohost: '[data-bot="open-cohost"]',
   build: '[data-bot="open-build"]',
+  riverBuild: '[data-bot="nav-construction"]',
   partnerSpend: '[data-bot="partner-spend"]',
   expenseWhat: '[data-bot="expense-what"]',
   expenseAmount: '[data-bot="expense-amount"]',

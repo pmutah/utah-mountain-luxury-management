@@ -12,7 +12,7 @@ import {
   looksLikeReceiptText,
   parseHouseholdText,
 } from '../lib/household-text';
-import { currentYearMonth, formatMonthLabel } from '../lib/months';
+import { currentYearMonth } from '../lib/months';
 import { fileFromClipboard, isChatPasteTarget, prepareReceiptFile } from '../lib/receipt-image';
 import { ExpenseRow } from './ExpenseRow';
 
@@ -305,25 +305,26 @@ export function OurExpenses({
   };
 
   return (
-    <div className="space-y-8" data-bot="our-expenses">
-      <div>
-        <h2 className="text-3xl font-black text-white">Our expenses</h2>
-        <p className="text-xs text-slate-400 mt-2">
-          Brandon &amp; Stephanie — furnishings and things we buy for the house. Take a photo, paste a
-          screenshot or receipt text, or type it in. These stay off the rental profit report.
-        </p>
+    <div className="space-y-4" data-bot="our-expenses">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-black text-white">Our expenses</h2>
+          <p className="text-xs text-slate-400 mt-1 max-w-xl">
+            Brandon &amp; Stephanie furnishings for the house. Photo, paste, or type — stays off the
+            rental P&amp;L.
+          </p>
+        </div>
+        <div className="bg-rose-950/40 px-4 py-3 rounded-2xl border border-rose-800/50 min-w-[10rem]">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">We have put in</p>
+          <p className="text-2xl font-black text-rose-300 mt-0.5">{formatCurrency(total)}</p>
+          <p className="text-[10px] text-slate-500 font-bold">
+            {expenses.length} {expenses.length === 1 ? 'purchase' : 'purchases'}
+          </p>
+        </div>
       </div>
 
-      <div className="bg-rose-950/40 p-6 sm:p-8 rounded-[40px] border border-rose-800/50">
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">We have put in</p>
-        <p className="text-4xl font-black text-rose-300 mt-2">{formatCurrency(total)}</p>
-        <p className="text-[10px] text-slate-500 font-bold mt-2">
-          {expenses.length} {expenses.length === 1 ? 'purchase' : 'purchases'}
-        </p>
-      </div>
-
-      <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-rose-800/40 shadow-xl">
-        <div className="flex items-center gap-2 mb-4">
+      <section className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-rose-800/40">
+        <div className="flex items-center gap-2 mb-3">
           <Plus className="w-4 h-4 text-rose-400" />
           <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Add an expense</p>
         </div>
@@ -345,49 +346,46 @@ export function OurExpenses({
             const dropped = e.dataTransfer.getData('text/plain');
             if (dropped.trim()) void readPastedText(dropped);
           }}
-          className={`border-2 border-dashed rounded-2xl p-6 text-center mb-6 transition-colors ${
+          className={`border-2 border-dashed rounded-xl px-3 py-3 text-center mb-3 transition-colors ${
             dragOver ? 'border-rose-400 bg-rose-500/10' : 'border-slate-700 bg-slate-950/50'
           }`}
         >
           {scanning ? (
-            <div className="flex flex-col items-center gap-3 text-slate-400">
-              <Loader2 className="w-8 h-8 animate-spin text-rose-400" />
+            <div className="flex items-center justify-center gap-2 text-slate-400 py-1">
+              <Loader2 className="w-5 h-5 animate-spin text-rose-400" />
               <p className="text-xs font-bold uppercase tracking-widest">Reading receipt…</p>
             </div>
           ) : (
-            <>
-              <ImagePlus className="w-8 h-8 mx-auto text-slate-500 mb-3" />
-              <p className="text-sm font-bold text-slate-300 mb-4">
-                Drop a photo, paste a screenshot or text (Ctrl+V), or take a picture
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <p className="text-xs font-bold text-slate-400">
+                Photo, paste (Ctrl+V), or type below
               </p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="px-4 py-2 bg-slate-800 rounded-xl text-xs font-black uppercase flex items-center gap-2 min-h-[44px]"
-                >
-                  <ImagePlus className="w-4 h-4" /> Upload
-                </button>
-                <button
-                  type="button"
-                  onClick={() => cameraRef.current?.click()}
-                  className="px-4 py-2 bg-rose-700 rounded-xl text-xs font-black uppercase flex items-center gap-2 min-h-[44px] text-white"
-                >
-                  <Camera className="w-4 h-4" /> Camera
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="px-3 py-1.5 bg-slate-800 rounded-lg text-[10px] font-black uppercase flex items-center gap-1.5 min-h-[36px]"
+              >
+                <ImagePlus className="w-3.5 h-3.5" /> Upload
+              </button>
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="px-3 py-1.5 bg-rose-700 rounded-lg text-[10px] font-black uppercase flex items-center gap-1.5 min-h-[36px] text-white"
+              >
+                <Camera className="w-3.5 h-3.5" /> Camera
+              </button>
               {receipt && (
-                <p className="text-[10px] font-bold text-rose-300 uppercase tracking-wider mt-4">
+                <p className="text-[10px] font-bold text-rose-300 uppercase tracking-wider">
                   Attached: {receipt.name}
                 </p>
               )}
-            </>
+            </div>
           )}
           {receipt?.previewUrl && (
             <img
               src={receipt.previewUrl}
               alt="Receipt preview"
-              className="mt-4 mx-auto max-h-40 object-contain rounded-xl border border-slate-700 bg-slate-950"
+              className="mt-2 mx-auto max-h-24 object-contain rounded-lg border border-slate-700 bg-slate-950"
             />
           )}
           <input
@@ -413,31 +411,33 @@ export function OurExpenses({
           />
         </div>
 
-        <div className="flex flex-col gap-2 mb-6">
-          <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2">
-            <Type className="w-3 h-3" /> Or paste receipt text
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+          <label className="text-[10px] font-bold text-slate-500 uppercase flex-1">
+            <span className="inline-flex items-center gap-1">
+              <Type className="w-3 h-3" /> Paste receipt text
+            </span>
+            <textarea
+              data-bot="ours-expense-text"
+              value={receiptText}
+              onChange={(e) => setReceiptText(e.target.value)}
+              placeholder="e.g. Wayfair dresser $899"
+              rows={2}
+              className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-sm text-white placeholder:text-slate-600 resize-none"
+            />
           </label>
-          <textarea
-            data-bot="ours-expense-text"
-            value={receiptText}
-            onChange={(e) => setReceiptText(e.target.value)}
-            placeholder="e.g. Wayfair dresser $899 — or paste an order confirmation"
-            rows={3}
-            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white placeholder:text-slate-600 resize-none"
-          />
           <button
             type="button"
             data-bot="ours-expense-read-text"
             disabled={!receiptText.trim() || scanning}
             onClick={() => void readPastedText(receiptText)}
-            className="self-end px-4 py-2 bg-rose-700 disabled:opacity-40 rounded-xl text-xs font-black uppercase min-h-[44px] text-white"
+            className="self-end px-3 py-2 bg-rose-700 disabled:opacity-40 rounded-xl text-[10px] font-black uppercase min-h-[36px] text-white"
           >
             Read text
           </button>
         </div>
 
         <form
-          className="flex flex-col gap-4"
+          className="grid gap-3 sm:grid-cols-[1fr_7rem_8rem_auto] sm:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             void save();
@@ -445,62 +445,57 @@ export function OurExpenses({
         >
           <label className="text-[10px] font-bold text-slate-500 uppercase">
             What it was
-            <textarea
+            <input
               data-bot="ours-expense-what"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Master bedroom dresser, Costco towels, lamps"
-              rows={2}
-              className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white placeholder:text-slate-600 resize-none"
+              placeholder="e.g. Master dresser, Costco towels"
+              className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-white placeholder:text-slate-600"
             />
           </label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase">
-              Amount
-              <div className="mt-1 flex items-center bg-slate-950 rounded-xl px-3 py-2 border border-slate-700">
-                <span className="text-slate-500 mr-2 font-bold">$</span>
-                <input
-                  data-bot="ours-expense-amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="bg-transparent border-none text-sm font-black text-white w-full p-0 focus:ring-0 outline-none"
-                />
-              </div>
-            </label>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">
-              Type
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as (typeof CATEGORIES)[number])}
-                className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white"
-              >
-                {CATEGORIES.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
+          <label className="text-[10px] font-bold text-slate-500 uppercase">
+            Amount
+            <div className="mt-1 flex items-center bg-slate-950 rounded-xl px-3 py-2 border border-slate-700">
+              <span className="text-slate-500 mr-1 font-bold">$</span>
+              <input
+                data-bot="ours-expense-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="bg-transparent border-none text-sm font-black text-white w-full p-0 focus:ring-0 outline-none"
+              />
+            </div>
+          </label>
+          <label className="text-[10px] font-bold text-slate-500 uppercase">
+            Type
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as (typeof CATEGORIES)[number])}
+              className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-xl px-2 py-2 text-sm font-bold text-white"
+            >
+              {CATEGORIES.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="submit"
             data-bot="ours-expense-save"
             disabled={saving || scanning}
-            className="self-end px-6 py-3 rounded-xl text-xs font-black uppercase min-h-[44px] bg-rose-600 text-white disabled:opacity-40"
+            className="px-4 py-2 rounded-xl text-[10px] font-black uppercase min-h-[36px] bg-rose-600 text-white disabled:opacity-40"
           >
-            {saving ? 'Saving…' : 'Save expense'}
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </form>
       </section>
 
-      <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
-        <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-6">
+      <section className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-800">
+        <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-3">
           <Sofa className="w-4 h-4" />
           What we have logged
         </h3>
@@ -511,23 +506,33 @@ export function OurExpenses({
             Nothing logged yet. Paste text, add a photo, or type the first purchase above.
           </p>
         ) : (
-          <ul>
-            {expenses.map((expense) => (
-              <li key={expense.id}>
-                <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-1">
-                  <span>{formatMonthLabel(expense.month)}</span>
-                  <span>{expense.category}</span>
-                </div>
-                <ExpenseRow
-                  expense={expense}
-                  onRefresh={() => void load()}
-                  onDelete={deleteExpense}
-                  onToast={onToast}
-                  onError={onError}
-                />
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-max max-w-full border-collapse text-sm">
+              <thead>
+                <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-700">
+                  <th className="text-left py-2 pr-3 font-black">Paid</th>
+                  <th className="text-left py-2 pr-3 font-black">What</th>
+                  <th className="text-left py-2 pr-3 font-black">Type</th>
+                  <th className="text-right py-2 pr-3 font-black">Amount</th>
+                  <th className="text-left py-2 pr-3 font-black">Who</th>
+                  <th className="text-right py-2 font-black">Bill</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses.map((expense) => (
+                  <ExpenseRow
+                    key={expense.id}
+                    expense={{ ...expense, stage: expense.category }}
+                    variant="sheet"
+                    onRefresh={() => void load()}
+                    onDelete={deleteExpense}
+                    onToast={onToast}
+                    onError={onError}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>

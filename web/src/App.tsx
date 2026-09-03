@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, PROPERTIES, type HistoryData, type PortfolioData } from './lib/api';
+import { api, type HistoryData, type PortfolioData } from './lib/api';
 import {
   parseDashboardHash,
   type DashboardTab,
   type ReportView,
+  type RiverView,
 } from './lib/bot-nav';
 import { installUmlBridge, syncDocumentView } from './lib/uml-bridge';
 import { LoginGate } from './components/LoginGate';
@@ -26,8 +27,11 @@ import { currentYearMonth } from './lib/months';
 
 function Dashboard() {
   const initial = parseDashboardHash(window.location.hash);
-  const [activeTab, setActiveTab] = useState<DashboardTab>(initial.tab);
+  const [activeTab, setActiveTab] = useState<DashboardTab>(
+    initial.tab === 'construction' ? 'river' : initial.tab,
+  );
   const [reportView, setReportView] = useState<ReportView>(initial.reportView);
+  const [riverView, setRiverView] = useState<RiverView>(initial.riverView);
   const [currentMonth, setCurrentMonth] = useState(currentYearMonth);
   const [data, setData] = useState<PortfolioData | null>(null);
   const [history, setHistory] = useState<HistoryData | null>(null);
@@ -59,32 +63,43 @@ function Dashboard() {
     void load();
   }, [load]);
 
-  const go = useCallback((tab: DashboardTab, view: ReportView = 'pnl') => {
-    setActiveTab(tab);
-    setReportView(tab === 'report' ? view : 'pnl');
-  }, []);
+  const go = useCallback(
+    (tab: DashboardTab, view: ReportView = 'pnl', nextRiver: RiverView = 'rental') => {
+      if (tab === 'construction') {
+        setActiveTab('river');
+        setReportView('pnl');
+        setRiverView('build');
+        return;
+      }
+      setActiveTab(tab);
+      setReportView(tab === 'report' ? view : 'pnl');
+      setRiverView(tab === 'river' ? nextRiver : 'rental');
+    },
+    [],
+  );
 
   useEffect(() => {
     const onHash = () => {
       const next = parseDashboardHash(window.location.hash);
-      setActiveTab(next.tab);
+      setActiveTab(next.tab === 'construction' ? 'river' : next.tab);
       setReportView(next.reportView);
+      setRiverView(next.riverView);
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
   useEffect(() => {
-    syncDocumentView({ tab: activeTab, reportView }, currentMonth);
-  }, [activeTab, reportView, currentMonth]);
+    syncDocumentView({ tab: activeTab, reportView, riverView }, currentMonth);
+  }, [activeTab, reportView, riverView, currentMonth]);
 
   useEffect(() => {
     installUmlBridge({
-      getState: () => ({ tab: activeTab, reportView, month: currentMonth }),
-      navigate: (loc) => go(loc.tab, loc.reportView),
+      getState: () => ({ tab: activeTab, reportView, riverView, month: currentMonth }),
+      navigate: (loc) => go(loc.tab, loc.reportView, loc.riverView),
       setMonth: setCurrentMonth,
     });
-  }, [activeTab, reportView, currentMonth, go]);
+  }, [activeTab, reportView, riverView, currentMonth, go]);
 
   if (error && !data) {
     return (
@@ -106,27 +121,25 @@ function Dashboard() {
       <div className="max-w-6xl mx-auto">
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
-        <nav aria-label="Dashboard screens" className="flex gap-2 overflow-x-auto pb-4 mb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'construction', 'ours'] as const).map((id) => (
+        <nav aria-label="Dashboard screens" className="flex flex-wrap gap-2 pb-2 mb-6">
+          {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
             <button
               key={id}
               type="button"
               data-bot={`nav-${id}`}
               aria-current={activeTab === id ? 'page' : undefined}
               onClick={() => go(id, id === 'report' ? reportView : 'pnl')}
-              className={`px-6 sm:px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap min-h-[44px] ${
+              className={`px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap min-h-[40px] ${
                 activeTab === id
-                  ? id === 'construction'
-                    ? 'bg-amber-600 text-white shadow-xl'
-                    : id === 'ours'
-                      ? 'bg-rose-600 text-white shadow-xl'
-                      : id === 'river'
-                        ? 'bg-cyan-600 text-white shadow-xl'
-                        : id === 'report'
-                          ? 'bg-violet-600 text-white shadow-xl'
-                          : id === 'guests'
-                            ? 'bg-teal-600 text-white shadow-xl'
-                            : 'bg-blue-600 text-white shadow-xl'
+                  ? id === 'ours'
+                    ? 'bg-rose-600 text-white shadow-xl'
+                    : id === 'river'
+                      ? 'bg-cyan-600 text-white shadow-xl'
+                      : id === 'report'
+                        ? 'bg-violet-600 text-white shadow-xl'
+                        : id === 'guests'
+                          ? 'bg-teal-600 text-white shadow-xl'
+                          : 'bg-blue-600 text-white shadow-xl'
                   : 'bg-slate-900 text-slate-500 border border-slate-800'
               }`}
             >
@@ -138,12 +151,45 @@ function Dashboard() {
                     ? 'Guests'
                     : id === 'ours'
                       ? 'Our expenses'
-                      : id === 'construction'
-                        ? 'River House build'
-                        : PROPERTIES[id].name}
+                      : id === 'ranch'
+                        ? 'Ranch'
+                        : id === 'lindon'
+                          ? 'Lindon'
+                          : 'River'}
             </button>
           ))}
         </nav>
+
+        {activeTab === 'river' && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            <button
+              type="button"
+              data-bot="river-rental"
+              aria-current={riverView === 'rental' ? 'page' : undefined}
+              onClick={() => go('river', 'pnl', 'rental')}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest min-h-[40px] ${
+                riverView === 'rental'
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-slate-900 text-slate-500 border border-slate-800'
+              }`}
+            >
+              Rental
+            </button>
+            <button
+              type="button"
+              data-bot="nav-construction"
+              aria-current={riverView === 'build' ? 'page' : undefined}
+              onClick={() => go('river', 'pnl', 'build')}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest min-h-[40px] ${
+                riverView === 'build'
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-slate-900 text-slate-500 border border-slate-800'
+              }`}
+            >
+              Build costs
+            </button>
+          </div>
+        )}
 
         {activeTab === 'ours' ? (
           <main>
@@ -152,7 +198,7 @@ function Dashboard() {
               onError={(msg) => showToast(msg, 'error')}
             />
           </main>
-        ) : activeTab === 'construction' ? (
+        ) : activeTab === 'river' && riverView === 'build' ? (
           <main>
             <ConstructionProjectView
               onToast={showToast}
@@ -222,7 +268,9 @@ function Dashboard() {
                 />
               </div>
             )}
-            {(activeTab === 'ranch' || activeTab === 'lindon' || activeTab === 'river') && (
+            {(activeTab === 'ranch' ||
+              activeTab === 'lindon' ||
+              (activeTab === 'river' && riverView === 'rental')) && (
               <PropertyDetail
                 tab={activeTab}
                 data={data}
@@ -239,7 +287,7 @@ function Dashboard() {
       <AgentChat
         month={currentMonth}
         activeTab={
-          activeTab === 'construction' || activeTab === 'guests' || activeTab === 'ours'
+          activeTab === 'guests' || activeTab === 'ours'
             ? 'portfolio'
             : activeTab
         }
