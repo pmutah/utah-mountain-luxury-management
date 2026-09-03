@@ -107,7 +107,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav aria-label="Dashboard screens" className="flex gap-2 overflow-x-auto pb-4 mb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'ours', 'construction'] as const).map((id) => (
+          {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'construction', 'ours'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -139,7 +139,7 @@ function Dashboard() {
                     : id === 'ours'
                       ? 'Our expenses'
                       : id === 'construction'
-                        ? PROPERTIES.construction.name
+                        ? 'River House build'
                         : PROPERTIES[id].name}
             </button>
           ))}

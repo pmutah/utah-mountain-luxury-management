@@ -48,10 +48,25 @@ export function PropertyDetail({
           </p>
         </div>
         {tab === 'river' && (
-          <p className="text-xs text-slate-400">
-            Provo Riverhouse · sleeps 24 · 7 bedrooms · first stays Oct 15, 2026 · 50/50 Brandon &amp;
-            Stephanie and Todd, 20% management fee
-          </p>
+          <>
+            <p className="text-xs text-slate-400">
+              Provo Riverhouse · sleeps 24 · 7 bedrooms · first stays Oct 15, 2026 · 50/50 Brandon &amp;
+              Stephanie and Todd, 20% management fee
+            </p>
+            <a
+              href="#/construction"
+              className="block mt-3 rounded-2xl border border-amber-800/50 bg-amber-950/30 px-4 py-3 hover:border-amber-600"
+            >
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-400">
+                Build cost spreadsheet
+              </p>
+              <p className="text-sm text-slate-300 mt-1">
+                Todd vs Brandon &amp; Stephanie paid bills for the Vivian Park build are on the{' '}
+                <span className="font-black text-white">River House build</span> tab — scroll past Add
+                expense to the dated sheet.
+              </p>
+            </a>
+          </>
         )}
       </div>
 

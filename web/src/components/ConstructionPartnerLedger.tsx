@@ -337,6 +337,9 @@ export function ConstructionPartnerLedger({
         </form>
       </div>
 
+      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+        River house build spreadsheet
+      </h4>
       <div className="overflow-x-auto -mx-2 sm:mx-0">
         {filtered.length === 0 ? (
           <p className="text-sm text-slate-600 px-2">No receipts in this phase yet.</p>
