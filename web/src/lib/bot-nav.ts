@@ -62,6 +62,7 @@ export function dashboardHash(loc: DashboardLocation): string {
 export const BOT_SELECTORS = {
   nav: (tab: DashboardTab) => `[data-bot="nav-${tab}"]`,
   month: '[data-bot="month"]',
+  calendarToday: '[data-bot="calendar-today"]',
   loginPassword: '[data-bot="login-password"]',
   loginSubmit: '[data-bot="login-submit"]',
   cohost: '[data-bot="open-cohost"]',

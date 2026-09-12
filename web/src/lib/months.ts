@@ -1,7 +1,12 @@
 /** Calendar month for today in `YYYY-MM` (local timezone). */
 export function currentYearMonth(): string {
+  return currentDayIso().slice(0, 7);
+}
+
+/** Calendar date for today in `YYYY-MM-DD` (local timezone). */
+export function currentDayIso(): string {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 export function addMonths(ym: string, delta: number): string {

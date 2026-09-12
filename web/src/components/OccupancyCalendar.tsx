@@ -1,4 +1,5 @@
 import { formatCurrency, PROPERTIES, type Reservation } from '../lib/api';
+import { currentDayIso } from '../lib/months';
 
 function nightsBetween(checkIn: string, checkOut: string): number {
   const start = new Date(`${checkIn}T00:00:00`);
@@ -88,6 +89,8 @@ export function OccupancyCalendar({
   const [y, m] = month.split('-').map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
   const firstDow = new Date(y, m - 1, 1).getDay();
+  const todayIso = currentDayIso();
+  const todayDay = todayIso.startsWith(month) ? Number(todayIso.slice(8, 10)) : null;
   const stays = reservations.filter((r) => r.propertyId === propertyId && isActiveStay(r));
 
   const nightsByDay = new Map<number, Reservation[]>();
@@ -137,18 +140,28 @@ export function OccupancyCalendar({
             const occupying = nightsByDay.get(day) ?? [];
             const checkIns = checkInByDay.get(day) ?? [];
             const occupied = occupying.length > 0;
+            const isToday = todayDay === day;
             const toneSource = (checkIns[0] ?? occupying[0])?.source ?? '';
             return (
               <div
                 key={day}
+                data-bot={isToday ? 'calendar-today' : undefined}
+                aria-current={isToday ? 'date' : undefined}
                 className={`min-h-[4.5rem] sm:min-h-[6.5rem] rounded-lg border p-1 flex flex-col ${
                   occupied
-                    ? `${sourceClass(toneSource)}${checkIns.length ? ' ring-1 ring-white/30' : ' opacity-90'}`
+                    ? `${sourceClass(toneSource)}${checkIns.length && !isToday ? ' ring-1 ring-white/30' : ' opacity-90'}`
                     : 'bg-slate-950/50 text-slate-600 border-slate-800/50'
-                }`}
+                }${isToday ? ' ring-2 ring-amber-400' : ''}`}
               >
                 <span
-                  className={`text-[10px] font-black leading-none ${occupied ? 'text-white/90' : 'text-slate-500'}`}
+                  className={`text-[10px] font-black leading-none ${
+                    isToday
+                      ? 'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-400 px-1 text-slate-950'
+                      : occupied
+                        ? 'text-white/90'
+                        : 'text-slate-500'
+                  }`}
+                  title={isToday ? 'Today' : undefined}
                 >
                   {day}
                 </span>
@@ -173,6 +186,9 @@ export function OccupancyCalendar({
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block w-2 h-2 rounded-sm bg-indigo-500" /> Booking.com
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" /> Today
           </span>
         </div>
       </div>
