@@ -16,9 +16,9 @@ export function tokenFor(password: string): string {
   return btoa(`wpm:${password}`).replace(/=+$/, '');
 }
 
-export function authCookieHeader(password: string): string {
+export function authCookieHeader(password: string, sameSite: 'Strict' | 'Lax' = 'Strict'): string {
   const maxAge = 60 * 60 * 24 * 30;
-  return `${COOKIE}=${tokenFor(password)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}`;
+  return `${COOKIE}=${tokenFor(password)}; Path=/; HttpOnly; Secure; SameSite=${sameSite}; Max-Age=${maxAge}`;
 }
 
 export function unauthorized(request: Request): Response {

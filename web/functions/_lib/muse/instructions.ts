@@ -20,6 +20,13 @@ Properties:
 Auth: Authorization: Bearer <MUSE_BOT_SECRET>
 Also accepted: header x-muse-bot-secret
 
+## Website login pass (no dashboard password)
+To open the dashboard in a browser without the human password gate, go once to:
+https://wilhite-portfolio.pages.dev/api/muse/enter?token=<MUSE_BOT_SECRET>
+That sets a 30-day signed-in cookie. After that, use normal hash routes (#/overview, #/ranch, #/river/build).
+You can also type the Muse API key into the Sign in box, or open:
+https://wilhite-portfolio.pages.dev/?muse=<MUSE_BOT_SECRET>
+
 ## Tools
 Co-host: manage_finances, manage_reservations, manage_calendar, manage_operations, gmail_service, manage_pricing
 Build: manage_construction, construction_advisor

@@ -11,6 +11,15 @@ export function LoginGate({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const muse = params.get('muse')?.trim();
+    if (muse) {
+      const next = `${window.location.pathname}${window.location.hash || ''}` || '/';
+      window.location.replace(
+        `/api/muse/enter?token=${encodeURIComponent(muse)}&next=${encodeURIComponent(next)}`,
+      );
+      return;
+    }
     api
       .getSession()
       .then((s) => {

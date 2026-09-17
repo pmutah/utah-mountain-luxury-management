@@ -20,16 +20,20 @@ export function providedMuseSecret(request: Request): string {
   return bearer || header;
 }
 
-export function isMuseAuthorized(request: Request, env: MuseEnv): boolean {
+export function matchesMuseSecret(provided: string, env: MuseEnv): boolean {
   const expected = museBotSecret(env);
-  const provided = providedMuseSecret(request);
   return Boolean(expected && provided && safeEqual(provided, expected));
+}
+
+export function isMuseAuthorized(request: Request, env: MuseEnv): boolean {
+  return matchesMuseSecret(providedMuseSecret(request), env);
 }
 
 export function isPublicMusePath(pathname: string): boolean {
   return (
     pathname === '/api/muse/openapi' ||
     pathname === '/api/muse/openapi.json' ||
-    pathname === '/api/muse/instructions'
+    pathname === '/api/muse/instructions' ||
+    pathname === '/api/muse/enter'
   );
 }

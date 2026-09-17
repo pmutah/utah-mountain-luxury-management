@@ -55,6 +55,8 @@ export const AGENT_SITE_MAP = {
     museInstructions: 'GET /api/muse/instructions — public standing rules',
     museTools:
       'GET/POST /api/muse/tools — Bearer MUSE_BOT_SECRET; runs any co-host or construction tool. Same bearer unlocks all /api/* REST routes.',
+    museEnter:
+      'GET /api/muse/enter?token=MUSE_BOT_SECRET — sets a 30-day dashboard cookie and redirects. Muse can also type the API key in the Sign in box.',
     guestSurveys: 'GET /api/surveys',
     sendGuestSurvey:
       'POST /api/surveys/send { reservationId? , confirmationCode?, channel:"email"|"sms"|"none", guestEmail?, guestPhone? } — none mints a /stay/:token link without sending',
