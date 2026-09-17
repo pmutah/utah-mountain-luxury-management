@@ -40,7 +40,6 @@ jobs:
           command: pages deploy dist --project-name=wilhite-portfolio --commit-dirty=true
 
       - name: Set Muse bot secret on Pages
-        if: ${{ secrets.MUSE_BOT_SECRET != '' }}
         working-directory: web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
