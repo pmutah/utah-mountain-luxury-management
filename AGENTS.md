@@ -19,6 +19,7 @@ Do **not** fight the top nav chips if clicks are intercepted. Use:
 - Properties: Ranch + River are 50/50 after a 20% management fee to Brandon. Lindon is Brandon’s.
 - Construction **partner spend** (Todd vs Brandon & Stephanie, receipt photos/PDFs, phases) is **only** on the construction project — not on rental house expense forms.
 - In-app Co-host (`POST /api/agent/chat`) and Construction Manager (`POST /api/agent/construction/chat`) already take actions via tools.
+- Meta Muse: `GET /api/muse/openapi.json`, `GET /api/muse/instructions`, `GET/POST /api/muse/tools` with `Authorization: Bearer MUSE_BOT_SECRET`. That bearer also authenticates every `/api/*` REST route.
 
 ## Auth
 

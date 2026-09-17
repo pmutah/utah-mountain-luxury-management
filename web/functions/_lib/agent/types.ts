@@ -153,6 +153,7 @@ export interface AgentChatResponse {
 }
 
 export interface AgentEnv {
+  MUSE_BOT_SECRET?: string;
   GEMINI_API_KEY?: string;
   GOOGLE_OAUTH_CLIENT_ID?: string;
   GOOGLE_OAUTH_CLIENT_SECRET?: string;

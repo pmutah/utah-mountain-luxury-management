@@ -29,6 +29,13 @@
 
 Set `DASHBOARD_PASSWORD` in Cloudflare Pages → Environment variables. When set, `/api/*` requires login (`POST /api/auth/login`). Leave unset for open access.
 
+### Muse (Meta) full API
+
+Set `MUSE_BOT_SECRET` in Cloudflare Pages → Environment variables (or `npx wrangler pages secret put MUSE_BOT_SECRET --project-name wilhite-portfolio`).
+
+- Public: `GET /api/muse/openapi.json`, `GET /api/muse/instructions`
+- Auth: `Authorization: Bearer MUSE_BOT_SECRET` on `GET/POST /api/muse/tools` and every other `/api/*` REST route
+
 ### Receipt photo storage
 
 Scanned expenses can **save the original image/PDF** and view it later (thumbnail → full view).

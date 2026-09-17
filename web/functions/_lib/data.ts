@@ -284,7 +284,8 @@ export function corsJson(
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': request.headers.get('Origin') ?? '*',
     'Access-Control-Allow-Methods': 'GET, PUT, POST, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers':
+      'Authorization, Content-Type, x-muse-bot-secret, x-dashboard-password',
     'Access-Control-Allow-Credentials': 'true',
     ...extraHeaders,
   };

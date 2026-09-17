@@ -51,6 +51,10 @@ export const AGENT_SITE_MAP = {
     esignParseInvoice:
       'POST /api/esign/parse-invoice { type:"text"|"image"|"gmail"|"gmail-search", templateId, text?, imageBase64?, mimeType?, query?, messageId? }',
     thisMap: 'GET /api/agent/map',
+    museOpenApi: 'GET /api/muse/openapi.json (or /api/muse/openapi) — public',
+    museInstructions: 'GET /api/muse/instructions — public standing rules',
+    museTools:
+      'GET/POST /api/muse/tools — Bearer MUSE_BOT_SECRET; runs any co-host or construction tool. Same bearer unlocks all /api/* REST routes.',
     guestSurveys: 'GET /api/surveys',
     sendGuestSurvey:
       'POST /api/surveys/send { reservationId? , confirmationCode?, channel:"email"|"sms"|"none", guestEmail?, guestPhone? } — none mints a /stay/:token link without sending',

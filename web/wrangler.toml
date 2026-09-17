@@ -9,3 +9,4 @@ binding = "SETTINGS"
 id = "a211af7ec8bd4c2e973d6421cccd8beb"
 
 # Optional: set DASHBOARD_PASSWORD in Pages → Settings → Environment variables to enable auth
+# Muse (Meta) full API: set MUSE_BOT_SECRET (Bearer on /api/muse/* and all /api/*)
