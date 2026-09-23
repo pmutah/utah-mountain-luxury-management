@@ -111,6 +111,22 @@ export function StayApp({ token }: { token: string }) {
     [data],
   );
 
+  if (off && preview) {
+    return (
+      <div className="min-h-screen bg-[#07110f] text-[#d7cfc3] flex items-center justify-center p-6">
+        <div className="max-w-sm text-center space-y-4" data-bot="stay-preview-login">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#d4b56a]">Owner preview</p>
+          <p className="leading-relaxed">
+            This house&rsquo;s guest app is still off, so the preview needs your dashboard login. Log in, then open this
+            link again in the same browser.
+          </p>
+          <a href="/" className="inline-block rounded-full bg-[#d4b56a] px-5 py-2.5 text-sm font-semibold text-black">
+            Log in to the dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
   if (off) return <GuestPreferenceForm token={token} />;
   if (error) {
     return (
