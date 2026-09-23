@@ -124,6 +124,8 @@ You know this house, and you know Salt Lake County, Utah County, Heber, Midway, 
 This house is in Provo Canyon. Heber and Midway are up the canyon, about 25 minutes. Park City is over the mountain or around through Heber, about 45 to 60 minutes. Provo and Orem are down the canyon, about 20 to 30 minutes. Salt Lake is about an hour. A Provo restaurant is not in Heber. If they say Hebrew, they mean Heber.
 
 Use Google Search before you name a business, a trail, hours, weather, or road conditions. Area picks are only a starting point when they ask something general, such as where to eat tonight, with no town and no particular food. If they name a town, a dish, or the best of something, answer that exact request with a real place in that town. Say why it fits and how long the drive is from this house, including whether it is up-canyon or down-canyon. Never swap in a house pick from a different town. Do not invent a place. Offer a second option only if they ask.
+
+When they ask about a place they would drive to or eat at, name that one place in the answer. Do not paste a web address. A Google Maps link is added for them so they can open the place.
 ${controlNotes(stay)}
 Answer the question yourself whenever you can. Call message_host only when they need a person: something is broken, they want a delivery or a setup, or they ask for Brandon. Do not text Brandon for restaurants, directions, weather, or anything in these notes.
 
@@ -483,17 +485,37 @@ function wantsAPlace(question: string) {
   return /\b(best|where|pizza|restaurant|eat|food|coffee|heber|midway|park city|salt lake|provo|orem)\b/i.test(question);
 }
 
+function wantsDirections(question: string) {
+  return /\b(pizza|restaurant|eat|eating|food|dinner|lunch|breakfast|brunch|coffee|cafe|bakery|grocery|groceries|gas|trail|hike|hiking|ski|skiing|drive to|directions|pharmacy|store|shop|bar|brewery|winery|museum|where (to|can|should))\b/i.test(question);
+}
+
+function housePoint(stay: ConciergeStay) {
+  if (stay.propertyName.includes('River')) return { latitude: 40.3538, longitude: -111.5726 };
+  if (stay.propertyName.includes('Lindon')) return { latitude: 40.3396, longitude: -111.7204 };
+  return { latitude: 40.3433, longitude: -111.7168 };
+}
+
 async function groundedReply(apiKey: string, stay: ConciergeStay, seed: GeminiContent[], question: string) {
   let lastError = 'Nora could not look that up just now. Text or call us and we will help.';
   const contents = seed.map((item) => ({ role: item.role, parts: item.parts.map((part) => ({ ...part })) }));
   const local = wantsAPlace(question);
+  const directions = wantsDirections(question);
   if (local) {
     const last = contents[contents.length - 1];
     if (last?.role === 'user') {
       const asked = last.parts.map((part) => (typeof part.text === 'string' ? part.text : '')).join(' ').trim();
       last.parts = [{
-        text: `${asked}\n\nSearch Google before you answer. Name one real business in the town they asked about. Heber and Midway are up Provo Canyon. Provo and Orem are down-canyon. Do not recommend a Provo restaurant for Heber.`,
+        text: `${asked}\n\nSearch before you answer. Name one real business in the town they asked about. Do not include a web address. Heber and Midway are up Provo Canyon. Provo and Orem are down-canyon. Do not recommend a Provo restaurant for Heber.`,
       }];
+    }
+  }
+  if (directions) {
+    try {
+      const json = await generateNora(apiKey, 'gemini-2.5-flash', stay, contents, [{ googleMaps: {} }], housePoint(stay));
+      const text = replyText(json);
+      if (text && placeFromGrounding(json) && !wrongTown(question, text)) return attachMapsLink(text, json);
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : lastError;
     }
   }
   for (const model of SEARCH_MODELS) {
@@ -503,8 +525,8 @@ async function groundedReply(apiKey: string, stay: ConciergeStay, seed: GeminiCo
       const searched = Boolean(json.candidates?.[0]?.groundingMetadata?.groundingChunks?.length);
       if (!text) continue;
       if (!local || searched) {
-        if (/\bheber\b/i.test(question) && /\bslackwater\b/i.test(text)) continue;
-        return text;
+        if (wrongTown(question, text)) continue;
+        return directions ? attachMapsLink(text, json) : text;
       }
     } catch (err) {
       lastError = err instanceof Error ? err.message : lastError;
@@ -512,6 +534,49 @@ async function groundedReply(apiKey: string, stay: ConciergeStay, seed: GeminiCo
     }
   }
   throw new Error(lastError.startsWith('Nora') ? lastError : 'Nora could not look that up just now. Text or call us and we will help.');
+}
+
+function wrongTown(question: string, text: string) {
+  return /\bheber\b/i.test(question) && /\bslackwater\b/i.test(text);
+}
+
+const MAPS_URL = /https:\/\/(?:maps\.google\.com|www\.google\.com\/maps)\S*/i;
+
+function placeFromGrounding(json: Awaited<ReturnType<typeof generateNora>>) {
+  const chunks = json.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  for (const chunk of chunks) {
+    const maps = chunk?.maps;
+    const uri = maps?.uri?.trim() ?? '';
+    if (!MAPS_URL.test(uri)) continue;
+    const title = (maps?.title ?? '').replace(/\s+-\s+Google Maps$/i, '').trim();
+    if (!title || /^review of/i.test(title)) continue;
+    return { title, uri };
+  }
+  return null;
+}
+
+function attachMapsLink(text: string, json: Awaited<ReturnType<typeof generateNora>>) {
+  const place = placeFromGrounding(json);
+  const stripped = text
+    .replace(/\n*Open .+ in Google Maps\nhttps:\/\/\S+/g, '')
+    .replace(MAPS_URL, '')
+    .trim();
+  if (place) return `${stripped}\n\nOpen ${place.title} in Google Maps\n${place.uri}`;
+  if (MAPS_URL.test(text)) return text.trim();
+  const guessed = guessPlaceQuery(stripped);
+  if (!guessed) return text.trim();
+  const query = encodeURIComponent(guessed.query);
+  return `${stripped}\n\nOpen ${guessed.name} in Google Maps\nhttps://www.google.com/maps/search/?api=1&query=${query}`;
+}
+
+function guessPlaceQuery(text: string) {
+  const named = [...text.matchAll(/\b([A-Z][\p{L}\d'’&.-]+(?:\s+[A-Z\d][\p{L}\d'’&.-]*){0,5})\s+in\s+([A-Z][\p{L}]+(?:\s+[A-Z][\p{L}]+){0,2})/gu)];
+  const hit = named.at(-1);
+  if (!hit) return null;
+  const name = hit[1].trim();
+  const city = hit[2].trim();
+  if (name.length < 3 || /^(For|The|A|An)$/.test(name)) return null;
+  return { name: `${name} in ${city}`, query: `${name} ${city} Utah` };
 }
 
 async function houseActionReply(
@@ -551,18 +616,21 @@ async function generateNora(
   stay: ConciergeStay,
   contents: GeminiContent[],
   tools: unknown[],
+  point?: { latitude: number; longitude: number },
 ) {
+  const payload: Record<string, unknown> = {
+    systemInstruction: { parts: [{ text: conciergeInstructions(stay) }] },
+    contents,
+    tools,
+    generationConfig: { temperature: 0.3 },
+  };
+  if (point) payload.toolConfig = { retrievalConfig: { latLng: point } };
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: conciergeInstructions(stay) }] },
-        contents,
-        tools,
-        generationConfig: { temperature: 0.3 },
-      }),
+      body: JSON.stringify(payload),
     },
   );
   const body = await response.text();
@@ -570,7 +638,9 @@ async function generateNora(
   return JSON.parse(body) as {
     candidates?: Array<{
       content?: { parts?: Array<{ text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }> };
-      groundingMetadata?: { groundingChunks?: unknown[] };
+      groundingMetadata?: {
+        groundingChunks?: Array<{ maps?: { uri?: string; title?: string } }>;
+      };
     }>;
   };
 }

@@ -56,13 +56,13 @@ export function GuestConcierge({ token, preview }: { token: string; preview: boo
       <div ref={scroller} className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
         {messages.map((message) => (
           <div key={message.id} className={message.from === 'guest' ? 'flex justify-end' : 'flex justify-start'}>
-            <p
+            <div
               className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                 message.from === 'guest' ? 'bg-[#d4b56a] text-black' : 'bg-black/30 text-[#f6f1e8]'
               }`}
             >
-              {message.text}
-            </p>
+              <ConciergeText text={message.text} guest={message.from === 'guest'} />
+            </div>
           </div>
         ))}
         {sending && <p className="text-sm text-white/50">Nora is writing…</p>}
@@ -93,5 +93,59 @@ export function GuestConcierge({ token, preview }: { token: string; preview: boo
       </form>
       <p className="mt-3 text-xs text-white/45">If she can’t help, she texts Brandon. His reply shows at the top of your stay.</p>
     </div>
+  );
+}
+
+const MAPS_LINE = /^https:\/\/(?:maps\.google\.com|www\.google\.com\/maps)\S*$/i;
+const OPEN_LINE = /^Open (.+) in Google Maps$/;
+
+function ConciergeText({ text, guest }: { text: string; guest: boolean }) {
+  const lines = text.split('\n');
+  const blocks: Array<{ type: 'text'; value: string } | { type: 'maps'; label: string; href: string }> = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i].trim();
+    if (MAPS_LINE.test(line)) {
+      const previous = blocks[blocks.length - 1];
+      let label = 'Open in Google Maps';
+      if (previous?.type === 'text') {
+        const parts = previous.value.split('\n');
+        const named = (parts[parts.length - 1] ?? '').trim().match(OPEN_LINE);
+        if (named) {
+          label = `Open ${named[1]} in Google Maps`;
+          parts.pop();
+          previous.value = parts.join('\n').replace(/\n+$/, '');
+          if (!previous.value.trim()) blocks.pop();
+        }
+      }
+      blocks.push({ type: 'maps', label, href: line });
+      continue;
+    }
+    const previous = blocks[blocks.length - 1];
+    if (previous?.type === 'text') previous.value = `${previous.value}\n${lines[i]}`;
+    else blocks.push({ type: 'text', value: lines[i] });
+  }
+
+  return (
+    <>
+      {blocks.map((block, index) =>
+        block.type === 'text' ? (
+          <span key={index}>{block.value}</span>
+        ) : (
+          <a
+            key={index}
+            href={block.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={
+              guest
+                ? 'mt-2 inline-block font-semibold underline'
+                : 'mt-2 inline-block rounded-full bg-[#d4b56a] px-3 py-1.5 text-xs font-semibold text-black no-underline'
+            }
+          >
+            {block.label}
+          </a>
+        ),
+      )}
+    </>
   );
 }
