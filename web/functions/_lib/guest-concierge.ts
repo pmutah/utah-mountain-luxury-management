@@ -592,7 +592,10 @@ function attachDirections(
     links.push({ title: fallback });
   }
   const block = links
-    .map((place) => `Directions to ${place.title}\n${directionsUrl(stay, place.title, place.placeId)}`)
+    .map((place) => {
+      const title = place.title.replace(/\s+/g, ' ').replace(/[.,]+$/g, '').trim();
+      return `Directions to ${title}\n${directionsUrl(stay, title, place.placeId)}`;
+    })
     .join('\n\n');
   return `${stripped}\n\n${block}`;
 }
@@ -606,15 +609,24 @@ function mentionsPlace(text: string, title: string) {
 }
 
 function placeNames(text: string, stay: ConciergeStay, question: string) {
-  const found = [...text.matchAll(/\b([A-Z][\p{L}\d'’&.-]+(?:\s+[A-Z\d][\p{L}\d'’&.-]+){0,4})\b/gu)].map((match) => match[1].trim());
+  const found = [...text.matchAll(/\b([A-Z][\p{L}\d'’&-]+(?:[ \t]+[A-Z\d][\p{L}\d'’&-]+){0,4})\b/gu)].map((match) => match[1].trim());
   const ban = new Set(['Nora', 'Google', 'Google Maps', 'Salt Lake', 'Utah', 'The River House', 'River House', stay.propertyName]);
   const generic = /^(I|We|The|A|An|It|This|That|They|Many|For|Open|Directions|Checkout|Check|House|Park|City|Lake|Best|From|With|About|Drive|Canyon|Minutes|There|Here|Good|Near|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/;
   const waypoint = /^(Heber|Midway|Provo|Orem|Lehi|Lindon|Draper|Sandy)$/i;
-  return [...new Set(found.filter((name) => {
+  const names = [...new Set(found.filter((name) => {
     if (ban.has(name) || generic.test(name)) return false;
     if (waypoint.test(name) && !question.toLowerCase().includes(name.toLowerCase())) return false;
+    if (isRouteOnly(text, name)) return false;
     return name.includes(' ') || name.length >= 4;
-  }))].slice(0, 8);
+  }))];
+  return names.filter((name) => !names.some((other) => other !== name && other.startsWith(`${name} `))).slice(0, 8);
+}
+
+function isRouteOnly(text: string, name: string) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const mentions = text.match(new RegExp(`\\b${escaped}\\b`, 'gi'))?.length ?? 0;
+  if (mentions !== 1) return false;
+  return new RegExp(`(?:through|towards|toward|via|past|up the|down the)\\s+${escaped}\\b`, 'i').test(text);
 }
 
 function destinationFromQuestion(question: string) {
