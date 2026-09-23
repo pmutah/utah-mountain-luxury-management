@@ -13,6 +13,7 @@ const COMMANDS: Array<{ label: string; test: RegExp; dest: Destination }> = [
   { label: 'Ranch', test: /^ranch( house)?$/i, dest: { tab: 'ranch' } },
   { label: 'Lindon', test: /^lindon( house)?$/i, dest: { tab: 'lindon' } },
   { label: 'River', test: /^river( house)?$/i, dest: { tab: 'river', river: 'rental' } },
+  { label: 'Opening', test: /^(opening|launch)$/i, dest: { tab: 'river', river: 'launch' } },
   { label: 'Build costs', test: /^(build|construction)$/i, dest: { tab: 'river', river: 'build' } },
   { label: 'Our expenses', test: /^(ours|household|furnishings)$/i, dest: { tab: 'ours' } },
 ];

@@ -19,7 +19,7 @@ Do **not** fight the top nav chips if clicks are intercepted. Use:
 - Properties: Ranch + River are 50/50 after a 20% management fee to Brandon. Lindon is Brandon’s.
 - Construction **partner spend** (Todd vs Brandon & Stephanie, receipt photos/PDFs, phases) is **only** on the construction project — not on rental house expense forms.
 - In-app Co-host (`POST /api/agent/chat`) and Construction Manager (`POST /api/agent/construction/chat`) already take actions via tools.
-- Meta Muse: `GET /api/muse/openapi.json`, `GET /api/muse/instructions`, `GET/POST /api/muse/tools` with `Authorization: Bearer MUSE_BOT_SECRET`. That bearer also authenticates every `/api/*` REST route. Browser pass: `GET /api/muse/enter?token=MUSE_BOT_SECRET` (30-day cookie) or type the API key in the Sign in box.
+- Meta Muse and Amanda (Grok bot): `GET /api/muse/openapi.json` and `GET /api/amanda/openapi.json`. `GET/POST /api/muse/tools` and `/api/amanda/tools` with `Authorization: Bearer` `MUSE_BOT_SECRET` or `AMANDA_BOT_SECRET`. That bearer operates every `/api/*` route. Tool `dashboard_request` calls any path. Browser pass: `GET /api/muse/enter?token=` or `/api/amanda/enter?token=` (30-day cookie).
 
 ## Auth
 

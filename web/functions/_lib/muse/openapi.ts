@@ -9,7 +9,7 @@ export function museUmlOpenApiSpec() {
       title: 'Muse — Utah Mountain Luxury full management API',
       version: '1.0.0',
       description:
-        'Full UML dashboard access for Meta Muse. GET /api/muse/tools for parameter schemas. POST /api/muse/tools to run any co-host or construction tool. The same bearer authenticates every /api/* REST route. GET /api/muse/instructions for standing rules.',
+        'Full Utah Mountain Luxury control for Muse and Amanda. GET /api/muse/tools or /api/amanda/tools for parameter schemas. POST either tools route to run co-host tools, construction tools, or dashboard_request for every other /api route. The same bearer authenticates every /api/* REST route. GET /api/muse/instructions or /api/amanda/instructions for standing rules.',
     },
     servers: [{ url: 'https://wilhite-portfolio.pages.dev' }],
     security: [{ MuseBearer: [] }],
@@ -18,7 +18,7 @@ export function museUmlOpenApiSpec() {
         MuseBearer: {
           type: 'http',
           scheme: 'bearer',
-          description: 'MUSE_BOT_SECRET',
+          description: 'MUSE_BOT_SECRET or AMANDA_BOT_SECRET',
         },
       },
       schemas: {

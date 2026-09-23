@@ -9,7 +9,7 @@ import {
 import { addMonths } from './months';
 
 export const REPORT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
-export const RIVER_OPEN_MONTH = '2026-10';
+export const RIVER_OPEN_MONTH = '2026-11';
 
 export type ReportPeriod = 'month' | 'ytd' | 'ttm';
 export type ReportPropertyFilter = 'all' | RentalPropertyId;

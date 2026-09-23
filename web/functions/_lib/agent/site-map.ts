@@ -12,6 +12,7 @@ export const AGENT_SITE_MAP = {
     ranch: '#/ranch',
     lindon: '#/lindon',
     river: '#/river',
+    riverLaunch: '#/river/launch',
     riverBuild: '#/river/build',
     ours: '#/ours',
     construction: '#/river/build',
@@ -51,12 +52,20 @@ export const AGENT_SITE_MAP = {
     esignParseInvoice:
       'POST /api/esign/parse-invoice { type:"text"|"image"|"gmail"|"gmail-search", templateId, text?, imageBase64?, mimeType?, query?, messageId? }',
     thisMap: 'GET /api/agent/map',
+    sharedWork:
+      'GET/POST /api/agent/work — the job list Muse, Amanda, and the co-host share. list, claim, done, release. A done job is not done again.',
     museOpenApi: 'GET /api/muse/openapi.json (or /api/muse/openapi) — public',
     museInstructions: 'GET /api/muse/instructions — public standing rules',
     museTools:
-      'GET/POST /api/muse/tools — Bearer MUSE_BOT_SECRET; runs any co-host or construction tool. Same bearer unlocks all /api/* REST routes.',
+      'GET/POST /api/muse/tools — Bearer MUSE_BOT_SECRET or AMANDA_BOT_SECRET. Runs co-host tools, construction tools, and dashboard_request for every other /api route. Same bearer unlocks all /api/* REST routes.',
+    amandaOpenApi: 'GET /api/amanda/openapi.json — same full control as Muse, for the Grok bot Amanda',
+    amandaInstructions: 'GET /api/amanda/instructions — public standing rules (same authority as Muse)',
+    amandaTools:
+      'GET/POST /api/amanda/tools — Bearer MUSE_BOT_SECRET or AMANDA_BOT_SECRET. Same tools as Muse, including dashboard_request for every other /api route.',
+    amandaEnter:
+      'GET /api/amanda/enter?token=SECRET — 30-day dashboard cookie for Amanda. Same pass as /api/muse/enter.',
     museEnter:
-      'GET /api/muse/enter?token=MUSE_BOT_SECRET — sets a 30-day dashboard cookie and redirects. Muse can also type the API key in the Sign in box.',
+      'GET /api/muse/enter?token=MUSE_BOT_SECRET — sets a 30-day dashboard cookie and redirects. Muse or Amanda can also type the API key in the Sign in box.',
     guestSurveys: 'GET /api/surveys',
     sendGuestSurvey:
       'POST /api/surveys/send { reservationId? , confirmationCode?, channel:"email"|"sms"|"none", guestEmail?, guestPhone? } — none mints a /stay/:token link without sending',

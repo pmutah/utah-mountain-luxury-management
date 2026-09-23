@@ -42,7 +42,8 @@ Rules:
 - propertyId null if truly unknown; set confidence "low" when property OR month is ambiguous
 - confidence "high" only when both propertyId and month are clear from the document
 - note: brief description plus which service address the charge applies to
-- vendor: use exact names when applicable — "Lindon City Utilities", "Rocky Mountain Power", "Enbridge Gas", "X-Mission Internet", "Hospitable Software"`;
+- vendor: use exact names when applicable — "Lindon City Utilities", "Rocky Mountain Power", "Enbridge Gas", "X-Mission Internet", "Hospitable Software"
+- Utopia fiber is a line on the Lindon City Utilities bill (Xpress Bill Pay). Vendor stays "Lindon City Utilities". Do not create a separate Utopia vendor.`;
 
 const SINGLE_PROMPT = `${PROMPT}
 

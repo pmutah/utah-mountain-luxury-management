@@ -96,12 +96,23 @@ export interface HealthFactor {
   ask: string;
 }
 
+export interface HealthSignals {
+  surveyCompleted?: number;
+  surveyExpected?: number;
+  pricingAlerts?: number;
+  missingReceipts?: number;
+}
+
 export interface HealthScore {
   score: number;
   factors: HealthFactor[];
 }
 
-export function propertyHealth(id: HouseId, metrics: PropertyMetrics): HealthScore {
+export function propertyHealth(
+  id: HouseId,
+  metrics: PropertyMetrics,
+  signals?: HealthSignals,
+): HealthScore {
   const name = PROPERTIES[id].name;
   const occ = Math.max(0, Math.min(100, metrics.occupancy));
   const margin =
@@ -115,8 +126,37 @@ export function propertyHealth(id: HouseId, metrics: PropertyMetrics): HealthSco
       ? Math.max(0, Math.min(100, 100 - (metrics.operationalExpenses / metrics.revenue) * 120))
       : 70;
   const stayHealth = Math.min(100, metrics.stayCount * 22);
-  const score = Math.round(occ * 0.45 + margin * 0.3 + expenseHealth * 0.15 + stayHealth * 0.1);
+  let score = Math.round(occ * 0.4 + margin * 0.25 + expenseHealth * 0.15 + stayHealth * 0.1);
   const factors: HealthFactor[] = [];
+  const expected = signals?.surveyExpected ?? 0;
+  const completed = signals?.surveyCompleted ?? 0;
+  if (expected > 0) {
+    const rate = completed / expected;
+    score += Math.round(rate * 10);
+    if (rate < 1) {
+      factors.push({
+        label: `${completed} of ${expected} preference cards back`,
+        ask: `Which ${name} guests still need a preference survey?`,
+      });
+    }
+  }
+  const alerts = signals?.pricingAlerts ?? 0;
+  if (alerts > 0) {
+    score -= Math.min(12, alerts * 4);
+    factors.push({
+      label: `${alerts} pricing alert${alerts === 1 ? '' : 's'}`,
+      ask: `What should we do about the pricing alerts at ${name}?`,
+    });
+  }
+  const missing = signals?.missingReceipts ?? 0;
+  if (missing > 0) {
+    score -= Math.min(10, missing * 2);
+    factors.push({
+      label: `${missing} bill${missing === 1 ? '' : 's'} without a receipt`,
+      ask: `Which ${name} expenses are missing receipt photos?`,
+    });
+  }
+  score = Math.max(0, Math.min(100, score));
   if (occ < 85) {
     factors.push({
       label: `Occupancy is ${occ.toFixed(0)}%`,

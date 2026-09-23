@@ -13,7 +13,7 @@ export const DASHBOARD_TABS = [
 
 export type DashboardTab = (typeof DASHBOARD_TABS)[number];
 export type ReportView = 'pnl' | 'documents';
-export type RiverView = 'rental' | 'build';
+export type RiverView = 'rental' | 'build' | 'launch';
 
 export type DashboardLocation = {
   tab: DashboardTab;
@@ -46,7 +46,9 @@ export function parseDashboardHash(hash: string): DashboardLocation {
     tabPart === 'construction' ||
     (tab === 'river' && (parts[1] === 'build' || parts[1] === 'construction'))
       ? 'build'
-      : 'rental';
+      : tab === 'river' && (parts[1] === 'launch' || parts[1] === 'opening')
+        ? 'launch'
+        : 'rental';
   return { tab, reportView, riverView };
 }
 
@@ -55,6 +57,7 @@ export function dashboardHash(loc: DashboardLocation): string {
   if (loc.tab === 'construction' || (loc.tab === 'river' && loc.riverView === 'build')) {
     return '#/river/build';
   }
+  if (loc.tab === 'river' && loc.riverView === 'launch') return '#/river/launch';
   if (loc.tab === 'portfolio') return '#/overview';
   return `#/${loc.tab}`;
 }

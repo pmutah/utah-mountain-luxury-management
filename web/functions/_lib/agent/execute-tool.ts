@@ -37,12 +37,15 @@ import {
   dismissPricingAlert,
   runPricingAlertCheck,
 } from '../pricing-store';
+import { buildYieldPlan, suggestRateAdjustment } from '../pricing-doctrine';
+import { annotateYieldPlan, applySharedWork, type WorkOwner } from '../agent-work';
 import type { AgentEnv, PropertyId, ToolStep } from './types';
 
 export async function executeAgentTool(
   env: AgentEnv,
   name: string,
   args: Record<string, unknown>,
+  actor: WorkOwner = 'co-host',
 ): Promise<{ result: Record<string, unknown>; step: ToolStep }> {
   const action = String(args.action ?? '');
 
@@ -59,6 +62,10 @@ export async function executeAgentTool(
       return { result: await handleGmail(env, action, args), step: step(name, action) };
     case 'manage_pricing':
       return { result: await handlePricing(env, action, args), step: step(name, action) };
+    case 'shared_work': {
+      const result = await applySharedWork(env, actor, args);
+      return { result, step: { tool: name, action, summary: String(result.summary ?? result.error ?? 'Shared work') } };
+    }
     default:
       return {
         result: { error: `Unknown tool: ${name}` },
@@ -460,19 +467,18 @@ async function handlePricing(
   }
 
   if (action === 'suggest_rate_adjustment') {
-    const propertyId = args.propertyId as PropertyId;
-    const from = String(args.from ?? new Date().toISOString().slice(0, 10));
-    const toDate = new Date(from);
-    toDate.setDate(toDate.getDate() + 14);
-    const cmp = await compareMarket(env, propertyId, from, toDate.toISOString().slice(0, 10));
-    return {
+    const propertyId = (args.propertyId as PropertyId) || 'ranch';
+    return suggestRateAdjustment(
+      env,
       propertyId,
-      ...cmp,
-      recommendation:
-        cmp.compMedian > 0
-          ? `Review rates for ${propertyId} against comp median $${cmp.compMedian.toFixed(0)}/night. Adjust in Airbnb/VRBO host dashboard.`
-          : 'Add comp listings and refresh prices first.',
-    };
+      args.from ? String(args.from) : undefined,
+      args.to ? String(args.to) : undefined,
+    );
+  }
+
+  if (action === 'yield_plan') {
+    const days = Math.min(365, Math.max(14, Number(args.days) || 90));
+    return annotateYieldPlan(env, await buildYieldPlan(env, days));
   }
 
   if (action === 'dismiss_alert' && args.id) {

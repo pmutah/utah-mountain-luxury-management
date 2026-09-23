@@ -16,7 +16,7 @@ const KV_ALERTS = 'pricingAlerts';
 export async function loadListingConfig(
   env: SettingsEnv,
 ): Promise<Record<PropertyId, ListingConfig>> {
-  return kvGet(env, KV_LISTINGS, { ranch: {}, lindon: {} });
+  return kvGet(env, KV_LISTINGS, { ranch: {}, lindon: {}, river: {} });
 }
 
 export async function saveListingConfig(
@@ -162,7 +162,7 @@ export async function refreshCompPrices(
               body: JSON.stringify({
                 contents: [{
                   parts: [{
-                    text: `Extract the nightly rate in USD from this listing page HTML for date ${dateStr}. Return ONLY JSON: {"nightlyRate":number|null}. HTML:\n${html}`,
+                    text: `Extract the guest-facing listed nightly rate in USD from this listing page HTML for date ${dateStr}. Do not return a host payout. Return ONLY JSON: {"nightlyRate":number|null}. HTML:\n${html}`,
                   }],
                 }],
                 generationConfig: { responseMimeType: 'application/json', temperature: 0 },

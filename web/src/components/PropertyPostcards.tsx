@@ -1,6 +1,7 @@
 import { PROPERTIES, formatCurrency, type PortfolioData, type Reservation } from '../lib/api';
 import { currentDayIso } from '../lib/months';
-import { propertyHealth, type HouseId } from '../lib/luxury';
+import { propertyHealth, type HealthSignals, type HouseId } from '../lib/luxury';
+import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { HealthDial } from './HealthDial';
 
 function seasonOf(month: string) {
@@ -50,17 +51,19 @@ export function PropertyPostcards({
   data,
   onOpen,
   onOpenBuild,
+  signals,
 }: {
   data: PortfolioData;
   onOpen: (id: HouseId) => void;
   onOpenBuild: () => void;
+  signals?: (id: HouseId) => HealthSignals;
 }) {
   const ids: HouseId[] = ['ranch', 'lindon', 'river'];
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {ids.map((id) => {
         const metrics = data[id];
-        const health = propertyHealth(id, metrics);
+        const health = propertyHealth(id, metrics, signals?.(id));
         const stay = nextArrival(data.reservations, id);
         const when = stay
           ? new Date(`${stay.checkIn}T00:00:00`).toLocaleDateString('en-US', {
@@ -69,6 +72,7 @@ export function PropertyPostcards({
               day: 'numeric',
             })
           : null;
+        const photo = HOUSE_PHOTOS[id];
         return (
           <article
             key={id}
@@ -76,7 +80,11 @@ export function PropertyPostcards({
           >
             <button type="button" onClick={() => onOpen(id)} className="block w-full text-left">
             <div className="relative h-40">
-              <Scene id={id} month={data.month} />
+              {photo ? (
+                <img src={photo.src} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              ) : (
+                <Scene id={id} month={data.month} />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-[#07110f] via-transparent to-transparent" />
               <div className="absolute top-3 right-3">
                 <HealthDial score={health.score} size={54} ink="#f4f1ea" />

@@ -15,8 +15,9 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 - `#/report` — P&L report
 - `#/report/documents` — e-sign / document vault
 - `#/guests`
-- `#/ranch` `#/lindon` `#/river` — River rental P&L
-- `#/river/build` — River House build cost spreadsheet (Todd vs Brandon & Stephanie). `#/construction` still opens this.
+- `#/ranch` `#/lindon`
+- `#/river` — River rental. `#/river/launch` is the November 1 opening page. `#/river/build` is build costs.
+- `/book` — direct date request for returning guests. No payment.
 - `#/ours` — Brandon & Stephanie household / furnishings (photo, paste text, or manual; off rental P&L)
 
 ### JavaScript bridge
@@ -32,6 +33,11 @@ UML.help()
 ### Login
 
 POST `/api/auth/login` with `{ "password": "..." }` (cookie). Form: `[data-bot="login-password"]` and `[data-bot="login-submit"]`.
+
+Muse and Amanda have full control with `Authorization: Bearer` `MUSE_BOT_SECRET` or `AMANDA_BOT_SECRET`.
+OpenAPI: `/api/muse/openapi.json` and `/api/amanda/openapi.json`.
+Tools: `GET/POST /api/muse/tools` or `/api/amanda/tools`. Use tool `dashboard_request` for any other `/api` route.
+Signed-in browser: `/api/muse/enter?token=` or `/api/amanda/enter?token=`.
 
 ### Do not
 

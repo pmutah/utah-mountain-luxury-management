@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, type HistoryData, type PortfolioData } from './lib/api';
 import {
   parseDashboardHash,
@@ -10,20 +10,34 @@ import { installUmlBridge, syncDocumentView } from './lib/uml-bridge';
 import { LoginGate } from './components/LoginGate';
 import { Header } from './components/Header';
 import { PortfolioOverview } from './components/PortfolioOverview';
-import { PortfolioReport } from './components/PortfolioReport';
-import { DocumentsVault } from './components/DocumentsVault';
+const GuestsPanel = lazy(() =>
+  import('./components/GuestsPanel').then((m) => ({ default: m.GuestsPanel })),
+);
+const PortfolioReport = lazy(() =>
+  import('./components/PortfolioReport').then((m) => ({ default: m.PortfolioReport })),
+);
+const DocumentsVault = lazy(() =>
+  import('./components/DocumentsVault').then((m) => ({ default: m.DocumentsVault })),
+);
+const OurExpenses = lazy(() =>
+  import('./components/OurExpenses').then((m) => ({ default: m.OurExpenses })),
+);
+const ConstructionProjectView = lazy(() =>
+  import('./components/ConstructionProject').then((m) => ({ default: m.ConstructionProjectView })),
+);
+const DirectBook = lazy(() =>
+  import('./components/DirectBook').then((m) => ({ default: m.DirectBook })),
+);
 import { EsignCeremony } from './components/EsignCeremony';
 import { PropertyDetail } from './components/PropertyDetail';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { ToastStack } from './components/Toast';
 import { AgentChat } from './components/AgentChat';
 import { ConstructionManagerChat } from './components/ConstructionManagerChat';
-import { ConstructionProjectView } from './components/ConstructionProject';
-import { OurExpenses } from './components/OurExpenses';
-import { GuestsPanel } from './components/GuestsPanel';
 import { GuestPreferenceForm } from './components/GuestPreferenceForm';
 import { CommandPalette } from './components/CommandPalette';
 import { OwnerLetterButton } from './components/OwnerLetterButton';
+import { RiverLaunch } from './components/RiverLaunch';
 import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
@@ -154,6 +168,15 @@ function Dashboard() {
           <div className="flex flex-wrap gap-2 mb-6">
             <button
               type="button"
+              data-bot="river-launch"
+              aria-current={riverView === 'launch' ? 'page' : undefined}
+              onClick={() => go('river', 'pnl', 'launch')}
+              className="uml-nav"
+            >
+              Opening
+            </button>
+            <button
+              type="button"
               data-bot="river-rental"
               aria-current={riverView === 'rental' ? 'page' : undefined}
               onClick={() => go('river', 'pnl', 'rental')}
@@ -173,12 +196,17 @@ function Dashboard() {
           </div>
         )}
 
+        <Suspense fallback={<LoadingSkeleton />}>
         {activeTab === 'ours' ? (
           <main>
             <OurExpenses
               onToast={showToast}
               onError={(msg) => showToast(msg, 'error')}
             />
+          </main>
+        ) : activeTab === 'river' && riverView === 'launch' ? (
+          <main>
+            <RiverLaunch reservations={data?.reservations ?? []} />
           </main>
         ) : activeTab === 'river' && riverView === 'build' ? (
           <main>
@@ -256,6 +284,7 @@ function Dashboard() {
             )}
           </main>
         ) : null}
+        </Suspense>
       </div>
       <ToastStack toasts={toasts} />
       <CommandPalette
@@ -290,6 +319,13 @@ export default function App() {
   const esignMatch = window.location.pathname.match(/^\/esign\/([^/]+)/);
   if (esignMatch?.[1]) {
     return <EsignCeremony token={esignMatch[1]} />;
+  }
+  if (window.location.pathname === '/book' || window.location.pathname.startsWith('/book/')) {
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <DirectBook />
+      </Suspense>
+    );
   }
   return (
     <LoginGate>

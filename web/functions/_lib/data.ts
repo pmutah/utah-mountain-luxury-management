@@ -259,8 +259,8 @@ export function calculateMetrics(
   };
 }
 
-/** River House first stays Oct 15, 2026 — omit it from portfolio occupancy until then. */
-export const RIVER_OPEN_MONTH = '2026-10';
+/** River House first stays November 1, 2026 — omit it from portfolio occupancy until then. */
+export const RIVER_OPEN_MONTH = '2026-11';
 
 export function portfolioAvgOccupancy(
   month: string,

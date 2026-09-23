@@ -10,6 +10,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    watch: {
+      ignored: ['**/public/houses/**'],
+    },
     proxy: {
       '/api': {
         target: PAGES_ORIGIN,

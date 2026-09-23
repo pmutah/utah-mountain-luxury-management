@@ -304,6 +304,63 @@ export interface AgentChatResponse {
   toolSteps: ToolStep[];
 }
 
+export interface AutomationSettings {
+  guestPrep: boolean;
+  monthlyLetter: boolean;
+  letterTo: string;
+  cleanerPhone: string;
+}
+
+export interface SharedWorkItem {
+  key: string;
+  title: string;
+  status: 'claimed' | 'done';
+  ownerName: string;
+  result: string;
+  atDenver: string;
+  stale: boolean;
+}
+
+export interface YieldMove {
+  house: string;
+  propertyId: string;
+  firstNight: string;
+  lastNight: string;
+  nights: number;
+  action: string;
+  promotionPercent: number | null;
+  airbnbListNightly: number | null;
+  vrboListNightly: number | null;
+  airbnbPromoListNightly: number | null;
+  vrboPromoListNightly: number | null;
+  minStay: string | null;
+  event: string | null;
+  workKey?: string;
+  taken?: {
+    ownerName: string;
+    status: 'claimed' | 'done';
+    atDenver: string;
+    result: string;
+    blocksRepeat: boolean;
+    stale: boolean;
+  } | null;
+}
+
+export interface YieldPlan {
+  asOf: string;
+  days: number;
+  howToUse: string;
+  houses: Array<{
+    propertyId: string;
+    house: string;
+    goal: { target: number; window: string; booked: number; stillNeeded: number; askHostNightly: number | null };
+    openNightsNext90: number;
+    needsComps: boolean;
+    weekends: Array<{ friday: string; status: 'booked' | 'half booked' | 'open' | 'not open yet'; event: string | null }>;
+    moves: YieldMove[];
+  }>;
+}
+
 export interface PricingAlert {
   id: string;
   propertyId: 'ranch' | 'lindon';
@@ -596,7 +653,36 @@ export const api = {
   },
   getGmailStatus: () =>
     request<{ connected: boolean; email: string | null }>('/api/integrations/gmail/status'),
+  getBriefing: (month: string) =>
+    request<{ line: string; cached?: boolean }>(`/api/agent/briefing?month=${encodeURIComponent(month)}`),
+  getAutomation: () =>
+    request<{
+      guestPrep: boolean;
+      monthlyLetter: boolean;
+      letterTo: string;
+      cleanerPhone: string;
+    }>('/api/automation'),
+  saveAutomation: (body: {
+    guestPrep: boolean;
+    monthlyLetter: boolean;
+    letterTo: string;
+    cleanerPhone: string;
+  }) =>
+    request<{
+      guestPrep: boolean;
+      monthlyLetter: boolean;
+      letterTo: string;
+      cleanerPhone: string;
+    }>('/api/automation', { method: 'PUT', body: JSON.stringify(body) }),
+  runAutomation: () =>
+    request<{ ran: boolean; notes: string[] }>('/api/automation/run', { method: 'POST' }),
   getPricingAlerts: () => request<{ alerts: PricingAlert[] }>('/api/pricing/alerts'),
+  getYieldPlan: (days = 90) => request<YieldPlan>(`/api/pricing/yield-plan?days=${days}`),
+  getSharedWork: () =>
+    request<{
+      open: SharedWorkItem[];
+      done: SharedWorkItem[];
+    }>('/api/agent/work'),
   dismissPricingAlert: (id: string) =>
     request<{ ok: boolean }>('/api/pricing/alerts', {
       method: 'PATCH',

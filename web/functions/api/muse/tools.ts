@@ -42,7 +42,7 @@ export const onRequestPost: PagesFunction<MusePagesEnv> = async ({ request, env 
         : {};
 
   try {
-    const result = await runMuseTool(env, name, args);
+    const result = await runMuseTool(env, name, args, request);
     return corsJson(request, result);
   } catch (e) {
     return corsJson(request, { error: e instanceof Error ? e.message : String(e) }, 400);

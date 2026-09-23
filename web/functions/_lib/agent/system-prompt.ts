@@ -1,3 +1,5 @@
+import { listSharedWork } from '../agent-work';
+import { PRICING_DOCTRINE, grossGoalSnapshot } from '../pricing-doctrine';
 import { PROPERTIES } from '../data';
 import { getAllReservations, getOccupancySummary } from '../reservations-store';
 import { loadPricingAlerts, compareMarket } from '../pricing-store';
@@ -32,6 +34,15 @@ export async function buildAgentContext(
     pricingSummary = 'Pricing comps: not configured yet.';
   }
 
+  const shared = await listSharedWork(env).catch(() => ({ open: [], done: [] }));
+  const sharedLine = [
+    ...shared.done.slice(0, 8).map((item) => `${item.ownerName} finished ${item.title} ${item.atDenver}. ${item.result}`),
+    ...shared.open.slice(0, 5).map((item) =>
+      item.stale
+        ? `${item.ownerName} claimed ${item.title} ${item.atDenver} and did not finish.`
+        : `${item.ownerName} is doing ${item.title} since ${item.atDenver}.`,
+    ),
+  ].join(' ');
   const discrepancies = await checkCalendarDiscrepancies(env);
   const discLine =
     discrepancies.length > 0
@@ -43,15 +54,26 @@ export async function buildAgentContext(
     `Properties:`,
     `- Ranch House (ranch): ${ranchAddr}`,
     `- Lindon House (lindon): ${lindonAddr}`,
-    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24, first stays Oct 15 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
+    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
     `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : '',
     uiContext.activeTab ? `Active tab: ${uiContext.activeTab}` : '',
+    `Gross booking goals (host payout, before mortgage and bills): ${(['lindon', 'ranch', 'river'] as const)
+      .map((id) => {
+        const pace = grossGoalSnapshot(id, reservations, today);
+        const sell =
+          pace.sellOutHostNightly != null ? `, sell-out average $${pace.sellOutHostNightly}/night` : '';
+        return `${id} $${pace.booked.toLocaleString('en-US')} of $${pace.target.toLocaleString('en-US')} (${pace.label}, ${pace.openNightsLeft} nights left${sell})`;
+      })
+      .join('; ')}`,
     pricingSummary,
     alerts.length
       ? `Open pricing alerts: ${alerts.map((a) => a.message).join('; ')}`
       : 'Open pricing alerts: none',
     discLine,
+    sharedLine
+      ? `Shared job list (Muse, Amanda, and you): ${sharedLine} Do not repeat a finished job.`
+      : 'Shared job list: nothing claimed or finished in the last 14 days.',
     `You are a proactive co-host for these three Airbnb/VRBO vacation rentals. Use tools to take action. Be concise and practical.`,
   ]
     .filter(Boolean)
@@ -59,8 +81,11 @@ export async function buildAgentContext(
 }
 
 export const AGENT_PERSONA = `You are the AI Property Management co-host for Utah Mountain Luxury Management (Ranch House and Lindon House in Lindon, plus The River House / Provo Riverhouse in Vivian Park).
-Help with guest relations, finances, reservations, calendar, turnover ops, Gmail drafts, and competitive pricing.
-Always use tools when you need data or to make changes. Never invent reservation or expense data.
+Help with guest relations, finances, reservations, calendar, turnover ops, Gmail drafts, and yield pricing.
+Always use tools when you need data or to make changes. Never invent reservation, expense, or nightly-rate data.
+Muse, Amanda, and you share one job list (tool shared_work). Before you start a job, list it. If it is done, or another agent claimed it in the last 3 hours, tell Brandon who has it and stop. Claim a job before you start. Mark it done with what you did.
+${PRICING_DOCTRINE}
+
 For destructive actions (cancel reservation, send email), require explicit user confirmation or create drafts for approval.
 The River House is 50% Brandon Pierce & Stephanie / 50% Todd Wilhite; Brandon is paid a 20% management fee (same split as the Ranch House).
 The construction project tracks who fronted bills: set paidBy to brandon for Brandon & Stephanie or todd for Todd. Use get_partner_contributions with propertyId construction (not rental houses) to report what each side has fronted and who still needs to put in money to stay 50/50.

@@ -19,7 +19,7 @@ export const PORTFOLIO_UTILITY_VENDORS: UtilityVendorDef[] = [
     id: 'lindon-city',
     label: 'Lindon City Utilities',
     category: 'Utilities',
-    pattern: /lindon\s*city|city\s*of\s*lindon|lindon\s*utilities/i,
+    pattern: /lindon\s*city|city\s*of\s*lindon|lindon\s*utilities|utopia/i,
   },
   {
     id: 'rocky-mountain-power',

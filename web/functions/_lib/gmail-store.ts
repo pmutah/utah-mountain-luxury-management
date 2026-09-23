@@ -123,7 +123,28 @@ export async function gmailSearch(env: SettingsEnv, query: string, max = 5): Pro
   );
   if (!res.ok) return [{ error: `Gmail search failed: ${res.status}` }];
   const json = (await res.json()) as { messages?: Array<{ id: string }> };
-  return json.messages ?? [];
+  const ids = json.messages?.map((message) => message.id).filter(Boolean) ?? [];
+  const messages: unknown[] = [];
+  for (const id of ids) {
+    const detail = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+      { headers: { Authorization: `Bearer ${tokens.accessToken}` } },
+    );
+    if (!detail.ok) continue;
+    const message = (await detail.json()) as {
+      id?: string;
+      snippet?: string;
+      payload?: { headers?: Array<{ name?: string; value?: string }> };
+    };
+    messages.push({
+      id: message.id ?? id,
+      from: headerValue(message.payload?.headers, 'From'),
+      subject: headerValue(message.payload?.headers, 'Subject'),
+      date: headerValue(message.payload?.headers, 'Date'),
+      snippet: message.snippet ?? '',
+    });
+  }
+  return messages;
 }
 
 export async function gmailCreateDraft(

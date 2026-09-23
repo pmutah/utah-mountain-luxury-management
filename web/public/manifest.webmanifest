@@ -4,8 +4,8 @@
   "description": "Short-term rental management for The Ranch House, The Lindon House, and The River House",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#2563eb",
+  "background_color": "#07110f",
+  "theme_color": "#07110f",
   "orientation": "portrait-primary",
   "icons": [
     {

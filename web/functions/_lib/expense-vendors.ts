@@ -10,7 +10,7 @@ const VENDOR_RULES: Array<{
   {
     label: 'Lindon City Utilities',
     category: 'Utilities',
-    pattern: /lindon\s*city|city\s*of\s*lindon|lindon\s*utilities/i,
+    pattern: /lindon\s*city|city\s*of\s*lindon|lindon\s*utilities|utopia/i,
   },
   {
     label: ROCKY_MOUNTAIN_POWER,

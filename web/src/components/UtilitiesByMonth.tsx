@@ -71,7 +71,7 @@ export function UtilitiesByMonth({
         <div>
           <h4 className="text-sm font-black uppercase tracking-widest text-white">Monthly utilities</h4>
           <p className="text-xs text-slate-500 mt-1">
-            Lindon City, Rocky Mountain Power, Enbridge Gas, X-Mission Internet, and Hospitable — last
+            Lindon City (includes Utopia), Rocky Mountain Power, Enbridge Gas, X-Mission Internet, and Hospitable — last
             12 months ending {formatMonthLabel(endMonth)}.
           </p>
         </div>

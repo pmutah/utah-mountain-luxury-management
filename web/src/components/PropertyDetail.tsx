@@ -17,6 +17,7 @@ import { HealthDial } from './HealthDial';
 import { MoneyWaterfall } from './MoneyWaterfall';
 import { SeasonRing } from './SeasonRing';
 import { propertyHealth } from '../lib/luxury';
+import { useHealthSignals } from '../hooks/useHealthSignals';
 
 type TabId = RentalPropertyId;
 
@@ -41,7 +42,8 @@ export function PropertyDetail({
   const monthReservations = data.reservations.filter(
     (r) => r.propertyId === tab && r.checkIn.startsWith(data.month),
   );
-  const health = propertyHealth(tab, metrics);
+  const signals = useHealthSignals(data);
+  const health = propertyHealth(tab, metrics, signals(tab));
   const year = Number(data.month.slice(0, 4));
   const yearReservations = history?.reservations?.length ? history.reservations : data.reservations;
 
@@ -57,7 +59,7 @@ export function PropertyDetail({
       </div>
         {tab === 'river' && (
           <p className="text-sm text-[var(--uml-muted)] max-w-2xl">
-            Provo Riverhouse · sleeps 24 · 7 bedrooms · first stays Oct 15, 2026 · 50/50 Brandon &amp;
+            Provo Riverhouse · sleeps 24 · 7 bedrooms · first stays November 1, 2026 · 50/50 Brandon &amp;
             Stephanie and Todd, after a 20% management fee. Build bills live on the Build costs chip.
           </p>
         )}

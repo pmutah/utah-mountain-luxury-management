@@ -4,7 +4,6 @@ import { formatCurrency, type HistoryData, type PortfolioData } from '../lib/api
 import { pctChange } from '../lib/months';
 import {
   formatWhole,
-  morningBriefing,
   portfolioProfit,
   portfolioRevenue,
   propertyHealth,
@@ -22,6 +21,11 @@ import { SeasonRing } from './SeasonRing';
 import { SiteView } from './SiteView';
 import { HealthDial } from './HealthDial';
 import { OwnerLetterButton } from './OwnerLetterButton';
+import { MorningLine } from './MorningLine';
+import { AutomationPanel } from './AutomationPanel';
+import { RevenueGoals } from './RevenueGoals';
+import { YieldMoves } from './YieldMoves';
+import { useHealthSignals } from '../hooks/useHealthSignals';
 
 export function PortfolioOverview({
   data,
@@ -48,12 +52,13 @@ export function PortfolioOverview({
   const year = Number(data.month.slice(0, 4));
   const reservations = history?.reservations?.length ? history.reservations : data.reservations;
   const series = history?.history ?? [];
+  const signals = useHealthSignals(data);
 
   return (
     <div className="space-y-8">
       <section className="uml-panel rounded-3xl px-6 py-8 sm:px-10">
         <p className="uml-kicker">This morning</p>
-        <p className="font-display text-3xl sm:text-4xl leading-snug mt-3 max-w-3xl">{morningBriefing(data)}</p>
+        <MorningLine data={data} />
         <div className="mt-5">
           <OwnerLetterButton data={data} onToast={onToast} />
         </div>
@@ -83,11 +88,14 @@ export function PortfolioOverview({
         />
       </div>
 
-      <PropertyPostcards data={data} onOpen={onOpenHouse} onOpenBuild={onOpenBuild} />
+      {history && <RevenueGoals reservations={history.reservations} />}
+      <YieldMoves />
+
+      <PropertyPostcards data={data} onOpen={onOpenHouse} onOpenBuild={onOpenBuild} signals={signals} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {(['ranch', 'lindon', 'river'] as const).map((id) => {
-          const health = propertyHealth(id, data[id]);
+          const health = propertyHealth(id, data[id], signals(id));
           return (
             <div key={id} className="uml-panel rounded-3xl p-5">
               <p className="uml-kicker">{id}</p>
@@ -110,6 +118,7 @@ export function PortfolioOverview({
       />
       {history && <TrendCharts history={history} />}
 
+      <AutomationPanel onToast={onToast} />
       <section className="uml-panel rounded-3xl p-5">
         <button type="button" className="w-full text-left" onClick={() => setOpsOpen((v) => !v)}>
           <p className="uml-kicker">Operations</p>

@@ -104,7 +104,8 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
   },
   {
     name: 'gmail_service',
-    description: 'Search Gmail, draft replies (requires Gmail OAuth connection).',
+    description:
+      'Search the connected pmutah@gmail.com mailbox, including Airbnb login codes, or draft a reply. Search returns subject and snippet.',
     parameters: {
       type: 'object',
       properties: {
@@ -119,7 +120,8 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
   },
   {
     name: 'manage_pricing',
-    description: 'Comp set, refresh comp prices, compare market, pricing alerts.',
+    description:
+      'Yield pricing. yield_plan is the daily to-do list for all three houses: pace to goal, next 8 weekends, and the Airbnb and VRBO moves to make. suggest_rate_adjustment prices one house and date range. Do not lower the base. Do not set anything in Hospitable. Also comps, snapshots, and alerts.',
     parameters: {
       type: 'object',
       properties: {
@@ -133,8 +135,10 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
             'get_pricing_alerts',
             'record_manual_snapshot',
             'suggest_rate_adjustment',
+            'yield_plan',
           ],
         },
+        days: { type: 'number', description: 'yield_plan horizon in days (default 90)' },
         propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river'] },
         platform: { type: 'string', enum: ['airbnb', 'vrbo'] },
         url: { type: 'string' },
@@ -144,6 +148,29 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
         nightlyRate: { type: 'number' },
         from: { type: 'string' },
         to: { type: 'string' },
+      },
+      required: ['action'],
+    },
+  },
+  {
+    name: 'shared_work',
+    description:
+      'The job list Muse, Amanda, and the co-host share. list before you start. If the job is done, or another agent claimed it in the last 3 hours, stop and tell Brandon who has it. claim before you start. done when you finish, with what you did. Do not repeat their work.',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list', 'claim', 'done', 'release'] },
+        key: {
+          type: 'string',
+          description:
+            'Stable id both agents would pick. Yield moves use the workKey on the plan, like yield:lindon:2026-09-22:2026-09-24. An inquiry is inquiry:guest-name.',
+        },
+        title: { type: 'string', description: 'One line saying what the job is. Required when claiming.' },
+        result: {
+          type: 'string',
+          description: 'What you did, with house, dates, prices, and time. Required when marking done.',
+        },
+        sinceDays: { type: 'number', description: 'list: how many days of finished jobs to return (default 14)' },
       },
       required: ['action'],
     },

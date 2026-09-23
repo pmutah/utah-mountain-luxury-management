@@ -240,7 +240,7 @@ function PropertyTable({ report }: { report: PortfolioReportModel }) {
                   {row.name}
                   {pre && (
                     <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                      First stays Oct 15, 2026
+                      First stays November 1, 2026
                     </span>
                   )}
                 </td>
@@ -582,7 +582,7 @@ export function PortfolioReport({
                 <p className="text-[10px] font-bold uppercase mt-2 text-slate-500">{row.name.replace(/^The /, '')}</p>
                 {isRiverPreOpening(row) && (
                   <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600 mt-1">
-                    First stays Oct 15, 2026
+                    First stays November 1, 2026
                   </p>
                 )}
               </div>
