@@ -79,7 +79,7 @@ export function RiverLaunch({ reservations }: { reservations: Reservation[] }) {
             {days > 0 ? `${days} days until the first stays` : days === 0 ? 'First stays are today' : 'The house is open'}
           </p>
           <p className="text-sm mt-3 max-w-xl text-[#e7eee9]">
-            Sleeps 24. The opening moved from October 15. {photo?.caption}.
+            Sleeps 25. The opening moved from October 15. {photo?.caption}.
           </p>
         </div>
       </section>

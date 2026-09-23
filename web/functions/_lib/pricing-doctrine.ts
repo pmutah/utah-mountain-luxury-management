@@ -14,7 +14,22 @@ Never name a nightly rate until you have called manage_pricing action suggest_ra
 Houses and who they compete with:
 - Ranch (sleeps 20, 8 bedrooms, hot tub, Lindon): entire homes that sleep about 16–20 with a hot tub in Utah County. Wedding, reunion, and BYU weekends. Weekdays can be softer. Do not comp it to a 4-bedroom.
 - Lindon (sleeps 12, 4 bedrooms, Brandon only): entire 4-bedroom homes in north Utah County. Ignore basement apartments and 2-bedroom comps. Weekdays should fill. Do not drop the weekend to do it.
-- River (sleeps 24, Vivian Park, first stays November 1, 2026): large canyon and group houses, not Lindon houses. Do not sell a night before November 1, 2026. After that, ski holidays and canyon weekends are the peak. No mortgage is on the books — do not invent one.
+- River (sleeps 25, Vivian Park, on the Provo River, first stays November 1, 2026): brand new, modern, automated, 7,000 sq ft, 7 king bedrooms each in its own room plus an expandable king. It is the only rental up the canyon that sleeps 25 on the river. It competes with the best Sundance and Park City group homes, not with Lindon or Ranch. Do not sell a night before November 1, 2026. No mortgage is on the books — do not invent one.
+
+## River premium pricing
+River has its own season table in the tool (yield_plan seasonRates, and each night's season). Every number is host net. Airbnb and VRBO list prices are in the same rows.
+- Floor: $1,500 host net on any night, promotion included. Airbnb $1,776, VRBO $1,631. Nothing goes under it. The lowest typed base is $1,875 so a full 20% promotion lands on $1,500 and still earns Airbnb's strikethrough and email placement.
+- Proof: Dec 28 2026–Jan 2 2027 booked at $3,143 host net a night ($15,717 for 5 nights on Airbnb). Dec 10–13 2026 booked at $1,672 host net a night on VRBO. Christmas is priced above that proof, not at it.
+- Market: Sundance's top 10% of listings book at $1,708+ guest price a night (AirROI, Aug 2025–Jul 2026), and 6+ bedroom Park City homes average about $2,300 (Rabbu, Apr 2026). River is bigger than almost all of them. Price above the Sundance top tier.
+- Christmas through New Year (Dec 19–Jan 2): $3,400 host net every night. 5-night minimum.
+- Thanksgiving: $2,900, 4-night minimum. July 4 week $3,000 and Pioneer Day weekend $2,900, 4-night minimum. MLK, Presidents Day $2,800; Memorial Day, Labor Day $2,600; 3-night minimum.
+- Summer peak (June 1–August 16): Friday and Saturday $2,700, 4-night minimum weekend stays. Weekdays $2,200, 3-night minimum.
+- Ski season (January–March): Friday and Saturday $2,400, 3-night minimum. Weekdays $1,950, 2-night minimum. Early December before Christmas: $2,200 weekends, $1,875 weekdays.
+- Shoulder (April–May, mid-August–November): $2,100 weekends, $1,875 weekdays, 2-night minimum.
+- Weekends sell first at full rate. Weekday fill starts only after that week's Friday and Saturday are booked: then the 20% promotion goes on those weekdays and the minimum drops to 2 nights. Never 1 night at River.
+- Holidays get no promotion until 14 days out. Summer and ski weekends get none until 21 days out.
+- If a season sells its weekends more than 60 days out, raise the next open weekends in that season by 10% and tell Brandon.
+
 
 The base rate stays high. Never lower the published nightly rate to chase a hole. Fill soft nights with a promotion on Airbnb and on VRBO, set in each site's own calendar. Those sites market the listing when the discount is a promotion: Airbnb shows a strikethrough at 10% off, a callout at 15% off, and can feature the listing in emails to recent searchers at 20% off. VRBO adds a badge at 5% off and extra member exposure at 10% off. Custom promotions are created on Airbnb and VRBO directly. Do not change the rate and do not create the promotion in Hospitable. Hospitable stays the calendar and the inbox. Before adding a promotion, read the ones already on that listing. A VRBO member deal stacks on top of other discounts. If one is already on, do not add a second cut that takes the night under the carrying floor.
 
@@ -71,14 +86,14 @@ Goal: hit Lindon $40,000, Ranch $140,000, and River $400,000 in host payout, wit
 2. Make the stay easy to book.
 - Weekends: 2-night minimum on Friday and Saturday. Do not accept a Saturday-only stay that strands the Friday unless it is inside 7 days.
 - Once a weekend is booked, drop the minimum stay on that week's weekdays to 1 night and turn on the 20% promotion. Weekday guests are the business and family trips that fill the gap.
-- Holidays: 3-night minimum on Thanksgiving and Christmas through New Year. 3 nights on the River's ski weeks.
+- Holidays: 3-night minimum on Thanksgiving and Christmas through New Year at Ranch and Lindon. River minimums come from its season table above.
 - Keep the calendar open 12 months ahead. Ranch and River groups book 6 to 11 months out, and a closed calendar loses the booking before it starts.
 - Instant Book on for Airbnb and VRBO. Stays of 7 and 28 nights get weekly and monthly discounts set on Airbnb and VRBO. Lindon from January through March can take a 30-night stay at the monthly rate before a night goes empty.
 
 3. Rank high in search. Airbnb and VRBO show the listings guests click and book.
 - Answer every inquiry within an hour, day or night. Accept or decline a request the same day.
 - Keep 4.9 stars. After checkout, the thank-you asks for a review. A 4-star or lower review gets a calm public reply the same day and a fix recorded on the house.
-- The title and first photo sell the sleep count and the best feature: Ranch — "Sleeps 20 · Hot Tub · Game Room" style; River — "Sleeps 24 · Provo Canyon · River"; Lindon — "Sleeps 12 · Family Home near BYU". Draft title and photo-order changes. Brandon approves them before they post.
+- The title and first photo sell the sleep count and the best feature: Ranch — "Sleeps 20 · Hot Tub · Game Room" style; River — "Sleeps 25 · On the Provo River · 7 King Suites"; Lindon — "Sleeps 12 · Family Home near BYU". Draft title and photo-order changes. Brandon approves them before they post.
 - Promotions are ranking tools. Run them on Airbnb and VRBO, never in Hospitable.
 
 4. Fill every gap without teaching guests to wait for a sale.
@@ -178,6 +193,89 @@ export function goalWindow(propertyId: PropertyId, asOf: string): { start: strin
 
 type EventNight = { start: string; end: string; name: string; premium: number };
 
+/** River never publishes a base under this host net. */
+export const RIVER_FLOOR_HOST_NET = 1500;
+
+type RiverSeason = {
+  start: string;
+  end: string;
+  name: string;
+  holiday: boolean;
+  weekendHostNet: number;
+  weekdayHostNet: number;
+  minWeekend: number;
+  minWeekday: number;
+};
+
+/** Host net per night. Dates run check-in night to the night before `end`. Holidays win over the season they sit in. */
+const RIVER_HOLIDAYS: RiverSeason[] = [
+  { start: '2026-11-24', end: '2026-11-30', name: 'Thanksgiving', holiday: true, weekendHostNet: 2900, weekdayHostNet: 2900, minWeekend: 4, minWeekday: 4 },
+  { start: '2026-12-19', end: '2027-01-03', name: 'Christmas through New Year', holiday: true, weekendHostNet: 3400, weekdayHostNet: 3400, minWeekend: 5, minWeekday: 5 },
+  { start: '2027-01-15', end: '2027-01-19', name: 'MLK weekend', holiday: true, weekendHostNet: 2800, weekdayHostNet: 2800, minWeekend: 3, minWeekday: 3 },
+  { start: '2027-02-12', end: '2027-02-16', name: 'Presidents Day weekend', holiday: true, weekendHostNet: 2800, weekdayHostNet: 2800, minWeekend: 3, minWeekday: 3 },
+  { start: '2027-05-28', end: '2027-06-01', name: 'Memorial Day weekend', holiday: true, weekendHostNet: 2600, weekdayHostNet: 2600, minWeekend: 3, minWeekday: 3 },
+  { start: '2027-07-01', end: '2027-07-06', name: 'July 4 week', holiday: true, weekendHostNet: 3000, weekdayHostNet: 3000, minWeekend: 4, minWeekday: 4 },
+  { start: '2027-07-22', end: '2027-07-26', name: 'Pioneer Day weekend', holiday: true, weekendHostNet: 2900, weekdayHostNet: 2900, minWeekend: 4, minWeekday: 4 },
+  { start: '2027-09-03', end: '2027-09-07', name: 'Labor Day weekend', holiday: true, weekendHostNet: 2600, weekdayHostNet: 2600, minWeekend: 3, minWeekday: 3 },
+  { start: '2027-11-23', end: '2027-11-29', name: 'Thanksgiving', holiday: true, weekendHostNet: 2900, weekdayHostNet: 2900, minWeekend: 4, minWeekday: 4 },
+  { start: '2027-12-18', end: '2028-01-03', name: 'Christmas through New Year', holiday: true, weekendHostNet: 3400, weekdayHostNet: 3400, minWeekend: 5, minWeekday: 5 },
+];
+
+function riverSeasonOn(iso: string): RiverSeason {
+  const holiday = RIVER_HOLIDAYS.find((season) => iso >= season.start && iso < season.end);
+  if (holiday) return holiday;
+  const monthDay = iso.slice(5);
+  if (monthDay >= '06-01' && monthDay < '08-17') {
+    return { start: iso, end: iso, name: 'Summer peak', holiday: false, weekendHostNet: 2700, weekdayHostNet: 2200, minWeekend: 4, minWeekday: 3 };
+  }
+  if (monthDay >= '01-01' && monthDay < '04-01') {
+    return { start: iso, end: iso, name: 'Ski season', holiday: false, weekendHostNet: 2400, weekdayHostNet: 1950, minWeekend: 3, minWeekday: 2 };
+  }
+  if (monthDay >= '12-01') {
+    return { start: iso, end: iso, name: 'Early ski season', holiday: false, weekendHostNet: 2200, weekdayHostNet: 1875, minWeekend: 3, minWeekday: 2 };
+  }
+  return { start: iso, end: iso, name: 'Shoulder', holiday: false, weekendHostNet: 2100, weekdayHostNet: 1875, minWeekend: 2, minWeekday: 2 };
+}
+
+function riverSeasonTable(from: string, to: string) {
+  const rows: Array<{
+    season: string;
+    firstNight: string;
+    lastNight: string;
+    weekendHostNet: number;
+    weekdayHostNet: number;
+    weekendAirbnb: number;
+    weekendVrbo: number;
+    weekdayAirbnb: number;
+    weekdayVrbo: number;
+    minWeekend: number;
+    minWeekday: number;
+  }> = [];
+  for (const iso of eachNight(from, to)) {
+    if (iso < '2026-11-01') continue;
+    const season = riverSeasonOn(iso);
+    const last = rows[rows.length - 1];
+    if (last && last.season === season.name && last.weekendHostNet === season.weekendHostNet && daysBetween(last.lastNight, iso) === 1) {
+      last.lastNight = iso;
+      continue;
+    }
+    rows.push({
+      season: season.name,
+      firstNight: iso,
+      lastNight: iso,
+      weekendHostNet: season.weekendHostNet,
+      weekdayHostNet: season.weekdayHostNet,
+      weekendAirbnb: listPriceForHostNet(season.weekendHostNet, AIRBNB_KEEP),
+      weekendVrbo: listPriceForHostNet(season.weekendHostNet, VRBO_KEEP),
+      weekdayAirbnb: listPriceForHostNet(season.weekdayHostNet, AIRBNB_KEEP),
+      weekdayVrbo: listPriceForHostNet(season.weekdayHostNet, VRBO_KEEP),
+      minWeekend: season.minWeekend,
+      minWeekday: season.minWeekday,
+    });
+  }
+  return rows;
+}
+
 const EVENTS: EventNight[] = [
   { start: '2026-05-22', end: '2026-05-25', name: 'Memorial Day weekend', premium: 0.12 },
   { start: '2026-07-02', end: '2026-07-05', name: 'July 4 weekend', premium: 0.12 },
@@ -247,6 +345,8 @@ type NightQuote = {
   promotionPercent: number | null;
   promotionHostNightly: number | null;
   directOfferHostNightly: number | null;
+  season?: string | null;
+  minStayNights?: number | null;
 };
 
 function bare(night: Omit<NightQuote, 'promotionPercent' | 'promotionHostNightly'>): NightQuote {
@@ -286,6 +386,25 @@ function quoteNight(
       listingHostNightly: null,
       directOfferHostNightly: null,
     });
+  }
+  if (propertyId === 'river') {
+    const season = riverSeasonOn(iso);
+    const weekend = isWeekendNight(iso);
+    const seasonRate = weekend ? season.weekendHostNet : season.weekdayHostNet;
+    const name = season.holiday ? season.name : null;
+    const eventRate = name && event ? Math.round(Math.max(median, target) * (1 + event.premium)) : 0;
+    return {
+      ...bare({
+        date: iso,
+        leadDays,
+        event: name,
+        stance: name ? 'raise' : 'hold',
+        listingHostNightly: Math.max(RIVER_FLOOR_HOST_NET, seasonRate, eventRate),
+        directOfferHostNightly: null,
+      }),
+      season: season.name,
+      minStayNights: weekend ? season.minWeekend : season.minWeekday,
+    };
   }
   if (median <= 0 && target <= 0) {
     return bare({
@@ -498,8 +617,17 @@ export async function buildYieldPlan(env: SettingsEnv, days = 90) {
       const weekend = isWeekendNight(night.date);
       const action = moveAction(night.stance, weekend);
       const holiday = /thanksgiving|christmas|new year/i.test(night.event ?? '');
-      const minStay =
-        holiday && night.leadDays > 7
+      const riverMin =
+        propertyId === 'river' && night.minStayNights
+          ? night.stance === 'promote' && !weekend
+            ? `${Math.min(2, night.minStayNights)} nights`
+            : night.leadDays > 7
+              ? `${night.minStayNights} nights`
+              : null
+          : undefined;
+      const minStay = riverMin !== undefined
+        ? riverMin
+        : holiday && night.leadDays > 7
           ? '3 nights'
           : night.stance === 'promote' && !weekend
             ? '1 night'
@@ -560,6 +688,7 @@ export async function buildYieldPlan(env: SettingsEnv, days = 90) {
     plans.push({
       propertyId,
       house: quote.house,
+      seasonRates: propertyId === 'river' ? riverSeasonTable(today, addDays(today, 365)) : undefined,
       goal: quote.revenueGoal,
       openNightsNext90: quote.openNightCount,
       compHostNetMedian: quote.compHostNetMedian,
@@ -588,7 +717,12 @@ export async function suggestRateAdjustment(
   const from = fromInput && fromInput >= today ? fromInput : today;
   const to = toInput && toInput > from ? toInput : addDays(from, 14);
   const house = PROPERTIES[propertyId];
-  const floor = house.mortgage > 0 ? Math.round(house.mortgage / 30) : 0;
+  const floor =
+    propertyId === 'river'
+      ? RIVER_FLOOR_HOST_NET
+      : house.mortgage > 0
+        ? Math.round(house.mortgage / 30)
+        : 0;
   const stays = (await getAllReservations(env)).filter(
     (stay) => stay.propertyId === propertyId && stay.status !== 'cancelled',
   );
@@ -695,7 +829,9 @@ export async function suggestRateAdjustment(
     targetMinNightly: target || null,
     carryingFloor: floor || null,
     carryingFloorMeans:
-      floor > 0
+      propertyId === 'river'
+        ? 'River premium floor: $1,500 host net. No night or promotion goes under it.'
+        : floor > 0
         ? `Mortgage $${house.mortgage.toFixed(2)} / 30. Last-week floor only, not the asking rate.`
         : 'No mortgage on the books. Do not invent a floor.',
     publishWhere:

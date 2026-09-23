@@ -358,6 +358,19 @@ export interface YieldPlan {
     needsComps: boolean;
     weekends: Array<{ friday: string; status: 'booked' | 'half booked' | 'open' | 'not open yet'; event: string | null }>;
     moves: YieldMove[];
+    seasonRates?: Array<{
+      season: string;
+      firstNight: string;
+      lastNight: string;
+      weekendHostNet: number;
+      weekdayHostNet: number;
+      weekendAirbnb: number;
+      weekendVrbo: number;
+      weekdayAirbnb: number;
+      weekdayVrbo: number;
+      minWeekend: number;
+      minWeekday: number;
+    }>;
   }>;
 }
 

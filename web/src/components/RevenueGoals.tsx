@@ -19,6 +19,10 @@ export function RevenueGoals({ reservations }: { reservations: Reservation[] }) 
         {HOUSES.map(({ id, name }) => {
           const pace = grossPace(id, reservations, asOf);
           const pct = Math.min(100, Math.round((pace.booked / pace.target) * 100));
+          const ask =
+            pace.sellOutHostNightly == null
+              ? null
+              : Math.max(Math.round(pace.sellOutHostNightly * 1.2), id === 'river' ? 1500 : 0);
           return (
             <div key={id}>
               <p className="font-display text-2xl">{name}</p>
@@ -33,8 +37,8 @@ export function RevenueGoals({ reservations }: { reservations: Reservation[] }) 
               <p className="mt-2 text-sm text-[var(--uml-muted)]">
                 {pace.stillNeeded === 0
                   ? 'Goal is on the books. Hold the rate.'
-                  : pace.sellOutHostNightly != null
-                    ? `${formatWhole(pace.stillNeeded)} left across ${pace.openNightsLeft} open nights. Ask ${formatWhole(Math.round(pace.sellOutHostNightly * 1.2))} after fees (${formatWhole(listPricesForHostNet(Math.round(pace.sellOutHostNightly * 1.2)).airbnb)} Airbnb, ${formatWhole(listPricesForHostNet(Math.round(pace.sellOutHostNightly * 1.2)).vrbo)} VRBO). A 20% promotion fills from there.`
+                  : ask != null
+                    ? `${formatWhole(pace.stillNeeded)} left across ${pace.openNightsLeft} open nights. ${id === 'river' ? 'Lowest base' : 'Ask'} ${formatWhole(ask)} after fees (${formatWhole(listPricesForHostNet(ask).airbnb)} Airbnb, ${formatWhole(listPricesForHostNet(ask).vrbo)} VRBO).${id === 'river' ? ' Holidays, summer, and ski weekends price higher.' : ' A 20% promotion fills from there.'}`
                     : `${formatWhole(pace.stillNeeded)} left and no open nights remain.`}
               </p>
             </div>

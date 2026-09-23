@@ -98,6 +98,25 @@ export function YieldMoves() {
           })}
         </div>
       )}
+      {plan?.houses
+        .filter((house) => house.seasonRates?.length)
+        .map((house) => (
+          <div key={`${house.propertyId}-seasons`} className="mt-5 border-t border-white/10 pt-4" data-bot="river-seasons">
+            <p className="text-xs uppercase tracking-widest text-[var(--uml-muted)]">River seasons · base to type</p>
+            <ul className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+              {house.seasonRates!.map((row) => (
+                <li key={row.firstNight}>
+                  <span className="text-[#d4b56a]">{dateSpan(row.firstNight, row.lastNight)}</span> · {row.season}
+                  <span className="block text-[var(--uml-muted)]">
+                    {row.weekendHostNet === row.weekdayHostNet
+                      ? `${formatWhole(row.weekendAirbnb)} Airbnb / ${formatWhole(row.weekendVrbo)} VRBO every night · min ${row.minWeekend}`
+                      : `Fri–Sat ${formatWhole(row.weekendAirbnb)} / ${formatWhole(row.weekendVrbo)} · min ${row.minWeekend} · weekdays ${formatWhole(row.weekdayAirbnb)} / ${formatWhole(row.weekdayVrbo)}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       {desk && (desk.done.length > 0 || desk.open.length > 0) && (
         <div className="mt-5 border-t border-white/10 pt-4" data-bot="shared-work">
           <p className="text-xs uppercase tracking-widest text-[var(--uml-muted)]">Shared desk</p>

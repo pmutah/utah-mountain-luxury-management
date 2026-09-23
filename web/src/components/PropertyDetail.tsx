@@ -59,7 +59,7 @@ export function PropertyDetail({
       </div>
         {tab === 'river' && (
           <p className="text-sm text-[var(--uml-muted)] max-w-2xl">
-            Provo Riverhouse · sleeps 24 · 7 bedrooms · first stays November 1, 2026 · 50/50 Brandon &amp;
+            Provo Riverhouse · sleeps 25 · 7 king suites plus an expandable king · 7,000 sq ft · first stays November 1, 2026 · 50/50 Brandon &amp;
             Stephanie and Todd, after a 20% management fee. Build bills live on the Build costs chip.
           </p>
         )}

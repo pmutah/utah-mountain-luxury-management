@@ -54,7 +54,7 @@ export async function buildAgentContext(
     `Properties:`,
     `- Ranch House (ranch): ${ranchAddr}`,
     `- Lindon House (lindon): ${lindonAddr}`,
-    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
+    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 25, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
     `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : '',
     uiContext.activeTab ? `Active tab: ${uiContext.activeTab}` : '',

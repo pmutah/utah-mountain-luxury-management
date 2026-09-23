@@ -10,7 +10,7 @@ Guest email: utahmountainluxury@gmail.com
 Properties:
 - ranch — The Ranch House, 270 East Center Street, Lindon UT (50/50 after 20% mgmt fee to Brandon)
 - lindon — The Lindon House, 143 Harcliff Circle, Lindon UT (Brandon only)
-- river — The River House / Provo Riverhouse, Vivian Park, Provo Canyon (sleeps 24; first stays November 1, 2026; 50/50 after 20% mgmt)
+- river — The River House / Provo Riverhouse, Vivian Park, Provo Canyon (sleeps 25, on the Provo River, 7 king suites; $1,500 host-net floor, premium season table in yield_plan; first stays November 1, 2026; 50/50 after 20% mgmt)
 - construction — River House build costs (partner spend Todd vs Brandon & Stephanie). Not a rental expense.
 - household — Brandon & Stephanie furnishings (Our expenses). Not a Todd split. Off rental P&L.
 
