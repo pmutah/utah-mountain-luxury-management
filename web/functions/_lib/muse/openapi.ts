@@ -9,7 +9,7 @@ export function museUmlOpenApiSpec() {
       title: 'Muse — Utah Mountain Luxury full management API',
       version: '1.0.0',
       description:
-        'Full Utah Mountain Luxury control for Muse and Amanda. GET /api/muse/tools or /api/amanda/tools for parameter schemas. POST either tools route to run co-host tools, construction tools, or dashboard_request for every other /api route. The same bearer authenticates every /api/* REST route. GET /api/muse/instructions or /api/amanda/instructions for standing rules.',
+        'Full Utah Mountain Luxury control for Muse and Amanda. POST /api/muse/do or /api/amanda/do with a plain-language message and the site does the work. POST /api/muse/tools runs one named tool. Do not use the website.',
     },
     servers: [{ url: 'https://wilhite-portfolio.pages.dev' }],
     security: [{ MuseBearer: [] }],
@@ -40,6 +40,39 @@ export function museUmlOpenApiSpec() {
           security: [],
           summary: 'Standing UML operating rules',
           responses: { '200': { description: 'Plain text' } },
+        },
+      },
+      '/api/muse/do': {
+        post: {
+          operationId: 'doUmlRequest',
+          summary: 'Tell Utah Mountain Luxury what to do in plain language. It runs the tools and returns the result.',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['message'],
+                  properties: {
+                    message: { type: 'string', description: 'What Brandon asked, in plain language.' },
+                    runId: { type: 'string', description: 'Previous runId to continue the same conversation.' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'What the site did' },
+            '400': { description: 'Missing message' },
+            '401': { description: 'Unauthorized' },
+          },
+        },
+      },
+      '/api/amanda/do': {
+        post: {
+          operationId: 'doUmlRequestAmanda',
+          summary: 'Same as /api/muse/do, for Amanda.',
+          responses: { '200': { description: 'What the site did' } },
         },
       },
       '/api/muse/tools': {
