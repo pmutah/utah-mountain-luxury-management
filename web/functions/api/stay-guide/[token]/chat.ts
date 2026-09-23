@@ -26,9 +26,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     return corsJson(request, { error: 'Invalid JSON' }, 400);
   }
   const origin = new URL(request.url).origin;
-  const result = await askNora(env, resolved.stay, text, origin);
-  if ('error' in result) return corsJson(request, { error: result.error }, result.status);
-  return corsJson(request, result, 200, { 'Cache-Control': 'no-store' });
+  try {
+    const result = await askNora(env, resolved.stay, text, origin);
+    if ('error' in result) return corsJson(request, { error: result.error }, result.status);
+    return corsJson(request, result, 200, { 'Cache-Control': 'no-store' });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    const safe = message.startsWith('Nora') ? message : 'Nora could not answer just now. Text or call us and we will help.';
+    return corsJson(request, { error: safe }, 502);
+  }
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

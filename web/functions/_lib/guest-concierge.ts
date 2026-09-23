@@ -401,9 +401,13 @@ export async function askNora(
     at: new Date().toISOString(),
   };
   const messages = [...prior, guestMessage, marenMessage].slice(-40);
-  await kvPut(env, chatKey(stay.token), messages);
-  const latest = await usageToday(env, stay.token);
-  await kvPut(env, usageKey(stay.token), { ...latest, messages: (latest.messages ?? 0) + 1 });
+  try {
+    await kvPut(env, chatKey(stay.token), messages);
+    const latest = await usageToday(env, stay.token);
+    await kvPut(env, usageKey(stay.token), { ...latest, messages: (latest.messages ?? 0) + 1 });
+  } catch {
+    // The daily save limit can be full. Nora still answers this question.
+  }
   return { reply: marenMessage.text, messages };
 }
 
