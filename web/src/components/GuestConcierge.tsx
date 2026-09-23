@@ -97,7 +97,7 @@ export function GuestConcierge({ token, preview }: { token: string; preview: boo
 }
 
 const MAPS_LINE = /^https:\/\/(?:maps\.google\.com|www\.google\.com\/maps)\S*$/i;
-const OPEN_LINE = /^Open (.+) in Google Maps$/;
+const LABEL_LINE = /^(?:Open (.+) in Google Maps|Directions to (.+))$/;
 
 function ConciergeText({ text, guest }: { text: string; guest: boolean }) {
   const lines = text.split('\n');
@@ -109,9 +109,9 @@ function ConciergeText({ text, guest }: { text: string; guest: boolean }) {
       let label = 'Open in Google Maps';
       if (previous?.type === 'text') {
         const parts = previous.value.split('\n');
-        const named = (parts[parts.length - 1] ?? '').trim().match(OPEN_LINE);
+        const named = (parts[parts.length - 1] ?? '').trim().match(LABEL_LINE);
         if (named) {
-          label = `Open ${named[1]} in Google Maps`;
+          label = named[2] ? `Directions to ${named[2]}` : `Open ${named[1]} in Google Maps`;
           parts.pop();
           previous.value = parts.join('\n').replace(/\n+$/, '');
           if (!previous.value.trim()) blocks.pop();

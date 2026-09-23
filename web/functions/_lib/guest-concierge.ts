@@ -125,7 +125,7 @@ This house is in Provo Canyon. Heber and Midway are up the canyon, about 25 minu
 
 Use Google Search before you name a business, a trail, hours, weather, or road conditions. Area picks are only a starting point when they ask something general, such as where to eat tonight, with no town and no particular food. If they name a town, a dish, or the best of something, answer that exact request with a real place in that town. Say why it fits and how long the drive is from this house, including whether it is up-canyon or down-canyon. Never swap in a house pick from a different town. Do not invent a place. Offer a second option only if they ask.
 
-When they ask about a place they would drive to or eat at, name that one place in the answer. Do not paste a web address. A Google Maps link is added for them so they can open the place.
+When they ask about any place outside this house, name the real place. That includes restaurants, ski resorts, trails, stores, trailheads, hospitals, and anything else they would go to. Say how long the drive is from this house and which way: up the canyon, down the canyon, or over toward Park City. If they ask about more than one place, name each one. Do not paste a web address. Driving directions are added for every place you name.
 ${controlNotes(stay)}
 Answer the question yourself whenever you can. Call message_host only when they need a person: something is broken, they want a delivery or a setup, or they ask for Brandon. Do not text Brandon for restaurants, directions, weather, or anything in these notes.
 
@@ -481,12 +481,21 @@ async function runNora(
   }
 }
 
-function wantsAPlace(question: string) {
-  return /\b(best|where|pizza|restaurant|eat|food|coffee|heber|midway|park city|salt lake|provo|orem)\b/i.test(question);
+function isHouseOnly(question: string) {
+  if (/\b(where|near|nearby|closest|directions|drive to|resort|restaurant|ski|trail|hike|store|shop|town|city|hospital|temple|mountain|heber|midway|park city|provo|orem|salt lake|downtown)\b/i.test(question)) {
+    return false;
+  }
+  return /\b(checkout|check-out|check in|check-in|wi-?fi|password|door|code|lights?|lamp|thermostat|towel|dishwasher|trash|fireplace|oven|washer|dryer|hot water|heater|garage|parking|your name|who are you|house rules)\b/i.test(question);
 }
 
-function wantsDirections(question: string) {
-  return /\b(pizza|restaurant|eat|eating|food|dinner|lunch|breakfast|brunch|coffee|cafe|bakery|grocery|groceries|gas|trail|hike|hiking|ski|skiing|drive to|directions|pharmacy|store|shop|bar|brewery|winery|museum|where (to|can|should))\b/i.test(question);
+function isSmallTalk(question: string) {
+  return /^(hi|hey|hello|thanks|thank you|ok|okay|how are you|good morning|good night)\b/i.test(question.trim());
+}
+
+function asksAboutAPlace(question: string) {
+  if (isHouseOnly(question) || isSmallTalk(question)) return false;
+  if (/\b(weather|forecast)\b/i.test(question) && !/\b(road|canyon|drive|resort|mountain)\b/i.test(question)) return false;
+  return true;
 }
 
 function housePoint(stay: ConciergeStay) {
@@ -498,22 +507,24 @@ function housePoint(stay: ConciergeStay) {
 async function groundedReply(apiKey: string, stay: ConciergeStay, seed: GeminiContent[], question: string) {
   let lastError = 'Nora could not look that up just now. Text or call us and we will help.';
   const contents = seed.map((item) => ({ role: item.role, parts: item.parts.map((part) => ({ ...part })) }));
-  const local = wantsAPlace(question);
-  const directions = wantsDirections(question);
+  const local = asksAboutAPlace(question);
   if (local) {
     const last = contents[contents.length - 1];
     if (last?.role === 'user') {
       const asked = last.parts.map((part) => (typeof part.text === 'string' ? part.text : '')).join(' ').trim();
       last.parts = [{
-        text: `${asked}\n\nSearch before you answer. Name one real business in the town they asked about. Do not include a web address. Heber and Midway are up Provo Canyon. Provo and Orem are down-canyon. Do not recommend a Provo restaurant for Heber.`,
+        text: `${asked}\n\nLook up the place they asked about. Name each real place, not a substitute from another town. Do not include a web address. Heber and Midway are up Provo Canyon. Provo and Orem are down-canyon. Do not recommend a Provo place for Heber.`,
       }];
     }
   }
-  if (directions) {
+  if (local) {
     try {
       const json = await generateNora(apiKey, 'gemini-2.5-flash', stay, contents, [{ googleMaps: {} }], housePoint(stay));
       const text = replyText(json);
-      if (text && placeFromGrounding(json) && !wrongTown(question, text)) return attachMapsLink(text, json);
+      if (text && !wrongTown(question, text)) {
+        const linked = attachDirections(text, json, stay, question);
+        if (MAPS_URL.test(linked)) return linked;
+      }
     } catch (err) {
       lastError = err instanceof Error ? err.message : lastError;
     }
@@ -526,7 +537,7 @@ async function groundedReply(apiKey: string, stay: ConciergeStay, seed: GeminiCo
       if (!text) continue;
       if (!local || searched) {
         if (wrongTown(question, text)) continue;
-        return directions ? attachMapsLink(text, json) : text;
+        return local ? attachDirections(text, json, stay, question) : text;
       }
     } catch (err) {
       lastError = err instanceof Error ? err.message : lastError;
@@ -542,41 +553,90 @@ function wrongTown(question: string, text: string) {
 
 const MAPS_URL = /https:\/\/(?:maps\.google\.com|www\.google\.com\/maps)\S*/i;
 
-function placeFromGrounding(json: Awaited<ReturnType<typeof generateNora>>) {
+function placesFromGrounding(json: Awaited<ReturnType<typeof generateNora>>) {
   const chunks = json.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  const places: Array<{ title: string; placeId?: string }> = [];
+  const seen = new Set<string>();
   for (const chunk of chunks) {
     const maps = chunk?.maps;
     const uri = maps?.uri?.trim() ?? '';
     if (!MAPS_URL.test(uri)) continue;
     const title = (maps?.title ?? '').replace(/\s+-\s+Google Maps$/i, '').trim();
     if (!title || /^review of/i.test(title)) continue;
-    return { title, uri };
+    const placeId = maps?.placeId?.replace(/^places\//, '');
+    const key = placeId || title.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    places.push({ title, placeId });
   }
-  return null;
+  return places;
 }
 
-function attachMapsLink(text: string, json: Awaited<ReturnType<typeof generateNora>>) {
-  const place = placeFromGrounding(json);
+function attachDirections(
+  text: string,
+  json: Awaited<ReturnType<typeof generateNora>>,
+  stay: ConciergeStay,
+  question: string,
+) {
   const stripped = text
-    .replace(/\n*Open .+ in Google Maps\nhttps:\/\/\S+/g, '')
+    .replace(/\n*(?:Open .+ in Google Maps|Directions to .+)\nhttps:\/\/\S+/g, '')
     .replace(MAPS_URL, '')
     .trim();
-  if (place) return `${stripped}\n\nOpen ${place.title} in Google Maps\n${place.uri}`;
-  if (MAPS_URL.test(text)) return text.trim();
-  const guessed = guessPlaceQuery(stripped);
-  if (!guessed) return text.trim();
-  const query = encodeURIComponent(guessed.query);
-  return `${stripped}\n\nOpen ${guessed.name} in Google Maps\nhttps://www.google.com/maps/search/?api=1&query=${query}`;
+  const grounded = placesFromGrounding(json).filter((place) => mentionsPlace(stripped, place.title));
+  const chosen = (grounded.length ? grounded : placesFromGrounding(json).slice(0, 1)).slice(0, 8);
+  const names = chosen.length ? chosen.map((place) => place.title) : placeNames(stripped, stay, question);
+  const links = (chosen.length ? chosen : names.map((title) => ({ title }))).slice(0, 8);
+  if (!links.length) {
+    const fallback = destinationFromQuestion(question);
+    if (!fallback) return stripped;
+    links.push({ title: fallback });
+  }
+  const block = links
+    .map((place) => `Directions to ${place.title}\n${directionsUrl(stay, place.title, place.placeId)}`)
+    .join('\n\n');
+  return `${stripped}\n\n${block}`;
 }
 
-function guessPlaceQuery(text: string) {
-  const named = [...text.matchAll(/\b([A-Z][\p{L}\d'’&.-]+(?:\s+[A-Z\d][\p{L}\d'’&.-]*){0,5})\s+in\s+([A-Z][\p{L}]+(?:\s+[A-Z][\p{L}]+){0,2})/gu)];
-  const hit = named.at(-1);
-  if (!hit) return null;
-  const name = hit[1].trim();
-  const city = hit[2].trim();
-  if (name.length < 3 || /^(For|The|A|An)$/.test(name)) return null;
-  return { name: `${name} in ${city}`, query: `${name} ${city} Utah` };
+function mentionsPlace(text: string, title: string) {
+  const name = title.toLowerCase();
+  const body = text.toLowerCase();
+  if (body.includes(name)) return true;
+  const head = name.split(/\s+/).slice(0, 2).join(' ');
+  return head.length > 3 && body.includes(head);
+}
+
+function placeNames(text: string, stay: ConciergeStay, question: string) {
+  const found = [...text.matchAll(/\b([A-Z][\p{L}\d'’&.-]+(?:\s+[A-Z\d][\p{L}\d'’&.-]+){0,4})\b/gu)].map((match) => match[1].trim());
+  const ban = new Set(['Nora', 'Google', 'Google Maps', 'Salt Lake', 'Utah', 'The River House', 'River House', stay.propertyName]);
+  const generic = /^(I|We|The|A|An|It|This|That|They|Many|For|Open|Directions|Checkout|Check|House|Park|City|Lake|Best|From|With|About|Drive|Canyon|Minutes|There|Here|Good|Near|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/;
+  const waypoint = /^(Heber|Midway|Provo|Orem|Lehi|Lindon|Draper|Sandy)$/i;
+  return [...new Set(found.filter((name) => {
+    if (ban.has(name) || generic.test(name)) return false;
+    if (waypoint.test(name) && !question.toLowerCase().includes(name.toLowerCase())) return false;
+    return name.includes(' ') || name.length >= 4;
+  }))].slice(0, 8);
+}
+
+function destinationFromQuestion(question: string) {
+  const cleaned = question
+    .replace(/\b(what|whats|what's|where|is|are|the|best|good|a|an|some|any|near|nearby|around|here|there|closest|close|to|for|in|me|us|we|i|can|you|please|tell|about|how|do|get|drive|from|this|house|should|which)\b/gi, ' ')
+    .replace(/[?!.]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (cleaned.length < 3) return null;
+  return `${cleaned} Utah`;
+}
+
+function directionsUrl(stay: ConciergeStay, title: string, placeId?: string) {
+  const origin = housePoint(stay);
+  const params = new URLSearchParams({
+    api: '1',
+    origin: `${origin.latitude},${origin.longitude}`,
+    destination: title,
+    travelmode: 'driving',
+  });
+  if (placeId && /^[A-Za-z0-9_-]+$/.test(placeId)) params.set('destination_place_id', placeId);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
 async function houseActionReply(
@@ -597,7 +657,10 @@ async function houseActionReply(
     const parts = json.candidates?.[0]?.content?.parts ?? [];
     const calls = parts.filter((part) => part.functionCall?.name);
     const text = parts.map((part) => part.text?.trim() ?? '').filter(Boolean).join('\n\n');
-    if (!calls.length) return text || draft;
+    if (!calls.length) {
+      const spoken = text || draft;
+      return MAPS_URL.test(spoken) ? spoken : draft;
+    }
     contents.push({ role: 'model', parts });
     const responses = [];
     for (const part of calls) {
@@ -639,7 +702,7 @@ async function generateNora(
     candidates?: Array<{
       content?: { parts?: Array<{ text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }> };
       groundingMetadata?: {
-        groundingChunks?: Array<{ maps?: { uri?: string; title?: string } }>;
+        groundingChunks?: Array<{ maps?: { uri?: string; title?: string; placeId?: string } }>;
       };
     }>;
   };
