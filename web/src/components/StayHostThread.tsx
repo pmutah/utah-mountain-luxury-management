@@ -75,11 +75,9 @@ export function StayHostThread({ token }: { token: string }) {
   return (
     <div className="min-h-screen bg-[#07110f] text-[#f6f1e8]" data-bot="stay-host-thread">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 py-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d4b56a]">Maren</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d4b56a]">Nora</p>
         <h1 className="mt-2 font-display text-3xl">{title}</h1>
-        <p className="mt-2 text-sm text-white/50">
-          Your reply shows on their stay. If they are still talking with Maren, she says it out loud.
-        </p>
+        <p className="mt-2 text-sm text-white/50">Your reply shows on their stay.</p>
         <div className="mt-6 flex-1 space-y-3">
           {messages.length === 0 && <p className="text-sm text-white/40">Nothing from the guest yet.</p>}
           {messages.map((message) => (

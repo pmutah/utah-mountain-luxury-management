@@ -15,7 +15,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
   const key = env.XAI_API_KEY?.trim();
   if (!key) {
-    return corsJson(request, { error: 'Maren is not connected yet. Text or call us and we will help.' }, 503);
+    return corsJson(request, { error: 'Nora is not connected yet. Text or call us and we will help.' }, 503);
   }
 
   const room = await conciergeSessionRoom(env, resolved.stay.token);
@@ -24,7 +24,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   const session = conciergeSession(resolved.stay);
   const minted = await mintClientSecret(key, session);
   if (!minted.value) {
-    return corsJson(request, { error: 'Maren could not start. Text or call us and we will help.' }, 502);
+    return corsJson(request, { error: 'Nora could not start. Text or call us and we will help.' }, 502);
   }
   await markConciergeSession(env, resolved.stay.token);
   return corsJson(

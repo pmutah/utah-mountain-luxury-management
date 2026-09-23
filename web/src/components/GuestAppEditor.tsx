@@ -177,7 +177,7 @@ export function GuestAppEditor({ onToast }: { onToast: (msg: string, kind?: 'suc
               House controls (Home Assistant)
             </p>
             <p className="text-xs text-slate-500">
-              Guests can ask Maren to run these. They see the name only. The entity id stays here, for example light.living_room.
+              Guests can ask Nora to run these. They see the name only. The entity id stays here, for example light.living_room.
             </p>
             {(guide.controls ?? []).map((control, index) => (
               <div key={index} className="grid sm:grid-cols-[1fr_1fr_auto] gap-2">

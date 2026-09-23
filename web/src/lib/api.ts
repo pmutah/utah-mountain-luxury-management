@@ -385,6 +385,13 @@ export interface StayThreadMessage {
   at: string;
 }
 
+export interface ConciergeChatMessage {
+  id: string;
+  from: 'guest' | 'nora';
+  text: string;
+  at: string;
+}
+
 export interface StayGuide {
   enabled: boolean;
   guestName: string;
@@ -853,10 +860,14 @@ export const api = {
     }),
   getStayGuide: (token: string, preview = false) =>
     request<StayGuideResponse>(`/api/stay-guide/${encodeURIComponent(token)}${preview ? '?preview=1' : ''}`),
-  startConcierge: (token: string, preview = false) =>
-    request<{ clientSecret: string; expiresAt?: number; session: Record<string, unknown> }>(
-      `/api/stay-guide/${encodeURIComponent(token)}/voice${preview ? '?preview=1' : ''}`,
-      { method: 'POST' },
+  getConciergeChat: (token: string, preview = false) =>
+    request<{ messages: ConciergeChatMessage[] }>(
+      `/api/stay-guide/${encodeURIComponent(token)}/chat${preview ? '?preview=1' : ''}`,
+    ),
+  askConcierge: (token: string, text: string, preview = false) =>
+    request<{ reply: string; messages: ConciergeChatMessage[] }>(
+      `/api/stay-guide/${encodeURIComponent(token)}/chat${preview ? '?preview=1' : ''}`,
+      { method: 'POST', body: JSON.stringify({ text }) },
     ),
   conciergeTextHost: (token: string, note: string, preview = false) =>
     request<{ sent: boolean; tellGuest: string }>(

@@ -10,7 +10,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'stay', label: 'Your stay' },
   { id: 'house', label: 'The house' },
   { id: 'area', label: 'The area' },
-  { id: 'help', label: 'Help' },
+  { id: 'help', label: 'Nora' },
 ];
 
 const PLACE_KINDS: Array<{ id: GuidePlace['kind'] | 'all'; label: string }> = [
@@ -212,6 +212,18 @@ export function StayApp({ token }: { token: string }) {
               </a>
             )}
 
+            <button
+              type="button"
+              onClick={() => setTab('help')}
+              className="flex w-full items-center justify-between rounded-[28px] border border-[#d4b56a]/40 bg-[#d4b56a]/10 px-5 py-4 text-left"
+              data-bot="stay-ask-nora"
+            >
+              <span>
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d4b56a]">Concierge</span>
+                <span className="mt-1 block text-lg text-[#f6f1e8]">Ask Nora</span>
+              </span>
+              <span className="text-sm text-[#d4b56a]">Chat</span>
+            </button>
             <Card>
               <Kicker>Getting in</Kicker>
               {access.unlocked ? (
@@ -349,7 +361,7 @@ export function StayApp({ token }: { token: string }) {
 
         {tab === 'help' && (
           <>
-            <GuestConcierge token={token} preview={preview} hostReply={hostReply} />
+            <GuestConcierge token={token} preview={preview} />
             <Card>
               <Kicker>Reach us</Kicker>
               <div className="mt-4 grid grid-cols-2 gap-3">

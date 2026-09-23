@@ -10,12 +10,13 @@ import { SURVEY_PHONE } from './survey-copy';
 import type { AgentEnv } from './agent/types';
 import type { SettingsEnv } from './kv';
 
-export const CONCIERGE_NAME = 'Maren';
+export const CONCIERGE_NAME = 'Nora';
 export const CONCIERGE_VOICE = 'eve';
 const SESSIONS_PER_DAY = 8;
 const TEXTS_PER_DAY = 6;
+const MESSAGES_PER_DAY = 40;
 
-type Usage = { day: string; sessions: number; texts: number };
+type Usage = { day: string; sessions: number; texts: number; messages?: number };
 
 export type ConciergeStay = {
   token: string;
@@ -114,13 +115,13 @@ export function conciergeInstructions(stay: ConciergeStay): string {
     : `Door code and Wi-Fi are not available yet. They appear in the app on ${stay.opensOn}. If they ask sooner, say that date. Do not invent a code.`;
   const sections = guide.sections.map((section) => `${section.title}: ${section.body}`).join('\n');
   const places = guide.places.map((place) => `${place.name}${place.area ? ` (${place.area})` : ''}: ${place.note}`).join('\n');
-  return `You are ${CONCIERGE_NAME}, the guest concierge at ${stay.propertyName} for Utah Mountain Luxury. You are speaking out loud with ${first}, who is staying ${stay.checkIn} to ${stay.checkOut}.
+  return `You are ${CONCIERGE_NAME}, the guest concierge at ${stay.propertyName} for Utah Mountain Luxury. You are writing with ${first}, who is staying ${stay.checkIn} to ${stay.checkOut}.
 
-Talk like a person at the house. Warm, brief, specific. This is a spoken conversation: no lists, no markdown, usually one or two sentences. You may give short steps when they ask how something works.
+Write like a person at the house. Warm, brief, specific. Plain sentences, no markdown headings. Usually one or two short paragraphs. Short steps are fine when they ask how something works.
 
-You help with this house and the surrounding area: how things work, food, skiing, hiking, kids, driving, weather, and hours. Use the notes below. When they ask where to eat, name one specific place, say why it fits, and about how far it is. Prefer the area picks. Use web search when they want something the picks do not cover, such as the best Italian nearby, or for current hours, weather, and road conditions. Offer a second option only if they ask.
+You help with this house and the surrounding area: how things work, food, skiing, hiking, kids, driving, weather, and hours. Use the notes below. When they ask where to eat, name one specific place, say why it fits, and about how far it is. Prefer the area picks. Use web search when they want something the picks do not cover, such as the best Italian nearby, or for current hours, weather, and road conditions. If search is unavailable, recommend the closest area pick and say it is the closest fit. Offer a second option only if they ask.
 ${controlNotes(stay)}
-If you still do not know, or they want a person, call message_host and tell them you texted Brandon.
+Answer the question yourself whenever you can. Call message_host only when they need a person: something is broken, they want a delivery or a setup, or they ask for Brandon. Do not text Brandon for restaurants, directions, weather, or anything in these notes.
 
 Never discuss money, rates, other guests, the owners' personal life, taxes, or any other property's business. Do not put door codes or Wi-Fi passwords in a text to Brandon.
 A real emergency is 911. Then share the emergency note.
@@ -171,7 +172,7 @@ export function conciergeSession(stay: ConciergeStay) {
         type: 'function',
         name: 'message_host',
         description:
-          'Text Brandon, the host, when you cannot answer or the guest wants a person. The note is what they need, in one or two sentences. Never include a door code or Wi-Fi password.',
+          'Text Brandon only when the guest needs a person: something broken, a delivery, a setup, or they asked for him. Never use this for restaurants, directions, weather, or house notes. Never include a door code or Wi-Fi password.',
         parameters: {
           type: 'object',
           properties: {
@@ -293,7 +294,7 @@ export async function textHost(
       tellGuest: `I've already texted Brandon several times today. Please call ${stay.guide.contactPhone}.`,
     };
   }
-  const clean = note.replace(/\s+/g, ' ').trim().slice(0, 400);
+  const clean = scrubSecrets(stay, note).replace(/\s+/g, ' ').trim().slice(0, 400);
   if (!clean) {
     return { sent: false, tellGuest: `I didn't catch what to tell Brandon. Please call ${stay.guide.contactPhone}.` };
   }
@@ -309,4 +310,224 @@ export async function textHost(
   }
   await kvPut(env, usageKey(stay.token), { ...usage, texts: usage.texts + 1 });
   return { sent: true, tellGuest: 'I texted Brandon. His reply will show up here.' };
+}
+
+function scrubSecrets(stay: ConciergeStay, note: string) {
+  let clean = note;
+  for (const secret of [stay.guide.doorCode, stay.guide.wifiPassword]) {
+    const value = secret?.trim();
+    if (value && value.length >= 3) clean = clean.split(value).join('[removed]');
+  }
+  return clean;
+}
+
+export type ConciergeChatMessage = {
+  id: string;
+  from: 'guest' | 'nora';
+  text: string;
+  at: string;
+};
+
+function chatKey(token: string) {
+  return `conciergeChat:${token}`;
+}
+
+export async function loadConciergeChat(env: SettingsEnv, token: string): Promise<ConciergeChatMessage[]> {
+  const rows = await kvGet<ConciergeChatMessage[]>(env, chatKey(token), []);
+  return Array.isArray(rows) ? rows : [];
+}
+
+export async function askNora(
+  env: ConciergeEnv & { HOME_ASSISTANT_URL?: string; HOME_ASSISTANT_TOKEN?: string },
+  stay: ConciergeStay,
+  text: string,
+  origin: string,
+): Promise<{ reply: string; messages: ConciergeChatMessage[] } | { error: string; status: number }> {
+  const question = text.replace(/\s+/g, ' ').trim().slice(0, 1000);
+  if (!question) return { error: 'Type a question for Nora.', status: 400 };
+  const usage = await usageToday(env, stay.token);
+  const sentToday = usage.messages ?? 0;
+  if (sentToday >= MESSAGES_PER_DAY) {
+    return {
+      error: `${CONCIERGE_NAME} has answered as much as she can today. Text or call us and we will help.`,
+      status: 429,
+    };
+  }
+  const key = env.GEMINI_API_KEY?.trim();
+  if (!key) return { error: 'Nora is not available right now. Text or call us and we will help.', status: 503 };
+
+  const prior = await loadConciergeChat(env, stay.token);
+  const contents: GeminiContent[] = prior.slice(-12).map((message) => ({
+    role: message.from === 'guest' ? 'user' : 'model',
+    parts: [{ text: message.text }],
+  }));
+  contents.push({ role: 'user', parts: [{ text: question }] });
+
+  let reply = '';
+  try {
+    reply = await runNora(key, stay, contents, async (name, args) => {
+      if (name === 'message_host') {
+        const result = await textHost(env, stay, String(args.note ?? question), origin);
+        return { tellGuest: result.tellGuest, sent: result.sent };
+      }
+      if (name === 'control_house') {
+        const result = await controlHouse(env, stay, {
+          name: typeof args.name === 'string' ? args.name : '',
+          action: typeof args.action === 'string' ? args.action : '',
+          brightness: typeof args.brightness === 'number' ? args.brightness : undefined,
+        });
+        return result;
+      }
+      return { tellGuest: 'That is not something I can do from here.' };
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    return {
+      error: message.startsWith('Nora') ? message : 'Nora could not answer just now. Text or call us and we will help.',
+      status: 502,
+    };
+  }
+
+  const guestMessage: ConciergeChatMessage = {
+    id: crypto.randomUUID(),
+    from: 'guest',
+    text: question,
+    at: new Date().toISOString(),
+  };
+  const marenMessage: ConciergeChatMessage = {
+    id: crypto.randomUUID(),
+    from: 'nora',
+    text: reply.slice(0, 2000),
+    at: new Date().toISOString(),
+  };
+  const messages = [...prior, guestMessage, marenMessage].slice(-40);
+  await kvPut(env, chatKey(stay.token), messages);
+  const latest = await usageToday(env, stay.token);
+  await kvPut(env, usageKey(stay.token), { ...latest, messages: (latest.messages ?? 0) + 1 });
+  return { reply: marenMessage.text, messages };
+}
+
+type GeminiContent = { role: 'user' | 'model'; parts: Array<Record<string, unknown>> };
+
+const MAREN_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'] as const;
+
+const MAREN_FUNCTIONS = {
+  functionDeclarations: [
+    {
+      name: 'control_house',
+      description:
+        'Turn on, turn off, or dim a connected device in this house. Use a device name from the instructions. brightness is 1 to 100 and only for dim.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Device name from the instructions, such as Living room lights.' },
+          action: { type: 'string', enum: ['on', 'off', 'dim'] },
+          brightness: { type: 'number', description: '1 to 100 when dimming.' },
+        },
+        required: ['name', 'action'],
+      },
+    },
+    {
+      name: 'message_host',
+      description:
+        'Text Brandon only when the guest needs a person: something broken, a delivery, a setup, or they asked for him. Never use this for restaurants, directions, weather, or house notes. Never include a door code or Wi-Fi password.',
+      parameters: {
+        type: 'object',
+        properties: {
+          note: { type: 'string', description: 'What the guest needs, in their words.' },
+        },
+        required: ['note'],
+      },
+    },
+  ],
+};
+
+async function runNora(
+  apiKey: string,
+  stay: ConciergeStay,
+  contents: GeminiContent[],
+  runTool: (name: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>,
+) {
+  let lastError = 'Nora could not answer just now. Text or call us and we will help.';
+  for (const model of MAREN_MODELS) {
+    for (const withSearch of [true, false]) {
+      try {
+        return await completeNora(apiKey, model, stay, contents, withSearch, runTool);
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : lastError;
+        if (withSearch) continue;
+        if (/not found|not supported|invalid/i.test(lastError)) break;
+        if (!/busy|high demand|429|503|unavailable/i.test(lastError)) throw err;
+      }
+    }
+  }
+  throw new Error(lastError);
+}
+
+async function completeNora(
+  apiKey: string,
+  model: string,
+  stay: ConciergeStay,
+  seed: GeminiContent[],
+  withSearch: boolean,
+  runTool: (name: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>,
+) {
+  const contents = seed.map((item) => ({ role: item.role, parts: item.parts.map((part) => ({ ...part })) }));
+  const tools = withSearch ? [MAREN_FUNCTIONS, { google_search: {} }] : [MAREN_FUNCTIONS];
+  for (let round = 0; round < 4; round += 1) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: conciergeInstructions(stay) }] },
+          contents,
+          tools,
+          generationConfig: { temperature: 0.4 },
+        }),
+      },
+    );
+    const body = await response.text();
+    if (!response.ok) {
+      throw new Error(geminiError(response.status, body));
+    }
+    const json = JSON.parse(body) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }> } }>;
+    };
+    const parts = json.candidates?.[0]?.content?.parts ?? [];
+    const calls = parts.filter((part) => part.functionCall?.name);
+    const text = parts.map((part) => part.text?.trim() ?? '').filter(Boolean).join('\n\n');
+    if (!calls.length) {
+      if (!text) throw new Error('Nora could not answer just now. Text or call us and we will help.');
+      return text;
+    }
+    contents.push({ role: 'model', parts });
+    const responses = [];
+    for (const part of calls) {
+      const name = part.functionCall?.name ?? '';
+      const args = part.functionCall?.args ?? {};
+      const result = await runTool(name, args);
+      responses.push({ functionResponse: { name, response: result } });
+    }
+    contents.push({ role: 'user', parts: responses });
+  }
+  throw new Error('Nora could not finish that. Text or call us and we will help.');
+}
+
+function geminiError(status: number, body: string) {
+  try {
+    const json = JSON.parse(body) as { error?: { message?: string } };
+    const detail = json.error?.message?.trim();
+    if (detail) {
+      if (status === 429 || status === 503 || /high demand|overloaded|unavailable/i.test(detail)) {
+        return 'Nora is busy right now. Wait a moment and try again.';
+      }
+      return detail;
+    }
+  } catch {
+    // ignore
+  }
+  if (status === 429 || status === 503) return 'Nora is busy right now. Wait a moment and try again.';
+  return 'Nora could not answer just now. Text or call us and we will help.';
 }

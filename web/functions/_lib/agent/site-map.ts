@@ -73,7 +73,7 @@ export const AGENT_SITE_MAP = {
     guestApp:
       'GET /api/guest-guide — each house guest app (codes, Wi-Fi, house sections, videos, area picks). POST { propertyId, guide } saves one house. Guests see it at /stay/:token; codes show from the day before check-in until noon on checkout day. Never paste codes into chat, SMS, or email.',
     publicStayGuide:
-      'GET /api/stay-guide/:token — what the guest app shows. Add ?preview=1 with the owner cookie or bot bearer to see codes early. POST /api/stay-guide/:token/voice starts Maren. When she needs Brandon she texts him a link to /stay/:token/host. POST /api/stay-guide/:token/thread (owner sign-in) is his reply, which the guest app shows and Maren speaks if the guest is still talking. She has no access to the books.',
+      'GET /api/stay-guide/:token — what the guest app shows. Add ?preview=1 with the owner cookie or bot bearer to see codes early. POST /api/stay-guide/:token/chat { text } is Nora, a text concierge for this stay only. When she needs Brandon she texts him a link to /stay/:token/host. POST /api/stay-guide/:token/thread (owner sign-in) is his reply, which the guest app shows. She has no access to the books.',
   },
   partnerSpend: {
     onlyOn: 'construction',
