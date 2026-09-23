@@ -159,6 +159,9 @@ export interface AgentEnv {
   GOOGLE_OAUTH_CLIENT_ID?: string;
   GOOGLE_OAUTH_CLIENT_SECRET?: string;
   OPENAI_API_KEY?: string;
+  XAI_API_KEY?: string;
+  HOME_ASSISTANT_URL?: string;
+  HOME_ASSISTANT_TOKEN?: string;
   PRICELABS_API_KEY?: string;
   SETTINGS?: KVNamespace;
   TWILIO_ACCOUNT_SID?: string;

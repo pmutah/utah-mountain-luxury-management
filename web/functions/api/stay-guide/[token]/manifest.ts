@@ -19,7 +19,7 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ env, params }) => 
       background_color: '#07110f',
       theme_color: '#07110f',
       icons: [
-        { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+        { src: '/favicon.svg?v=2', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
         { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
         { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
       ],

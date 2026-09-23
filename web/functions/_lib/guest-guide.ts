@@ -17,6 +17,13 @@ export interface GuideVideo {
   url: string;
 }
 
+/** A guest-facing device. The entity id stays on the server. */
+export interface GuideControl {
+  name: string;
+  entityId: string;
+  kind: 'light';
+}
+
 export interface GuidePlace {
   name: string;
   kind: 'ski' | 'food' | 'outdoors' | 'family' | 'rentals' | 'essentials';
@@ -46,6 +53,7 @@ export interface HouseGuide {
   sections: GuideSection[];
   videos: GuideVideo[];
   places: GuidePlace[];
+  controls: GuideControl[];
   updatedAt?: string;
 }
 
@@ -107,6 +115,7 @@ function defaults(id: GuideHouseId): HouseGuide {
     contactEmail: SURVEY_REPLY_EMAIL,
     emergency: 'For a fire, medical emergency, or anyone in danger, call 911 first, then call us.',
     videos: [],
+    controls: [],
     checkout: [
       'Start the dishwasher.',
       'Put used towels in the laundry room.',

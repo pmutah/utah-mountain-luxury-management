@@ -36,6 +36,7 @@ import { AgentChat } from './components/AgentChat';
 import { ConstructionManagerChat } from './components/ConstructionManagerChat';
 import { GuestPreferenceForm } from './components/GuestPreferenceForm';
 import { StayApp } from './components/StayApp';
+import { StayHostThread } from './components/StayHostThread';
 import { CommandPalette } from './components/CommandPalette';
 import { OwnerLetterButton } from './components/OwnerLetterButton';
 import { RiverLaunch } from './components/RiverLaunch';
@@ -313,6 +314,14 @@ function Dashboard() {
 }
 
 export default function App() {
+  const hostMatch = window.location.pathname.match(/^\/stay\/([^/]+)\/host\/?$/);
+  if (hostMatch?.[1]) {
+    return (
+      <LoginGate>
+        <StayHostThread token={decodeURIComponent(hostMatch[1])} />
+      </LoginGate>
+    );
+  }
   const stayMatch = window.location.pathname.match(/^\/stay\/([^/]+)(\/preferences)?\/?$/);
   if (stayMatch?.[1]) {
     const token = decodeURIComponent(stayMatch[1]);

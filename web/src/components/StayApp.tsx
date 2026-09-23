@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, type GuidePlace, type StayGuide } from '../lib/api';
+import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '../lib/api';
+import { AppIcon } from './AppIcon';
+import { GuestConcierge } from './GuestConcierge';
 import { GuestPreferenceForm } from './GuestPreferenceForm';
 
 type Tab = 'stay' | 'house' | 'area' | 'help';
@@ -83,6 +85,7 @@ export function StayApp({ token }: { token: string }) {
   const [off, setOff] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('stay');
+  const [thread, setThread] = useState<StayThreadMessage[]>([]);
   const [kind, setKind] = useState<GuidePlace['kind'] | 'all'>('all');
 
   useEffect(() => {
@@ -105,6 +108,24 @@ export function StayApp({ token }: { token: string }) {
       if (link && previous) link.href = previous;
     };
   }, [token, data]);
+
+  useEffect(() => {
+    if (!data) return;
+    let stop = false;
+    const tick = () => {
+      void api.getStayThread(token, preview).then((result) => {
+        if (!stop) setThread(result.messages);
+      }).catch(() => undefined);
+    };
+    tick();
+    const id = window.setInterval(tick, 3000);
+    return () => {
+      stop = true;
+      window.clearInterval(id);
+    };
+  }, [token, preview, data]);
+
+  const hostReply = [...thread].reverse().find((message) => message.from === 'host') ?? null;
 
   const kinds = useMemo(
     () => PLACE_KINDS.filter((item) => item.id === 'all' || data?.guide.places.some((place) => place.kind === item.id)),
@@ -137,7 +158,10 @@ export function StayApp({ token }: { token: string }) {
   }
   if (!data) {
     return (
-      <div className="guest-survey flex min-h-screen items-center justify-center text-[#d7cfc3]">Opening your stay…</div>
+      <div className="guest-survey flex min-h-screen flex-col items-center justify-center gap-5 bg-[#07110f] text-[#d7cfc3]">
+        <AppIcon />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#d4b56a]">Utah Mountain Luxury</p>
+      </div>
     );
   }
 
@@ -162,6 +186,12 @@ export function StayApp({ token }: { token: string }) {
       </header>
 
       <main className="mx-auto max-w-md space-y-4 px-5 pt-4">
+        {hostReply && (
+          <p className="rounded-2xl bg-[#d4b56a]/15 px-4 py-3 text-sm leading-relaxed text-[#f6f1e8]" data-bot="stay-host-note">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-[#d4b56a]">Brandon</span>
+            {hostReply.text}
+          </p>
+        )}
         {access.preview && (
           <p className="rounded-2xl bg-[#d4b56a]/15 px-4 py-2 text-sm text-[#d4b56a]">
             {data.enabled
@@ -319,6 +349,7 @@ export function StayApp({ token }: { token: string }) {
 
         {tab === 'help' && (
           <>
+            <GuestConcierge token={token} preview={preview} hostReply={hostReply} />
             <Card>
               <Kicker>Reach us</Kicker>
               <div className="mt-4 grid grid-cols-2 gap-3">

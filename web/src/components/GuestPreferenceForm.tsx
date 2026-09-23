@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, type GuestPreferenceAnswers } from '../lib/api';
+import { AppIcon } from './AppIcon';
 import { GuestClassicPreferenceForm } from './GuestClassicPreferenceForm';
 import { GuestVipSurvey } from './GuestVipSurvey';
 
@@ -62,8 +63,9 @@ export function GuestPreferenceForm({ token }: { token: string }) {
 
   if (loading) {
     return (
-      <div className="guest-survey min-h-screen flex items-center justify-center text-[#d7cfc3]">
-        Loading your stay…
+      <div className="guest-survey flex min-h-screen flex-col items-center justify-center gap-5 bg-[#07110f] text-[#d7cfc3]">
+        <AppIcon />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[#d4b56a]">Utah Mountain Luxury</p>
       </div>
     );
   }

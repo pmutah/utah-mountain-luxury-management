@@ -172,6 +172,59 @@ export function GuestAppEditor({ onToast }: { onToast: (msg: string, kind?: 'suc
             </div>
           </div>
 
+          <div className="space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              House controls (Home Assistant)
+            </p>
+            <p className="text-xs text-slate-500">
+              Guests can ask Maren to run these. They see the name only. The entity id stays here, for example light.living_room.
+            </p>
+            {(guide.controls ?? []).map((control, index) => (
+              <div key={index} className="grid sm:grid-cols-[1fr_1fr_auto] gap-2">
+                <input
+                  className={input}
+                  placeholder="Living room lights"
+                  value={control.name}
+                  onChange={(e) =>
+                    patch({
+                      controls: (guide.controls ?? []).map((item, i) =>
+                        i === index ? { ...item, name: e.target.value } : item,
+                      ),
+                    })
+                  }
+                />
+                <input
+                  className={input}
+                  placeholder="light.living_room"
+                  value={control.entityId}
+                  onChange={(e) =>
+                    patch({
+                      controls: (guide.controls ?? []).map((item, i) =>
+                        i === index ? { ...item, entityId: e.target.value.trim() } : item,
+                      ),
+                    })
+                  }
+                />
+                <button
+                  type="button"
+                  className="text-xs text-red-300"
+                  onClick={() => patch({ controls: (guide.controls ?? []).filter((_, i) => i !== index) })}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-xl bg-slate-800 text-xs font-black uppercase"
+              onClick={() =>
+                patch({ controls: [...(guide.controls ?? []), { name: '', entityId: '', kind: 'light' }] })
+              }
+            >
+              Add light
+            </button>
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-3">
             {text('headline', 'Headline')}
             {text('address', 'Address')}

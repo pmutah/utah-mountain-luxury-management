@@ -339,6 +339,15 @@ export function GuestsPanel({
                   Preview app
                 </a>
               )}
+              {(survey?.token || stay.surveyToken) && (
+                <a
+                  data-bot="stay-host-open"
+                  href={`/stay/${encodeURIComponent(survey?.token ?? stay.surveyToken ?? '')}/host`}
+                  className="px-4 py-2 rounded-xl border border-[#d4b56a]/50 text-[#d4b56a] text-xs font-black uppercase"
+                >
+                  Guest thread
+                </a>
+              )}
               <button
                 type="button"
                 data-bot="survey-answers"

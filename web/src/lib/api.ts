@@ -374,7 +374,15 @@ export interface HouseGuide {
   sections: Array<{ title: string; body: string }>;
   videos: Array<{ title: string; url: string }>;
   places: GuidePlace[];
+  controls: Array<{ name: string; entityId: string; kind: 'light' }>;
   updatedAt?: string;
+}
+
+export interface StayThreadMessage {
+  id: string;
+  from: 'guest' | 'host';
+  text: string;
+  at: string;
 }
 
 export interface StayGuide {
@@ -845,6 +853,34 @@ export const api = {
     }),
   getStayGuide: (token: string, preview = false) =>
     request<StayGuideResponse>(`/api/stay-guide/${encodeURIComponent(token)}${preview ? '?preview=1' : ''}`),
+  startConcierge: (token: string, preview = false) =>
+    request<{ clientSecret: string; expiresAt?: number; session: Record<string, unknown> }>(
+      `/api/stay-guide/${encodeURIComponent(token)}/voice${preview ? '?preview=1' : ''}`,
+      { method: 'POST' },
+    ),
+  conciergeTextHost: (token: string, note: string, preview = false) =>
+    request<{ sent: boolean; tellGuest: string }>(
+      `/api/stay-guide/${encodeURIComponent(token)}/message${preview ? '?preview=1' : ''}`,
+      { method: 'POST', body: JSON.stringify({ note }) },
+    ),
+  getStayThread: (token: string, preview = false) =>
+    request<{ messages: StayThreadMessage[] }>(
+      `/api/stay-guide/${encodeURIComponent(token)}/thread${preview ? '?preview=1' : ''}`,
+    ),
+  replyStayThread: (token: string, text: string) =>
+    request<{ message: StayThreadMessage }>(
+      `/api/stay-guide/${encodeURIComponent(token)}/thread?preview=1`,
+      { method: 'POST', body: JSON.stringify({ text }) },
+    ),
+  conciergeControl: (
+    token: string,
+    body: { name: string; action: string; brightness?: number },
+    preview = false,
+  ) =>
+    request<{ ok: boolean; tellGuest: string }>(
+      `/api/stay-guide/${encodeURIComponent(token)}/control${preview ? '?preview=1' : ''}`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
   getGuestGuides: () => request<{ guides: Record<'ranch' | 'lindon' | 'river', HouseGuide> }>('/api/guest-guide'),
   saveGuestGuide: (propertyId: 'ranch' | 'lindon' | 'river', guide: Partial<HouseGuide>) =>
     request<{ ok: boolean; guide: HouseGuide }>('/api/guest-guide', {
