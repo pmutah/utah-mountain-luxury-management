@@ -23,7 +23,7 @@ function findSeedIdByIcalUid(
   overrides: Record<string, Partial<ReservationRecord>>,
   uid: string,
 ): string | undefined {
-  return Object.entries(overrides).find(([, o]) => o.icalUid === uid)?.[0];
+  return Object.entries(overrides).find(([, o]) => o?.icalUid === uid)?.[0];
 }
 
 function findFuzzySeed(ev: ICalEvent, guestName: string) {
@@ -146,7 +146,7 @@ export async function syncReservationsFromIcal(
   }
 
   for (const [id, o] of Object.entries(overrides)) {
-    if (o.icalUid && !activeUids.has(o.icalUid) && o.status !== 'cancelled') {
+    if (o?.icalUid && !activeUids.has(o.icalUid) && o.status !== 'cancelled') {
       overrides[id] = { ...o, status: 'cancelled' };
       stats.cancelled++;
     }

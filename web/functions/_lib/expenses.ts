@@ -80,7 +80,7 @@ export function withReceiptUrls(expenses: ExpenseRecord[]): ExpenseWithReceipt[]
       receiptUrl: hydrated.receiptStoragePath
         ? `/api/expenses/${encodeURIComponent(hydrated.id)}/receipt`
         : null,
-      itemPhotos: (hydrated.itemPhotos ?? []).map((photo) => ({
+      itemPhotos: (Array.isArray(hydrated.itemPhotos) ? hydrated.itemPhotos : []).map((photo) => ({
         ...photo,
         url: `/api/expenses/${encodeURIComponent(hydrated.id)}/photos/${encodeURIComponent(photo.id)}`,
       })),
@@ -123,7 +123,8 @@ export async function ensureTurnoverCleaningExpenses(
   const keepIds = new Set(active.map((r) => `${CLEAN_PREFIX}${r.id}`));
 
   for (const r of active) {
-    const fee = PROPERTIES[r.propertyId].cleaningFee;
+    const property = PROPERTIES[r.propertyId as keyof typeof PROPERTIES];
+    const fee = property?.cleaningFee;
     if (!fee) continue;
     const id = `${CLEAN_PREFIX}${r.id}`;
     const month = r.checkOut.slice(0, 7);

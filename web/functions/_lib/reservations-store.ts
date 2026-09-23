@@ -54,6 +54,7 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
 
   return [...activeSeed, ...extraCustom]
     .map((r) => applyHostNetFromSeed(r))
+    .filter((r) => typeof r.checkIn === 'string' && typeof r.checkOut === 'string')
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
 }
 
@@ -75,6 +76,7 @@ export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {
   const overrides = await loadReservationOverrides(env);
   let oChanged = 0;
   for (const [id, o] of Object.entries(overrides)) {
+    if (!o) continue;
     const seed = RESERVATIONS.find((s) => s.id === id);
     if (!seed) continue;
     const applied = applyHostNetFromSeed({

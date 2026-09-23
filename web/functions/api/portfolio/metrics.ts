@@ -9,7 +9,13 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   const url = new URL(request.url);
   const month = url.searchParams.get('month') ?? currentYearMonth();
   const compare = url.searchParams.get('compare') === '1';
-  await syncIcalIfStale(env);
+  let calendarSync: string | null = null;
+  try {
+    await syncIcalIfStale(env);
+  } catch (err) {
+    calendarSync = err instanceof Error ? err.message : String(err);
+  }
+  try {
   await backfillZeroPayouts(env);
   const fees = await loadExtraCleaningFees(env);
   let reservations = await getAllReservations(env);
@@ -32,6 +38,7 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     expenses: allExpenses,
     extraCleaningFees: fees,
     properties: Object.values(PROPERTIES),
+    calendarSync,
   };
 
   if (compare) {
@@ -56,6 +63,10 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   }
 
   return corsJson(request, payload);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return corsJson(request, { error: message, calendarSync }, 500);
+  }
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);
