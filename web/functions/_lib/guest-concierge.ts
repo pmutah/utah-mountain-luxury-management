@@ -119,7 +119,11 @@ export function conciergeInstructions(stay: ConciergeStay): string {
 
 Write like a person at the house. Warm, brief, specific. Plain sentences, no markdown headings. Usually one or two short paragraphs. Short steps are fine when they ask how something works.
 
-You help with this house and the surrounding area: how things work, food, skiing, hiking, kids, driving, weather, and hours. Use the notes below. When they ask where to eat, name one specific place, say why it fits, and about how far it is. Prefer the area picks. Use web search when they want something the picks do not cover, such as the best Italian nearby, or for current hours, weather, and road conditions. If search is unavailable, recommend the closest area pick and say it is the closest fit. Offer a second option only if they ask.
+You know this house, and you know Salt Lake County, Utah County, Heber, Midway, and Park City. Answer almost any practical question in that region: food, coffee, groceries, gas, gear, trails, ski conditions, events, kids, doctors, pharmacies, and drive times.
+
+This house is in Provo Canyon. Heber and Midway are up the canyon, about 25 minutes. Park City is over the mountain or around through Heber, about 45 to 60 minutes. Provo and Orem are down the canyon, about 20 to 30 minutes. Salt Lake is about an hour. A Provo restaurant is not in Heber. If they say Hebrew, they mean Heber.
+
+Use Google Search before you name a business, a trail, hours, weather, or road conditions. Area picks are only a starting point when they ask something general, such as where to eat tonight, with no town and no particular food. If they name a town, a dish, or the best of something, answer that exact request with a real place in that town. Say why it fits and how long the drive is from this house, including whether it is up-canyon or down-canyon. Never swap in a house pick from a different town. Do not invent a place. Offer a second option only if they ask.
 ${controlNotes(stay)}
 Answer the question yourself whenever you can. Call message_host only when they need a person: something is broken, they want a delivery or a setup, or they ask for Brandon. Do not text Brandon for restaurants, directions, weather, or anything in these notes.
 
@@ -413,7 +417,7 @@ export async function askNora(
 
 type GeminiContent = { role: 'user' | 'model'; parts: Array<Record<string, unknown>> };
 
-const MAREN_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'] as const;
+const SEARCH_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'] as const;
 
 const MAREN_FUNCTIONS = {
   functionDeclarations: [
@@ -446,77 +450,134 @@ const MAREN_FUNCTIONS = {
   ],
 };
 
+function lastGuestText(contents: GeminiContent[]) {
+  for (let i = contents.length - 1; i >= 0; i -= 1) {
+    if (contents[i].role !== 'user') continue;
+    const text = contents[i].parts.map((part) => (typeof part.text === 'string' ? part.text : '')).join(' ').trim();
+    if (text) return text;
+  }
+  return '';
+}
+
+function needsHouseAction(text: string) {
+  return /\b(lights?|lamp|dimmer|\bdim\b|thermostat|text brandon|tell brandon|call brandon|broken|leak|no heat|no hot water|locked out)\b/i.test(text);
+}
+
 async function runNora(
   apiKey: string,
   stay: ConciergeStay,
   contents: GeminiContent[],
   runTool: (name: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>,
 ) {
-  let lastError = 'Nora could not answer just now. Text or call us and we will help.';
-  for (const model of MAREN_MODELS) {
-    for (const withSearch of [true, false]) {
-      try {
-        return await completeNora(apiKey, model, stay, contents, withSearch, runTool);
-      } catch (err) {
-        lastError = err instanceof Error ? err.message : lastError;
-        if (withSearch) continue;
-        if (/not found|not supported|invalid/i.test(lastError)) break;
-        if (!/busy|high demand|429|503|unavailable/i.test(lastError)) throw err;
-      }
-    }
+  const question = lastGuestText(contents);
+  const answer = await groundedReply(apiKey, stay, contents, question);
+  if (!needsHouseAction(question)) return answer;
+  try {
+    return await houseActionReply(apiKey, stay, contents, answer, runTool);
+  } catch {
+    return answer;
   }
-  throw new Error(lastError);
 }
 
-async function completeNora(
+function wantsAPlace(question: string) {
+  return /\b(best|where|pizza|restaurant|eat|food|coffee|heber|midway|park city|salt lake|provo|orem)\b/i.test(question);
+}
+
+async function groundedReply(apiKey: string, stay: ConciergeStay, seed: GeminiContent[], question: string) {
+  let lastError = 'Nora could not look that up just now. Text or call us and we will help.';
+  const contents = seed.map((item) => ({ role: item.role, parts: item.parts.map((part) => ({ ...part })) }));
+  const local = wantsAPlace(question);
+  if (local) {
+    const last = contents[contents.length - 1];
+    if (last?.role === 'user') {
+      const asked = last.parts.map((part) => (typeof part.text === 'string' ? part.text : '')).join(' ').trim();
+      last.parts = [{
+        text: `${asked}\n\nSearch Google before you answer. Name one real business in the town they asked about. Heber and Midway are up Provo Canyon. Provo and Orem are down-canyon. Do not recommend a Provo restaurant for Heber.`,
+      }];
+    }
+  }
+  for (const model of SEARCH_MODELS) {
+    try {
+      const json = await generateNora(apiKey, model, stay, contents, [{ google_search: {} }]);
+      const text = replyText(json);
+      const searched = Boolean(json.candidates?.[0]?.groundingMetadata?.groundingChunks?.length);
+      if (!text) continue;
+      if (!local || searched) {
+        if (/\bheber\b/i.test(question) && /\bslackwater\b/i.test(text)) continue;
+        return text;
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : lastError;
+      if (!/busy|high demand|429|503|unavailable/i.test(lastError)) break;
+    }
+  }
+  throw new Error(lastError.startsWith('Nora') ? lastError : 'Nora could not look that up just now. Text or call us and we will help.');
+}
+
+async function houseActionReply(
   apiKey: string,
-  model: string,
   stay: ConciergeStay,
   seed: GeminiContent[],
-  withSearch: boolean,
+  draft: string,
   runTool: (name: string, args: Record<string, unknown>) => Promise<Record<string, unknown>>,
 ) {
   const contents = seed.map((item) => ({ role: item.role, parts: item.parts.map((part) => ({ ...part })) }));
-  const tools = withSearch ? [MAREN_FUNCTIONS, { google_search: {} }] : [MAREN_FUNCTIONS];
-  for (let round = 0; round < 4; round += 1) {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: conciergeInstructions(stay) }] },
-          contents,
-          tools,
-          generationConfig: { temperature: 0.4 },
-        }),
-      },
-    );
-    const body = await response.text();
-    if (!response.ok) {
-      throw new Error(geminiError(response.status, body));
-    }
-    const json = JSON.parse(body) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }> } }>;
-    };
+  contents.push({ role: 'model', parts: [{ text: draft }] });
+  contents.push({
+    role: 'user',
+    parts: [{ text: 'If they need a light changed or Brandon, use the tools. Otherwise repeat your answer.' }],
+  });
+  for (let round = 0; round < 3; round += 1) {
+    const json = await generateNora(apiKey, 'gemini-2.5-flash', stay, contents, [MAREN_FUNCTIONS]);
     const parts = json.candidates?.[0]?.content?.parts ?? [];
     const calls = parts.filter((part) => part.functionCall?.name);
     const text = parts.map((part) => part.text?.trim() ?? '').filter(Boolean).join('\n\n');
-    if (!calls.length) {
-      if (!text) throw new Error('Nora could not answer just now. Text or call us and we will help.');
-      return text;
-    }
+    if (!calls.length) return text || draft;
     contents.push({ role: 'model', parts });
     const responses = [];
     for (const part of calls) {
       const name = part.functionCall?.name ?? '';
       const args = part.functionCall?.args ?? {};
-      const result = await runTool(name, args);
-      responses.push({ functionResponse: { name, response: result } });
+      responses.push({ functionResponse: { name, response: await runTool(name, args) } });
     }
     contents.push({ role: 'user', parts: responses });
   }
-  throw new Error('Nora could not finish that. Text or call us and we will help.');
+  return draft;
+}
+
+async function generateNora(
+  apiKey: string,
+  model: string,
+  stay: ConciergeStay,
+  contents: GeminiContent[],
+  tools: unknown[],
+) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: conciergeInstructions(stay) }] },
+        contents,
+        tools,
+        generationConfig: { temperature: 0.3 },
+      }),
+    },
+  );
+  const body = await response.text();
+  if (!response.ok) throw new Error(geminiError(response.status, body));
+  return JSON.parse(body) as {
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string; functionCall?: { name?: string; args?: Record<string, unknown> } }> };
+      groundingMetadata?: { groundingChunks?: unknown[] };
+    }>;
+  };
+}
+
+function replyText(json: Awaited<ReturnType<typeof generateNora>>) {
+  const parts = json.candidates?.[0]?.content?.parts ?? [];
+  return parts.map((part) => part.text?.trim() ?? '').filter(Boolean).join('\n\n');
 }
 
 function geminiError(status: number, body: string) {
