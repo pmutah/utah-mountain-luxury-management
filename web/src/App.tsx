@@ -22,6 +22,8 @@ import { ConstructionProjectView } from './components/ConstructionProject';
 import { OurExpenses } from './components/OurExpenses';
 import { GuestsPanel } from './components/GuestsPanel';
 import { GuestPreferenceForm } from './components/GuestPreferenceForm';
+import { CommandPalette } from './components/CommandPalette';
+import { OwnerLetterButton } from './components/OwnerLetterButton';
 import { useToast } from './hooks/useToast';
 import { currentYearMonth } from './lib/months';
 
@@ -103,12 +105,12 @@ function Dashboard() {
 
   if (error && !data) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col items-center justify-center gap-4 p-6">
-        <p className="text-red-400 font-bold">{error}</p>
+      <div className="min-h-screen bg-[var(--uml-bg)] text-[var(--uml-ink)] flex flex-col items-center justify-center gap-4 p-6">
+        <p className="text-red-400">{error}</p>
         <button
           type="button"
           onClick={() => void load()}
-          className="px-6 py-3 bg-blue-600 rounded-2xl text-sm font-black uppercase"
+          className="uml-gold-btn px-6 py-3 rounded-full text-sm tracking-widest uppercase"
         >
           Retry
         </button>
@@ -117,7 +119,7 @@ function Dashboard() {
   }
 
   return (
-    <div id="uml-app" className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4 pb-24">
+    <div id="uml-app" className="min-h-screen font-sans p-4 pb-24">
       <div className="max-w-6xl mx-auto">
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
@@ -129,19 +131,7 @@ function Dashboard() {
               data-bot={`nav-${id}`}
               aria-current={activeTab === id ? 'page' : undefined}
               onClick={() => go(id, id === 'report' ? reportView : 'pnl')}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap min-h-[40px] ${
-                activeTab === id
-                  ? id === 'ours'
-                    ? 'bg-rose-600 text-white shadow-xl'
-                    : id === 'river'
-                      ? 'bg-cyan-600 text-white shadow-xl'
-                      : id === 'report'
-                        ? 'bg-violet-600 text-white shadow-xl'
-                        : id === 'guests'
-                          ? 'bg-teal-600 text-white shadow-xl'
-                          : 'bg-blue-600 text-white shadow-xl'
-                  : 'bg-slate-900 text-slate-500 border border-slate-800'
-              }`}
+              className="uml-nav"
             >
               {id === 'portfolio'
                 ? 'Overview'
@@ -167,11 +157,7 @@ function Dashboard() {
               data-bot="river-rental"
               aria-current={riverView === 'rental' ? 'page' : undefined}
               onClick={() => go('river', 'pnl', 'rental')}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest min-h-[40px] ${
-                riverView === 'rental'
-                  ? 'bg-cyan-600 text-white'
-                  : 'bg-slate-900 text-slate-500 border border-slate-800'
-              }`}
+              className="uml-nav"
             >
               Rental
             </button>
@@ -180,11 +166,7 @@ function Dashboard() {
               data-bot="nav-construction"
               aria-current={riverView === 'build' ? 'page' : undefined}
               onClick={() => go('river', 'pnl', 'build')}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest min-h-[40px] ${
-                riverView === 'build'
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-slate-900 text-slate-500 border border-slate-800'
-              }`}
+              className="uml-nav"
             >
               Build costs
             </button>
@@ -207,22 +189,14 @@ function Dashboard() {
           </main>
         ) : activeTab === 'report' && reportView === 'documents' ? (
           <main className="space-y-6">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                data-bot="report-pnl"
-                onClick={() => go('report', 'pnl')}
-                className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-slate-900 text-slate-500 border border-slate-800"
-              >
+            <div className="flex flex-wrap gap-2 items-center">
+              <button type="button" data-bot="report-pnl" onClick={() => go('report', 'pnl')} className="uml-nav">
                 Management
               </button>
-              <button
-                type="button"
-                data-bot="report-documents"
-                className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-violet-600 text-white shadow-xl"
-              >
+              <button type="button" data-bot="report-documents" className="uml-nav" aria-current="page">
                 Documents
               </button>
+              {data && <OwnerLetterButton data={data} onToast={showToast} />}
             </div>
             <DocumentsVault onToast={showToast} />
           </main>
@@ -238,26 +212,25 @@ function Dashboard() {
                 onToast={showToast}
                 onRefresh={() => void load()}
                 onError={(msg) => showToast(msg, 'error')}
+                onOpenHouse={(id) => go(id)}
+                onOpenBuild={() => go('river', 'pnl', 'build')}
               />
             )}
             {activeTab === 'report' && (
               <div className="space-y-6">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    data-bot="report-pnl"
-                    className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-violet-600 text-white shadow-xl"
-                  >
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button type="button" data-bot="report-pnl" className="uml-nav" aria-current="page">
                     Management
                   </button>
                   <button
                     type="button"
                     data-bot="report-documents"
                     onClick={() => go('report', 'documents')}
-                    className="px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest min-h-[44px] bg-slate-900 text-slate-500 border border-slate-800"
+                    className="uml-nav"
                   >
                     Documents
                   </button>
+                  <OwnerLetterButton data={data} onToast={showToast} />
                 </div>
                 <PortfolioReport
                   month={currentMonth}
@@ -274,6 +247,7 @@ function Dashboard() {
               <PropertyDetail
                 tab={activeTab}
                 data={data}
+                history={history}
                 extraCleaningFees={extraCleaningFees}
                 onRefresh={() => void load()}
                 onToast={showToast}
@@ -284,7 +258,13 @@ function Dashboard() {
         ) : null}
       </div>
       <ToastStack toasts={toasts} />
+      <CommandPalette
+        month={currentMonth}
+        activeTab={activeTab}
+        onNavigate={(dest) => go(dest.tab, dest.report ?? 'pnl', dest.river ?? 'rental')}
+      />
       <AgentChat
+        hideLauncher
         month={currentMonth}
         activeTab={
           activeTab === 'guests' || activeTab === 'ours'
@@ -294,6 +274,7 @@ function Dashboard() {
         onError={(msg) => showToast(msg, 'error')}
       />
       <ConstructionManagerChat
+        hideLauncher
         onError={(msg) => showToast(msg, 'error')}
         onToast={showToast}
       />

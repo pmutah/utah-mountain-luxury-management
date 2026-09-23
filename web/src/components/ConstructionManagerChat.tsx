@@ -19,9 +19,11 @@ async function fileToBase64(file: File): Promise<{ base64: string; mimeType: str
 export function ConstructionManagerChat({
   onError,
   onToast,
+  hideLauncher = false,
 }: {
   onError: (msg: string) => void;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
+  hideLauncher?: boolean;
 }) {
   const {
     open,
@@ -42,6 +44,12 @@ export function ConstructionManagerChat({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, open]);
+
+  useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener('uml:open-build', openChat);
+    return () => window.removeEventListener('uml:open-build', openChat);
+  }, [setOpen]);
 
   const submit = () => {
     if (!input.trim()) return;
@@ -79,6 +87,7 @@ export function ConstructionManagerChat({
   };
 
   if (!open) {
+    if (hideLauncher) return null;
     return (
       <button
         type="button"

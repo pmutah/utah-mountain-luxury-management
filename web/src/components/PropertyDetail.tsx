@@ -2,6 +2,7 @@ import { Brush, CalendarX } from 'lucide-react';
 import {
   formatCurrency,
   PROPERTIES,
+  type HistoryData,
   type PortfolioData,
   type PropertyMetrics,
   type RentalPropertyId,
@@ -12,12 +13,17 @@ import { ExpenseScanner } from './ExpenseScanner';
 import { OccupancyCalendar, RevenueLog } from './OccupancyCalendar';
 import { EmptyState } from './EmptyState';
 import { PropertyExpensesByMonth } from './PropertyExpensesByMonth';
+import { HealthDial } from './HealthDial';
+import { MoneyWaterfall } from './MoneyWaterfall';
+import { SeasonRing } from './SeasonRing';
+import { propertyHealth } from '../lib/luxury';
 
 type TabId = RentalPropertyId;
 
 export function PropertyDetail({
   tab,
   data,
+  history,
   extraCleaningFees,
   onRefresh,
   onToast,
@@ -25,6 +31,7 @@ export function PropertyDetail({
 }: {
   tab: TabId;
   data: PortfolioData;
+  history: HistoryData | null;
   extraCleaningFees: Record<string, number>;
   onRefresh: () => void;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
@@ -34,27 +41,34 @@ export function PropertyDetail({
   const monthReservations = data.reservations.filter(
     (r) => r.propertyId === tab && r.checkIn.startsWith(data.month),
   );
-  const profitColor =
-    tab === 'ranch' ? 'text-blue-400' : tab === 'river' ? 'text-cyan-400' : 'text-emerald-400';
+  const health = propertyHealth(tab, metrics);
+  const year = Number(data.month.slice(0, 4));
+  const yearReservations = history?.reservations?.length ? history.reservations : data.reservations;
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-black text-white">{PROPERTIES[tab].name}</h2>
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">{PROPERTIES[tab].address}</p>
-          <p className={`text-xl font-black ${profitColor}`}>
-            Profit: {formatCurrency(metrics.profit)}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <p className="uml-kicker">{PROPERTIES[tab].address}</p>
+          <h2 className="font-display text-4xl text-[var(--uml-ink)] mt-1">{PROPERTIES[tab].name}</h2>
+          <p className="font-display text-2xl mt-2">{formatCurrency(metrics.profit)} net</p>
         </div>
+        <HealthDial score={health.score} factors={health.factors} />
+      </div>
         {tab === 'river' && (
-          <p className="text-xs text-slate-400">
+          <p className="text-sm text-[var(--uml-muted)] max-w-2xl">
             Provo Riverhouse · sleeps 24 · 7 bedrooms · first stays Oct 15, 2026 · 50/50 Brandon &amp;
-            Stephanie and Todd, 20% management fee. Build bills are on the{' '}
-            <span className="text-amber-400 font-bold">Build costs</span> chip above.
+            Stephanie and Todd, after a 20% management fee. Build bills live on the Build costs chip.
           </p>
         )}
-      </div>
+
+      <MoneyWaterfall data={data} only={tab} />
+      <SeasonRing
+        year={year}
+        reservations={yearReservations}
+        propertyId={tab}
+        title={PROPERTIES[tab].name}
+      />
 
       {metrics.dist && <OwnerDistributionPanel dist={metrics.dist} />}
 

@@ -7,14 +7,15 @@ import {
   type Reservation,
 } from '../lib/api';
 import { GuestStayCard } from './GuestStayCard';
+import { GuestDossier } from './GuestDossier';
 
 type HouseFilter = 'all' | 'ranch' | 'lindon' | 'river';
 
-const HOUSE_FILTERS: Array<{ id: HouseFilter; label: string; activeClass: string }> = [
-  { id: 'all', label: 'All houses', activeClass: 'bg-teal-600 text-white shadow-xl' },
-  { id: 'ranch', label: 'Ranch House', activeClass: 'bg-blue-600 text-white shadow-xl' },
-  { id: 'lindon', label: 'Lindon House', activeClass: 'bg-emerald-600 text-white shadow-xl' },
-  { id: 'river', label: 'River House', activeClass: 'bg-cyan-600 text-white shadow-xl' },
+const HOUSE_FILTERS: Array<{ id: HouseFilter; label: string }> = [
+  { id: 'all', label: 'All houses' },
+  { id: 'ranch', label: 'Ranch House' },
+  { id: 'lindon', label: 'Lindon House' },
+  { id: 'river', label: 'River House' },
 ];
 
 function statusLabel(stay: Reservation, survey?: GuestSurveyRecord) {
@@ -173,6 +174,7 @@ export function GuestsPanel({
 
   return (
     <div className="space-y-6" data-bot="guests">
+      <GuestDossier reservations={reservations} surveys={surveys} />
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-sm text-slate-400">
         <p>
           Gmail: {gmail.connected ? gmail.email : 'not connected — sign in as utahmountainluxury@gmail.com'}
@@ -206,9 +208,8 @@ export function GuestsPanel({
                 key={house.id}
                 type="button"
                 onClick={() => setHouseFilter(house.id)}
-                className={`px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest min-h-[44px] ${
-                  active ? house.activeClass : 'bg-slate-900 text-slate-500 border border-slate-800'
-                }`}
+                className="uml-nav"
+                aria-current={active ? 'page' : undefined}
               >
                 {house.label}
               </button>
@@ -216,7 +217,7 @@ export function GuestsPanel({
           })}
         </div>
         <input
-          className="w-full rounded-2xl bg-slate-900 border border-slate-800 px-4 py-3 text-sm text-white placeholder:text-slate-500"
+          className="w-full rounded-2xl bg-transparent border border-[var(--uml-line)] px-4 py-3 text-sm text-[var(--uml-ink)] placeholder:text-[var(--uml-muted)]"
           placeholder="Search guest, house, or Airbnb code (HMB9PP5E8F)"
           value={houseQuery}
           onChange={(e) => setHouseQuery(e.target.value)}

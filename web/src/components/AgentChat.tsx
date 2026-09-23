@@ -8,10 +8,12 @@ export function AgentChat({
   month,
   activeTab,
   onError,
+  hideLauncher = false,
 }: {
   month: string;
   activeTab: string;
   onError: (msg: string) => void;
+  hideLauncher?: boolean;
 }) {
   const { open, setOpen, messages, loading, toolSteps, sendMessage } = useAgentChat({
     month,
@@ -29,6 +31,12 @@ export function AgentChat({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading, open]);
 
+  useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener('uml:open-cohost', openChat);
+    return () => window.removeEventListener('uml:open-cohost', openChat);
+  }, [setOpen]);
+
   const submit = () => {
     if (!input.trim()) return;
     void sendMessage(input);
@@ -36,6 +44,7 @@ export function AgentChat({
   };
 
   if (!open) {
+    if (hideLauncher) return null;
     return (
       <button
         type="button"

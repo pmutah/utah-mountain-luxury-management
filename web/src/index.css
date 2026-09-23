@@ -1,8 +1,106 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --color-slate-950: #07110f;
+  --color-slate-900: #102421;
+  --color-slate-800: #1a3330;
+  --color-slate-700: #244843;
+  --color-slate-600: #3d5e58;
+}
+
+:root {
+  --uml-bg: #07110f;
+  --uml-bg-glow: rgba(212, 181, 106, 0.14);
+  --uml-card: rgba(16, 36, 33, 0.92);
+  --uml-line: rgba(212, 181, 106, 0.28);
+  --uml-ink: #f4f1ea;
+  --uml-muted: #8fa39c;
+  --uml-gold: #d4b56a;
+  --uml-gold-ink: #1a1408;
+  --uml-glacier: #3d8f8a;
+  color-scheme: dark;
+}
+
+html[data-theme="snow"] {
+  --uml-bg: #f6f3ec;
+  --uml-bg-glow: rgba(46, 122, 118, 0.12);
+  --uml-card: rgba(255, 253, 248, 0.94);
+  --uml-line: rgba(28, 43, 39, 0.12);
+  --uml-ink: #1c2b27;
+  --uml-muted: #5e6f6a;
+  --uml-gold: #8c6b2f;
+  --uml-gold-ink: #fffdf8;
+  color-scheme: light;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  background: var(--uml-bg);
+  color: var(--uml-ink);
+  font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
+}
+
+#uml-app {
+  background:
+    radial-gradient(120% 80% at 100% -10%, var(--uml-bg-glow), transparent 46%),
+    radial-gradient(90% 70% at -10% 110%, rgba(46, 122, 118, 0.18), transparent 50%),
+    var(--uml-bg);
+  color: var(--uml-ink);
+}
+
+.font-display {
+  font-family: "Cormorant Garamond", ui-serif, Georgia, serif;
+  font-weight: 500;
+}
+
+.uml-num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.uml-panel {
+  background: var(--uml-card);
+  border: 1px solid var(--uml-line);
+  color: var(--uml-ink);
+}
+
+.uml-kicker {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--uml-muted);
+}
+
+.uml-nav {
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--uml-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  min-height: 40px;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.uml-nav:hover {
+  border-color: var(--uml-line);
+  color: var(--uml-ink);
+}
+
+.uml-nav[aria-current="page"] {
+  background: var(--uml-gold);
+  color: var(--uml-gold-ink);
+  border-color: var(--uml-gold);
+}
+
+.uml-gold-btn {
+  background: var(--uml-gold);
+  color: var(--uml-gold-ink);
 }
 
 .guest-survey {
