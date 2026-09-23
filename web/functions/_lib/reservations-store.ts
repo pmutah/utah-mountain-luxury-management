@@ -57,7 +57,7 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
 }
 
-/** Copy known host payouts and Airbnb/VRBO channel onto iCal rows. */
+/** Fill $0 iCal payouts and placeholder channels from seed. Stored payouts and explicit channels are left alone. */
 export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {
   const custom = await loadCustomReservations(env);
   let n = 0;

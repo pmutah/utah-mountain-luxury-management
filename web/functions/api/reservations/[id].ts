@@ -12,6 +12,7 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
     guestEmail?: string;
     guestPhone?: string;
     confirmationCode?: string;
+    source?: string;
   };
 
   const patch: Partial<ReservationRecord> = {};
@@ -20,6 +21,11 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
   if (body.guestEmail !== undefined) patch.guestEmail = body.guestEmail.trim();
   if (body.guestPhone !== undefined) patch.guestPhone = body.guestPhone.trim();
   if (body.confirmationCode !== undefined) patch.confirmationCode = body.confirmationCode.trim();
+  if (body.source !== undefined) {
+    const source = String(body.source).trim();
+    if (!source) return corsJson(request, { error: 'source must be a non-empty string' }, 400);
+    patch.source = source;
+  }
   if (body.payout !== undefined) {
     const payout = Number(body.payout);
     if (!Number.isFinite(payout) || payout < 0) {

@@ -50,14 +50,21 @@ export function findSeedBankPayout(
   return undefined;
 }
 
-function channelFromSeed(current: string | undefined, seedSource: string): string {
-  if (!current || current === 'Hospitable' || current === 'Calendar' || current === 'Direct') {
-    return seedSource;
-  }
-  return current;
+/** Channels that mean "not set yet" — seed may fill these. Explicit labels such as Airbnb, VRBO, and HomeAway stay. */
+function isPlaceholderChannel(source: string | undefined): boolean {
+  return !source || source === 'Hospitable' || source === 'Calendar' || source === 'Direct';
 }
 
-/** Overlay Airbnb/VRBO host-net onto an iCal row. Exact date match always wins. */
+function channelFromSeed(current: string | undefined, seedSource: string): string {
+  if (isPlaceholderChannel(current)) return seedSource;
+  return current!;
+}
+
+/**
+ * Fill seed host-net and channel onto rows that do not have them yet.
+ * A stored payout (> 0) or an explicit channel wins when property + dates collide with a seed stay.
+ * Seed still supplies the amount for $0 iCal rows.
+ */
 export function applyHostNetFromSeed<
   T extends {
     propertyId: string;
@@ -68,24 +75,23 @@ export function applyHostNetFromSeed<
     source: string;
   },
 >(row: T): T {
+  const storedPayout = Number(row.payout);
+  const hasPayout = Number.isFinite(storedPayout) && storedPayout > 0;
   const exact = RESERVATIONS.find(
     (s) => s.propertyId === row.propertyId && s.checkIn === row.checkIn && s.checkOut === row.checkOut,
   );
-  if (exact && exact.payout > 0) {
-    return {
-      ...row,
-      payout: exact.payout,
-      source: channelFromSeed(row.source, exact.source),
-    };
-  }
-  if ((row.payout ?? 0) > 0) return row;
-  const seed = findSeedStay(row.propertyId as PropertyId, row.guestName, row.checkIn, row.checkOut);
+  const seed = exact
+    ? exact
+    : hasPayout
+      ? undefined
+      : findSeedStay(row.propertyId as PropertyId, row.guestName, row.checkIn, row.checkOut);
   if (!seed || seed.payout <= 0) return row;
-  return {
-    ...row,
-    payout: seed.payout,
-    source: channelFromSeed(row.source, seed.source),
-  };
+  if (hasPayout && !isPlaceholderChannel(row.source)) return row;
+
+  const payout = hasPayout ? storedPayout : seed.payout;
+  const source = channelFromSeed(row.source, seed.source);
+  if (payout === row.payout && source === row.source) return row;
+  return { ...row, payout, source };
 }
 
 export function payoutFromIcalText(text?: string): number | undefined {
@@ -107,6 +113,7 @@ export function payoutFromIcalText(text?: string): number | undefined {
 export function resolveIcalPayout(ev: ICalEvent, guestName: string, existing?: number): number {
   const fromText = payoutFromIcalText(ev.description) ?? payoutFromIcalText(ev.summary);
   if (fromText) return fromText;
+  if (existing && existing > 0) return existing;
   if (!ev.propertyId) return existing ?? 0;
   const fromSeed = findSeedBankPayout(ev.propertyId, guestName, ev.start, ev.end);
   if (fromSeed) return fromSeed;

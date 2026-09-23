@@ -35,15 +35,20 @@ export function parseIcalSummary(
   return { guestName, source, blocked };
 }
 
+function isExplicitChannel(source: string | undefined): source is string {
+  return Boolean(source && source !== 'Hospitable' && source !== 'Calendar' && source !== 'Direct');
+}
+
 export function resolveIcalSource(
   summary?: string,
   description?: string,
   existing?: string,
   seedSource?: string,
 ): string {
+  // A channel already saved on the row (PATCH / KV) wins over iCal text and seed defaults.
+  if (isExplicitChannel(existing)) return existing;
   const fromText = channelFromText(summary) ?? channelFromText(description);
   if (fromText) return fromText;
-  if (existing && existing !== 'Hospitable') return existing;
-  if (seedSource && seedSource !== 'Hospitable') return seedSource;
+  if (isExplicitChannel(seedSource)) return seedSource;
   return existing || seedSource || 'Hospitable';
 }
