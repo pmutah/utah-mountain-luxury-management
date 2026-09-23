@@ -8,6 +8,7 @@ import {
 } from '../lib/api';
 import { GuestStayCard } from './GuestStayCard';
 import { GuestDossier } from './GuestDossier';
+import { GuestAppEditor } from './GuestAppEditor';
 
 type HouseFilter = 'all' | 'ranch' | 'lindon' | 'river';
 
@@ -175,6 +176,7 @@ export function GuestsPanel({
   return (
     <div className="space-y-6" data-bot="guests">
       <GuestDossier reservations={reservations} surveys={surveys} />
+      <GuestAppEditor onToast={onToast} />
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-sm text-slate-400">
         <p>
           Gmail: {gmail.connected ? gmail.email : 'not connected — sign in as utahmountainluxury@gmail.com'}
@@ -183,7 +185,8 @@ export function GuestsPanel({
           SMS: {sms.configured ? `Twilio ${sms.from}` : 'waiting on Twilio env'}
         </p>
         <p className="mt-3 text-slate-300">
-          Send the River VIP survey by email or text, or mint a link to paste in Airbnb. Guest URL:{' '}
+          Each stay gets one guest app link: the preference form before arrival, then door code, Wi-Fi, the
+          house guide, and area picks. Send it by email or text, or copy it to paste in Airbnb. Guest URL:{' '}
           <code className="text-cyan-300">/stay/&lt;token&gt;</code>
         </p>
         {!gmail.connected && (
@@ -323,8 +326,19 @@ export function GuestsPanel({
                 onClick={() => void send(stay, 'none')}
                 className="px-4 py-2 rounded-xl bg-cyan-800 text-white text-xs font-black uppercase disabled:opacity-40"
               >
-                Copy link
+                Copy guest app link
               </button>
+              {(survey?.token || stay.surveyToken) && (
+                <a
+                  data-bot="guest-app-preview"
+                  href={`/stay/${encodeURIComponent(survey?.token ?? stay.surveyToken ?? '')}?preview=1`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl border border-cyan-800 text-cyan-300 text-xs font-black uppercase"
+                >
+                  Preview app
+                </a>
+              )}
               <button
                 type="button"
                 data-bot="survey-answers"

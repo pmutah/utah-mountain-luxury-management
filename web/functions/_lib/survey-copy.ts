@@ -14,8 +14,8 @@ export function surveyPublicUrl(origin: string, token: string): string {
   return `${origin.replace(/\/$/, '')}/stay/${encodeURIComponent(token)}`;
 }
 
-export function surveyEmailSubject(guestName: string, propertyName: string): string {
-  return `${propertyName} — a few preferences before you arrive`;
+export function surveyEmailSubject(guestName: string, propertyName: string, guideOn = false): string {
+  return guideOn ? `${propertyName} — your stay guide` : `${propertyName} — a few preferences before you arrive`;
 }
 
 export function surveyEmailBody(input: {
@@ -25,6 +25,7 @@ export function surveyEmailBody(input: {
   checkOut: string;
   link: string;
   variant?: SurveyVariant;
+  guideOn?: boolean;
 }): string {
   const first = input.guestName.split(' ')[0] || input.guestName;
   const minutes = input.variant === 'vip' ? 'about two minutes' : 'about ten minutes';
@@ -33,7 +34,9 @@ export function surveyEmailBody(input: {
     '',
     `We're glad you'll be at ${input.propertyName} ${input.checkIn}–${input.checkOut}.`,
     '',
-    `This short form helps us set the house for your group. It takes ${minutes}. Door codes and the house guide come a few days before check-in.`,
+    input.guideOn
+      ? `This link is your stay guide: the house, the area, restaurants, and how to reach us. Start with the short preference form (${minutes}) so we can set the house for your group. Your door code and Wi-Fi appear at the same link the day before check-in.`
+      : `This short form helps us set the house for your group. It takes ${minutes}. Door codes and the house guide come a few days before check-in.`,
     '',
     input.link,
     '',
@@ -47,9 +50,12 @@ export function surveySmsBody(input: {
   guestName: string;
   propertyName: string;
   link: string;
+  guideOn?: boolean;
 }): string {
   const first = input.guestName.split(' ')[0] || input.guestName;
-  return `${first} — Utah Mountain Luxury here. A short preference form for your stay at ${input.propertyName}: ${input.link}`;
+  return input.guideOn
+    ? `${first} — Utah Mountain Luxury here. Your stay guide for ${input.propertyName}, with a short preference form. Door code and Wi-Fi show up here the day before check-in: ${input.link}`
+    : `${first} — Utah Mountain Luxury here. A short preference form for your stay at ${input.propertyName}: ${input.link}`;
 }
 
 export function staffSurveyNotifySubject(guestName: string, propertyName: string): string {

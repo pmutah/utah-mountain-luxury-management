@@ -151,6 +151,7 @@ export function GuestVipSurvey({
   saving,
   error,
   done,
+  guideHref,
   onSubmit,
 }: {
   meta: { guestName: string; propertyName: string; checkIn: string; checkOut: string };
@@ -159,6 +160,7 @@ export function GuestVipSurvey({
   saving: boolean;
   error: string | null;
   done: boolean;
+  guideHref?: string;
   onSubmit: () => void;
 }) {
   const [step, setStep] = useState<StepId>('welcome');
@@ -198,9 +200,23 @@ export function GuestVipSurvey({
             We will use this to set The River House for {first}&rsquo;s group — fridge, toast, theater,
             and the extras that make arrival feel easy.
           </p>
-          <p className="mt-8 text-sm text-white/45">
-            Door codes and the house guide arrive a few days before {meta.checkIn}.
-          </p>
+          {guideHref ? (
+            <>
+              <p className="mt-8 text-sm text-white/45">
+                Your door code and Wi-Fi appear in your stay guide the day before {meta.checkIn}.
+              </p>
+              <a
+                href={guideHref}
+                className="mx-auto mt-5 inline-block rounded-full bg-[#d4b56a] px-5 py-2.5 text-sm font-semibold text-black"
+              >
+                Open your stay guide
+              </a>
+            </>
+          ) : (
+            <p className="mt-8 text-sm text-white/45">
+              Door codes and the house guide arrive a few days before {meta.checkIn}.
+            </p>
+          )}
         </div>
       </SurveyShell>
     );

@@ -10,6 +10,7 @@ export const onRequest: PagesFunction<{
   if (
     url.pathname.startsWith('/api/auth/') ||
     url.pathname.startsWith('/api/stay-preferences/') ||
+    url.pathname.startsWith('/api/stay-guide/') ||
     url.pathname.startsWith('/api/esign/sign/') ||
     url.pathname === '/api/book' ||
     url.pathname === '/api/agent/map' ||

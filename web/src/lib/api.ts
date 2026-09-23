@@ -346,6 +346,60 @@ export interface YieldMove {
   } | null;
 }
 
+export interface GuidePlace {
+  name: string;
+  kind: 'ski' | 'food' | 'outdoors' | 'family' | 'rentals' | 'essentials';
+  note: string;
+  area?: string;
+  url?: string;
+}
+
+export interface HouseGuide {
+  enabled: boolean;
+  headline: string;
+  address: string;
+  checkInTime: string;
+  checkOutTime: string;
+  wifiName: string;
+  wifiPassword: string;
+  doorCode: string;
+  doorNotes: string;
+  parking: string;
+  arrival: string;
+  checkout: string;
+  houseRules: string;
+  contactPhone: string;
+  contactEmail: string;
+  emergency: string;
+  sections: Array<{ title: string; body: string }>;
+  videos: Array<{ title: string; url: string }>;
+  places: GuidePlace[];
+  updatedAt?: string;
+}
+
+export interface StayGuide {
+  enabled: boolean;
+  guestName: string;
+  propertyId: 'ranch' | 'lindon' | 'river';
+  propertyName: string;
+  checkIn: string;
+  checkOut: string;
+  preferencesDone: boolean;
+  access: {
+    phase: 'before' | 'during' | 'after';
+    opensOn: string;
+    preview: boolean;
+    unlocked: boolean;
+    wifiName: string | null;
+    wifiPassword: string | null;
+    doorCode: string | null;
+    doorNotes: string | null;
+  };
+  guide: Omit<HouseGuide, 'enabled' | 'wifiName' | 'wifiPassword' | 'doorCode' | 'doorNotes' | 'updatedAt'>;
+}
+
+export type StayGuideResponse = StayGuide | { enabled: false; guestName?: undefined };
+
 export interface YieldPlan {
   asOf: string;
   days: number;
@@ -788,6 +842,14 @@ export const api = {
     }>('/api/surveys/send', {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+  getStayGuide: (token: string, preview = false) =>
+    request<StayGuideResponse>(`/api/stay-guide/${encodeURIComponent(token)}${preview ? '?preview=1' : ''}`),
+  getGuestGuides: () => request<{ guides: Record<'ranch' | 'lindon' | 'river', HouseGuide> }>('/api/guest-guide'),
+  saveGuestGuide: (propertyId: 'ranch' | 'lindon' | 'river', guide: Partial<HouseGuide>) =>
+    request<{ ok: boolean; guide: HouseGuide }>('/api/guest-guide', {
+      method: 'POST',
+      body: JSON.stringify({ propertyId, guide }),
     }),
   getPublicStayPreference: (token: string) =>
     request<PublicStayPreference>(`/api/stay-preferences/${encodeURIComponent(token)}`),

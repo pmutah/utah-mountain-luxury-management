@@ -4,6 +4,7 @@ import { upsertSurveyForStay, markSurveySent } from '../../_lib/survey-store';
 import { resolveStayForSurvey } from '../../_lib/survey-bind';
 import { gmailSend } from '../../_lib/gmail-store';
 import { sendTwilioSms } from '../../_lib/twilio-sms';
+import { guideEnabled } from '../../_lib/guest-guide';
 import {
   surveyEmailBody,
   surveyEmailSubject,
@@ -62,13 +63,14 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
   const link = surveyPublicUrl(origin, survey.token);
   const propertyName = PROPERTIES[stay.propertyId]?.name ?? stay.propertyId;
   const variant = survey.variant ?? surveyVariantForProperty(stay.propertyId);
+  const guideOn = await guideEnabled(env, stay.propertyId);
 
   if (body.channel === 'email') {
     if (!email) return corsJson(request, { error: 'Add an email first.' }, 400);
     const sent = await gmailSend(
       env,
       email,
-      surveyEmailSubject(stay.guestName, propertyName),
+      surveyEmailSubject(stay.guestName, propertyName, guideOn),
       surveyEmailBody({
         guestName: stay.guestName,
         propertyName,
@@ -76,6 +78,7 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
         checkOut: stay.checkOut,
         link,
         variant,
+        guideOn,
       }),
     );
     if (sent.error) return corsJson(request, { error: sent.error }, 502);
@@ -84,7 +87,7 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     const sent = await sendTwilioSms(
       env,
       phone,
-      surveySmsBody({ guestName: stay.guestName, propertyName, link }),
+      surveySmsBody({ guestName: stay.guestName, propertyName, link, guideOn }),
     );
     if (sent.error) return corsJson(request, { error: sent.error }, 502);
   }

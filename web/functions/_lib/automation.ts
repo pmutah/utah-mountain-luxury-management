@@ -9,6 +9,7 @@ import { upsertSurveyForStay, markSurveySent, findSurveyByReservation } from './
 import { surveyEmailBody, surveyEmailSubject, surveyPublicUrl, surveySmsBody } from './survey-copy';
 import { surveyVariantForProperty } from './survey-fields';
 import { sendTwilioSms } from './twilio-sms';
+import { guideEnabled } from './guest-guide';
 import type { PropertyId } from './agent/types';
 
 export interface AutomationSettings {
@@ -106,11 +107,12 @@ export async function runAutomation(env: SettingsEnv, origin: string) {
           });
           const link = surveyPublicUrl(origin, survey.token);
           const variant = survey.variant ?? surveyVariantForProperty(stay.propertyId);
+          const guideOn = await guideEnabled(env, stay.propertyId);
           if (stay.guestEmail) {
             const sent = await gmailSend(
               env,
               stay.guestEmail,
-              surveyEmailSubject(stay.guestName, propertyName),
+              surveyEmailSubject(stay.guestName, propertyName, guideOn),
               surveyEmailBody({
                 guestName: stay.guestName,
                 propertyName,
@@ -118,6 +120,7 @@ export async function runAutomation(env: SettingsEnv, origin: string) {
                 checkOut: stay.checkOut,
                 link,
                 variant,
+                guideOn,
               }),
             );
             if (!sent.error) {
@@ -128,7 +131,7 @@ export async function runAutomation(env: SettingsEnv, origin: string) {
             const sent = await sendTwilioSms(
               env,
               stay.guestPhone,
-              surveySmsBody({ guestName: stay.guestName, propertyName, link }),
+              surveySmsBody({ guestName: stay.guestName, propertyName, link, guideOn }),
             );
             if (!sent.error) {
               await markSurveySent(env, survey.token, 'sms');

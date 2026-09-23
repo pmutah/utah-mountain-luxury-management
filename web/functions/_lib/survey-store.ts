@@ -1,4 +1,4 @@
-import { kvGet, kvPut, newId } from './kv-json';
+import { kvGet, kvPut } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { PropertyId } from './agent/types';
 import type { SurveyChannel, SurveyVariant } from './survey-fields';
@@ -133,7 +133,7 @@ export async function upsertSurveyForStay(
     return next;
   }
   const item: GuestSurveyRecord = {
-    token: newId('pref').replace(/^pref-/, ''),
+    token: crypto.randomUUID().replace(/-/g, ''),
     reservationId: stay.id,
     propertyId: stay.propertyId,
     guestName: stay.guestName,

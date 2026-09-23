@@ -17,6 +17,14 @@ export function GuestPreferenceForm({ token }: { token: string }) {
   } | null>(null);
   const [answers, setAnswers] = useState<GuestPreferenceAnswers>({});
   const [saving, setSaving] = useState(false);
+  const [guideOn, setGuideOn] = useState(false);
+
+  useEffect(() => {
+    void api
+      .getStayGuide(token)
+      .then((result) => setGuideOn(result.enabled))
+      .catch(() => setGuideOn(false));
+  }, [token]);
 
   useEffect(() => {
     void api
@@ -81,6 +89,7 @@ export function GuestPreferenceForm({ token }: { token: string }) {
         saving={saving}
         error={error}
         done={done}
+        guideHref={guideOn ? `/stay/${encodeURIComponent(token)}` : undefined}
         onSubmit={() => void submit()}
       />
     );
@@ -94,10 +103,25 @@ export function GuestPreferenceForm({ token }: { token: string }) {
             Utah Mountain Luxury
           </p>
           <h1 className="text-3xl font-serif">Thank you</h1>
-          <p className="text-stone-600 leading-relaxed">
-            We’ll use this to set the house for your group. Door codes and the house guide arrive a few
-            days before check-in.
-          </p>
+          {guideOn ? (
+            <>
+              <p className="text-stone-600 leading-relaxed">
+                We’ll use this to set the house for your group. Your door code and Wi-Fi appear in your stay
+                guide the day before check-in.
+              </p>
+              <a
+                href={`/stay/${encodeURIComponent(token)}`}
+                className="inline-block rounded-full bg-stone-800 px-5 py-2.5 text-sm text-white"
+              >
+                Open your stay guide
+              </a>
+            </>
+          ) : (
+            <p className="text-stone-600 leading-relaxed">
+              We’ll use this to set the house for your group. Door codes and the house guide arrive a few
+              days before check-in.
+            </p>
+          )}
         </div>
       </div>
     );

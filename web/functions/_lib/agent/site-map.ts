@@ -70,6 +70,9 @@ export const AGENT_SITE_MAP = {
     sendGuestSurvey:
       'POST /api/surveys/send { reservationId? , confirmationCode?, channel:"email"|"sms"|"none", guestEmail?, guestPhone? } — none mints a /stay/:token link without sending',
     publicStaySurvey: 'GET/POST /api/stay-preferences/:token — public River VIP / classic preference form',
+    guestApp:
+      'GET /api/guest-guide — each house guest app (codes, Wi-Fi, house sections, videos, area picks). POST { propertyId, guide } saves one house. Guests see it at /stay/:token; codes show from the day before check-in until noon on checkout day. Never paste codes into chat, SMS, or email.',
+    publicStayGuide: 'GET /api/stay-guide/:token — what the guest app shows. Add ?preview=1 with the owner cookie or bot bearer to see codes early.',
   },
   partnerSpend: {
     onlyOn: 'construction',

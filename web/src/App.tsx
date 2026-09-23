@@ -35,6 +35,7 @@ import { ToastStack } from './components/Toast';
 import { AgentChat } from './components/AgentChat';
 import { ConstructionManagerChat } from './components/ConstructionManagerChat';
 import { GuestPreferenceForm } from './components/GuestPreferenceForm';
+import { StayApp } from './components/StayApp';
 import { CommandPalette } from './components/CommandPalette';
 import { OwnerLetterButton } from './components/OwnerLetterButton';
 import { RiverLaunch } from './components/RiverLaunch';
@@ -312,9 +313,10 @@ function Dashboard() {
 }
 
 export default function App() {
-  const stayMatch = window.location.pathname.match(/^\/stay\/([^/]+)/);
+  const stayMatch = window.location.pathname.match(/^\/stay\/([^/]+)(\/preferences)?\/?$/);
   if (stayMatch?.[1]) {
-    return <GuestPreferenceForm token={stayMatch[1]} />;
+    const token = decodeURIComponent(stayMatch[1]);
+    return stayMatch[2] ? <GuestPreferenceForm token={token} /> : <StayApp token={token} />;
   }
   const esignMatch = window.location.pathname.match(/^\/esign\/([^/]+)/);
   if (esignMatch?.[1]) {
