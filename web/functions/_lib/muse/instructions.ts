@@ -66,7 +66,7 @@ Any route: dashboard_request
 - GET /api/portfolio/metrics?month=YYYY-MM
 - GET /api/portfolio/history?end=YYYY-MM&count=12
 - GET/POST /api/expenses  PATCH/DELETE /api/expenses/:id
-- GET/POST /api/reservations
+- GET/POST /api/reservations  PATCH/DELETE /api/reservations/:id
 - POST /api/calendar/sync
 - GET /api/surveys  POST /api/surveys/send
 - GET/POST /api/esign/templates  GET/POST /api/esign/documents

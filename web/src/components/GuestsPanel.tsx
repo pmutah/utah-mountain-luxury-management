@@ -140,6 +140,29 @@ export function GuestsPanel({
     }
   }
 
+  async function removeStay(stay: Reservation) {
+    const property = PROPERTIES[stay.propertyId]?.name ?? stay.propertyId;
+    const label = `${stay.guestName} · ${stay.source} · ${property} · ${stay.checkIn}–${stay.checkOut} (${formatCurrency(stay.payout)})`;
+    if (
+      !window.confirm(
+        `Delete this stay?\n\n${label}\n\nThis removes it from the board.`,
+      )
+    ) {
+      return;
+    }
+    setBusyId(stay.id);
+    try {
+      await api.deleteReservation(stay.id);
+      setReservations((rows) => rows.filter((row) => row.id !== stay.id));
+      if (openId === stay.id) setOpenId(null);
+      onToast('Stay removed', 'success');
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : 'Could not delete stay', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function send(stay: Reservation, channel: 'email' | 'sms' | 'none') {
     const draft = drafts[stay.id] ?? { email: '', phone: '', code: stay.confirmationCode ?? '' };
     setBusyId(stay.id);
@@ -355,6 +378,15 @@ export function GuestsPanel({
                 className="px-4 py-2 rounded-xl border border-slate-700 text-xs font-black uppercase"
               >
                 {open ? 'Hide answers' : 'Answers'}
+              </button>
+              <button
+                type="button"
+                data-bot="reservation-delete"
+                disabled={busyId === stay.id}
+                onClick={() => void removeStay(stay)}
+                className="px-4 py-2 rounded-xl border border-red-900 text-red-300 text-xs font-black uppercase disabled:opacity-40"
+              >
+                Delete stay
               </button>
             </div>
 

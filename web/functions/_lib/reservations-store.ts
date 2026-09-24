@@ -7,6 +7,48 @@ import { applyHostNetFromSeed, datesOverlap } from './reservation-match';
 const KV_RES = 'reservations';
 const KV_OVERRIDES = 'reservationOverrides';
 
+/**
+ * Accidental second save of Nadya Lutz, River House, Sep 14–20 2027.
+ * The Vrbo row (res-1790218867015-26fsth) is the one to keep.
+ * Safe to delete this cleanup after it has run once in production.
+ */
+const NADYA_DIRECT_DUPLICATE_ID = 'res-1790218853165-k953cr';
+
+function isNadyaDirectDuplicate(r: ReservationRecord): boolean {
+  return (
+    r.id === NADYA_DIRECT_DUPLICATE_ID &&
+    r.guestName.trim().toLowerCase() === 'nadya lutz' &&
+    r.propertyId === 'river' &&
+    r.checkIn === '2027-09-14' &&
+    r.checkOut === '2027-09-20' &&
+    /^direct$/i.test(r.source ?? '')
+  );
+}
+
+function hasNadyaVrboTwin(list: ReservationRecord[]): boolean {
+  return list.some(
+    (r) =>
+      r.id !== NADYA_DIRECT_DUPLICATE_ID &&
+      r.guestName.trim().toLowerCase() === 'nadya lutz' &&
+      r.propertyId === 'river' &&
+      r.checkIn === '2027-09-14' &&
+      r.checkOut === '2027-09-20' &&
+      /^vrbo$/i.test(r.source ?? '') &&
+      r.status !== 'cancelled',
+  );
+}
+
+/** Drop the known Direct duplicate once the Vrbo twin is still stored. No-op otherwise. */
+export async function removeKnownDirectDuplicate(
+  env: SettingsEnv,
+  custom: ReservationRecord[],
+): Promise<ReservationRecord[]> {
+  if (!custom.some(isNadyaDirectDuplicate) || !hasNadyaVrboTwin(custom)) return custom;
+  const next = custom.filter((r) => !isNadyaDirectDuplicate(r));
+  await kvPut(env, KV_RES, next);
+  return next;
+}
+
 export async function loadCustomReservations(env: SettingsEnv): Promise<ReservationRecord[]> {
   return kvGet(env, KV_RES, []);
 }
@@ -23,7 +65,7 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
     propertyId: r.propertyId as PropertyId,
     status: 'confirmed' as ReservationStatus,
   }));
-  const custom = await loadCustomReservations(env);
+  const custom = await removeKnownDirectDuplicate(env, await loadCustomReservations(env));
   const overrides = await loadReservationOverrides(env);
 
   const merged = seed.map((r) => ({
@@ -111,6 +153,35 @@ export async function createReservation(
   list.push(item);
   await kvPut(env, KV_RES, list);
   return item;
+}
+
+/**
+ * Custom stays are removed from the KV list. Seed stays are marked cancelled
+ * (GET already hides that status) so the built-in row does not come back.
+ * iCal sync still recreates a stay that has a live calendar UID; this does not
+ * change that merge.
+ */
+export async function deleteReservation(
+  env: SettingsEnv,
+  id: string,
+): Promise<{ id: string; removed: 'custom' | 'seed' } | null> {
+  const trimmed = id.trim();
+  if (!trimmed) return null;
+
+  const custom = await loadCustomReservations(env);
+  const idx = custom.findIndex((r) => r.id === trimmed);
+  if (idx >= 0) {
+    custom.splice(idx, 1);
+    await kvPut(env, KV_RES, custom);
+    return { id: trimmed, removed: 'custom' };
+  }
+
+  if (!RESERVATIONS.some((r) => r.id === trimmed)) return null;
+
+  const overrides = await loadReservationOverrides(env);
+  overrides[trimmed] = { ...overrides[trimmed], status: 'cancelled' };
+  await kvPut(env, KV_OVERRIDES, overrides);
+  return { id: trimmed, removed: 'seed' };
 }
 
 export async function updateReservationStatus(

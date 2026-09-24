@@ -1,5 +1,10 @@
 import { corsJson } from '../../_lib/data';
-import { updateReservation, updateReservationStatus, getAllReservations } from '../../_lib/reservations-store';
+import {
+  updateReservation,
+  updateReservationStatus,
+  getAllReservations,
+  deleteReservation,
+} from '../../_lib/reservations-store';
 import type { AgentEnv, ReservationRecord, ReservationStatus } from '../../_lib/agent/types';
 
 export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
@@ -47,6 +52,14 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
   const updated = await updateReservation(env, id, patch);
   if (!updated) return corsJson(request, { error: 'Not found' }, 404);
   return corsJson(request, updated);
+};
+
+export const onRequestDelete: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
+  const id = String(params.id ?? '').trim();
+  if (!id) return corsJson(request, { error: 'id required' }, 400);
+  const removed = await deleteReservation(env, id);
+  if (!removed) return corsJson(request, { error: 'Not found' }, 404);
+  return corsJson(request, { ok: true, ...removed });
 };
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, params }) => {

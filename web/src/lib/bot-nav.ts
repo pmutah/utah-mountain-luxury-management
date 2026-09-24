@@ -90,4 +90,5 @@ export const BOT_SELECTORS = {
   surveySms: '[data-bot="survey-sms"]',
   surveyCopyLink: '[data-bot="survey-copy-link"]',
   surveyAnswers: '[data-bot="survey-answers"]',
+  reservationDelete: '[data-bot="reservation-delete"]',
 } as const;
