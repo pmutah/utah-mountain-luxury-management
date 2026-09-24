@@ -840,6 +840,11 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
+  deleteReservation: (id: string) =>
+    request<{ ok: boolean; id: string; removed: 'custom' | 'seed' }>(
+      `/api/reservations/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    ),
   sendGuestSurvey: (body: {
     reservationId?: string;
     confirmationCode?: string;

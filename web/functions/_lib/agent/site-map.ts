@@ -42,7 +42,7 @@ export const AGENT_SITE_MAP = {
       'POST /api/expenses { propertyId:"construction", month, category, amount, note, stage, paidBy:"brandon"|"todd", receiptBase64?, receiptMimeType? }',
     householdExpense:
       'POST /api/expenses { propertyId:"household", month, category:"Furnishings", amount, note, paidBy:"brandon", receiptBase64?, receiptMimeType? }',
-    reservations: 'GET/POST /api/reservations',
+    reservations: 'GET/POST /api/reservations  PATCH/DELETE /api/reservations/:id',
     calendarSync: 'POST /api/calendar/sync',
     cohost: 'POST /api/agent/chat { message, sessionId?, context?: { month, activeTab } }',
     constructionChat: 'POST /api/agent/construction/chat { message, sessionId? }',

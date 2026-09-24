@@ -56,6 +56,7 @@ Signed-in browser: `/api/muse/enter?token=` or `/api/amanda/enter?token=`.
 - GET `/api/construction/project`
 - GET `/api/esign/templates`
 - POST `/api/esign/parse-invoice` — import a contractor invoice or email onto a lien waiver (`type`: text / image / gmail / gmail-search)
+- DELETE `/api/reservations/:id` — remove a stay from the board. On Guests, `[data-bot="reservation-delete"]` asks for confirmation first.
 - GET `/api/surveys` — upcoming stays + preference surveys
 - POST `/api/surveys/send` — `{ reservationId? , confirmationCode?, channel: "email"|"sms"|"none" }` mints `/stay/:token`. `none` copies a link for Airbnb paste (does not email/SMS the guest).
 - GET/POST `/api/stay-preferences/:token` — public guest survey. River uses the short VIP flow.
