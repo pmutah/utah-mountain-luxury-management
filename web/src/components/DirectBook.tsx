@@ -7,6 +7,7 @@ import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
 import type { HouseId } from '../lib/market/types';
 import { quoteStay } from '../lib/quote';
 import { BrandMark } from './BrandMark';
+import { StayMonth } from './StayMonth';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 
@@ -168,6 +169,16 @@ export function DirectBook() {
             )}
             <div className="space-y-4 p-6">
               <p className="uml-kicker">{PROPERTIES[house].address}</p>
+              <StayMonth
+                house={house}
+                taken={taken[house] ?? []}
+                checkIn={checkIn}
+                checkOut={checkOut}
+                onPick={(stay) => {
+                  setCheckIn(stay.checkIn);
+                  setCheckOut(stay.checkOut);
+                }}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-xs text-[var(--uml-muted)]">
                   Check in

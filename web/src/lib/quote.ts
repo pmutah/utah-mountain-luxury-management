@@ -54,9 +54,8 @@ export function quoteStay(
     reason,
   });
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) {
-    return empty('Choose a check-in and a check-out.');
-  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn)) return empty('Choose a check-in.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) return empty('Choose the check-out morning.');
   if (checkOut <= checkIn) return empty('Check-out has to be after check-in.');
 
   const dates = stayNights(checkIn, checkOut);

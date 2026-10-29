@@ -16,4 +16,5 @@
 ## 2026-10-29 — booked nights and turnovers
 
 - The stay quote refuses a night that is already reserved or blocked. Cancelled stays stay open. The public availability route returns dates only.
+- `/book` shows the month with a guest price on each open night. Booked nights are marked and cannot start a stay.
 - Overview lists turnovers for the next two weeks: same-day clean, or how many nights sit before the next arrival.
