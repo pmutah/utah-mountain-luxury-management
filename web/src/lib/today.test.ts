@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import type { Reservation } from './api.ts';
+import { buildTodayDesk } from './today.ts';
+
+function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
+  return {
+    guestName: 'Guest',
+    payout: 0,
+    source: 'Airbnb',
+    ...partial,
+  };
+}
+
+test('the desk lists arrivals and departures inside the week and skips cancelled stays', () => {
+  const desk = buildTodayDesk(
+    [
+      stay({ id: 'a', propertyId: 'ranch', guestName: 'Ada', checkIn: '2026-11-02', checkOut: '2026-11-12' }),
+      stay({ id: 'b', propertyId: 'lindon', guestName: 'Bea', checkIn: '2026-10-28', checkOut: '2026-11-01' }),
+      stay({ id: 'c', propertyId: 'river', guestName: 'Cy', checkIn: '2026-11-20', checkOut: '2026-11-24', status: 'cancelled' }),
+    ],
+    '2026-11-01',
+  );
+  assert.deepEqual(desk.arrivals.map((move) => move.guest), ['Ada']);
+  assert.deepEqual(desk.departures.map((move) => move.guest), ['Bea']);
+  assert.equal(desk.arrivals[0]?.nights, 10);
+});
+
+test('open nights skip nights that are already booked', () => {
+  const desk = buildTodayDesk(
+    [stay({ id: 'a', propertyId: 'lindon', checkIn: '2026-11-01', checkOut: '2026-11-04' })],
+    '2026-11-01',
+  );
+  assert.equal(desk.openNext30.lindon, 27);
+  assert.equal(desk.openNext30.ranch, 30);
+});
