@@ -11,7 +11,7 @@ export type NightRow = {
   openComps: number;
   percentile: number;
   proposedGuest: number;
-  action: 'hold' | 'raise' | 'promote' | 'locked';
+  action: 'hold' | 'raise' | 'promote' | 'locked' | 'booked' | 'closed' | 'paused';
   reason: string;
   compBookedShare: number;
 };

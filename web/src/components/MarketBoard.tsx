@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { loadBookedNights } from '../lib/booked-nights';
 import { buildMarketBoard } from '../lib/market/board';
 import { addDays, denverToday } from '../lib/market/dates';
+import { runShadow } from '../lib/market/shadow';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 
@@ -87,10 +89,38 @@ function RateBand({ nights }: { nights: NightRow[] }) {
   );
 }
 
+const EMPTY_TAKEN: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [] };
+
 export function MarketBoard() {
   const [house, setHouse] = useState<HouseId>('river');
-  const board = useMemo(() => buildMarketBoard(house, denverToday(), 90), [house]);
-  const moves = groupMoves(board.nights);
+  const [paused, setPaused] = useState<Record<HouseId, boolean>>({ ranch: false, lindon: false, river: false });
+  const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
+  const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
+  const today = denverToday();
+  const board = useMemo(() => buildMarketBoard(house, today, 90), [house, today]);
+  const shadow = useMemo(
+    () => runShadow(board, calendar === 'live' ? (taken[house] ?? []) : [], paused[house], today),
+    [board, calendar, taken, house, paused, today],
+  );
+  const moves = groupMoves(shadow.nights);
+
+  useEffect(() => {
+    let cancel = false;
+    loadBookedNights()
+      .then((nights) => {
+        if (cancel) return;
+        if (nights) {
+          setTaken(nights);
+          setCalendar('live');
+        } else setCalendar('off');
+      })
+      .catch(() => {
+        if (!cancel) setCalendar('off');
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   return (
     <section className="space-y-6" data-bot="market-board">
@@ -124,8 +154,41 @@ export function MarketBoard() {
           <Stat label="Our ask, next 30" value={formatWhole(board.summary.ourTypical)} />
           <Stat label="Comp median" value={formatWhole(board.summary.medianAsk)} />
           <Stat label="Our percentile" value={`p${board.summary.ourPercentile}`} hint={`Target p${board.targetPercentile}`} />
-          <Stat label="Comps booked, 30 days" value={`${board.summary.compPace30}%`} hint={`${board.summary.raiseNights} shadow raises`} />
+          <Stat label="Comps booked, 30 days" value={`${board.summary.compPace30}%`} hint={`${shadow.counts.raise} shadow raises`} />
         </dl>
+      </div>
+
+      <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-shadow">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="uml-kicker">Tonight's shadow run</p>
+            <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
+              Booked nights, closed nights, and a paused house stay at the published rate. This summary is the daily text. It is not sent.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="uml-nav"
+            data-bot="market-pause"
+            aria-pressed={paused[house]}
+            onClick={() => setPaused((current) => ({ ...current, [house]: !current[house] }))}
+          >
+            {paused[house] ? 'Resume this house' : 'Pause this house'}
+          </button>
+        </div>
+        <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6" data-bot="market-digest">
+          {shadow.digest}
+        </pre>
+        {calendar === 'loading' && <p className="text-xs text-[var(--uml-muted)]">Checking which nights are already booked…</p>}
+        {calendar === 'off' && (
+          <p className="text-xs text-[var(--uml-muted)]">The calendar is not on this server yet, so booked nights are not masked.</p>
+        )}
+        {calendar === 'live' && paused[house] && (
+          <p className="text-xs text-[var(--uml-muted)]">Paused. Published rates stay, including on nights that are already booked.</p>
+        )}
+        {calendar === 'live' && !paused[house] && (
+          <p className="text-xs text-[var(--uml-muted)]">{shadow.counts.booked} booked nights in this window stay put.</p>
+        )}
       </div>
 
       <div className="uml-panel rounded-3xl p-5 sm:p-6">

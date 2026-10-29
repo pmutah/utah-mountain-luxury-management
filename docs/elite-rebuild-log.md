@@ -30,3 +30,7 @@
 ## 2026-10-29 — agents hub
 
 - `#/agents` names Co-host, Build, Nora, Muse, and Amanda. Co-host and Build open their existing chats. The shared job list is read from the desk the agents already use. The page does not claim a job.
+
+## 2026-10-29 — shadow daily run
+
+- The Market tab now runs the rate engine against the live calendar. A booked night, a closed River night, or a paused house keeps the published ask. The daily text is on the page and is not sent. Nothing is written to Hospitable or to the books.
