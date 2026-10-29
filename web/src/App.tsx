@@ -34,6 +34,9 @@ const OwnerStatement = lazy(() =>
 const CleanDesk = lazy(() =>
   import('./components/CleanDesk').then((m) => ({ default: m.CleanDesk })),
 );
+const AgentsHub = lazy(() =>
+  import('./components/AgentsHub').then((m) => ({ default: m.AgentsHub })),
+);
 const MarketBoard = lazy(() =>
   import('./components/MarketBoard').then((m) => ({ default: m.MarketBoard })),
 );
@@ -149,7 +152,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav aria-label="Dashboard screens" className="flex flex-wrap gap-2 pb-2 mb-6">
-          {(['portfolio', 'market', 'report', 'owner', 'clean', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
+          {(['portfolio', 'market', 'agents', 'report', 'owner', 'clean', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -162,6 +165,8 @@ function Dashboard() {
                 ? 'Overview'
                 : id === 'market'
                   ? 'Market'
+                : id === 'agents'
+                  ? 'Agents'
                 : id === 'report'
                   ? 'Report'
                   : id === 'owner'
@@ -248,6 +253,10 @@ function Dashboard() {
         ) : activeTab === 'market' ? (
           <main>
             <MarketBoard />
+          </main>
+        ) : activeTab === 'agents' ? (
+          <main>
+            <AgentsHub />
           </main>
         ) : loading && !data ? (
           <LoadingSkeleton />

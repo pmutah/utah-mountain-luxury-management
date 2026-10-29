@@ -58,7 +58,7 @@ export function installUmlBridge(opts: {
         'Navigate: UML.navigate("river") or UML.navigate("construction") for River House build costs',
         'Month: UML.setMonth("2026-08")',
         'State: UML.state()',
-        'Hash routes: #/overview #/market #/report #/owner #/clean #/report/documents #/guests #/ranch #/lindon #/river #/river/build #/ours',
+        'Hash routes: #/overview #/market #/agents #/report #/owner #/clean #/report/documents #/guests #/ranch #/lindon #/river #/river/build #/ours',
         'Map: GET /api/agent/map  ·  Guide: GET /llms.txt',
       ].join('\n'),
   };

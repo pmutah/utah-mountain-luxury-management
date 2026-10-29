@@ -11,6 +11,7 @@ export const DASHBOARD_TABS = [
   'ours',
   'owner',
   'clean',
+  'agents',
   'construction',
 ] as const;
 

@@ -26,3 +26,7 @@
 ## 2026-10-29 — cleaner desk
 
 - `#/clean` lists the next two weeks of turnovers from the existing bookings, with a same-day flag and a room checklist. Checks stay in the browser. Bookings and expenses are not written.
+
+## 2026-10-29 — agents hub
+
+- `#/agents` names Co-host, Build, Nora, Muse, and Amanda. Co-host and Build open their existing chats. The shared job list is read from the desk the agents already use. The page does not claim a job.
