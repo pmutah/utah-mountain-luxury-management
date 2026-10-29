@@ -44,6 +44,38 @@ function liveStays(reservations: Reservation[]): Reservation[] {
   );
 }
 
+export type Turnover = {
+  id: string;
+  house: HouseId;
+  houseName: string;
+  checkout: string;
+  nextCheckIn: string | null;
+  /** Nights empty between checkout and the next arrival. Zero is a same-day clean. */
+  gapNights: number | null;
+};
+
+export function buildTurnovers(reservations: Reservation[], asOf: string, horizonDays = 14): Turnover[] {
+  const until = addDays(asOf, horizonDays);
+  const stays = liveStays(reservations);
+  return stays
+    .filter((stay) => stay.checkOut >= asOf && stay.checkOut < until)
+    .map((stay) => {
+      const house = stay.propertyId as HouseId;
+      const next = stays
+        .filter((other) => other.propertyId === house && other.checkIn >= stay.checkOut && other.id !== stay.id)
+        .sort((a, b) => a.checkIn.localeCompare(b.checkIn))[0];
+      return {
+        id: `turn-${stay.id}`,
+        house,
+        houseName: HOUSE_NAME[house],
+        checkout: stay.checkOut,
+        nextCheckIn: next?.checkIn ?? null,
+        gapNights: next ? nightsBetween(stay.checkOut, next.checkIn) : null,
+      };
+    })
+    .sort((a, b) => a.checkout.localeCompare(b.checkout) || a.house.localeCompare(b.house));
+}
+
 export function buildTodayDesk(reservations: Reservation[], asOf: string, horizonDays = 7): TodayDesk {
   const until = addDays(asOf, horizonDays);
   const stays = liveStays(reservations);

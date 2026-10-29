@@ -12,7 +12,7 @@ export const onRequest: PagesFunction<{
     url.pathname.startsWith('/api/stay-preferences/') ||
     url.pathname.startsWith('/api/stay-guide/') ||
     url.pathname.startsWith('/api/esign/sign/') ||
-    url.pathname === '/api/book' ||
+    url.pathname.startsWith('/api/book') ||
     url.pathname === '/api/agent/map' ||
     isPublicMusePath(url.pathname) ||
     url.pathname === '/health' ||

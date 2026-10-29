@@ -23,6 +23,14 @@ test('River refuses dates before the first stay and a one-night weekend', () => 
   assert.match(short.reason ?? '', /at least 2 nights/);
 });
 
+test('a night already on the calendar cannot be quoted', () => {
+  const open = quoteStay('lindon', '2026-11-03', '2026-11-06');
+  assert.equal(open.ok, true);
+  const taken = quoteStay('lindon', '2026-11-03', '2026-11-06', ['2026-11-04']);
+  assert.equal(taken.ok, false);
+  assert.equal(taken.reason, 'Those nights are already booked.');
+});
+
 test('a Ranch weekday adds the house cleaning fee', () => {
   const quote = quoteStay('ranch', '2026-11-04', '2026-11-05');
   assert.equal(quote.ok, true);

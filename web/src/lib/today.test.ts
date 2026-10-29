@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { buildTodayDesk } from './today.ts';
+import { buildTodayDesk, buildTurnovers } from './today.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return {
@@ -24,6 +24,22 @@ test('the desk lists arrivals and departures inside the week and skips cancelled
   assert.deepEqual(desk.arrivals.map((move) => move.guest), ['Ada']);
   assert.deepEqual(desk.departures.map((move) => move.guest), ['Bea']);
   assert.equal(desk.arrivals[0]?.nights, 10);
+});
+
+test('a same-day turnover is a zero-night gap', () => {
+  const turns = buildTurnovers(
+    [
+      stay({ id: 'out', propertyId: 'ranch', checkIn: '2026-11-01', checkOut: '2026-11-04' }),
+      stay({ id: 'in', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-07' }),
+      stay({ id: 'later', propertyId: 'lindon', checkIn: '2026-11-20', checkOut: '2026-11-22' }),
+    ],
+    '2026-11-01',
+  );
+  assert.equal(turns.length, 2);
+  assert.equal(turns[0]?.gapNights, 0);
+  assert.equal(turns[0]?.house, 'ranch');
+  assert.equal(turns[1]?.checkout, '2026-11-07');
+  assert.equal(turns[1]?.gapNights, null);
 });
 
 test('open nights skip nights that are already booked', () => {

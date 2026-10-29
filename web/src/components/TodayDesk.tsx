@@ -2,7 +2,7 @@ import type { Reservation } from '../lib/api';
 import { formatWhole } from '../lib/luxury';
 import { currentDayIso } from '../lib/months';
 import { grossPace, type GoalHouse } from '../lib/revenue-goals';
-import { buildTodayDesk, type StayMove } from '../lib/today';
+import { buildTodayDesk, buildTurnovers, type StayMove } from '../lib/today';
 
 const HOUSES: { id: GoalHouse; label: string }[] = [
   { id: 'ranch', label: 'Ranch' },
@@ -62,6 +62,7 @@ function MoveList({ title, moves, empty }: { title: string; moves: StayMove[]; e
 export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
   const asOf = currentDayIso();
   const desk = buildTodayDesk(reservations, asOf);
+  const turns = buildTurnovers(reservations, asOf);
   return (
     <section className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="today-desk">
       <p className="uml-kicker">Today</p>
@@ -88,6 +89,26 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
       <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
         <MoveList title="Arriving" moves={desk.arrivals} empty="No arrivals this week." />
         <MoveList title="Leaving" moves={desk.departures} empty="No departures this week." />
+      </div>
+      <div className="mt-6" data-bot="turnovers">
+        <p className="uml-kicker">Turnovers</p>
+        {turns.length === 0 ? (
+          <p className="mt-2 text-sm text-[var(--uml-muted)]">No turnovers in the next two weeks.</p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {turns.map((turn) => (
+              <li key={turn.id} className="text-sm">
+                <span className="text-[#d4b56a]">{shortDate(turn.checkout)}</span>
+                {` · ${turn.houseName} · `}
+                {turn.gapNights === null
+                  ? 'nothing booked after'
+                  : turn.gapNights === 0
+                    ? 'same-day clean'
+                    : `${turn.gapNights} night${turn.gapNights === 1 ? '' : 's'} before the next arrival`}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );

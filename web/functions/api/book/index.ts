@@ -2,6 +2,9 @@ import { corsJson, PROPERTIES } from '../../_lib/data';
 import { gmailSend } from '../../_lib/gmail-store';
 import { kvGet, kvPut, newId } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
+import { loadCalendarBlocks } from '../../_lib/calendar-store';
+import { getAllReservations } from '../../_lib/reservations-store';
+import { isHouseId, occupiedNights, type StaySpan } from '../../../src/lib/availability';
 
 interface BookingRequest {
   id: string;
@@ -36,6 +39,27 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     returning: Boolean(body.returning),
     createdAt: new Date().toISOString(),
   };
+  if (isHouseId(propertyId) && entry.checkIn && entry.checkOut && entry.checkOut > entry.checkIn) {
+    const stays = await getAllReservations(env);
+    const blocks = await loadCalendarBlocks(env);
+    const spans: StaySpan[] = [
+      ...stays.map((stay) => ({
+        propertyId: stay.propertyId,
+        checkIn: stay.checkIn,
+        checkOut: stay.checkOut,
+        status: stay.status,
+      })),
+      ...blocks.map((block) => ({
+        propertyId: block.propertyId,
+        checkIn: block.start,
+        checkOut: block.end,
+      })),
+    ];
+    const taken = occupiedNights(spans, propertyId, entry.checkIn, entry.checkOut);
+    if (taken.length > 0) {
+      return corsJson(request, { error: 'Those nights are already booked.' }, 409);
+    }
+  }
   const list = await kvGet<BookingRequest[]>(env, 'booking-requests', []);
   list.unshift(entry);
   await kvPut(env, 'booking-requests', list.slice(0, 100));

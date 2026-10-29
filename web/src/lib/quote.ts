@@ -35,7 +35,12 @@ function stayNights(checkIn: string, checkOut: string): string[] {
   return nights;
 }
 
-export function quoteStay(house: HouseId, checkIn: string, checkOut: string): StayQuote {
+export function quoteStay(
+  house: HouseId,
+  checkIn: string,
+  checkOut: string,
+  taken: readonly string[] = [],
+): StayQuote {
   const empty = (reason: string): StayQuote => ({
     house,
     checkIn,
@@ -79,6 +84,20 @@ export function quoteStay(house: HouseId, checkIn: string, checkOut: string): St
       minNights,
       ok: false,
       reason: 'The River House takes its first stays on November 1, 2026.',
+    };
+  }
+  if (dates.some((date) => taken.includes(date))) {
+    return {
+      house,
+      checkIn,
+      checkOut,
+      nights,
+      lodging,
+      cleaning,
+      stayTotal: lodging + cleaning,
+      minNights,
+      ok: false,
+      reason: 'Those nights are already booked.',
     };
   }
   if (dates.length < minNights) {

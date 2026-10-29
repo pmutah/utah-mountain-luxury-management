@@ -12,3 +12,8 @@
 
 - Overview opens with the next seven days: pace rings, arrivals, departures, and open nights, all from the bookings already on the books.
 - `/book` shows a guest quote from the same season rates as the market board, plus the existing cleaning fee. Sending still emails a request. No card, no calendar hold, no change to expenses or bookings.
+
+## 2026-10-29 — booked nights and turnovers
+
+- The stay quote refuses a night that is already reserved or blocked. Cancelled stays stay open. The public availability route returns dates only.
+- Overview lists turnovers for the next two weeks: same-day clean, or how many nights sit before the next arrival.

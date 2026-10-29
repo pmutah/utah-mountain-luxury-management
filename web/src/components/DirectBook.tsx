@@ -1,5 +1,6 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PROPERTIES } from '../lib/api';
+import { occupiedByHouse, type StaySpan } from '../lib/availability';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { formatWhole } from '../lib/luxury';
 import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
@@ -24,6 +25,41 @@ function nextOpenFriday(today: string): string {
   return today;
 }
 
+const EMPTY_TAKEN: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [] };
+
+async function loadBookedNights(): Promise<Record<HouseId, string[]> | null> {
+  const from = denverToday();
+  const until = addDays(from, 540);
+  const live = await fetch('/api/book/availability').catch(() => null);
+  const type = live?.headers.get('content-type') ?? '';
+  if (live?.ok && type.includes('application/json')) {
+    const body = (await live.json()) as { nights?: Record<HouseId, string[]> };
+    if (body.nights?.ranch && body.nights.lindon && body.nights.river) return body.nights;
+  }
+  if (!import.meta.env.DEV) return null;
+  const staysRes = await fetch('/api/reservations').catch(() => null);
+  if (!staysRes?.ok) return null;
+  const staysBody = (await staysRes.json()) as { reservations?: StaySpan[] };
+  const blocksRes = await fetch('/api/calendar/blocks').catch(() => null);
+  const blocksBody = blocksRes?.ok
+    ? ((await blocksRes.json()) as { blocks?: { propertyId: string; start: string; end: string }[] })
+    : { blocks: [] };
+  const spans: StaySpan[] = [
+    ...(staysBody.reservations ?? []).map((stay) => ({
+      propertyId: stay.propertyId,
+      checkIn: stay.checkIn,
+      checkOut: stay.checkOut,
+      status: stay.status,
+    })),
+    ...(blocksBody.blocks ?? []).map((block) => ({
+      propertyId: block.propertyId,
+      checkIn: block.start,
+      checkOut: block.end,
+    })),
+  ];
+  return occupiedByHouse(spans, from, until);
+}
+
 export function DirectBook() {
   const opening = nextOpenFriday(denverToday());
   const [house, setHouse] = useState<HouseId>('river');
@@ -33,8 +69,31 @@ export function DirectBook() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
+  const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
+  const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
 
-  const quote = useMemo(() => quoteStay(house, checkIn, checkOut), [house, checkIn, checkOut]);
+  useEffect(() => {
+    let cancel = false;
+    loadBookedNights()
+      .then((nights) => {
+        if (cancel) return;
+        if (nights) {
+          setTaken(nights);
+          setCalendar('live');
+        } else setCalendar('off');
+      })
+      .catch(() => {
+        if (!cancel) setCalendar('off');
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  const quote = useMemo(
+    () => quoteStay(house, checkIn, checkOut, taken[house] ?? []),
+    [house, checkIn, checkOut, taken],
+  );
   const photo = HOUSE_PHOTOS[house];
 
   async function submit(e: FormEvent) {
@@ -155,6 +214,13 @@ export function DirectBook() {
             ) : (
               <p className="mt-3 font-display text-3xl">{quote.reason}</p>
             )}
+            <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="stay-calendar">
+              {calendar === 'loading'
+                ? 'Checking the calendar…'
+                : calendar === 'live'
+                  ? `${taken[house]?.length ?? 0} nights ahead are already booked.`
+                  : 'Calendar check is not on this server yet. Confirm the dates before accepting.'}
+            </p>
 
             {sent ? (
               <p className="mt-8 font-display text-3xl">We have the request. Someone will write back.</p>
@@ -195,7 +261,7 @@ export function DirectBook() {
                 <button
                   type="submit"
                   data-bot="stay-request"
-                  disabled={busy || !quote.ok}
+                  disabled={busy || !quote.ok || calendar === 'loading'}
                   className="rounded-full bg-[var(--uml-gold)] px-5 py-3 text-xs uppercase tracking-[0.16em] text-[var(--uml-gold-ink)] disabled:opacity-40"
                 >
                   {busy ? 'Sending' : 'Request these dates'}
