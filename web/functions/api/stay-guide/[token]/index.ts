@@ -1,10 +1,14 @@
 import { corsJson, PROPERTIES } from '../../../_lib/data';
 import { findSurveyByToken } from '../../../_lib/survey-store';
 import { getAllReservations } from '../../../_lib/reservations-store';
+import { loadCalendarBlocks } from '../../../_lib/calendar-store';
 import { accessWindow, GUIDE_HOUSE_IDS, loadGuides, type GuideHouseId } from '../../../_lib/guest-guide';
 import { isAuthenticated } from '../../../_lib/auth';
 import { isMuseAuthorized } from '../../../_lib/muse/auth';
 import type { AgentEnv } from '../../../_lib/agent/types';
+import { occupiedNights, type StaySpan } from '../../../../src/lib/availability';
+import { nightBeforeIsFree } from '../../../../src/lib/journey';
+import { addDays } from '../../../../src/lib/market/dates';
 
 export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: string }> = async ({
   request,
@@ -24,7 +28,8 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
     return corsJson(request, { enabled: false }, 200, { 'Cache-Control': 'no-store' });
   }
 
-  const stay = (await getAllReservations(env)).find((item) => item.id === survey.reservationId);
+  const reservations = await getAllReservations(env);
+  const stay = reservations.find((item) => item.id === survey.reservationId);
   if (stay?.status === 'cancelled') {
     return corsJson(request, { error: 'This stay was cancelled.' }, 410);
   }
@@ -33,6 +38,24 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
   const checkOut = stay?.checkOut ?? survey.checkOut;
   const window = accessWindow(checkIn, checkOut);
   const unlocked = window.open || preview;
+  const blocks = await loadCalendarBlocks(env);
+  const spans: StaySpan[] = [
+    ...reservations.map((item) => ({
+      propertyId: item.propertyId,
+      checkIn: item.checkIn,
+      checkOut: item.checkOut,
+      status: item.status,
+    })),
+    ...blocks.map((block) => ({
+      propertyId: block.propertyId,
+      checkIn: block.start,
+      checkOut: block.end,
+    })),
+  ];
+  const nightBeforeFree = nightBeforeIsFree(
+    checkIn,
+    occupiedNights(spans, houseId, addDays(checkIn, -1), checkIn),
+  );
 
   return corsJson(request, {
     enabled: guide.enabled,
@@ -42,6 +65,7 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
     checkIn,
     checkOut,
     preferencesDone: Boolean(survey.completedAt),
+    nightBeforeFree,
     access: {
       phase: window.phase,
       opensOn: window.opensOn,

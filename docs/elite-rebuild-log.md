@@ -42,3 +42,7 @@
 ## 2026-10-29 — direct price on the booking page
 
 - `/book` charges the host net, because a direct stay has no platform fee. When the year is still short, nights that qualify take 20% off that host net. The Airbnb list stays on the page beside it. Nothing is charged and no dates are held.
+
+## 2026-10-29 — guest trip steps
+
+- The stay app lists the path from preferences to checkout. When the night before is open, it offers to ask Nora about arriving early. The door code still appears the day before check-in. The guest app stays off until that house is turned on.

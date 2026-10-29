@@ -400,6 +400,8 @@ export interface StayGuide {
   checkIn: string;
   checkOut: string;
   preferencesDone: boolean;
+  /** True when the night before check-in is empty. Omitted by older servers. */
+  nightBeforeFree?: boolean;
   access: {
     phase: 'before' | 'during' | 'after';
     opensOn: string;

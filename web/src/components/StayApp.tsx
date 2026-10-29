@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '../lib/api';
+import { loadBookedNights } from '../lib/booked-nights';
+import { arrivalJourney, nightBeforeIsFree } from '../lib/journey';
+import { denverToday } from '../lib/market/dates';
 import { AppIcon } from './AppIcon';
 import { GuestConcierge } from './GuestConcierge';
 import { GuestPreferenceForm } from './GuestPreferenceForm';
@@ -87,6 +90,7 @@ export function StayApp({ token }: { token: string }) {
   const [tab, setTab] = useState<Tab>('stay');
   const [thread, setThread] = useState<StayThreadMessage[]>([]);
   const [kind, setKind] = useState<GuidePlace['kind'] | 'all'>('all');
+  const [previewFree, setPreviewFree] = useState<boolean | null>(null);
 
   useEffect(() => {
     api
@@ -124,6 +128,20 @@ export function StayApp({ token }: { token: string }) {
       window.clearInterval(id);
     };
   }, [token, preview, data]);
+
+  useEffect(() => {
+    if (!data || !preview || typeof data.nightBeforeFree === 'boolean') return;
+    let cancel = false;
+    loadBookedNights()
+      .then((nights) => {
+        if (cancel || !nights) return;
+        setPreviewFree(nightBeforeIsFree(data.checkIn, nights[data.propertyId] ?? []));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, [data, preview]);
 
   const hostReply = [...thread].reverse().find((message) => message.from === 'host') ?? null;
 
@@ -170,6 +188,18 @@ export function StayApp({ token }: { token: string }) {
   const house = data.propertyName.replace(/^The /, '');
   const places = guide.places.filter((place) => kind === 'all' || place.kind === kind);
   const phone = guide.contactPhone.replace(/[^\d+]/g, '');
+  const nightBeforeFree = typeof data.nightBeforeFree === 'boolean' ? data.nightBeforeFree : previewFree;
+  const steps = arrivalJourney({
+    asOf: denverToday(),
+    checkIn: data.checkIn,
+    checkOut: data.checkOut,
+    opensOn: access.opensOn,
+    preferencesDone: data.preferencesDone,
+    checkInTime: guide.checkInTime,
+    checkOutTime: guide.checkOutTime,
+    phase: access.phase,
+    nightBeforeFree,
+  });
 
   return (
     <div className="guest-survey min-h-screen pb-24 text-[#f6f1e8]" data-bot="stay-app">
@@ -224,6 +254,30 @@ export function StayApp({ token }: { token: string }) {
               </span>
               <span className="text-sm text-[#d4b56a]">Chat</span>
             </button>
+            <Card>
+              <Kicker>Your trip</Kicker>
+              <ol className="mt-4 space-y-4" data-bot="stay-journey">
+                {steps.map((step) => (
+                  <li key={step.id} data-bot={`stay-step-${step.id}`}>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">
+                      {step.state === 'done' ? 'Done' : step.state === 'now' ? 'Now' : 'Later'}
+                    </p>
+                    <p className="mt-1 text-lg">{step.title}</p>
+                    <p className="text-sm leading-relaxed text-[#d7cfc3]">{step.detail}</p>
+                    {step.id === 'early' && (
+                      <button
+                        type="button"
+                        className="mt-3 rounded-full border border-[#d4b56a]/50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
+                        data-bot="stay-ask-early"
+                        onClick={() => setTab('help')}
+                      >
+                        Ask Nora
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </Card>
             <Card>
               <Kicker>Getting in</Kicker>
               {access.unlocked ? (
