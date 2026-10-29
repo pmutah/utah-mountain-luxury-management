@@ -3,7 +3,7 @@ import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { buildMarketBoard } from '../lib/market/board';
 import { addDays, denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
-import { runShadow } from '../lib/market/shadow';
+import { runShadow, portfolioDigest } from '../lib/market/shadow';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
@@ -110,6 +110,17 @@ export function MarketBoard() {
     () => runShadow(board, calendar === 'live' ? (taken[house] ?? []) : [], paused[house], today, pace),
     [board, calendar, taken, house, paused, today, pace],
   );
+  const daily = useMemo(() => {
+    const paceOf = (id: HouseId): YearPace =>
+      paceState !== 'live' || !stays ? 'unknown' : grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met';
+    return portfolioDigest({
+      asOf: today,
+      taken,
+      paused,
+      pace: { river: paceOf('river'), ranch: paceOf('ranch'), lindon: paceOf('lindon') },
+      calendarLive: calendar === 'live',
+    });
+  }, [today, taken, paused, stays, paceState, calendar]);
   const moves = groupMoves(shadow.nights);
 
   useEffect(() => {
@@ -150,6 +161,15 @@ export function MarketBoard() {
 
   return (
     <section className="space-y-6" data-bot="market-board">
+      <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-daily">
+        <p className="uml-kicker">Daily text</p>
+        <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
+          One summary for River, Ranch, and Lindon. Booked nights stay at the published rate. This text is not sent.
+        </p>
+        <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6" data-bot="market-daily-text">
+          {daily}
+        </pre>
+      </div>
       <div className="uml-panel rounded-3xl p-5 sm:p-6">
         <p className="uml-kicker">Market</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">

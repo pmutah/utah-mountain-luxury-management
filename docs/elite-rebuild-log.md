@@ -46,3 +46,7 @@
 ## 2026-10-29 — guest trip steps
 
 - The stay app lists the path from preferences to checkout. When the night before is open, it offers to ask Nora about arriving early. The door code still appears the day before check-in. The guest app stays off until that house is turned on.
+
+## 2026-10-29 — portfolio daily text
+
+- The Market tab leads with one shadow summary for River, Ranch, and Lindon. A paused house stays at its published rates. The text is on the page and is not sent.

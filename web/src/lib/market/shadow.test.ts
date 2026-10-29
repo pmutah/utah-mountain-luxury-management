@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildMarketBoard } from './board.ts';
-import { runShadow } from './shadow.ts';
+import { runShadow, portfolioDigest } from './shadow.ts';
 
 test('a booked night keeps the published rate even when comps are higher', () => {
   const board = buildMarketBoard('ranch', '2026-11-06', 3);
@@ -60,4 +60,19 @@ test('a booked night is not promoted', () => {
   const run = runShadow(board, ['2026-11-06'], false, '2026-11-06', 'short');
   assert.equal(run.nights[0]?.action, 'booked');
   assert.equal(run.nights[0]?.promotionPercent, 0);
+});
+
+test('the daily text names every house and leaves a paused house alone', () => {
+  const text = portfolioDigest({
+    asOf: '2026-10-29',
+    taken: { river: [], ranch: ['2026-11-06'], lindon: [] },
+    paused: { river: true, ranch: false, lindon: false },
+    pace: { river: 'short', ranch: 'short', lindon: 'met' },
+    calendarLive: true,
+  });
+  assert.match(text, /^UML shadow 2026-10-29/);
+  assert.match(text, /River: paused/);
+  assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
+  assert.match(text, /Lindon: \d+ raises, 0 promotions/);
+  assert.match(text, /Nothing sent to Hospitable/);
 });

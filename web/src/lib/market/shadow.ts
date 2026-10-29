@@ -1,5 +1,6 @@
 import { RIVER_FIRST_STAY } from '../brand';
 import { promotionForNight, type YearPace } from './fill';
+import { buildMarketBoard } from './board';
 import type { HouseId, MarketBoard, NightRow } from './types';
 
 export type GuardAction = NightRow['action'] | 'booked' | 'closed' | 'paused';
@@ -82,6 +83,45 @@ export function runShadow(
       ];
   lines.push('Nothing sent to Hospitable.');
   return { house: board.house, paused, nights, counts, digest: lines.join('\n') };
+}
+
+const PORTFOLIO: HouseId[] = ['river', 'ranch', 'lindon'];
+
+/** One daily text for all three houses. This does not send it. */
+export function portfolioDigest(input: {
+  asOf: string;
+  taken: Record<HouseId, string[]>;
+  paused: Record<HouseId, boolean>;
+  pace: Record<HouseId, YearPace>;
+  calendarLive: boolean;
+}): string {
+  const lines = [`UML shadow ${input.asOf}`];
+  for (const house of PORTFOLIO) {
+    const run = runShadow(
+      buildMarketBoard(house, input.asOf, 90),
+      input.calendarLive ? (input.taken[house] ?? []) : [],
+      input.paused[house],
+      input.asOf,
+      input.pace[house],
+    );
+    if (run.paused) {
+      lines.push(`${LABEL[house]}: paused. Published rates stay.`);
+      continue;
+    }
+    const raises = run.nights.filter((night) => night.action === 'raise');
+    const largest = raises.reduce<ShadowNight | null>((best, night) => {
+      if (!best) return night;
+      return night.proposedGuest - night.ourGuest > best.proposedGuest - best.ourGuest ? night : best;
+    }, null);
+    const raiseBit = largest
+      ? `, largest raise ${shortDate(largest.date)} ${money(largest.ourGuest)} → ${money(largest.proposedGuest)}`
+      : '';
+    lines.push(
+      `${LABEL[house]}: ${run.counts.raise} raises, ${run.counts.promote} promotions, ${run.counts.booked} booked left alone${raiseBit}`,
+    );
+  }
+  lines.push('Nothing sent to Hospitable.');
+  return lines.join('\n');
 }
 
 function applyFill(night: ShadowNight, taken: Set<string>, asOf: string, pace: YearPace): ShadowNight {
