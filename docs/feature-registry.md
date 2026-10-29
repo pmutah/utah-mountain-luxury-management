@@ -14,5 +14,5 @@ Existing expenses, bookings, receipts, and construction records stay in Cloudfla
 | Booking | Our own direct site, beside Hospitable Direct | sample | `/book` shows a month of nightly prices, refuses booked nights, and emails a request. It does not charge or hold dates. |
 | Guest | Trip portal, lock codes, upsells | planned | Stay app exists and is off per house. |
 | Ops | Turnover list from existing bookings | sample | Overview shows the next two weeks of checkouts and the gap before the next arrival. It does not create or delete tasks. |
-| Owner | Todd portal and statements | planned | Report tab already has the split. |
+| Owner | Todd portal and statements | sample | `#/owner` is a read-only Ranch and River statement after the 20% fee. Lindon, household, and construction stay off that page. |
 | AI | Agents hub | planned | Co-host, Muse, Amanda, and Nora already run. |

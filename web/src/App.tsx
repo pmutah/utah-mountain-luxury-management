@@ -28,6 +28,9 @@ const ConstructionProjectView = lazy(() =>
 const DirectBook = lazy(() =>
   import('./components/DirectBook').then((m) => ({ default: m.DirectBook })),
 );
+const OwnerStatement = lazy(() =>
+  import('./components/OwnerStatement').then((m) => ({ default: m.OwnerStatement })),
+);
 const MarketBoard = lazy(() =>
   import('./components/MarketBoard').then((m) => ({ default: m.MarketBoard })),
 );
@@ -143,7 +146,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav aria-label="Dashboard screens" className="flex flex-wrap gap-2 pb-2 mb-6">
-          {(['portfolio', 'market', 'report', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
+          {(['portfolio', 'market', 'report', 'owner', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -158,6 +161,8 @@ function Dashboard() {
                   ? 'Market'
                 : id === 'report'
                   ? 'Report'
+                  : id === 'owner'
+                    ? 'Owner'
                   : id === 'guests'
                     ? 'Guests'
                     : id === 'ours'
@@ -279,6 +284,14 @@ function Dashboard() {
                   onToast={showToast}
                 />
               </div>
+            )}
+            {activeTab === 'owner' && (
+              <OwnerStatement
+                month={currentMonth}
+                reservations={data.reservations}
+                expenses={data.expenses}
+                extraCleaningFees={extraCleaningFees}
+              />
             )}
             {(activeTab === 'ranch' ||
               activeTab === 'lindon' ||
