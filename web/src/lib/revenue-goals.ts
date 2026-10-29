@@ -1,4 +1,10 @@
-import type { Reservation } from './api';
+export type PaceStay = {
+  propertyId: string;
+  checkIn: string;
+  checkOut: string;
+  status?: string;
+  payout?: number;
+};
 
 /** Keep in step with AIRBNB_KEEP and VRBO_KEEP in pricing-doctrine.ts. */
 export const AIRBNB_KEEP = 0.845;
@@ -40,7 +46,7 @@ function addDays(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-function takenNights(stays: Reservation[], from: string, to: string) {
+function takenNights(stays: PaceStay[], from: string, to: string) {
   const taken = new Set<string>();
   for (const stay of stays) {
     let cursor = stay.checkIn < from ? from : stay.checkIn;
@@ -53,7 +59,7 @@ function takenNights(stays: Reservation[], from: string, to: string) {
   return taken;
 }
 
-export function grossPace(propertyId: GoalHouse, reservations: Reservation[], asOf: string) {
+export function grossPace(propertyId: GoalHouse, reservations: PaceStay[], asOf: string) {
   const window = goalWindow(propertyId, asOf);
   const mine = reservations.filter(
     (stay) => stay.propertyId === propertyId && stay.status !== 'cancelled',

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { loadBookedNights } from '../lib/booked-nights';
+import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { buildMarketBoard } from '../lib/market/board';
 import { addDays, denverToday } from '../lib/market/dates';
+import type { YearPace } from '../lib/market/fill';
 import { runShadow } from '../lib/market/shadow';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
+import { grossPace, type PaceStay } from '../lib/revenue-goals';
 
 const HOUSES: { id: HouseId; label: string }[] = [
   { id: 'river', label: 'River' },
@@ -28,7 +30,8 @@ function groupMoves(nights: NightRow[]) {
     reason: string;
     season: string | null;
     from: number;
-    to: number;
+    base: number;
+    offer: number;
   }> = [];
   for (const night of nights) {
     if (night.action !== 'raise' && night.action !== 'promote') continue;
@@ -48,9 +51,10 @@ function groupMoves(nights: NightRow[]) {
       action: night.action,
       reason: night.reason,
       season: night.season,
-      from: night.ourGuest,
-      to: night.proposedGuest,
-    });
+    from: night.ourGuest,
+    base: night.proposedGuest,
+    offer: night.offerGuest,
+  });
   }
   return groups.slice(0, 6);
 }
@@ -96,11 +100,15 @@ export function MarketBoard() {
   const [paused, setPaused] = useState<Record<HouseId, boolean>>({ ranch: false, lindon: false, river: false });
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
+  const [stays, setStays] = useState<PaceStay[] | null>(null);
+  const [paceState, setPaceState] = useState<'loading' | 'live' | 'off'>('loading');
   const today = denverToday();
   const board = useMemo(() => buildMarketBoard(house, today, 90), [house, today]);
+  const pace: YearPace =
+    paceState !== 'live' || !stays ? 'unknown' : grossPace(house, stays, today).stillNeeded > 0 ? 'short' : 'met';
   const shadow = useMemo(
-    () => runShadow(board, calendar === 'live' ? (taken[house] ?? []) : [], paused[house], today),
-    [board, calendar, taken, house, paused, today],
+    () => runShadow(board, calendar === 'live' ? (taken[house] ?? []) : [], paused[house], today, pace),
+    [board, calendar, taken, house, paused, today, pace],
   );
   const moves = groupMoves(shadow.nights);
 
@@ -116,6 +124,24 @@ export function MarketBoard() {
       })
       .catch(() => {
         if (!cancel) setCalendar('off');
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancel = false;
+    loadPaceStays()
+      .then((rows) => {
+        if (cancel) return;
+        if (rows) {
+          setStays(rows);
+          setPaceState('live');
+        } else setPaceState('off');
+      })
+      .catch(() => {
+        if (!cancel) setPaceState('off');
       });
     return () => {
       cancel = true;
@@ -163,7 +189,7 @@ export function MarketBoard() {
           <div>
             <p className="uml-kicker">Tonight's shadow run</p>
             <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
-              Booked nights, closed nights, and a paused house stay at the published rate. This summary is the daily text. It is not sent.
+              Booked nights, closed nights, and a paused house stay at the published rate. A promotion is 20% off that rate on Airbnb and VRBO, and only when the fill rules say so. This summary is the daily text. It is not sent.
             </p>
           </div>
           <button
@@ -211,8 +237,8 @@ export function MarketBoard() {
                   <span className="text-[#d4b56a]">{dateSpan(move.first, move.last)}</span>
                   {move.season ? ` · ${move.season}` : ''}
                   {move.action === 'raise'
-                    ? ` · ${formatWhole(move.from)} → ${formatWhole(move.to)}`
-                    : ' · hold the base, consider a promotion'}
+                    ? ` · ${formatWhole(move.from)} → ${formatWhole(move.base)}`
+                    : ` · 20% off · ${formatWhole(move.base)} base · ${formatWhole(move.offer)} after`}
                 </p>
                 <p className="text-[var(--uml-muted)]">{move.reason}</p>
               </li>

@@ -34,3 +34,7 @@
 ## 2026-10-29 — shadow daily run
 
 - The Market tab now runs the rate engine against the live calendar. A booked night, a closed River night, or a paused house keeps the published ask. The daily text is on the page and is not sent. Nothing is written to Hospitable or to the books.
+
+## 2026-10-29 — fill rules on the shadow run
+
+- A 20% promotion is recommended only while the year is still short: weekends inside 21 days, holidays inside 14 days, and weekdays once that Friday and Saturday are booked. The published base is not cut. Booked nights stay out of it.

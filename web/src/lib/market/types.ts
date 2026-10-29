@@ -11,6 +11,10 @@ export type NightRow = {
   openComps: number;
   percentile: number;
   proposedGuest: number;
+  /** 20 only when the fill rules say to discount this night on Airbnb and VRBO. The base is proposedGuest. */
+  promotionPercent: 0 | 20;
+  /** Guest price after that promotion, never under the floor. Equals proposedGuest when the percent is 0. */
+  offerGuest: number;
   action: 'hold' | 'raise' | 'promote' | 'locked' | 'booked' | 'closed' | 'paused';
   reason: string;
   compBookedShare: number;

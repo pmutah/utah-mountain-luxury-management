@@ -42,3 +42,22 @@ test('an open night can still raise inside the cap', () => {
   assert.ok(run.nights[0]!.proposedGuest <= Math.round(open.ourGuest * 1.08));
   assert.match(run.digest, /Largest raise/);
 });
+
+test('a short year can promote an open weekend without cutting the base', () => {
+  const board = buildMarketBoard('ranch', '2026-11-06', 1);
+  const before = board.nights[0]!.proposedGuest;
+  const run = runShadow(board, [], false, '2026-11-06', 'short');
+  const night = run.nights[0]!;
+  assert.equal(night.action, 'promote');
+  assert.equal(night.proposedGuest, before);
+  assert.equal(night.promotionPercent, 20);
+  assert.ok(night.offerGuest < night.proposedGuest);
+  assert.ok(night.offerGuest >= night.floorGuest);
+});
+
+test('a booked night is not promoted', () => {
+  const board = buildMarketBoard('ranch', '2026-11-06', 1);
+  const run = runShadow(board, ['2026-11-06'], false, '2026-11-06', 'short');
+  assert.equal(run.nights[0]?.action, 'booked');
+  assert.equal(run.nights[0]?.promotionPercent, 0);
+});

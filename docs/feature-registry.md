@@ -10,7 +10,7 @@ Existing expenses, bookings, receipts, and construction records stay in Cloudfla
 | Market | Top 10 comps per house | sample | Replaced by AirROI when a key exists. |
 | Market | 90-day rate band and percentile | sample | Gold line is our ask. Band is open comps. |
 | Market | Shadow rate moves, 8% cap, holiday lock, floors | sample | Does not write Airbnb, VRBO, or Hospitable. |
-| Market | Daily shadow run | sample | Booked, closed, and paused nights stay at the published rate. The text is shown and not sent. |
+| Market | Daily shadow run | sample | Booked, closed, and paused nights stay at the published rate. Promotions follow the fill rules and do not cut the base. The text is shown and not sent. |
 | Market | Hospitable calendar push | planned | After 7 days of shadow mode and a write token. |
 | Booking | Our own direct site, beside Hospitable Direct | sample | `/book` shows a month of nightly prices, refuses booked nights, and emails a request. It does not charge or hold dates. |
 | Guest | Trip portal, lock codes, upsells | planned | Stay app exists and is off per house. |

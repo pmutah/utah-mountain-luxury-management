@@ -71,6 +71,8 @@ export function buildMarketBoard(house: HouseId, from: string, days = 90): Marke
       openComps: openRates.length,
       percentile: move.percentile,
       proposedGuest: move.proposedGuest,
+      promotionPercent: 0,
+      offerGuest: move.proposedGuest,
       action: move.action,
       reason: move.reason,
       compBookedShare: Math.round(((priced.length - openRates.length) / priced.length) * 100),

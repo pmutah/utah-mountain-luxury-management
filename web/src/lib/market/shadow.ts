@@ -1,4 +1,5 @@
 import { RIVER_FIRST_STAY } from '../brand';
+import { promotionForNight, type YearPace } from './fill';
 import type { HouseId, MarketBoard, NightRow } from './types';
 
 export type GuardAction = NightRow['action'] | 'booked' | 'closed' | 'paused';
@@ -48,9 +49,16 @@ function guardNight(night: NightRow, house: HouseId, taken: Set<string>, paused:
   return night;
 }
 
-export function runShadow(board: MarketBoard, taken: string[], paused: boolean, asOf: string): ShadowRun {
+export function runShadow(
+  board: MarketBoard,
+  taken: string[],
+  paused: boolean,
+  asOf: string,
+  pace: YearPace = 'unknown',
+): ShadowRun {
   const takenSet = new Set(taken);
-  const nights = board.nights.map((night) => guardNight(night, board.house, takenSet, paused));
+  const guarded = board.nights.map((night) => guardNight(night, board.house, takenSet, paused));
+  const nights = guarded.map((night) => applyFill(night, takenSet, asOf, pace));
   const counts = emptyCounts();
   for (const night of nights) counts[night.action] += 1;
   const raises = nights.filter((night) => night.action === 'raise');
@@ -66,7 +74,50 @@ export function runShadow(board: MarketBoard, taken: string[], paused: boolean, 
         largest
           ? `Largest raise ${shortDate(largest.date)} ${money(largest.ourGuest)} → ${money(largest.proposedGuest)}`
           : 'No raises today.',
+        pace === 'met'
+          ? 'The year is on the books. No promotions.'
+          : pace === 'unknown'
+            ? 'Year pace is not loaded, so no promotion is recommended.'
+            : 'The year is still short. A promotion is 20% off the base on Airbnb and VRBO.',
       ];
   lines.push('Nothing sent to Hospitable.');
   return { house: board.house, paused, nights, counts, digest: lines.join('\n') };
+}
+
+function applyFill(night: ShadowNight, taken: Set<string>, asOf: string, pace: YearPace): ShadowNight {
+  if (night.action === 'booked' || night.action === 'closed' || night.action === 'paused') {
+    return { ...night, promotionPercent: 0, offerGuest: night.proposedGuest };
+  }
+  const decision = promotionForNight({
+    date: night.date,
+    asOf,
+    holiday: night.action === 'locked',
+    ourGuest: night.proposedGuest,
+    floorGuest: night.floorGuest,
+    taken,
+    pace,
+  });
+  if (decision.percent === 20) {
+    const raised = night.proposedGuest > night.ourGuest;
+    return {
+      ...night,
+      action: 'promote',
+      promotionPercent: 20,
+      offerGuest: decision.offerGuest,
+      reason: raised
+        ? `Base ${money(night.ourGuest)} to ${money(night.proposedGuest)}. ${decision.reason}`
+        : decision.reason,
+    };
+  }
+  if (night.action === 'locked') {
+    return { ...night, promotionPercent: 0, offerGuest: night.proposedGuest };
+  }
+  const action = night.action === 'promote' ? 'hold' : night.action;
+  return {
+    ...night,
+    action,
+    promotionPercent: 0,
+    offerGuest: night.proposedGuest,
+    reason: night.action === 'promote' ? decision.reason : night.reason,
+  };
 }

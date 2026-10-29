@@ -1,6 +1,7 @@
 import { occupiedByHouse, type StaySpan } from './availability';
 import { addDays, denverToday } from './market/dates';
 import type { HouseId } from './market/types';
+import type { PaceStay } from './revenue-goals';
 
 /** Dates only. Guest names from the reservations feed are dropped before they reach the page. */
 export async function loadBookedNights(): Promise<Record<HouseId, string[]> | null> {
@@ -34,4 +35,27 @@ export async function loadBookedNights(): Promise<Record<HouseId, string[]> | nu
     })),
   ];
   return occupiedByHouse(spans, from, until);
+}
+
+/** Host payout and dates only. Guest names stay on the server response and are not kept. */
+export async function loadPaceStays(): Promise<PaceStay[] | null> {
+  const res = await fetch('/api/reservations').catch(() => null);
+  const type = res?.headers.get('content-type') ?? '';
+  if (!res?.ok || !type.includes('application/json')) return null;
+  const body = (await res.json()) as {
+    reservations?: Array<{
+      propertyId?: string;
+      checkIn?: string;
+      checkOut?: string;
+      status?: string;
+      payout?: number;
+    }>;
+  };
+  return (body.reservations ?? []).map((stay) => ({
+    propertyId: stay.propertyId ?? '',
+    checkIn: stay.checkIn ?? '',
+    checkOut: stay.checkOut ?? '',
+    status: stay.status,
+    payout: Number(stay.payout) || 0,
+  }));
 }
