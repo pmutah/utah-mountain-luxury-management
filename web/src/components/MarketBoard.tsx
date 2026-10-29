@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { buildMarketBoard } from '../lib/market/board';
-import { denverToday } from '../lib/market/dates';
+import { addDays, denverToday } from '../lib/market/dates';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 
@@ -12,6 +12,45 @@ const HOUSES: { id: HouseId; label: string }[] = [
 
 function shortDate(iso: string) {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function dateSpan(first: string, last: string) {
+  return first === last ? shortDate(first) : `${shortDate(first)} – ${shortDate(last)}`;
+}
+
+function groupMoves(nights: NightRow[]) {
+  const groups: Array<{
+    first: string;
+    last: string;
+    action: NightRow['action'];
+    reason: string;
+    season: string | null;
+    from: number;
+    to: number;
+  }> = [];
+  for (const night of nights) {
+    if (night.action !== 'raise' && night.action !== 'promote') continue;
+    const last = groups[groups.length - 1];
+    if (
+      last &&
+      addDays(last.last, 1) === night.date &&
+      last.action === night.action &&
+      last.reason === night.reason
+    ) {
+      last.last = night.date;
+      continue;
+    }
+    groups.push({
+      first: night.date,
+      last: night.date,
+      action: night.action,
+      reason: night.reason,
+      season: night.season,
+      from: night.ourGuest,
+      to: night.proposedGuest,
+    });
+  }
+  return groups.slice(0, 6);
 }
 
 function RateBand({ nights }: { nights: NightRow[] }) {
@@ -51,7 +90,7 @@ function RateBand({ nights }: { nights: NightRow[] }) {
 export function MarketBoard() {
   const [house, setHouse] = useState<HouseId>('river');
   const board = useMemo(() => buildMarketBoard(house, denverToday(), 90), [house]);
-  const moves = board.nights.filter((night) => night.action === 'raise' || night.action === 'promote').slice(0, 6);
+  const moves = groupMoves(board.nights);
 
   return (
     <section className="space-y-6" data-bot="market-board">
@@ -103,16 +142,16 @@ export function MarketBoard() {
           <p className="mt-2 text-sm text-[var(--uml-muted)]">No shadow moves in this window. Hold the rate.</p>
         ) : (
           <ul className="mt-2 grid gap-3 sm:grid-cols-2">
-            {moves.map((night) => (
-              <li key={night.date} className="text-sm">
+            {moves.map((move) => (
+              <li key={move.first} className="text-sm">
                 <p>
-                  <span className="text-[#d4b56a]">{shortDate(night.date)}</span>
-                  {night.season ? ` · ${night.season}` : ''}
-                  {night.action === 'raise'
-                    ? ` · ${formatWhole(night.ourGuest)} → ${formatWhole(night.proposedGuest)}`
+                  <span className="text-[#d4b56a]">{dateSpan(move.first, move.last)}</span>
+                  {move.season ? ` · ${move.season}` : ''}
+                  {move.action === 'raise'
+                    ? ` · ${formatWhole(move.from)} → ${formatWhole(move.to)}`
                     : ' · hold the base, consider a promotion'}
                 </p>
-                <p className="text-[var(--uml-muted)]">{night.reason}</p>
+                <p className="text-[var(--uml-muted)]">{move.reason}</p>
               </li>
             ))}
           </ul>
