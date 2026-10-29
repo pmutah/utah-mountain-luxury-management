@@ -22,3 +22,7 @@
 ## 2026-10-29 — owner statement
 
 - `#/owner` shows Todd’s share of Ranch and River, using the same split as the report. It does not list Lindon, household purchases, or construction, and it has no edit or delete controls.
+
+## 2026-10-29 — cleaner desk
+
+- `#/clean` lists the next two weeks of turnovers from the existing bookings, with a same-day flag and a room checklist. Checks stay in the browser. Bookings and expenses are not written.

@@ -31,6 +31,9 @@ const DirectBook = lazy(() =>
 const OwnerStatement = lazy(() =>
   import('./components/OwnerStatement').then((m) => ({ default: m.OwnerStatement })),
 );
+const CleanDesk = lazy(() =>
+  import('./components/CleanDesk').then((m) => ({ default: m.CleanDesk })),
+);
 const MarketBoard = lazy(() =>
   import('./components/MarketBoard').then((m) => ({ default: m.MarketBoard })),
 );
@@ -146,7 +149,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav aria-label="Dashboard screens" className="flex flex-wrap gap-2 pb-2 mb-6">
-          {(['portfolio', 'market', 'report', 'owner', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
+          {(['portfolio', 'market', 'report', 'owner', 'clean', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -163,6 +166,8 @@ function Dashboard() {
                   ? 'Report'
                   : id === 'owner'
                     ? 'Owner'
+                  : id === 'clean'
+                    ? 'Clean'
                   : id === 'guests'
                     ? 'Guests'
                     : id === 'ours'
@@ -291,6 +296,11 @@ function Dashboard() {
                 reservations={data.reservations}
                 expenses={data.expenses}
                 extraCleaningFees={extraCleaningFees}
+              />
+            )}
+            {activeTab === 'clean' && (
+              <CleanDesk
+                reservations={history?.reservations?.length ? history.reservations : data.reservations}
               />
             )}
             {(activeTab === 'ranch' ||

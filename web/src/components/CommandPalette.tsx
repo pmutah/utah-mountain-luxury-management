@@ -10,6 +10,7 @@ const COMMANDS: Array<{ label: string; test: RegExp; dest: Destination }> = [
   { label: 'Market', test: /^(market|comps|pricing)$/i, dest: { tab: 'market' } },
   { label: 'Report', test: /^(report|p&l|pnl)$/i, dest: { tab: 'report', report: 'pnl' } },
   { label: 'Owner statement', test: /^(owner|statement)$/i, dest: { tab: 'owner' } },
+  { label: 'Clean', test: /^(clean|turnover|housekeeping)$/i, dest: { tab: 'clean' } },
   { label: 'Documents', test: /^documents?$/i, dest: { tab: 'report', report: 'documents' } },
   { label: 'Guests', test: /^guests?$/i, dest: { tab: 'guests' } },
   { label: 'Ranch', test: /^ranch( house)?$/i, dest: { tab: 'ranch' } },

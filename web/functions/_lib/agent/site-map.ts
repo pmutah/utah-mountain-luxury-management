@@ -9,6 +9,7 @@ export const AGENT_SITE_MAP = {
     market: '#/market',
     report: '#/report',
     owner: '#/owner',
+    clean: '#/clean',
     documents: '#/report/documents',
     guests: '#/guests',
     ranch: '#/ranch',
