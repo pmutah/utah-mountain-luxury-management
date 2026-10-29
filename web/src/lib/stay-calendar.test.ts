@@ -26,6 +26,7 @@ test('the month marks booked nights and the nights inside the stay', () => {
   assert.equal(sixth?.isCheckIn, true);
   assert.equal(sixth?.inStay, true);
   assert.equal(sixth?.guest, 2486);
+  assert.equal(sixth?.direct, 2100);
   assert.equal(seventh?.inStay, true);
   assert.equal(eighth?.isCheckOut, true);
   assert.equal(eighth?.inStay, false);

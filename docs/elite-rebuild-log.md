@@ -38,3 +38,7 @@
 ## 2026-10-29 — fill rules on the shadow run
 
 - A 20% promotion is recommended only while the year is still short: weekends inside 21 days, holidays inside 14 days, and weekdays once that Friday and Saturday are booked. The published base is not cut. Booked nights stay out of it.
+
+## 2026-10-29 — direct price on the booking page
+
+- `/book` charges the host net, because a direct stay has no platform fee. When the year is still short, nights that qualify take 20% off that host net. The Airbnb list stays on the page beside it. Nothing is charged and no dates are held.

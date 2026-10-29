@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PROPERTIES } from '../lib/api';
-import { loadBookedNights } from '../lib/booked-nights';
+import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { formatWhole } from '../lib/luxury';
 import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
+import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
 import { quoteStay } from '../lib/quote';
+import { grossPace, type PaceStay } from '../lib/revenue-goals';
 import { BrandMark } from './BrandMark';
 import { StayMonth } from './StayMonth';
 
@@ -39,6 +41,13 @@ export function DirectBook() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
+  const [stays, setStays] = useState<PaceStay[] | null>(null);
+  const today = denverToday();
+  const pace: YearPace = stays
+    ? grossPace(house, stays, today).stillNeeded > 0
+      ? 'short'
+      : 'met'
+    : 'unknown';
 
   useEffect(() => {
     let cancel = false;
@@ -58,9 +67,21 @@ export function DirectBook() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancel = false;
+    loadPaceStays()
+      .then((rows) => {
+        if (!cancel && rows) setStays(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
   const quote = useMemo(
-    () => quoteStay(house, checkIn, checkOut, taken[house] ?? []),
-    [house, checkIn, checkOut, taken],
+    () => quoteStay(house, checkIn, checkOut, taken[house] ?? [], { asOf: today, pace }),
+    [house, checkIn, checkOut, taken, today, pace],
   );
   const photo = HOUSE_PHOTOS[house];
 
@@ -141,6 +162,7 @@ export function DirectBook() {
                 taken={taken[house] ?? []}
                 checkIn={checkIn}
                 checkOut={checkOut}
+                pace={pace}
                 onPick={(stay) => {
                   setCheckIn(stay.checkIn);
                   setCheckOut(stay.checkOut);
@@ -174,19 +196,23 @@ export function DirectBook() {
           </section>
 
           <section className="uml-panel rounded-[32px] p-6" data-bot="stay-quote">
-            <p className="uml-kicker">Quote before tax</p>
+            <p className="uml-kicker">Direct price, before tax</p>
             {quote.ok ? (
               <div className="mt-3 space-y-3">
                 <p className="font-display text-5xl uml-num">{formatWhole(quote.stayTotal)}</p>
                 <p className="text-sm text-[var(--uml-muted)]">
-                  {formatWhole(quote.lodging)} lodging
+                  {formatWhole(quote.lodging)} for the nights
                   {quote.cleaning > 0 ? ` · ${formatWhole(quote.cleaning)} cleaning` : ''}
                   {' · '}
                   {quote.nights.length} nights
                   {quote.nights[0]?.season ? ` · ${quote.nights[0].season}` : ''}
                 </p>
                 <p className="text-xs text-[var(--uml-muted)]">
-                  Utah lodging tax is added after the rate is confirmed. Nothing is charged on this page.
+                  The Airbnb guest total for these nights is {formatWhole(quote.channelTotal)}. This page has no platform fee.
+                  {quote.promotionNights > 0
+                    ? ` ${quote.promotionNights} nights use the 20% fill rate. The published base stays the same.`
+                    : ''}
+                  {' '}Utah lodging tax is added after the rate is confirmed. Nothing is charged on this page.
                 </p>
               </div>
             ) : (

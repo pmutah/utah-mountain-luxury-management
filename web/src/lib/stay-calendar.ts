@@ -1,6 +1,8 @@
 import { addDays, weekdayIndex } from './market/dates';
 import { nightAsk } from './market/rates';
+import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
+import { directNight } from './quote';
 
 export type StayPick = {
   checkIn: string;
@@ -11,6 +13,7 @@ export type StayDay = {
   iso: string;
   inMonth: boolean;
   guest: number;
+  direct: number;
   booked: boolean;
   closed: boolean;
   past: boolean;
@@ -40,6 +43,7 @@ export function monthDays(
   taken: readonly string[],
   stay: StayPick,
   today: string,
+  pace: YearPace = 'unknown',
 ): StayDay[] {
   const first = `${yearMonth}-01`;
   const gridStart = addDays(first, -weekdayIndex(first));
@@ -48,10 +52,12 @@ export function monthDays(
   for (let i = 0; i < 42; i += 1) {
     const iso = addDays(gridStart, i);
     const ask = nightAsk(house, iso);
+    const priced = directNight(house, iso, taken, today, pace);
     days.push({
       iso,
       inMonth: iso.slice(0, 7) === yearMonth,
       guest: ask.guest,
+      direct: priced.direct,
       booked: booked.has(iso),
       closed: ask.closed,
       past: iso < today,

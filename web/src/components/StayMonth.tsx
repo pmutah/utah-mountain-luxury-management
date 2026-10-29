@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatWhole } from '../lib/luxury';
 import { denverToday } from '../lib/market/dates';
+import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
 import { monthDays, monthLabel, pickStay, shiftMonth, type StayPick } from '../lib/stay-calendar';
 
@@ -11,18 +12,20 @@ export function StayMonth({
   taken,
   checkIn,
   checkOut,
+  pace = 'unknown',
   onPick,
 }: {
   house: HouseId;
   taken: readonly string[];
   checkIn: string;
   checkOut: string;
+  pace?: YearPace;
   onPick: (stay: StayPick) => void;
 }) {
   const today = denverToday();
   const [month, setMonth] = useState(checkIn.slice(0, 7) || today.slice(0, 7));
   const stay = { checkIn, checkOut };
-  const days = monthDays(month, house, taken, stay, today);
+  const days = monthDays(month, house, taken, stay, today, pace);
   const earliest = today.slice(0, 7);
   const latest = shiftMonth(earliest, 17);
 
@@ -79,14 +82,14 @@ export function StayMonth({
               {day.inMonth && day.booked ? (
                 <span className="block text-[9px] uppercase tracking-wide">Booked</span>
               ) : day.inMonth && !day.closed && !day.past ? (
-                <span className="block text-[9px] tabular-nums">{formatWhole(day.guest)}</span>
+                <span className="block text-[9px] tabular-nums">{formatWhole(day.direct)}</span>
               ) : null}
             </button>
           );
         })}
       </div>
       <p className="mt-2 text-xs text-[var(--uml-muted)]">
-        {checkOut ? 'Gold nights are the stay. Check-out morning is the last gold day.' : 'Choose the check-out morning.'}
+        {checkOut ? 'Gold nights are the stay. Prices are the direct nightly rate.' : 'Choose the check-out morning. Prices are the direct nightly rate.'}
       </p>
     </div>
   );
