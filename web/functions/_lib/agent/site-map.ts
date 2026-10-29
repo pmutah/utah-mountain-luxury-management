@@ -55,6 +55,8 @@ export const AGENT_SITE_MAP = {
     thisMap: 'GET /api/agent/map',
     market:
       'GET /api/market/overview?house=river|ranch|lindon — top 10 sample comps and a 90-day shadow rate band. Does not change live rates.',
+    publicBook:
+      'GET /book — guest quote preview from the season rates. POST /api/book still sends an email request. It does not charge a card or hold dates.',
     sharedWork:
       'GET/POST /api/agent/work — the job list Muse, Amanda, and the co-host share. list, claim, done, release. A done job is not done again.',
     museOpenApi: 'GET /api/muse/openapi.json (or /api/muse/openapi) — public',

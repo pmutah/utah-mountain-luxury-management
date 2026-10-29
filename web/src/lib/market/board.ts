@@ -1,18 +1,12 @@
 import { eachNight, isWeekendNight, monthFactor } from './dates';
 import { compsFor, type SampleComp } from './fixtures';
 import { proposeGuestRate } from './propose';
-import { riverSeasonOn } from './seasons';
-import { listPriceForHostNet, median, percentileValue } from './stats';
+import { nightAsk } from './rates';
+import { median, percentileValue } from './stats';
 import type { CompCard, HouseId, MarketBoard, NightRow } from './types';
 
 const TARGET: Record<HouseId, number> = { river: 85, ranch: 70, lindon: 55 };
 const MAX_MOVE = 0.08;
-
-/** Working published guest ask until the Hospitable calendar is connected. */
-const PUBLISHED: Record<Exclude<HouseId, 'river'>, { weekend: number; weekday: number; floorHost: number }> = {
-  ranch: { weekend: 890, weekday: 640, floorHost: 105 },
-  lindon: { weekend: 249, weekday: 179, floorHost: 43 },
-};
 
 function hash(text: string): number {
   let value = 2166136261;
@@ -34,23 +28,8 @@ function compAsk(comp: SampleComp, iso: string): number {
 }
 
 function ourGuest(house: HouseId, iso: string): { guest: number; floorGuest: number; season: string | null; lock: boolean } {
-  if (house === 'river') {
-    const season = riverSeasonOn(iso);
-    const host = isWeekendNight(iso) ? season.weekendHostNet : season.weekdayHostNet;
-    return {
-      guest: listPriceForHostNet(host),
-      floorGuest: listPriceForHostNet(1500),
-      season: season.name,
-      lock: season.holiday,
-    };
-  }
-  const published = PUBLISHED[house];
-  return {
-    guest: isWeekendNight(iso) ? published.weekend : published.weekday,
-    floorGuest: listPriceForHostNet(published.floorHost),
-    season: null,
-    lock: false,
-  };
+  const ask = nightAsk(house, iso);
+  return { guest: ask.guest, floorGuest: ask.floorGuest, season: ask.season, lock: ask.lock };
 }
 
 function scoreComp(comp: SampleComp, house: HouseId): number {

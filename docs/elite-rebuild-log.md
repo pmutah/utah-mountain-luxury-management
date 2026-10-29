@@ -7,3 +7,8 @@
 - New `#/market` screen: top 10 sample comps per house, a 90-day rate band, and shadow rate moves. Raises are capped at 8% a day, holiday rates stay locked, and the base is not cut. No prices are sent to Airbnb, VRBO, or Hospitable.
 - Checked in the browser: Market renders, Our expenses still lists the household ledger, and Overview still shows Ranch, Lindon, and River bookings.
 - Still sample data. Live comps need an AirROI key. Live rate changes need a Hospitable write token and a week of shadow mode.
+
+## 2026-10-29 — Today desk and booking quote
+
+- Overview opens with the next seven days: pace rings, arrivals, departures, and open nights, all from the bookings already on the books.
+- `/book` shows a guest quote from the same season rates as the market board, plus the existing cleaning fee. Sending still emails a request. No card, no calendar hold, no change to expenses or bookings.
