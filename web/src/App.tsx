@@ -28,6 +28,9 @@ const ConstructionProjectView = lazy(() =>
 const DirectBook = lazy(() =>
   import('./components/DirectBook').then((m) => ({ default: m.DirectBook })),
 );
+const MarketBoard = lazy(() =>
+  import('./components/MarketBoard').then((m) => ({ default: m.MarketBoard })),
+);
 import { EsignCeremony } from './components/EsignCeremony';
 import { PropertyDetail } from './components/PropertyDetail';
 import { LoadingSkeleton } from './components/LoadingSkeleton';
@@ -140,7 +143,7 @@ function Dashboard() {
         <Header month={currentMonth} onMonthChange={setCurrentMonth} />
 
         <nav aria-label="Dashboard screens" className="flex flex-wrap gap-2 pb-2 mb-6">
-          {(['portfolio', 'report', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
+          {(['portfolio', 'market', 'report', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
             <button
               key={id}
               type="button"
@@ -151,6 +154,8 @@ function Dashboard() {
             >
               {id === 'portfolio'
                 ? 'Overview'
+                : id === 'market'
+                  ? 'Market'
                 : id === 'report'
                   ? 'Report'
                   : id === 'guests'
@@ -230,6 +235,10 @@ function Dashboard() {
             </div>
             <DocumentsVault onToast={showToast} />
           </main>
+        ) : activeTab === 'market' ? (
+          <main>
+            <MarketBoard />
+          </main>
         ) : loading && !data ? (
           <LoadingSkeleton />
         ) : data ? (
@@ -288,6 +297,30 @@ function Dashboard() {
         ) : null}
         </Suspense>
       </div>
+      <nav
+          aria-label="Primary"
+          className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-[var(--uml-line)] bg-[color-mix(in_srgb,var(--uml-bg)_92%,transparent)] px-2 py-2 backdrop-blur md:hidden"
+        >
+          {(
+            [
+              ['portfolio', 'Overview'],
+              ['market', 'Market'],
+              ['guests', 'Guests'],
+              ['ours', 'Expenses'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              data-bot={`dock-${id}`}
+              aria-current={activeTab === id ? 'page' : undefined}
+              onClick={() => go(id)}
+              className="uml-nav"
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
       <ToastStack toasts={toasts} />
       <CommandPalette
         month={currentMonth}

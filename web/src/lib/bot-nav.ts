@@ -2,6 +2,7 @@
 
 export const DASHBOARD_TABS = [
   'portfolio',
+  'market',
   'report',
   'guests',
   'ranch',

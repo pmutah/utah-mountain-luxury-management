@@ -6,6 +6,7 @@ export const AGENT_SITE_MAP = {
   llms: '/llms.txt',
   hashRoutes: {
     overview: '#/overview',
+    market: '#/market',
     report: '#/report',
     documents: '#/report/documents',
     guests: '#/guests',
@@ -52,6 +53,8 @@ export const AGENT_SITE_MAP = {
     esignParseInvoice:
       'POST /api/esign/parse-invoice { type:"text"|"image"|"gmail"|"gmail-search", templateId, text?, imageBase64?, mimeType?, query?, messageId? }',
     thisMap: 'GET /api/agent/map',
+    market:
+      'GET /api/market/overview?house=river|ranch|lindon — top 10 sample comps and a 90-day shadow rate band. Does not change live rates.',
     sharedWork:
       'GET/POST /api/agent/work — the job list Muse, Amanda, and the co-host share. list, claim, done, release. A done job is not done again.',
     museOpenApi: 'GET /api/muse/openapi.json (or /api/muse/openapi) — public',

@@ -23,11 +23,12 @@ River has its own season table in the tool (yield_plan seasonRates, and each nig
 - Market: Sundance's top 10% of listings book at $1,708+ guest price a night (AirROI, Aug 2025–Jul 2026), and 6+ bedroom Park City homes average about $2,300 (Rabbu, Apr 2026). River is bigger than almost all of them. Price above the Sundance top tier.
 - Christmas through New Year (Dec 19–Jan 2): $3,400 host net every night. 5-night minimum.
 - Thanksgiving: $2,900, 4-night minimum. July 4 week $3,000 and Pioneer Day weekend $2,900, 4-night minimum. MLK, Presidents Day $2,800; Memorial Day, Labor Day $2,600; 3-night minimum.
-- Summer peak (June 1–August 16): Friday and Saturday $2,700, 4-night minimum weekend stays. Weekdays $2,200, 3-night minimum.
+- Super high season is June and July only. That is peak demand on the Provo River: long days, the water, and family trips. Friday and Saturday $2,700, 4-night minimum. Weekdays $2,200, 3-night minimum. July 4 and Pioneer Day still use their holiday rates above this.
+- Late summer (August 1–16) is busy, and it is not June. Friday and Saturday $2,400, 3-night minimum. Weekdays $1,950, 2-night minimum.
 - Ski season (January–March): Friday and Saturday $2,400, 3-night minimum. Weekdays $1,950, 2-night minimum. Early December before Christmas: $2,200 weekends, $1,875 weekdays.
-- Shoulder (April–May, mid-August–November): $2,100 weekends, $1,875 weekdays, 2-night minimum.
+- Shoulder (April–May, August 17–November): $2,100 weekends, $1,875 weekdays, 2-night minimum.
 - Weekends sell first at full rate. Weekday fill starts only after that week's Friday and Saturday are booked: then the 20% promotion goes on those weekdays and the minimum drops to 2 nights. Never 1 night at River.
-- Holidays get no promotion until 14 days out. Summer and ski weekends get none until 21 days out.
+- Holidays get no promotion until 14 days out. June, July, and ski weekends get none until 21 days out.
 - If a season sells its weekends more than 60 days out, raise the next open weekends in that season by 10% and tell Brandon.
 
 
@@ -79,7 +80,7 @@ Goal: hit Lindon $40,000, Ranch $140,000, and River $400,000 in host payout, wit
 
 1. Sell to the guest who pays the most for each house.
 - Ranch and River are group houses. Market them to family reunions, wedding parties, church and youth groups, sports teams, and company offsites from the Lehi and Silicon Slopes tech campuses. Those groups book early and book weekends. They do not compare against a 4-bedroom.
-- River (Vivian Park, Provo Canyon) sells the canyon: Sundance Mountain Resort ski days, Provo River tubing and fly fishing, and fall color. Winter holidays and summer weekends are the peak. The Sundance Film Festival moves to Boulder, Colorado starting in 2027. Do not price January 2027 for it.
+- River (Vivian Park, Provo Canyon) sells the canyon: Sundance Mountain Resort ski days, Provo River tubing and fly fishing, and fall color. June and July are peak demand up the canyon. Winter holidays are the other peak. The Sundance Film Festival moves to Boulder, Colorado starting in 2027. Do not price January 2027 for it.
 - Lindon sells to families: parents visiting BYU and UVU students, families dropping off or picking up a missionary at the Provo MTC, and relatives at weddings and graduations. Weekdays can also sell to traveling medical staff, relocations, and insurance housing. Confirm a date before pricing it. Do not invent one.
 - BYU Education Week (August), BYU Women's Conference (spring), and commencement (late April) move every year. Look up the dates before you treat them as events.
 
@@ -225,8 +226,11 @@ function riverSeasonOn(iso: string): RiverSeason {
   const holiday = RIVER_HOLIDAYS.find((season) => iso >= season.start && iso < season.end);
   if (holiday) return holiday;
   const monthDay = iso.slice(5);
-  if (monthDay >= '06-01' && monthDay < '08-17') {
-    return { start: iso, end: iso, name: 'Summer peak', holiday: false, weekendHostNet: 2700, weekdayHostNet: 2200, minWeekend: 4, minWeekday: 3 };
+  if (monthDay >= '06-01' && monthDay < '08-01') {
+    return { start: iso, end: iso, name: 'June and July peak', holiday: false, weekendHostNet: 2700, weekdayHostNet: 2200, minWeekend: 4, minWeekday: 3 };
+  }
+  if (monthDay >= '08-01' && monthDay < '08-17') {
+    return { start: iso, end: iso, name: 'Late summer', holiday: false, weekendHostNet: 2400, weekdayHostNet: 1950, minWeekend: 3, minWeekday: 2 };
   }
   if (monthDay >= '01-01' && monthDay < '04-01') {
     return { start: iso, end: iso, name: 'Ski season', holiday: false, weekendHostNet: 2400, weekdayHostNet: 1950, minWeekend: 3, minWeekday: 2 };

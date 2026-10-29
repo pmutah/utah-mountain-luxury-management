@@ -12,6 +12,7 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 ### Hash routes
 
 - `#/overview` — portfolio
+- `#/market` — top 10 comps and a 90-day rate band. Sample data until live comps are connected. It does not change Airbnb or VRBO rates.
 - `#/report` — P&L report
 - `#/report/documents` — e-sign / document vault
 - `#/guests`

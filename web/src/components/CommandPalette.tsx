@@ -7,6 +7,7 @@ type Destination = { tab: DashboardTab; report?: ReportView; river?: RiverView }
 
 const COMMANDS: Array<{ label: string; test: RegExp; dest: Destination }> = [
   { label: 'Overview', test: /^(overview|home|portfolio)$/i, dest: { tab: 'portfolio' } },
+  { label: 'Market', test: /^(market|comps|pricing)$/i, dest: { tab: 'market' } },
   { label: 'Report', test: /^(report|p&l|pnl)$/i, dest: { tab: 'report', report: 'pnl' } },
   { label: 'Documents', test: /^documents?$/i, dest: { tab: 'report', report: 'documents' } },
   { label: 'Guests', test: /^guests?$/i, dest: { tab: 'guests' } },
