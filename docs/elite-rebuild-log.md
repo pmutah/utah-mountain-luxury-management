@@ -272,3 +272,7 @@
 ## 2026-10-29 — a website or a map for each place
 
 - A nearby place with a published website opens that site. The other places open a map. The trip sheet names the website. A door-code or Wi-Fi link stays off.
+
+## 2026-10-29 — quote choices on Todd’s page
+
+- Ranch and River name the lengths and add-ons the next open arrival can take. The lines have no prices. Lindon stays off that list. It is not in the spreadsheet.
