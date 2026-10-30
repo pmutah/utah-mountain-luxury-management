@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderLaterLeave, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderLaterLeave, workOrderEarly, workOrderWhen, type CleanLang } from '../lib/clean';
+import { earlyStayOpen } from '../lib/house-stay';
 import { loadBookedNights } from '../lib/booked-nights';
 import { checkoutNightIsFree } from '../lib/journey';
 import type { HouseId } from '../lib/market/types';
@@ -195,6 +196,11 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     <p className="mt-1 text-sm" data-bot="clean-next">
                       {workOrderNext(job.nextCheckIn, job.gapNights, lang)}
                     </p>
+                    {taken && job.nextCheckIn && (
+                      <p className="mt-1 text-sm" data-bot="clean-early">
+                        {workOrderEarly(earlyStayOpen(job.nextCheckIn, taken[job.house] ?? [], asOf), lang)}
+                      </p>
+                    )}
                     {job.nextCheckIn && (
                       <p className="mt-1 text-sm" data-bot="clean-party">
                         {workOrderParty(job.nextGuests, lang, job.nextChildren)}

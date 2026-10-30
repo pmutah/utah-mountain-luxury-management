@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { Reservation } from '../lib/api';
 import { loadBookedNights } from '../lib/booked-nights';
-import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderLaterLeave, workOrderNext, workOrderParty, workOrderRules, workOrderWhen } from '../lib/clean';
+import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderEarly, workOrderLaterLeave, workOrderNext, workOrderParty, workOrderRules, workOrderWhen } from '../lib/clean';
+import { earlyStayOpen } from '../lib/house-stay';
 import { checkoutNightIsFree } from '../lib/journey';
 import type { HouseId } from '../lib/market/types';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
@@ -184,6 +185,11 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                 )}
                 <p data-bot="today-turnover-next">{workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}</p>
                 {turn.nextCheckIn && <p data-bot="today-turnover-party">{workOrderParty(turn.nextGuests, 'en', turn.nextChildren)}</p>}
+                {taken && turn.nextCheckIn && (
+                  <p data-bot="today-turnover-early">
+                    {workOrderEarly(earlyStayOpen(turn.nextCheckIn, taken[turn.house] ?? [], asOf), 'en')}
+                  </p>
+                )}
                 {turn.nextCheckIn && preferenceTimes && (
                   <p data-bot="today-turnover-arrival">{workOrderArrival(preferenceTimes.arrival[turn.nextStayId ?? ''], 'en')}</p>
                 )}

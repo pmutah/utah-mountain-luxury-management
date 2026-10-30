@@ -9,7 +9,7 @@ import {
 import { GuestStayCard } from './GuestStayCard';
 import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
-import { hostAccessPhrase } from '../lib/house-stay';
+import { earlyStayOpen, hostAccessPhrase, hostEarlyPhrase } from '../lib/house-stay';
 import { hostArrivalPhrase } from '../lib/arrival';
 import { hostDeparturePhrase, hostLaterLeavePhrase } from '../lib/departure';
 import { checkoutNightIsFree } from '../lib/journey';
@@ -319,6 +319,11 @@ export function GuestsPanel({
                 {taken && stay.checkOut >= today && (stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river') && (
                   <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-later-leave" data-out={stay.checkOut}>
                     {hostLaterLeavePhrase(checkoutNightIsFree(stay.checkOut, taken[stay.propertyId] ?? []))}
+                  </p>
+                )}
+                {taken && stay.checkIn > today && (stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river') && (
+                  <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-early" data-in={stay.checkIn}>
+                    {hostEarlyPhrase(earlyStayOpen(stay.checkIn, taken[stay.propertyId] ?? [], today))}
                   </p>
                 )}
                 {stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river' ? (

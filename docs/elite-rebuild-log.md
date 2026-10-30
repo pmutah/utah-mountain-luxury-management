@@ -443,3 +443,7 @@
 ## 2026-10-30 — whether a later leave is open for the host
 
 - The guest list, the overview, the cleaner, Todd’s next checkout, and the nightly brief say whether a 2:00 PM leave is a request or that checkout morning is already taken. The sentence waits until the calendar has loaded. Nothing is charged or sent.
+
+## 2026-10-30 — whether the next stay can arrive at 1:00 PM
+
+- The guest list, the overview, the cleaner, Todd’s arrivals, and the nightly brief say whether Arrive at 1:00 PM is a request. It stays closed when the night before is taken or the stay has already started. The door code stays off the sentence. Nothing is charged or sent.

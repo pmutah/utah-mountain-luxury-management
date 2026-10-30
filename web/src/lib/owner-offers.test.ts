@@ -56,6 +56,8 @@ test('Todd sees Ranch and River quote choices with no price', () => {
   );
   assert.equal(arrivals.map((line) => line.id).join(','), 'ranch-2026-11-04-2026-11-08,river-2026-12-10-2026-12-14');
   assert.match(arrivals[0]?.text ?? '', /Ranch Nov 4 for 4 nights\. The booking says 9 guests\./);
+  assert.match(arrivals[0]?.text ?? '', /Arrive at 1:00 PM is a request/);
+  assert.equal(/password|code\s*\d/i.test(arrivals.map((line) => line.text).join(' ')), false);
   assert.match(arrivals[1]?.text ?? '', /does not say how many guests/);
   const arrivalText = arrivals.map((line) => line.text).join(' ');
   assert.equal(arrivalText.includes('Ada') || arrivalText.includes('801') || arrivalText.includes('Lindon') || arrivalText.includes('$'), false);

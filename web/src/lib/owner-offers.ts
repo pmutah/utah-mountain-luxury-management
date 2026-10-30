@@ -2,6 +2,7 @@ import type { Reservation } from './api';
 import { hostArrivalPhrase } from './arrival';
 import { occupiedByHouse } from './availability';
 import { hostDeparturePhrase, hostLaterLeavePhrase } from './departure';
+import { earlyStayOpen, hostEarlyPhrase } from './house-stay';
 import { checkoutNightIsFree } from './journey';
 import { bookingStartSummary } from './booking-starts';
 import { workOrderNext } from './clean';
@@ -148,6 +149,7 @@ export function ownerArrivalLines(
   stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status' | 'note'> & { id?: string }>,
   asOf: string,
   windows?: Readonly<Record<string, string | undefined>> | null,
+  closed: readonly { propertyId: string; start: string; end: string }[] = [],
 ): OwnerArrivalLine[] {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
     return [{ id: 'none', text: 'No Ranch or River stay begins in the next 90 days.' }];
@@ -160,6 +162,16 @@ export function ownerArrivalLines(
     .filter((stay) => stay.checkIn >= asOf && stay.checkIn < until && stay.checkOut > stay.checkIn)
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn) || a.propertyId.localeCompare(b.propertyId));
   if (rows.length === 0) return [{ id: 'none', text: 'No Ranch or River stay begins in the next 90 days.' }];
+  const held = occupiedByHouse(
+    [
+      ...stays
+        .filter((stay) => stay.status !== 'cancelled')
+        .map((stay) => ({ propertyId: stay.propertyId, checkIn: stay.checkIn, checkOut: stay.checkOut })),
+      ...closed.map((block) => ({ propertyId: block.propertyId, checkIn: block.start, checkOut: block.end })),
+    ],
+    asOf,
+    addDays(asOf, 180),
+  );
   return rows.map((stay) => {
     const nights = nightsBetween(stay.checkIn, stay.checkOut);
     const count = noteGuestCount(stay.note);
@@ -175,9 +187,11 @@ export function ownerArrivalLines(
           : `The booking says ${count} guests${kidBit}.`;
     const house = stay.propertyId === 'ranch' ? 'Ranch' : 'River';
     const arrival = windows ? ` ${hostArrivalPhrase(stay.id ? windows[stay.id] : undefined)}` : '';
+    const houseId = stay.propertyId === 'river' ? 'river' : 'ranch';
+    const early = ` ${hostEarlyPhrase(earlyStayOpen(stay.checkIn, held[houseId], asOf))}`;
     return {
       id: `${stay.propertyId}-${stay.checkIn}-${stay.checkOut}`,
-      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}${arrival}`,
+      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}${arrival}${early}`,
     };
   });
 }

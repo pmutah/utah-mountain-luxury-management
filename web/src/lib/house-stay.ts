@@ -235,3 +235,15 @@ export function earlyLine(checkIn: string, taken: readonly string[], asOf: strin
   if (!nightBeforeIsFree(checkIn, taken)) return null;
   return 'The night before is open. Arriving early is a request. The door code still opens the day before.';
 }
+
+/** True only before check-in, and only when the night before is empty. */
+export function earlyStayOpen(checkIn: string, taken: readonly string[], asOf: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || asOf >= checkIn) return false;
+  return nightBeforeIsFree(checkIn, taken);
+}
+
+/** Whether this stay can ask for 1:00 PM. A taken night before stays closed. */
+export function hostEarlyPhrase(open: boolean): string {
+  if (open) return 'Arrive at 1:00 PM is a request. Nothing is charged yet. The door code still opens the day before.';
+  return 'An early arrival is not open for this stay.';
+}

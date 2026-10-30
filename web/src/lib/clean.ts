@@ -2,7 +2,7 @@ import { PROPERTIES, type Reservation } from './api';
 import { guestArrivalLine } from './arrival';
 import { guestDepartureLine, hostLaterLeavePhrase } from './departure';
 import { houseRules } from './house-rules';
-import { houseStay, nearbyGroups } from './house-stay';
+import { hostEarlyPhrase, houseStay, nearbyGroups } from './house-stay';
 import type { HouseId } from './luxury';
 import { addDays } from './market/dates';
 import { buildTurnovers, type Turnover } from './today';
@@ -146,6 +146,16 @@ export function workOrderDeparture(window: string | null | undefined, lang: Clea
   return lang === 'es'
     ? `Esta salida dice la hora de partida. ${named} Los nombres no están en esta lista.`
     : `This checkout names a departure. ${named} Names stay off this list.`;
+}
+
+/** Whether the next stay can ask to arrive at 1:00 PM. Names stay off the sentence. */
+export function workOrderEarly(open: boolean, lang: CleanLang): string {
+  if (lang === 'es') {
+    return open
+      ? 'Llegar a la 1:00 PM es una solicitud. Todavía no se cobra nada. El código de la puerta sigue abriéndose el día anterior. Los nombres no están en esta lista.'
+      : 'Una llegada temprana no está abierta para la siguiente estancia. Los nombres no están en esta lista.';
+  }
+  return `${hostEarlyPhrase(open)} Names stay off this list.`;
 }
 
 /** Whether this checkout morning can take a 2:00 PM request. Names stay off the sentence. */

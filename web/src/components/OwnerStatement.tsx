@@ -40,8 +40,8 @@ export function OwnerStatement({
     [reservations, preferenceTimes, closed],
   );
   const arrivals = useMemo(
-    () => ownerArrivalLines(reservations, denverToday(), preferenceTimes?.arrival),
-    [reservations, preferenceTimes],
+    () => ownerArrivalLines(reservations, denverToday(), preferenceTimes?.arrival, closed),
+    [reservations, preferenceTimes, closed],
   );
 
   useEffect(() => {
@@ -193,7 +193,7 @@ export function OwnerStatement({
           ))}
         </ul>
         <p className="mt-4 text-sm text-[var(--uml-muted)]">
-          Stays that begin in the next 90 days, including an arrival time when the preference card named one. No names and no prices. Lindon is not on this list. This is not in the spreadsheet.
+          Stays that begin in the next 90 days, including an arrival time when the preference card named one, and whether a 1:00 PM arrival is open. No names and no prices. Lindon is not on this list. This is not in the spreadsheet.
         </p>
         <ul className="mt-2 space-y-2 text-sm" data-bot="owner-arrivals">
           {arrivals.map((line) => (

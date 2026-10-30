@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { houseStay, partyFits, partyNote, accessLine, earlyLine, hostAccessPhrase, codesOpenTomorrow, nearbyGroups } from './house-stay.ts';
+import { houseStay, partyFits, partyNote, accessLine, earlyLine, earlyStayOpen, hostAccessPhrase, hostEarlyPhrase, codesOpenTomorrow, nearbyGroups } from './house-stay.ts';
 
 test('the booking page uses the published house and refuses a party that does not fit', () => {
   const river = houseStay('river');
@@ -55,6 +55,12 @@ test('the booking page uses the published house and refuses a party that does no
   assert.match(earlyLine('2026-11-06', [], '2026-10-29') ?? '', /Arriving early is a request/);
   assert.equal(earlyLine('2026-11-06', ['2026-11-05'], '2026-10-29'), null);
   assert.equal(earlyLine('2026-11-06', [], '2026-11-06'), null);
+  assert.equal(earlyStayOpen('2026-11-06', [], '2026-10-29'), true);
+  assert.equal(earlyStayOpen('2026-11-06', ['2026-11-05'], '2026-10-29'), false);
+  assert.match(hostEarlyPhrase(true), /Nothing is charged yet/);
+  assert.equal(hostEarlyPhrase(true).includes('$'), false);
+  assert.equal(/password|code\s*\d/i.test(hostEarlyPhrase(true)), false);
+  assert.equal(hostEarlyPhrase(false), 'An early arrival is not open for this stay.');
 
   assert.equal(partyFits('river', 25).ok, true);
   assert.equal(partyFits('river', 26).ok, false);
