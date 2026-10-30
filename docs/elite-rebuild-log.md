@@ -465,6 +465,10 @@
 
 - An empty read of the saved expenses cannot replace the ledger. A write that would drop a row other than turnover cleaning is refused. This is on the branch and is not deployed.
 
+## 2026-10-30 — sample amenity gap
+
+- The market page counts what the sample comps list against the published guide. River does not list an EV charger. Ranch does list the hot tub. Hiding a comp changes the count. Nothing is posted, and the comps are not live listings.
+
 ## 2026-10-30 — guest message timeline
 
 - The guests page previews the messages a stay would receive, from booking through a return visit. Each one can be switched off in this browser. Nothing is sent. The door code stays off every message.

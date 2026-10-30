@@ -21,6 +21,7 @@ import { judgeTrial } from '../lib/market/whatif';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 import { listingOpportunities } from '../lib/listing';
+import { amenityGaps, compAmenityLine } from '../lib/market/amenities';
 import { bookingStartSummary } from '../lib/booking-starts';
 import { directNight } from '../lib/quote';
 import { shortestStay } from '../lib/shortest-stay';
@@ -577,6 +578,20 @@ export function MarketBoard() {
         </ul>
       </div>
 
+      <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-amenities">
+        <p className="uml-kicker">Sample amenities</p>
+        <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
+          Counts use the sample comps on this page. Hiding one changes the count. These are not live listings, and nothing is posted.
+        </p>
+        <ul className="mt-4 space-y-2">
+          {amenityGaps(house, cards).map((row) => (
+            <li key={row.id} data-bot={`market-amenity-${row.id}`} data-ours={row.ours ? 'yes' : 'no'} data-listed={row.listed}>
+              <p className="text-sm">{row.line}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2" data-bot="market-comps">
         {cards.map((comp, index) => (
           <article key={comp.id} className="uml-panel rounded-3xl p-4" data-bot={index === 0 ? 'market-top-comp' : undefined}>
@@ -593,6 +608,9 @@ export function MarketBoard() {
             <p className="mt-2 text-sm text-[var(--uml-muted)]">
               {comp.beds} bed · sleeps {comp.sleeps} · {comp.rating.toFixed(2)} · {comp.reviews} reviews
               {comp.guestFavorite ? ' · Guest favorite' : ''} · {comp.distanceMi} mi · {comp.occupancy}% booked
+            </p>
+            <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="market-comp-amenities">
+              {compAmenityLine(comp.id)}
             </p>
             <div className="mt-3 flex gap-2">
               <button
