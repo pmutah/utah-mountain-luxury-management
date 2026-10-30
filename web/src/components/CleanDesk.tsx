@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderWhen, type CleanLang } from '../lib/clean';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
 
@@ -130,12 +130,15 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
             ? 'Las salidas salen de las reservas que ya están en el calendario. Las marcas se quedan en este navegador. Una foto se queda en esta pestaña y no se sube. No cambia una reserva ni un gasto.'
             : 'Turnovers come from the bookings already on the calendar. Checks stay on this browser. A room photo stays in this tab and is not uploaded. A fix note stays in this browser and does not create a task. They do not change a booking or an expense.'}
         </p>
-        <div className="mt-4 flex gap-2" data-bot="clean-lang">
+        <div className="mt-4 flex flex-wrap gap-2" data-bot="clean-lang" data-print-hide>
           <button type="button" className="uml-nav" data-bot="clean-lang-en" aria-pressed={lang === 'en'} onClick={() => chooseLang('en')}>
             English
           </button>
           <button type="button" className="uml-nav" data-bot="clean-lang-es" aria-pressed={lang === 'es'} onClick={() => chooseLang('es')}>
             Español
+          </button>
+          <button type="button" className="uml-nav" data-bot="clean-print" onClick={() => window.print()}>
+            {lang === 'es' ? 'Imprimir' : 'Print'}
           </button>
         </div>
       </div>
@@ -154,6 +157,9 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     <h3 className="font-display text-4xl">{job.houseName}</h3>
                     <p className="mt-1 text-sm text-[var(--uml-muted)]">
                       {shortDate(job.checkout)} · {gapLabel(job.gapNights, lang)}
+                    </p>
+                    <p className="mt-1 text-sm" data-bot="clean-window">
+                      {workOrderWhen(job.house, job.priority, lang)}
                     </p>
                   </div>
                   <p className="text-sm text-[var(--uml-muted)]">
@@ -179,7 +185,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     );
                   })}
                 </ul>
-                <div className="mt-4">
+                <div className="mt-4" data-print-hide>
                   <label className="uml-nav inline-block cursor-pointer">
                     {lang === 'es' ? 'Agregar foto del cuarto' : 'Add a room photo'}
                     <input
@@ -227,7 +233,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
         </div>
       )}
       {tasks.length > 0 && (
-        <div className="uml-panel rounded-3xl p-6" data-bot="clean-tasks">
+        <div className="uml-panel rounded-3xl p-6" data-bot="clean-tasks" data-print-hide>
           <p className="uml-kicker">Open tasks</p>
           <ul className="mt-3 space-y-2 text-sm">
             {tasks.map((task) => (

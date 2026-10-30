@@ -143,4 +143,23 @@ body {
     color: #1c2b27;
     border: 1px solid #1c2b27;
   }
+  [data-bot="clean-desk"],
+  [data-bot="clean-desk"] * {
+    visibility: visible;
+  }
+  [data-print-hide],
+  [data-print-hide] * {
+    visibility: hidden;
+  }
+  [data-bot="clean-desk"] {
+    position: absolute;
+    inset: 0;
+    color: #1c2b27;
+    background: white;
+  }
+  [data-bot="clean-desk"] .uml-panel {
+    background: white;
+    color: #1c2b27;
+    border: 1px solid #1c2b27;
+  }
 }

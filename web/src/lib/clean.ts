@@ -1,4 +1,5 @@
 import type { Reservation } from './api';
+import { houseStay } from './house-stay';
 import type { HouseId } from './luxury';
 import { buildTurnovers, type Turnover } from './today';
 
@@ -32,6 +33,19 @@ const COPY: Record<CleanLang, Record<string, string>> = {
 
 export function cleanLabel(id: string, lang: CleanLang): string {
   return COPY[lang][id] ?? id;
+}
+
+/** Checkout and arrival times from the published house. A same-day turn names both. */
+export function workOrderWhen(house: HouseId, sameDay: boolean, lang: CleanLang): string {
+  const stay = houseStay(house);
+  if (lang === 'es') {
+    return sameDay
+      ? `Salida a las ${stay.checkOut}. El siguiente huésped llega a las ${stay.checkIn}.`
+      : `Salida a las ${stay.checkOut}.`;
+  }
+  return sameDay
+    ? `Checkout at ${stay.checkOut}. The next guest arrives at ${stay.checkIn}.`
+    : `Checkout at ${stay.checkOut}.`;
 }
 
 /** The photo line counts only after a room photo is attached and the box is checked. */

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, jobDoneCount } from './clean.ts';
+import { cleanJobs, cleanLabel, jobDoneCount, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -36,4 +36,7 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.equal(jobDoneCount(steps, { 'job:photos': true, 'job:beds': true }, 'job', 1), 2);
   assert.equal(cleanLabel('photos', 'es').includes('Foto'), true);
   assert.equal(cleanLabel('photos', 'en').includes('Photo'), true);
+  assert.match(workOrderWhen('lindon', false, 'en'), /Checkout at 11:00 AM/);
+  assert.match(workOrderWhen('ranch', true, 'en'), /next guest arrives at 4:00 PM/);
+  assert.match(workOrderWhen('ranch', true, 'es'), /11:00 AM/);
 });

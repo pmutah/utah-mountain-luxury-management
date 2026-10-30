@@ -120,3 +120,7 @@
 ## 2026-10-29 — grocery list on the stay
 
 - A River guest can write a grocery list with the canyon drop request. The list stays on that phone. Nothing is ordered or charged.
+
+## 2026-10-29 — cleaner work order
+
+- The cleaner desk names checkout at 11:00 AM, and a same-day turn also names the 4:00 PM arrival. Print makes a paper copy of the jobs. It does not create a task or change a booking.
