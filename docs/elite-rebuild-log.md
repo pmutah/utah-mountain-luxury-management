@@ -152,3 +152,7 @@
 ## 2026-10-29 — direct savings on the quote
 
 - When the direct stay is below the Airbnb guest total, the booking page says how much. The comparison is before tax. Nothing is charged.
+
+## 2026-10-29 — checkout time on the nightly brief
+
+- Each checkout on the agents brief names 11:00 AM. A same-day turn also names the 4:00 PM arrival. The brief still has no dollar amounts, and it does not claim a job.

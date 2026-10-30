@@ -1,6 +1,7 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
 import type { CleanFix } from './clean-notes';
+import { workOrderWhen } from './clean';
 import { listingOpportunities } from './listing';
 import { addDays } from './market/dates';
 import type { YearPace } from './market/fill';
@@ -65,12 +66,13 @@ export function agentBrief(input: {
   const shown = turns.slice(0, 4);
   for (const turn of shown) {
     const when = shortDate(turn.checkout);
+    const window = workOrderWhen(turn.house, turn.gapNights === 0, 'en');
     const text =
       turn.gapNights === 0
-        ? `Same-day clean at ${turn.houseName} on ${when}.`
+        ? `Same-day clean at ${turn.houseName} on ${when}. ${window}`
         : turn.gapNights === null
-          ? `${turn.houseName} checkout ${when}. Nothing booked after it.`
-          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival.`;
+          ? `${turn.houseName} checkout ${when}. Nothing booked after it. ${window}`
+          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window}`;
     lines.push({ agent: 'co-host', text });
   }
   if (turns.length > shown.length) {
@@ -95,7 +97,7 @@ export function agentBrief(input: {
   });
   lines.push({
     agent: 'nora',
-    text: 'Door codes stay hidden until the house rules are read on the guest phone.',
+    text: 'Door codes stay hidden until the house rules are read on the guest phone. A printed trip sheet leaves the code on the phone.',
   });
   lines.push({
     agent: 'muse',

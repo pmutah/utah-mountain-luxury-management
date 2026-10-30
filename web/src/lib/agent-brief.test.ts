@@ -19,14 +19,15 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.equal(text.includes('Guest'), false);
   assert.match(text, /Shadow day 1 of 7/);
   assert.match(text, /Hospitable write closed/);
-  assert.match(text, /Same-day clean at Ranch on Nov 4/);
+  assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
   assert.match(text, /Nothing sent/);
   assert.equal(text.includes('$'), false);
-  assert.match(text, /Lindon checkout Nov 7/);
+  assert.match(text, /Lindon checkout Nov 7\..*Checkout at 11:00 AM\./);
   assert.equal(text.includes('River checkout'), false);
   assert.match(text, /Still open on our booking page: photos and card payment/);
   assert.match(text, /Door codes stay hidden/);
+  assert.match(text, /printed trip sheet leaves the code/);
   assert.match(text, /2 shared jobs are open/);
   assert.match(text, /does not claim one/);
   assert.match(text, /does not change partner spend/);
