@@ -15,6 +15,11 @@ test('a booked night keeps the published rate even when comps are higher', () =>
   assert.equal(run.counts.booked, 1);
   assert.match(run.digest, /Nothing sent to Hospitable/);
   assert.equal(run.digest.includes('guest'), false);
+  const blocked = runShadow(board, ['2026-11-06'], false, '2026-11-06', 'short', ['2026-11-06']);
+  assert.equal(blocked.nights[0]?.action, 'closed');
+  assert.match(blocked.nights[0]?.reason ?? '', /Closed on the calendar/);
+  assert.equal(blocked.counts.booked, 0);
+  assert.equal(blocked.nights[0]?.promotionPercent, 0);
 });
 
 test('River nights before the first stay stay closed', () => {

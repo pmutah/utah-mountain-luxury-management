@@ -143,8 +143,16 @@ export function MarketBoard() {
   const pace: YearPace =
     paceState !== 'live' || !stays ? 'unknown' : grossPace(house, stays, today).stillNeeded > 0 ? 'short' : 'met';
   const shadow = useMemo(
-    () => runShadow(board, calendar === 'live' ? (taken[house] ?? []) : [], paused[house], today, pace),
-    [board, calendar, taken, house, paused, today, pace],
+    () =>
+      runShadow(
+        board,
+        calendar === 'live' ? (taken[house] ?? []) : [],
+        paused[house],
+        today,
+        pace,
+        calendar === 'live' ? (closed[house] ?? []) : [],
+      ),
+    [board, calendar, taken, closed, house, paused, today, pace],
   );
   const daily = useMemo(() => {
     const paceOf = (id: HouseId): YearPace =>
@@ -450,7 +458,11 @@ export function MarketBoard() {
           <p className="text-xs text-[var(--uml-muted)]">Paused. Published rates stay, including on nights that are already booked.</p>
         )}
         {calendar === 'live' && !paused[house] && (
-          <p className="text-xs text-[var(--uml-muted)]">{shadow.counts.booked} booked nights in this window stay put.</p>
+          <p className="text-xs text-[var(--uml-muted)]" data-bot="market-stays">
+            {shadow.counts.booked} booked nights in this window stay put.{' '}
+            {shadow.nights.filter((night) => night.reason.startsWith('Closed on the calendar')).length} calendar blocks stay closed.
+            A block is not a booked night.
+          </p>
         )}
       </div>
 
@@ -527,6 +539,7 @@ export function MarketBoard() {
                     ? ` Our booking page asks for at least ${trialNight.minNights} nights.`
                     : ''}
               {trialNight.action === 'booked' ? ' Our booking page leaves this night booked.' : ''}
+              {trialNight.reason.startsWith('Closed on the calendar') ? ' Our booking page leaves this night closed.' : ''}
               {bookingNight ? (
                 <span data-bot="market-direct">
                   {` Our booking page charges ${formatWhole(bookingNight.direct)} for this night, before tax.`}

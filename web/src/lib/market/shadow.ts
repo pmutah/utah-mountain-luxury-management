@@ -41,12 +41,15 @@ function emptyCounts(): ShadowCounts {
   return { hold: 0, raise: 0, promote: 0, locked: 0, booked: 0, closed: 0, paused: 0 };
 }
 
-function guardNight(night: NightRow, house: HouseId, taken: Set<string>, paused: boolean): ShadowNight {
+function guardNight(night: NightRow, house: HouseId, taken: Set<string>, paused: boolean, blocked: Set<string>): ShadowNight {
   if (paused) {
     return { ...night, action: 'paused', proposedGuest: night.ourGuest, reason: 'This house is paused. The published rate stays.' };
   }
   if (house === 'river' && night.date < RIVER_FIRST_STAY) {
     return { ...night, action: 'closed', proposedGuest: night.ourGuest, reason: 'The River House is closed this night. The rate stays.' };
+  }
+  if (blocked.has(night.date)) {
+    return { ...night, action: 'closed', proposedGuest: night.ourGuest, reason: 'Closed on the calendar. The rate stays.' };
   }
   if (taken.has(night.date)) {
     return { ...night, action: 'booked', proposedGuest: night.ourGuest, reason: 'Already booked. The rate stays.' };
@@ -60,9 +63,11 @@ export function runShadow(
   paused: boolean,
   asOf: string,
   pace: YearPace = 'unknown',
+  blocked: readonly string[] = [],
 ): ShadowRun {
   const takenSet = new Set(taken);
-  const guarded = board.nights.map((night) => guardNight(night, board.house, takenSet, paused));
+  const blockedSet = new Set(blocked);
+  const guarded = board.nights.map((night) => guardNight(night, board.house, takenSet, paused, blockedSet));
   const nights = guarded.map((night) => applyFill(night, takenSet, asOf, pace));
   const counts = emptyCounts();
   for (const night of nights) counts[night.action] += 1;
@@ -109,6 +114,7 @@ export function portfolioDigest(input: {
       input.paused[house],
       input.asOf,
       input.pace[house],
+      input.calendarLive ? (input.closed?.[house] ?? []) : [],
     );
     if (run.paused) {
       lines.push(`${LABEL[house]}: paused. Published rates stay.`);
@@ -122,8 +128,10 @@ export function portfolioDigest(input: {
     const raiseBit = largest
       ? `, largest raise ${shortDate(largest.date)} ${money(largest.ourGuest)} → ${money(largest.proposedGuest)}`
       : '';
+    const blocks = run.nights.filter((night) => night.reason.startsWith('Closed on the calendar')).length;
+    const blockBit = blocks > 0 ? `, ${blocks} calendar blocks left closed` : '';
     lines.push(
-      `${LABEL[house]}: ${run.counts.raise} raises, ${run.counts.promote} promotions, ${run.counts.booked} booked left alone${raiseBit}`,
+      `${LABEL[house]}: ${run.counts.raise} raises, ${run.counts.promote} promotions, ${run.counts.booked} booked left alone${blockBit}${raiseBit}`,
     );
   }
   if (input.calendarLive) {

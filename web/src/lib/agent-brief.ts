@@ -266,6 +266,11 @@ function shadowBrief(
   closed: readonly ClosedSpan[],
 ): BriefLine[] {
   const taken = occupiedByHouse(withClosed(stays, closed), asOf, addDays(asOf, 90));
+  const blocks = occupiedByHouse(
+    closed.map((block) => ({ propertyId: block.propertyId, checkIn: block.start, checkOut: block.end })),
+    asOf,
+    addDays(asOf, 90),
+  );
   const paceStays: PaceStay[] = stays.map((stay) => ({
     propertyId: stay.propertyId,
     checkIn: stay.checkIn,
@@ -275,7 +280,7 @@ function shadowBrief(
   }));
   return SHADOW_HOUSES.map((house) => {
     const pace: YearPace = grossPace(house, paceStays, asOf).stillNeeded > 0 ? 'short' : 'met';
-    const run = runShadow(buildMarketBoard(house, asOf, 90), taken[house], false, asOf, pace);
+    const run = runShadow(buildMarketBoard(house, asOf, 90), taken[house], false, asOf, pace, blocks[house]);
     const counts = run.counts;
     return {
       agent: 'amanda',

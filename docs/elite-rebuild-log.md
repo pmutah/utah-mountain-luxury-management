@@ -368,3 +368,7 @@
 ## 2026-10-30 — closed and booked on the month
 
 - The booking calendar marks a block as Closed and a stay as Booked. A block can still be a checkout morning. The calendar is not changed.
+
+## 2026-10-30 — a block is not a booked night on the shadow run
+
+- The shadow run leaves a calendar block closed and does not count it as a booked night. The rate stays. Nothing is sent.
