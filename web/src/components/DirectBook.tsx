@@ -12,6 +12,7 @@ import type { HouseId } from '../lib/market/types';
 import { quoteStay, directSavings } from '../lib/quote';
 import { openArrivals } from '../lib/open-arrivals';
 import { alsoOpen } from '../lib/also-open';
+import { longestStay } from '../lib/longest-stay';
 import { shortestStay } from '../lib/shortest-stay';
 import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
@@ -127,6 +128,12 @@ export function DirectBook() {
     if (!next || next.checkOut === checkOut) return null;
     return next;
   }, [calendar, quote.ok, house, checkIn, checkOut, taken, today, pace, guestCount]);
+  const span = useMemo(() => {
+    if (calendar !== 'live') return null;
+    const next = longestStay(house, checkIn, taken[house] ?? [], today, pace, guestCount ?? undefined);
+    if (!next || next.checkOut === checkOut || next.checkOut === extension?.checkOut) return null;
+    return next;
+  }, [calendar, house, checkIn, checkOut, taken, today, pace, guestCount, extension]);
   const canRequest = directRequestReady({
     quoteOk: quote.ok,
     rulesRead,
@@ -368,7 +375,25 @@ export function DirectBook() {
                   data-out={extension.checkOut}
                   onClick={() => setCheckOut(extension.checkOut)}
                 >
-                  Use this stay
+                Use this stay
+              </button>
+            </div>
+            )}
+            {span && (
+              <div className="mt-3" data-bot="stay-span">
+                <p className="text-sm">
+                  This check-in is open through {span.through}, {span.nights === 1 ? '1 night' : `${span.nights} nights`}. Using
+                  the full stretch does not send a request.
+                </p>
+                <button
+                  type="button"
+                  className="uml-gold-btn mt-2 rounded-full px-4 py-2 text-sm"
+                  data-bot="stay-span-use"
+                  data-out={span.checkOut}
+                  data-nights={span.nights}
+                  onClick={() => setCheckOut(span.checkOut)}
+                >
+                  Use the full stretch
                 </button>
               </div>
             )}

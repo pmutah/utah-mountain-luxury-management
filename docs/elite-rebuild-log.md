@@ -216,3 +216,7 @@
 ## 2026-10-29 — blocked nights stay off the open stretch
 
 - A calendar block, and a stay marked blocked, closes those nights on Todd’s page and on the nightly brief. The stay count still ignores a block. A block note stays off the page. Nothing is written.
+
+## 2026-10-29 — the full open stretch from a check-in
+
+- The booking page offers how far a check-in can run before the next taken night, up to 28 nights. Using that stretch fills the checkout and does not send a request.
