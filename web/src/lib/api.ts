@@ -402,6 +402,8 @@ export interface StayGuide {
   preferencesDone: boolean;
   /** True when the night before check-in is empty. Omitted by older servers. */
   nightBeforeFree?: boolean;
+  /** True when nobody is arriving on checkout day. Omitted by older servers. */
+  checkoutNightFree?: boolean;
   access: {
     phase: 'before' | 'during' | 'after';
     opensOn: string;

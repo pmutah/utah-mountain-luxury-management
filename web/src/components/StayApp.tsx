@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '../lib/api';
 import { loadBookedNights } from '../lib/booked-nights';
-import { arrivalJourney, nightBeforeIsFree } from '../lib/journey';
+import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/journey';
 import { denverToday } from '../lib/market/dates';
+import { guestOffers, loadUpsellRequests, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { AppIcon } from './AppIcon';
 import { GuestConcierge } from './GuestConcierge';
 import { GuestPreferenceForm } from './GuestPreferenceForm';
@@ -90,7 +91,8 @@ export function StayApp({ token }: { token: string }) {
   const [tab, setTab] = useState<Tab>('stay');
   const [thread, setThread] = useState<StayThreadMessage[]>([]);
   const [kind, setKind] = useState<GuidePlace['kind'] | 'all'>('all');
-  const [previewFree, setPreviewFree] = useState<boolean | null>(null);
+  const [previewNights, setPreviewNights] = useState<string[] | null>(null);
+  const [requested, setRequested] = useState<UpsellId[]>(() => loadUpsellRequests(token));
 
   useEffect(() => {
     api
@@ -130,12 +132,13 @@ export function StayApp({ token }: { token: string }) {
   }, [token, preview, data]);
 
   useEffect(() => {
-    if (!data || !preview || typeof data.nightBeforeFree === 'boolean') return;
+    if (!data || !preview) return;
+    if (typeof data.nightBeforeFree === 'boolean' && typeof data.checkoutNightFree === 'boolean') return;
     let cancel = false;
     loadBookedNights()
       .then((nights) => {
         if (cancel || !nights) return;
-        setPreviewFree(nightBeforeIsFree(data.checkIn, nights[data.propertyId] ?? []));
+        setPreviewNights(nights[data.propertyId] ?? []);
       })
       .catch(() => undefined);
     return () => {
@@ -188,7 +191,24 @@ export function StayApp({ token }: { token: string }) {
   const house = data.propertyName.replace(/^The /, '');
   const places = guide.places.filter((place) => kind === 'all' || place.kind === kind);
   const phone = guide.contactPhone.replace(/[^\d+]/g, '');
-  const nightBeforeFree = typeof data.nightBeforeFree === 'boolean' ? data.nightBeforeFree : previewFree;
+  const nightBeforeFree =
+    typeof data.nightBeforeFree === 'boolean'
+      ? data.nightBeforeFree
+      : previewNights
+        ? nightBeforeIsFree(data.checkIn, previewNights)
+        : null;
+  const checkoutNightFree =
+    typeof data.checkoutNightFree === 'boolean'
+      ? data.checkoutNightFree
+      : previewNights
+        ? checkoutNightIsFree(data.checkOut, previewNights)
+        : null;
+  const offers = guestOffers({
+    house: data.propertyId,
+    phase: access.phase,
+    nightBeforeFree,
+    checkoutNightFree,
+  });
   const steps = arrivalJourney({
     asOf: denverToday(),
     checkIn: data.checkIn,
@@ -278,6 +298,41 @@ export function StayApp({ token }: { token: string }) {
                 ))}
               </ol>
             </Card>
+            {offers.length > 0 && (
+              <Card>
+                <Kicker>Add-ons</Kicker>
+                <p className="mt-2 text-sm text-white/60">
+                  Request only. Nothing is charged from this page, and Brandon is not texted.
+                </p>
+                <ul className="mt-4 space-y-3" data-bot="stay-upsells">
+                  {offers.map((offer) => {
+                    const on = requested.includes(offer.id);
+                    return (
+                      <li key={offer.id} className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-lg">{offer.name}</p>
+                          <p className="text-sm leading-relaxed text-[#d7cfc3]">{offer.detail}</p>
+                          <p className="mt-1 text-sm text-[#d4b56a]">${offer.price}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-full border border-[#d4b56a]/50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
+                          data-bot={`stay-upsell-${offer.id}`}
+                          aria-pressed={on}
+                          onClick={() => {
+                            const next = toggleUpsell(requested, offer.id);
+                            setRequested(next);
+                            saveUpsellRequests(token, next);
+                          }}
+                        >
+                          {on ? 'Requested' : 'Request'}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Card>
+            )}
             <Card>
               <Kicker>Getting in</Kicker>
               {access.unlocked ? (

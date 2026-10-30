@@ -59,3 +59,7 @@
 
 - Market shows how full the next 30, 60, and 90 nights are on the live calendar, beside the sample comp pace. River nights before November 1 are left out.
 - A typed nightly ask is checked against the floor, the ceiling, and the 8% cap. A lower number is not a new base. Nothing is written to Airbnb, VRBO, or Hospitable.
+
+## 2026-10-29 — guest add-ons
+
+- The stay app can request an early arrival, a late checkout, a Ranch hot tub, or a River grocery drop. Early and late appear only when that night is open. The request stays on the phone. Nothing is charged, and the guest app stays off until it is turned on for that house.

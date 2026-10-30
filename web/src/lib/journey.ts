@@ -23,6 +23,11 @@ export function nightBeforeIsFree(checkIn: string, taken: readonly string[]): bo
   return !taken.includes(addDays(checkIn, -1));
 }
 
+/** Checkout morning can run long only when nobody is arriving that day. */
+export function checkoutNightIsFree(checkOut: string, taken: readonly string[]): boolean {
+  return !taken.includes(checkOut);
+}
+
 export function arrivalJourney(input: {
   asOf: string;
   checkIn: string;

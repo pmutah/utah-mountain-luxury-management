@@ -7,7 +7,7 @@ import { isAuthenticated } from '../../../_lib/auth';
 import { isMuseAuthorized } from '../../../_lib/muse/auth';
 import type { AgentEnv } from '../../../_lib/agent/types';
 import { occupiedNights, type StaySpan } from '../../../../src/lib/availability';
-import { nightBeforeIsFree } from '../../../../src/lib/journey';
+import { nightBeforeIsFree, checkoutNightIsFree } from '../../../../src/lib/journey';
 import { addDays } from '../../../../src/lib/market/dates';
 
 export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: string }> = async ({
@@ -56,6 +56,10 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
     checkIn,
     occupiedNights(spans, houseId, addDays(checkIn, -1), checkIn),
   );
+  const checkoutNightFree = checkoutNightIsFree(
+    checkOut,
+    occupiedNights(spans, houseId, checkOut, addDays(checkOut, 1)),
+  );
 
   return corsJson(request, {
     enabled: guide.enabled,
@@ -66,6 +70,7 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
     checkOut,
     preferencesDone: Boolean(survey.completedAt),
     nightBeforeFree,
+    checkoutNightFree,
     access: {
       phase: window.phase,
       opensOn: window.opensOn,

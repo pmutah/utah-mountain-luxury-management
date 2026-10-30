@@ -9,6 +9,7 @@ import {
 import { GuestStayCard } from './GuestStayCard';
 import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
+import { houseMenu } from '../lib/upsells';
 
 type HouseFilter = 'all' | 'ranch' | 'lindon' | 'river';
 
@@ -177,6 +178,26 @@ export function GuestsPanel({
     <div className="space-y-6" data-bot="guests">
       <GuestDossier reservations={reservations} surveys={surveys} />
       <GuestAppEditor onToast={onToast} />
+      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-upsells">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">Add-ons</p>
+        <p className="mt-2 text-sm text-slate-400">
+          Guests can request these from the stay app when the night is open. A request stays on their phone. Nothing is charged.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {(['ranch', 'lindon', 'river'] as const).map((house) => (
+            <div key={house}>
+              <p className="text-sm text-slate-200">{PROPERTIES[house].name}</p>
+              <ul className="mt-2 space-y-2 text-sm text-slate-400">
+                {houseMenu(house).map((offer) => (
+                  <li key={offer.id}>
+                    {offer.name} · ${offer.price}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-sm text-slate-400">
         <p>
           Gmail: {gmail.connected ? gmail.email : 'not connected — sign in as utahmountainluxury@gmail.com'}
