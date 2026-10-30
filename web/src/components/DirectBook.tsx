@@ -224,6 +224,9 @@ export function DirectBook() {
               {stay.bedrooms && <p className="text-sm">{stay.bedrooms}</p>}
               <p className="text-sm text-[var(--uml-muted)]">{stay.arrival}</p>
               <p className="text-sm text-[var(--uml-muted)]">{stay.parking}</p>
+              <p className="text-sm" data-bot="stay-emergency">
+                {stay.emergency}
+              </p>
               {stay.notes.length > 0 && (
                 <ul className="space-y-2 text-sm" data-bot="stay-notes">
                   {stay.notes.map((note) => (

@@ -7,7 +7,8 @@ test('the booking page uses the published house and refuses a party that does no
   assert.equal(river.sleeps, 25);
   assert.equal(river.checkIn, '4:00 PM');
   assert.match(river.bedrooms ?? '', /Seven king suites/);
-  assert.equal(river.nearby.some((place) => place.name === 'Sundance Mountain Resort'), true);
+  assert.match(river.emergency, /call 911 first/);
+  assert.equal(/password/i.test(river.emergency), false);
   assert.deepEqual(
     river.notes.map((note) => note.title),
     ['Septic', 'The river'],

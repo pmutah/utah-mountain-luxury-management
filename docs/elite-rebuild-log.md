@@ -197,6 +197,10 @@
 
 - When the dates are too short, the booking page offers the shortest stay that check-in can start. A booked or closed check-in is not offered. Using it does not send a request.
 
+## 2026-10-29 — call 911 first
+
+- The booking page and the guest trip sheet say to call 911 first in a fire or medical emergency. A line that names a door code or Wi-Fi is left off the paper. The door code stays on the phone.
+
 ## 2026-10-29 — house notes on the trip sheet and the work order
 
 - The guest trip sheet and the cleaner work order name the published house notes. A note that includes a door code or Wi-Fi is left off. Printing does not change a reservation.

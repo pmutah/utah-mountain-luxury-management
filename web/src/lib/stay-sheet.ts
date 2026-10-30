@@ -20,10 +20,17 @@ export type TripSheet = {
   parking: string;
   rules: string;
   notes: TripNote[];
+  emergency: string;
   checkout: string[];
 };
 
 const SECRET = /door\s*code|wi-?fi|password/i;
+
+function publicEmergency(value: string | undefined): string {
+  const text = value?.trim() ?? '';
+  if (!text || SECRET.test(text)) return '';
+  return text;
+}
 
 function publicNotes(notes: readonly { title?: string; body?: string }[] | undefined): TripNote[] {
   return (notes ?? [])
@@ -43,6 +50,7 @@ export function tripSheet(input: {
   parking?: string;
   rules?: string;
   notes?: readonly { title?: string; body?: string }[];
+  emergency?: string;
   checkout?: readonly string[];
 }): TripSheet {
   return {
@@ -54,6 +62,7 @@ export function tripSheet(input: {
     parking: input.parking?.trim() ?? '',
     rules: input.rules?.trim() ?? '',
     notes: publicNotes(input.notes),
+    emergency: publicEmergency(input.emergency),
     checkout: (input.checkout ?? []).map((step) => step.trim()).filter(Boolean),
   };
 }
