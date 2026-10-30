@@ -8,6 +8,8 @@ test('the booking page uses the published house and refuses a party that does no
   assert.equal(river.checkIn, '4:00 PM');
   assert.match(river.bedrooms ?? '', /Seven king suites/);
   assert.match(river.emergency, /call 911 first/);
+  assert.equal(river.checkout[0], 'Start the dishwasher.');
+  assert.equal(river.checkout.length, 5);
   assert.equal(/password/i.test(river.emergency), false);
   assert.deepEqual(
     river.notes.map((note) => note.title),

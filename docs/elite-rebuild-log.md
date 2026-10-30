@@ -232,3 +232,7 @@
 ## 2026-10-29 — length choices on the market desk
 
 - The market desk and the nightly brief list the lengths the next open arrival can quote. The brief leaves the price off. Opening a length on the desk does not send a request, and nothing is sent to Hospitable.
+
+## 2026-10-29 — checkout steps before the stay
+
+- The booking page lists the published checkout steps. The trip sheet shows the same kind of list, and a step that names a door code or Wi-Fi is left off. Printing does not change a reservation.

@@ -239,6 +239,11 @@ export function DirectBook() {
               <p className="text-sm" data-bot="stay-emergency">
                 {stay.emergency}
               </p>
+              <ul className="space-y-1 text-sm" data-bot="stay-leaving">
+                {stay.checkout.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ul>
               {stay.notes.length > 0 && (
                 <ul className="space-y-2 text-sm" data-bot="stay-notes">
                   {stay.notes.map((note) => (

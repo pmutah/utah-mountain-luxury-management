@@ -32,6 +32,10 @@ function publicEmergency(value: string | undefined): string {
   return text;
 }
 
+function publicCheckout(steps: readonly string[] | undefined): string[] {
+  return (steps ?? []).map((step) => step.trim()).filter((step) => step.length > 0 && !SECRET.test(step));
+}
+
 function publicNotes(notes: readonly { title?: string; body?: string }[] | undefined): TripNote[] {
   return (notes ?? [])
     .map((note) => ({ title: note.title?.trim() ?? '', body: note.body?.trim() ?? '' }))
@@ -63,6 +67,6 @@ export function tripSheet(input: {
     rules: input.rules?.trim() ?? '',
     notes: publicNotes(input.notes),
     emergency: publicEmergency(input.emergency),
-    checkout: (input.checkout ?? []).map((step) => step.trim()).filter(Boolean),
+    checkout: publicCheckout(input.checkout),
   };
 }

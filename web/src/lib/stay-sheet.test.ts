@@ -19,7 +19,7 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
       { title: 'Wi-Fi', body: 'network secret' },
     ],
     emergency: 'For a fire, medical emergency, or anyone in danger, call 911 first, then call us.',
-    checkout: ['Strip the beds', ' '],
+    checkout: ['Strip the beds', ' ', 'Door code 9999'],
   });
   assert.equal(sheet.house, 'River House');
   assert.equal(sheet.when, 'Check-in 4:00 PM on November 6, 2026. Checkout 11:00 AM on November 8, 2026.');

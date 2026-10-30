@@ -347,6 +347,13 @@ export function StayApp({ token }: { token: string }) {
                   {sheet.emergency}
                 </p>
               )}
+              {sheet.checkout.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-checkout">
+                  {sheet.checkout.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
+              )}
               <p className="mt-2 text-sm text-white/60" data-bot="stay-sheet-private">
                 {sheet.privateNote}
               </p>
@@ -380,9 +387,9 @@ export function StayApp({ token }: { token: string }) {
               {sheet.parking && <p>{sheet.parking}</p>}
               {sheet.rules && <p>{sheet.rules}</p>}
               {sheet.checkout.length > 0 && (
-                <ul>
-                  {sheet.checkout.map((step, index) => (
-                    <li key={`${index}-${step}`}>{step}</li>
+                <ul data-bot="stay-sheet-print-checkout">
+                  {sheet.checkout.map((step) => (
+                    <li key={step}>{step}</li>
                   ))}
                 </ul>
               )}

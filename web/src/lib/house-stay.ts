@@ -21,14 +21,24 @@ export type HouseStay = {
   arrival: string;
   parking: string;
   notes: HouseNote[];
+  checkout: readonly string[];
   emergency: string;
   nearby: NearbyPlace[];
 };
 
 export const STAY_EMERGENCY = 'For a fire, medical emergency, or anyone in danger, call 911 first, then call us.';
 
+/** Published checkout lines. The same list is on every house. Door codes stay off it. */
+export const STAY_CHECKOUT = [
+  'Start the dishwasher.',
+  'Put used towels in the laundry room.',
+  'Take kitchen trash to the outside bins.',
+  'Turn off lights and the fireplace, close windows.',
+  'Lock the door behind you. The lock will reset for the next guests.',
+] as const;
+
 /** Public facts from the guest guide. Door codes and Wi-Fi stay off this page. */
-const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency'>> = {
+const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>> = {
   river: {
     checkIn: '4:00 PM',
     checkOut: '11:00 AM',
@@ -82,7 +92,7 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency'>> = {
 };
 
 export function houseStay(house: HouseId): HouseStay {
-  return { sleeps: SLEEPS[house], emergency: STAY_EMERGENCY, ...STAY[house] };
+  return { sleeps: SLEEPS[house], emergency: STAY_EMERGENCY, ...STAY[house], checkout: STAY_CHECKOUT };
 }
 
 /** A direct request names the overnight party. Extra guests are not priced; the party has to fit. */
