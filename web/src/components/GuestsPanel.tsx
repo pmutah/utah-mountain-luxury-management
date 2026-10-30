@@ -9,6 +9,7 @@ import {
 import { GuestStayCard } from './GuestStayCard';
 import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
+import { GuestTimeline } from './GuestTimeline';
 import { earlyStayOpen, hostAccessPhrase, hostEarlyPhrase } from '../lib/house-stay';
 import { hostArrivalPhrase } from '../lib/arrival';
 import { hostDeparturePhrase, hostLaterLeavePhrase } from '../lib/departure';
@@ -220,6 +221,7 @@ export function GuestsPanel({
           ))}
         </div>
       </section>
+      <GuestTimeline />
       <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-rules">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">House rules</p>
         <p className="mt-2 text-sm text-slate-400">

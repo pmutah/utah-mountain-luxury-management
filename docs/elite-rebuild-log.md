@@ -465,6 +465,10 @@
 
 - An empty read of the saved expenses cannot replace the ledger. A write that would drop a row other than turnover cleaning is refused. This is on the branch and is not deployed.
 
+## 2026-10-30 — guest message timeline
+
+- The guests page previews the messages a stay would receive, from booking through a return visit. Each one can be switched off in this browser. Nothing is sent. The door code stays off every message.
+
 ## 2026-10-30 — public house pages
 
 - `/houses` lists River, Ranch, and Lindon from the published guest guide. Each page has the photo, the address, the rules, and a link to the quote. The River picture is marked as a rendering. A large party can open the two-house quote. Nothing is charged or held, and door codes stay off the page.
