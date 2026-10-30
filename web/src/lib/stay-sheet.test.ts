@@ -100,6 +100,30 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
     guestDeparture: '801-555-0100',
   });
   assert.equal(badLeave.guestDeparture, '');
+  assert.equal(leaving.checkoutRule, '');
+  const openLeave = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    laterLeaveOpen: true,
+    guestDeparture: '801-555-0100',
+  });
+  assert.match(openLeave.checkoutRule, /Leave at 2:00 PM is a request/);
+  assert.match(openLeave.checkoutRule, /Nothing is charged yet/);
+  assert.equal(openLeave.checkoutRule.includes('801'), false);
+  assert.equal(openLeave.checkoutRule.includes('$'), false);
+  const takenLeave = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    laterLeaveOpen: false,
+  });
+  assert.match(takenLeave.checkoutRule, /not open for this stay/);
+  assert.equal(takenLeave.checkoutRule.includes('2:00 PM'), false);
   const junk = tripSheet({
     house: 'River House',
     checkIn: '2026-11-06',

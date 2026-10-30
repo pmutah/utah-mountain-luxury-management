@@ -434,3 +434,8 @@
 ## 2026-10-30 — children named on a stay
 
 - When a booking note names children beside an adult count, the guest list, the work order, Todd’s arrivals, the nightly brief, and the unsent daily text say how many are children. A note that only says a guest total stays as that total. Names stay off. Nothing is sent.
+
+## 2026-10-30 — later leave on the guest trip
+
+- The trip’s checkout step says 11:00 AM. When that morning is open, it also says a 2:00 PM leave is a request and nothing is charged yet. When someone arrives that day, it says a later leave is not open. A saved leave time is shown, and a phone is not.
+- The trip sheet says the same thing on the screen and on the paper. Nothing is charged or sent.

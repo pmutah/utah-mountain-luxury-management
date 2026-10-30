@@ -27,6 +27,7 @@ export type TripSheet = {
   arrival: string;
   guestArrival: string;
   guestDeparture: string;
+  checkoutRule: string;
   parking: string;
   rules: string;
   agreement: string;
@@ -37,6 +38,15 @@ export type TripSheet = {
 };
 
 const SECRET = /door\s*code|wi-?fi|password/i;
+
+function checkoutRule(input: { checkOutTime: string; guestDeparture?: string; laterLeaveOpen?: boolean }): string {
+  if (guestDepartureLine(input.guestDeparture)) return '';
+  if (input.laterLeaveOpen === true) {
+    return `Checkout is ${input.checkOutTime}. Leave at 2:00 PM is a request. Nothing is charged yet. A same-day arrival still starts at 4:00 PM.`;
+  }
+  if (input.laterLeaveOpen === false) return `Checkout is ${input.checkOutTime}. A later leave is not open for this stay.`;
+  return '';
+}
 
 function publicText(value: string | undefined): string {
   const text = value?.trim() ?? '';
@@ -91,6 +101,7 @@ export function tripSheet(input: {
   arrival?: string;
   guestArrival?: string;
   guestDeparture?: string;
+  laterLeaveOpen?: boolean;
   parking?: string;
   rules?: string;
   houseId?: string;
@@ -107,6 +118,7 @@ export function tripSheet(input: {
     arrival: publicText(input.arrival),
     guestArrival: guestArrivalLine(input.guestArrival),
     guestDeparture: guestDepartureLine(input.guestDeparture),
+    checkoutRule: checkoutRule(input),
     parking: publicText(input.parking),
     notes: publicNotes(input.notes),
     nearby: publicNearby(input.nearby),

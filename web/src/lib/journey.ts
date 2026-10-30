@@ -1,3 +1,4 @@
+import { guestDepartureLine } from './departure';
 import { addDays } from './market/dates';
 import { agreementLine } from './stay-agreement';
 
@@ -29,6 +30,24 @@ export function checkoutNightIsFree(checkOut: string, taken: readonly string[]):
   return !taken.includes(checkOut);
 }
 
+function leaveDetail(input: {
+  checkOutTime: string;
+  checkOut: string;
+  checkoutNightFree?: boolean | null;
+  departure?: string | null;
+}): string {
+  const when = `${input.checkOutTime} on ${label(input.checkOut)}`;
+  const named = guestDepartureLine(input.departure);
+  if (named) return `${named} Checkout is ${when}.`;
+  if (input.checkoutNightFree === true) {
+    return `Checkout is ${when}. Leave at 2:00 PM is a request. Nothing is charged yet. A same-day arrival still starts at 4:00 PM.`;
+  }
+  if (input.checkoutNightFree === false) {
+    return `Checkout is ${when}. A later leave is not open, because someone arrives that day.`;
+  }
+  return when;
+}
+
 export function arrivalJourney(input: {
   asOf: string;
   checkIn: string;
@@ -40,6 +59,10 @@ export function arrivalJourney(input: {
   phase: 'before' | 'during' | 'after';
   /** Null when the calendar was not checked. */
   nightBeforeFree: boolean | null;
+  /** Null when the calendar was not checked. True when nobody arrives on checkout morning. */
+  checkoutNightFree?: boolean | null;
+  /** A saved leave time. A phone or other typed value is ignored. */
+  departure?: string | null;
   house?: string;
 }): JourneyStep[] {
   const codeOpen = input.asOf >= input.opensOn;
@@ -85,7 +108,7 @@ export function arrivalJourney(input: {
   steps.push({
     id: 'leave',
     title: 'Check out',
-    detail: `${input.checkOutTime} on ${label(input.checkOut)}.`,
+    detail: leaveDetail(input),
     state: input.phase === 'after' ? 'done' : input.asOf >= input.checkOut ? 'now' : 'later',
   });
   return steps;
