@@ -156,3 +156,7 @@
 ## 2026-10-29 — checkout time on the nightly brief
 
 - Each checkout on the agents brief names 11:00 AM. A same-day turn also names the 4:00 PM arrival. The brief still has no dollar amounts, and it does not claim a job.
+
+## 2026-10-29 — occupancy file
+
+- Overview can download the taken nights. The file says which house is unavailable. Names, payouts, and cancelled stays stay out. Downloading does not change a booking.

@@ -1,6 +1,7 @@
 import type { Reservation } from '../lib/api';
 import { formatWhole } from '../lib/luxury';
 import { currentDayIso } from '../lib/months';
+import { occupancyCalendar, occupancyFilename } from '../lib/occupancy-calendar';
 import { grossPace, type GoalHouse } from '../lib/revenue-goals';
 import { buildTodayDesk, buildTurnovers, type StayMove } from '../lib/today';
 
@@ -89,6 +90,40 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
       <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
         <MoveList title="Arriving" moves={desk.arrivals} empty="No arrivals this week." />
         <MoveList title="Leaving" moves={desk.departures} empty="No departures this week." />
+      </div>
+      <div className="mt-6" data-bot="today-calendar">
+        <p className="text-sm text-[var(--uml-muted)]">
+          Taken nights only. Names stay off this file. Downloading does not change a booking.
+        </p>
+        <button
+          type="button"
+          className="uml-nav mt-3"
+          data-bot="today-calendar-file"
+          onClick={() => {
+            const file = new Blob(
+              [
+                occupancyCalendar(
+                  reservations.map((stay) => ({
+                    propertyId: stay.propertyId,
+                    checkIn: stay.checkIn,
+                    checkOut: stay.checkOut,
+                    status: stay.status,
+                  })),
+                  asOf,
+                ),
+              ],
+              { type: 'text/calendar' },
+            );
+            const url = URL.createObjectURL(file);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = occupancyFilename();
+            link.click();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }}
+        >
+          Download occupancy
+        </button>
       </div>
       <div className="mt-6" data-bot="turnovers">
         <p className="uml-kicker">Turnovers</p>
