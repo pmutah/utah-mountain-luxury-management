@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, jobDoneCount, workOrderPlace, workOrderWhen } from './clean.ts';
+import { cleanJobs, cleanLabel, jobDoneCount, workOrderNotes, workOrderPlace, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -43,5 +43,10 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.match(workOrderPlace('river', 'es'), /Dirección: Vivian Park/);
   assert.equal(workOrderPlace('river', 'en').toLowerCase().includes('code'), false);
   assert.equal(workOrderPlace('ranch', 'en').includes('Wi-Fi'), false);
+  assert.match(workOrderNotes('ranch')[0] ?? '', /Hot tub/);
+  assert.match(workOrderNotes('river').join(' '), /Septic/);
+  assert.match(workOrderNotes('river').join(' '), /Provo River/);
+  assert.equal(workOrderNotes('lindon').length, 0);
+  assert.equal(workOrderNotes('river').join(' ').toLowerCase().includes('password'), false);
   assert.match(workOrderWhen('ranch', true, 'es'), /11:00 AM/);
 });

@@ -55,6 +55,13 @@ export function workOrderPlace(house: HouseId, lang: CleanLang): string {
   return lang === 'es' ? `Dirección: ${address}. ${stay.parking}` : `${address}. ${stay.parking}`;
 }
 
+/** Published house notes for the cleaner. A note that names a door code or Wi-Fi is left off. */
+export function workOrderNotes(house: HouseId): string[] {
+  return houseStay(house).notes
+    .filter((note) => !/door\s*code|wi-?fi|password/i.test(`${note.title} ${note.body}`))
+    .map((note) => `${note.title}. ${note.body}`);
+}
+
 /** The photo line counts only after a room photo is attached and the box is checked. */
 export function stepDone(stepId: string, checked: boolean, photoCount: number): boolean {
   if (stepId === 'photos') return checked && photoCount > 0;

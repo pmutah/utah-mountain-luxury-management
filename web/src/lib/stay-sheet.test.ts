@@ -13,6 +13,11 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
     arrival: 'The house sits at Vivian Park.',
     parking: 'Park in the drive.',
     rules: 'No parties.',
+    notes: [
+      { title: 'Septic', body: 'Only toilet paper goes in the toilets.' },
+      { title: 'Door code', body: '1234' },
+      { title: 'Wi-Fi', body: 'network secret' },
+    ],
     checkout: ['Strip the beds', ' '],
   });
   assert.equal(sheet.house, 'River House');
@@ -20,7 +25,10 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   assert.equal(sheet.address, 'Vivian Park, Provo Canyon, Utah 84604');
   assert.match(sheet.privateNote, /not on this paper/);
   assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
+  assert.deepEqual(sheet.notes, [{ title: 'Septic', body: 'Only toilet paper goes in the toilets.' }]);
   assert.deepEqual(sheet.checkout, ['Strip the beds']);
   assert.equal(Object.hasOwn(sheet, 'doorCode'), false);
   assert.equal(Object.hasOwn(sheet, 'wifiPassword'), false);
+  assert.equal(JSON.stringify(sheet).includes('1234'), false);
+  assert.equal(JSON.stringify(sheet).toLowerCase().includes('network secret'), false);
 });

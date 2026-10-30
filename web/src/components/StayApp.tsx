@@ -239,6 +239,7 @@ export function StayApp({ token }: { token: string }) {
     arrival: guide.arrival,
     parking: guide.parking,
     rules: guide.houseRules,
+    notes: guide.sections,
     checkout: leaving,
   });
 
@@ -331,6 +332,15 @@ export function StayApp({ token }: { token: string }) {
                   {sheet.address}
                 </p>
               )}
+              {sheet.notes.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-notes">
+                  {sheet.notes.map((note) => (
+                    <li key={note.title}>
+                      {note.title}. {note.body}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <p className="mt-2 text-sm text-white/60" data-bot="stay-sheet-private">
                 {sheet.privateNote}
               </p>
@@ -350,6 +360,15 @@ export function StayApp({ token }: { token: string }) {
               <p>{sheet.when}</p>
               {sheet.address && <p data-bot="stay-sheet-print-address">{sheet.address}</p>}
               <p>{sheet.privateNote}</p>
+              {sheet.notes.length > 0 && (
+                <ul data-bot="stay-sheet-print-notes">
+                  {sheet.notes.map((note) => (
+                    <li key={note.title}>
+                      {note.title}. {note.body}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {sheet.arrival && <p>{sheet.arrival}</p>}
               {sheet.parking && <p>{sheet.parking}</p>}
               {sheet.rules && <p>{sheet.rules}</p>}

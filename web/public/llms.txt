@@ -16,13 +16,13 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 - `#/agents` — nightly brief from the calendar and the shadow clock. Checkout lines name 11:00 AM. It does not claim jobs.
 - `#/report` — P&L report
 - `#/owner` — Todd’s Ranch and River statement. Read only. Download saves that same statement. A count of stays still on the books leaves names off and is not in the spreadsheet. Lindon and household bills are not on it.
-- `#/clean` — turnovers for the next two weeks, with the address and parking on the work order. The door code stays off the paper.
+- `#/clean` — turnovers for the next two weeks, with the address, parking, and house notes on the work order. The door code stays off the paper.
 - `#/report/documents` — e-sign / document vault
 - `#/guests`
 - `#/ranch` `#/lindon`
 - `#/river` — River rental. `#/river/launch` is the November 1 opening page. `#/river/build` is build costs.
 - `/book` — month calendar of nightly prices, the published house (including the hot tub, septic, and river notes), a map link, and a guest count that has to fit. Two or more guests see how the stay total splits. The page address reopens that quote. When the direct stay is below the Airbnb guest total, the page says so. Booked nights are refused. It does not charge a card or hold the dates.
-- `/stay/:token` — guest trip sheet with check-in, checkout, and the address. The paper copy leaves the door code and Wi-Fi on the phone. It does not change the reservation.
+- `/stay/:token` — guest trip sheet with check-in, checkout, the address, and the house notes. A door-code or Wi-Fi note is left off. The paper copy leaves the door code and Wi-Fi on the phone. It does not change the reservation.
 - `#/ours` — Brandon & Stephanie household / furnishings (photo, paste text, or manual; off rental P&L)
 
 ### JavaScript bridge

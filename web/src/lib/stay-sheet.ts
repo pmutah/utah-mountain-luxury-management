@@ -9,6 +9,8 @@ function longDate(iso: string): string {
   });
 }
 
+export type TripNote = { title: string; body: string };
+
 export type TripSheet = {
   house: string;
   when: string;
@@ -17,8 +19,17 @@ export type TripSheet = {
   arrival: string;
   parking: string;
   rules: string;
+  notes: TripNote[];
   checkout: string[];
 };
+
+const SECRET = /door\s*code|wi-?fi|password/i;
+
+function publicNotes(notes: readonly { title?: string; body?: string }[] | undefined): TripNote[] {
+  return (notes ?? [])
+    .map((note) => ({ title: note.title?.trim() ?? '', body: note.body?.trim() ?? '' }))
+    .filter((note) => note.title.length > 0 && note.body.length > 0 && !SECRET.test(`${note.title} ${note.body}`));
+}
 
 /** Paper copy of a stay. Door codes and Wi-Fi are not fields on this sheet. */
 export function tripSheet(input: {
@@ -31,6 +42,7 @@ export function tripSheet(input: {
   arrival?: string;
   parking?: string;
   rules?: string;
+  notes?: readonly { title?: string; body?: string }[];
   checkout?: readonly string[];
 }): TripSheet {
   return {
@@ -41,6 +53,7 @@ export function tripSheet(input: {
     arrival: input.arrival?.trim() ?? '',
     parking: input.parking?.trim() ?? '',
     rules: input.rules?.trim() ?? '',
+    notes: publicNotes(input.notes),
     checkout: (input.checkout ?? []).map((step) => step.trim()).filter(Boolean),
   };
 }

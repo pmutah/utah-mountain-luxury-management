@@ -180,3 +180,7 @@
 ## 2026-10-29 — house notes on the booking page
 
 - The booking page shows the published notes a guest needs before they ask: the Ranch hot tub, and the River septic and the cold river. The photo caption says when the picture is still a rendering. The address opens a map. Door codes and Wi-Fi stay off the page. Nothing is charged.
+
+## 2026-10-29 — house notes on the trip sheet and the work order
+
+- The guest trip sheet and the cleaner work order name the published house notes. A note that includes a door code or Wi-Fi is left off. Printing does not change a reservation.
