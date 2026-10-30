@@ -55,6 +55,7 @@ export function quotePaper(input: {
   stayTotal: number;
   party: string;
   arrival: string;
+  departure?: string;
 }): string[] {
   const close = 'This paper does not hold the dates or charge a card.';
   if (!input.ok) return [input.reason || 'This stay is not quoted.', close];
@@ -65,6 +66,7 @@ export function quotePaper(input: {
     `Nights ${formatWhole(input.lodging)}.${cleaning}`,
     input.party,
     input.arrival,
+    input.departure ?? '',
     close,
   ].filter((line) => line.trim().length > 0);
 }

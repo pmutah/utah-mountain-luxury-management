@@ -30,11 +30,13 @@ test('the printed house guide leaves the door code off the paper', () => {
     stayTotal: quote.stayTotal,
     party: 'Overnight guests 4, including 1 child.',
     arrival: 'Arrival around 6:00 PM.',
+    departure: 'Leave at 11:00 AM.',
   });
   assert.equal(quote.ok, true);
   assert.match(paper[0] ?? '', /before tax for 1 night/);
   assert.match(paper.join(' '), /1 child/);
   assert.match(paper.join(' '), /6:00 PM/);
+  assert.match(paper.join(' '), /Leave at 11:00 AM/);
   assert.match(paper.at(-1) ?? '', /does not hold the dates or charge a card/);
   assert.equal(paper.join(' ').includes('Ada'), false);
   const refused = quotePaper({

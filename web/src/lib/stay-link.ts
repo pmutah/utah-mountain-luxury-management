@@ -1,4 +1,5 @@
 import { isArrivalSlot, type ArrivalSlot } from './arrival';
+import { isDepartureSlot, type DepartureSlot } from './departure';
 import type { HouseId } from './market/types';
 import type { UpsellId } from './upsells';
 
@@ -13,6 +14,7 @@ export type StayLink = {
   children?: string;
   addons?: UpsellId[];
   arrive?: ArrivalSlot;
+  leave?: DepartureSlot;
 };
 
 function isHouse(value: string): value is HouseId {
@@ -46,6 +48,16 @@ export function readStayLink(search: string): Partial<StayLink> {
   if (addons.length > 0) link.addons = addons;
   const arrive = params.get('arrive') ?? '';
   if (isArrivalSlot(arrive)) link.arrive = arrive;
+  const leave = params.get('leave') ?? '';
+  if (isDepartureSlot(leave)) {
+    link.leave = leave;
+    if (leave === '2:00 PM') link.addons = readAddons([...(link.addons ?? []), 'late'].join(','));
+    if (leave === '11:00 AM' && link.addons) {
+      const rest = link.addons.filter((id) => id !== 'late');
+      if (rest.length > 0) link.addons = rest;
+      else delete link.addons;
+    }
+  }
   return link;
 }
 
@@ -69,5 +81,6 @@ export function stayLinkSearch(link: StayLink & { addons?: readonly UpsellId[] }
   const addons = readAddons((link.addons ?? []).join(','));
   if (addons.length > 0) params.set('addons', addons.join(','));
   if (link.arrive && isArrivalSlot(link.arrive)) params.set('arrive', link.arrive);
+  if (link.leave && isDepartureSlot(link.leave)) params.set('leave', link.leave);
   return `?${params.toString()}`;
 }

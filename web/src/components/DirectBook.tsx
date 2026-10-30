@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ARRIVAL_SLOTS, arrivalNote } from '../lib/arrival';
+import { applyDepartureChoice, applyLateAddon, DEPARTURE_SLOTS, quoteLeave } from '../lib/departure';
 import { PROPERTIES } from '../lib/api';
 import { calendarAheadLine, loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
@@ -59,6 +60,7 @@ export function DirectBook() {
   const [rulesRead, setRulesRead] = useState(false);
   const [addons, setAddons] = useState<UpsellId[]>(linked.addons ?? []);
   const [arrival, setArrival] = useState<string | null>(linked.arrive ?? null);
+  const [departure, setDeparture] = useState<string | null>(linked.leave ?? null);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [closed, setClosed] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
@@ -171,7 +173,9 @@ export function DirectBook() {
   const selectedOffers = offers.filter((offer) => addons.includes(offer.id));
   const addonNote = quoteOfferNote(selectedOffers);
   const earlyArrival = selectedOffers.some((offer) => offer.id === 'early');
+  const lateOpen = offers.some((offer) => offer.id === 'late');
   const arrivalLine = arrivalNote(arrival, earlyArrival);
+  const departureLine = quoteLeave(departure, lateOpen);
   const paper = quotePaper({
     ok: quote.ok,
     reason: quote.reason,
@@ -181,6 +185,7 @@ export function DirectBook() {
     stayTotal: quote.stayTotal,
     party: guestLine,
     arrival: arrivalLine,
+    departure: departureLine,
   });
   const sharePath = `/book${stayLinkSearch({
     house,
@@ -190,6 +195,7 @@ export function DirectBook() {
     children,
     addons: calendar === 'live' ? selectedOffers.map((offer) => offer.id) : addons,
     arrive: earlyArrival || !arrival ? undefined : (ARRIVAL_SLOTS.find((slot) => slot === arrival) ?? undefined),
+    leave: departure === '11:00 AM' || (departure === '2:00 PM' && lateOpen) ? departure : undefined,
   })}`;
 
   useEffect(() => {
@@ -217,6 +223,7 @@ export function DirectBook() {
             form.note,
             guestLine,
             arrivalLine,
+            departureLine,
             `Preview quote ${formatWhole(quote.stayTotal)} before tax (${quote.nights.length} nights).`,
             addonNote,
             rulesNote(house),
@@ -290,7 +297,7 @@ export function DirectBook() {
                 </button>
               </div>
               <p className="text-xs text-[var(--uml-muted)]" data-bot="stay-print-note">
-                The printed guide includes this price, the party, and the arrival time. It does not charge a card or hold the dates. A name stays off the paper.
+                The printed guide includes this price, the party, the arrival time, and the departure time. It does not charge a card or hold the dates. A name stays off the paper.
               </p>
               <p className="font-display text-3xl">Sleeps {stay.sleeps}</p>
               <p className="text-sm text-[var(--uml-muted)]">
@@ -651,9 +658,45 @@ export function DirectBook() {
                 </>
               )}
             </div>
+            <div className="mt-6" data-bot="stay-departure">
+              <p className="uml-kicker">Departure</p>
+              <p className="mt-2 text-sm text-[var(--uml-muted)]">
+                Checkout is 11:00 AM. Leave at 2:00 PM is the late checkout request when that morning is open. Nothing is charged yet, and nothing is sent until you use the button.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {DEPARTURE_SLOTS.filter((slot) => slot === '11:00 AM' || lateOpen).map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    className={`uml-nav ${departure === slot ? 'ring-1 ring-[var(--uml-gold)]' : ''}`}
+                    data-bot="stay-departure-slot"
+                    data-time={slot}
+                    aria-pressed={departure === slot}
+                    onClick={() => {
+                      const next = departure === slot ? null : slot;
+                      const applied = applyDepartureChoice(next, addons, lateOpen);
+                      setDeparture(applied.leave);
+                      setAddons(applied.addons);
+                    }}
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+              {departureLine && (
+                <p className="mt-2 text-sm" data-bot="stay-departure-note" data-note={departureLine}>
+                  {departureLine} Nothing is sent until you use the button.
+                </p>
+              )}
+              {calendar === 'live' && !lateOpen && (
+                <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-departure-closed">
+                  A 2:00 PM leave is not open for this checkout.
+                </p>
+              )}
+            </div>
             <div className="mt-4" data-bot="stay-share">
               <p className="text-xs text-[var(--uml-muted)]">
-                This link reopens the quote, the arrival time, how many guests are children, and the add-ons that are checked. It does not send a request.
+                This link reopens the quote, the arrival time, the departure time, how many guests are children, and the add-ons that are checked. It does not send a request.
               </p>
               <p className="mt-1 text-sm">{sharePath}</p>
               <button
@@ -687,7 +730,13 @@ export function DirectBook() {
                           className="mt-1"
                           data-bot={`stay-addon-${offer.id}`}
                           checked={addons.includes(offer.id)}
-                          onChange={() => setAddons((current) => toggleUpsell(current, offer.id))}
+                          onChange={() => {
+                            if (offer.id === 'late') {
+                              const on = !addons.includes('late');
+                              setDeparture(applyLateAddon(on, departure));
+                            }
+                            setAddons((current) => toggleUpsell(current, offer.id));
+                          }}
                         />
                         <span>
                           {offer.name}. {formatWhole(offer.price)}. {offer.detail}

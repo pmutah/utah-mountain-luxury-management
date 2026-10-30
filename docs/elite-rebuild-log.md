@@ -420,3 +420,8 @@
 
 - A preference card can name checkout at 11:00 AM or a 2:00 PM leave. The 2:00 PM choice is a request. Nothing is charged yet, and a same-day arrival still starts at 4:00 PM. Choosing a time does not send the form.
 - The cleaner, the overview, Todd’s next checkout, and the nightly brief say whether this checkout named that time. A phone stays off the line. Nothing is sent.
+
+## 2026-10-30 — departure time on the booking quote
+
+- The booking page can name 11:00 AM or, when that morning is open, 2:00 PM. Choosing 2:00 PM checks the late checkout request. Choosing 11:00 AM clears it. Nothing is charged, and nothing is sent until the request button is used.
+- The printed guide and the quote link include that time. A 2:00 PM leave stays off the quote when the morning is not open.

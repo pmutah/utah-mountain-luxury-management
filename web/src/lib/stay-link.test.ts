@@ -56,6 +56,29 @@ test('a stay link keeps how many guests are children', () => {
   );
 });
 
+test('a stay link keeps a leave time and turns 2:00 PM into the late add-on', () => {
+  const midday = readStayLink('?house=ranch&in=2026-11-04&out=2026-11-05&leave=11%3A00%20AM&name=Ada');
+  assert.equal(midday.leave, '11:00 AM');
+  assert.equal(JSON.stringify(midday).includes('Ada'), false);
+  const later = readStayLink('?house=ranch&in=2026-11-04&out=2026-11-05&leave=2%3A00%20PM');
+  assert.equal(later.leave, '2:00 PM');
+  assert.deepEqual(later.addons, ['late']);
+  assert.equal(readStayLink('?leave=noon').leave, undefined);
+  const contradicted = readStayLink('?house=ranch&in=2026-11-04&out=2026-11-05&addons=late,early&leave=11%3A00%20AM');
+  assert.equal(contradicted.leave, '11:00 AM');
+  assert.deepEqual(contradicted.addons, ['early']);
+  assert.equal(
+    stayLinkSearch({
+      house: 'ranch',
+      checkIn: '2026-11-04',
+      checkOut: '2026-11-05',
+      guests: '4',
+      leave: '11:00 AM',
+    }),
+    '?house=ranch&in=2026-11-04&out=2026-11-05&guests=4&leave=11%3A00+AM',
+  );
+});
+
 test('an impossible calendar day is left off the link', () => {
   const link = readStayLink('?house=lindon&in=2026-02-31&out=2026-03-02&guests=4');
   assert.equal(link.house, 'lindon');
