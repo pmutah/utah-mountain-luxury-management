@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
 import { cleanJobs, cleanLabel, jobDoneCount, stepDone, type CleanLang } from '../lib/clean';
+import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
 
 type OpenTask = {
@@ -58,6 +59,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   const [tasks, setTasks] = useState<OpenTask[]>([]);
   const [lang, setLang] = useState<CleanLang>(loadLang);
   const [photos, setPhotos] = useState<Record<string, string[]>>({});
+  const [fixes, setFixes] = useState<CleanFix[]>(loadCleanFixes);
   const photosRef = useRef(photos);
 
   useEffect(() => {
@@ -93,6 +95,12 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
     }
   }
 
+  function writeFix(jobId: string, house: string, checkout: string, note: string) {
+    const next = upsertCleanFix(fixes, { id: jobId, house, checkout, note });
+    setFixes(next);
+    saveCleanFixes(next);
+  }
+
   function addPhoto(jobId: string, file: File | undefined) {
     if (!file || !file.type.startsWith('image/')) return;
     const url = URL.createObjectURL(file);
@@ -120,7 +128,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
           {lang === 'es'
             ? 'Las salidas salen de las reservas que ya están en el calendario. Las marcas se quedan en este navegador. Una foto se queda en esta pestaña y no se sube. No cambia una reserva ni un gasto.'
-            : 'Turnovers come from the bookings already on the calendar. Checks stay on this browser. A room photo stays in this tab and is not uploaded. They do not change a booking or an expense.'}
+            : 'Turnovers come from the bookings already on the calendar. Checks stay on this browser. A room photo stays in this tab and is not uploaded. A fix note stays in this browser and does not create a task. They do not change a booking or an expense.'}
         </p>
         <div className="mt-4 flex gap-2" data-bot="clean-lang">
           <button type="button" className="uml-nav" data-bot="clean-lang-en" aria-pressed={lang === 'en'} onClick={() => chooseLang('en')}>
@@ -203,6 +211,16 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                         : `${photoCount} in this tab. Not uploaded.`}
                   </p>
                 </div>
+                <label className="mt-4 block text-sm">
+                  {lang === 'es' ? 'Qué hay que arreglar' : 'What needs a fix?'}
+                  <textarea
+                    className="mt-2 min-h-20 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
+                    data-bot="clean-fix"
+                    value={fixes.find((fix) => fix.id === job.id)?.note ?? ''}
+                    placeholder={lang === 'es' ? 'Se queda en este navegador.' : 'Stays in this browser.'}
+                    onChange={(event) => writeFix(job.id, job.houseName, job.checkout, event.target.value)}
+                  />
+                </label>
               </article>
             );
           })}

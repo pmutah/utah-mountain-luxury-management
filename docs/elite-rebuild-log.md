@@ -103,3 +103,7 @@
 ## 2026-10-29 — shadow counts on the brief
 
 - Amanda’s brief now counts raises, promotions, booked nights left alone, and closed nights for River, Ranch, and Lindon. The lines do not include a dollar amount. Nothing is sent to Hospitable.
+
+## 2026-10-29 — cleaner fix note
+
+- A cleaner can write what needs a fix on a turnover. The note stays in this browser and shows on the agents brief. It does not create a task or change a booking or an expense.

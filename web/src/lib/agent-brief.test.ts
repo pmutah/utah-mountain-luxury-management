@@ -30,6 +30,15 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /2 shared jobs are open/);
   assert.match(text, /does not claim one/);
   assert.match(text, /does not change partner spend/);
+  const withFix = agentBrief({
+    asOf: '2026-11-01',
+    stays: [],
+    shadowDays: 1,
+    openJobs: 0,
+    calendarReady: true,
+    fixes: [{ id: 'job', house: 'Lindon', checkout: '2026-11-07', note: 'Hot tub cover is loose.' }],
+  });
+  assert.match(withFix.map((line) => line.text).join('\n'), /Lindon checkout Nov 7: Hot tub cover is loose/);
 });
 
 test('seven shadow days still leave the write closed', () => {

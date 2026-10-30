@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, type Reservation, type SharedWorkItem } from '../lib/api';
 import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
+import { loadCleanFixes } from '../lib/clean-notes';
 import { denverToday } from '../lib/market/dates';
 import { loadShadowLog, shadowClock } from '../lib/market/shadow-log';
 
@@ -23,6 +24,7 @@ export function AgentsHub({
   const [open, setOpen] = useState<SharedWorkItem[]>([]);
   const [done, setDone] = useState<SharedWorkItem[]>([]);
   const [workState, setWorkState] = useState<'loading' | 'live' | 'off'>('loading');
+  const [fixes] = useState(loadCleanFixes);
   const today = denverToday();
   const brief = useMemo(
     () =>
@@ -32,8 +34,9 @@ export function AgentsHub({
         shadowDays: shadowClock(loadShadowLog(), today).days,
         openJobs: workState === 'live' ? open.length : 0,
         calendarReady: calendar !== 'loading',
+        fixes,
       }),
-    [today, reservations, workState, open.length, calendar],
+    [today, reservations, workState, open.length, calendar, fixes],
   );
 
   useEffect(() => {

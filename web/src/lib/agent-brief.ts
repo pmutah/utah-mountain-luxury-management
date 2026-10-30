@@ -1,5 +1,6 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
+import type { CleanFix } from './clean-notes';
 import { listingOpportunities } from './listing';
 import { addDays } from './market/dates';
 import type { YearPace } from './market/fill';
@@ -37,6 +38,7 @@ export function agentBrief(input: {
   shadowDays: number;
   openJobs: number;
   calendarReady: boolean;
+  fixes?: readonly CleanFix[];
 }): BriefLine[] {
   const days = Math.max(0, Math.min(SHADOW_DAYS_REQUIRED, Math.floor(input.shadowDays)));
   const lines: BriefLine[] = [
@@ -73,6 +75,12 @@ export function agentBrief(input: {
   }
   if (turns.length > shown.length) {
     lines.push({ agent: 'co-host', text: `${turns.length - shown.length} more checkouts in the next two weeks.` });
+  }
+  for (const fix of (input.fixes ?? []).slice(0, 3)) {
+    lines.push({
+      agent: 'co-host',
+      text: `${fix.house} checkout ${shortDate(fix.checkout)}: ${fix.note}`,
+    });
   }
 
   const openListings = listingOpportunities('river').filter((item) => item.status === 'open');
