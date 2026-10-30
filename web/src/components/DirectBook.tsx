@@ -22,7 +22,7 @@ import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
 import { quoteOfferNote, quoteOffers, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
-import { bookingGuide } from '../lib/booking-guide';
+import { bookingGuide, quotePaper } from '../lib/booking-guide';
 import { BrandMark } from './BrandMark';
 import { StayMonth } from './StayMonth';
 
@@ -172,6 +172,16 @@ export function DirectBook() {
   const addonNote = quoteOfferNote(selectedOffers);
   const earlyArrival = selectedOffers.some((offer) => offer.id === 'early');
   const arrivalLine = arrivalNote(arrival, earlyArrival);
+  const paper = quotePaper({
+    ok: quote.ok,
+    reason: quote.reason,
+    nights: quote.nights.length,
+    lodging: quote.lodging,
+    cleaning: quote.cleaning,
+    stayTotal: quote.stayTotal,
+    party: guestLine,
+    arrival: arrivalLine,
+  });
   const sharePath = `/book${stayLinkSearch({
     house,
     checkIn,
@@ -276,9 +286,12 @@ export function DirectBook() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="uml-kicker">The house</p>
                 <button type="button" className="uml-nav" data-bot="stay-print" data-print-hide onClick={() => window.print()}>
-                  Print the house guide
+                  Print this quote
                 </button>
               </div>
+              <p className="text-xs text-[var(--uml-muted)]" data-bot="stay-print-note">
+                The printed guide includes this price, the party, and the arrival time. It does not charge a card or hold the dates. A name stays off the paper.
+              </p>
               <p className="font-display text-3xl">Sleeps {stay.sleeps}</p>
               <p className="text-sm text-[var(--uml-muted)]">
                 Check-in {stay.checkIn} · Check-out {stay.checkOut}
@@ -781,6 +794,11 @@ export function DirectBook() {
             <li key={place}>{place}</li>
           ))}
         </ul>
+        {paper.map((line) => (
+          <p key={line} data-bot="stay-quote-paper">
+            {line}
+          </p>
+        ))}
         <p>{guide.close}</p>
       </div>
     </div>

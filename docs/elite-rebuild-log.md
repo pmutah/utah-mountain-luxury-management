@@ -396,3 +396,7 @@
 ## 2026-10-30 — Ranch and River stays on Todd’s page
 
 - Todd’s page lists Ranch and River stays that begin in the next 90 days, with the night count and whether the booking says how many guests. Names and prices stay off. Lindon is not on the list. The spreadsheet is unchanged.
+
+## 2026-10-30 — the printed quote
+
+- The printed house guide includes the direct price, the party, and the arrival time. A refused stay does not print a price. A name stays off the paper. The paper does not charge a card or hold the dates.
