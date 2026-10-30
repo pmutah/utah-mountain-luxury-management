@@ -1,27 +1,18 @@
 import { PROPERTIES, calculateMetrics, corsJson, portfolioAvgOccupancy } from '../../_lib/data';
-import { mergeAllExpenses, withReceiptUrls, ensureTurnoverCleaningExpenses } from '../../_lib/expenses';
+import { mergeAllExpenses, withReceiptUrls } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { addMonths, currentYearMonth } from '../../_lib/months';
-import { syncIcalIfStale } from '../../_lib/calendar-store';
-import { getAllReservations, backfillZeroPayouts } from '../../_lib/reservations-store';
+import { getAllReservations } from '../../_lib/reservations-store';
 
 export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   const url = new URL(request.url);
   const month = url.searchParams.get('month') ?? currentYearMonth();
   const compare = url.searchParams.get('compare') === '1';
-  let calendarSync: string | null = null;
+  const calendarSync: string | null = null;
   try {
-    await syncIcalIfStale(env);
-  } catch (err) {
-    calendarSync = err instanceof Error ? err.message : String(err);
-  }
-  try {
-  await backfillZeroPayouts(env);
   const fees = await loadExtraCleaningFees(env);
-  let reservations = await getAllReservations(env);
-  await ensureTurnoverCleaningExpenses(env, reservations);
+  const reservations = await getAllReservations(env);
   const allExpenses = withReceiptUrls(await mergeAllExpenses(env));
-  reservations = await getAllReservations(env);
   const ranch = calculateMetrics('ranch', month, fees, allExpenses, reservations);
   const lindon = calculateMetrics('lindon', month, fees, allExpenses, reservations);
   const river = calculateMetrics('river', month, fees, allExpenses, reservations);

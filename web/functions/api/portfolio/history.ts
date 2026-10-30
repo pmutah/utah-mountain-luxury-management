@@ -1,17 +1,16 @@
 import { calculateMetrics, PROPERTIES, corsJson, portfolioAvgOccupancy } from '../../_lib/data';
-import { mergeAllExpenses, ensureTurnoverCleaningExpenses } from '../../_lib/expenses';
+import { mergeAllExpenses } from '../../_lib/expenses';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { currentYearMonth, monthRange } from '../../_lib/months';
-import { getAllReservations, backfillZeroPayouts } from '../../_lib/reservations-store';
+import { getAllReservations } from '../../_lib/reservations-store';
 
 export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env }) => {
+  try {
   const url = new URL(request.url);
   const endMonth = url.searchParams.get('end') ?? url.searchParams.get('month') ?? currentYearMonth();
   const count = Math.min(24, Math.max(1, Number(url.searchParams.get('count') ?? 12)));
   const fees = await loadExtraCleaningFees(env);
-  await backfillZeroPayouts(env);
   const reservations = await getAllReservations(env);
-  await ensureTurnoverCleaningExpenses(env, reservations);
   const allExpenses = await mergeAllExpenses(env);
   const months = monthRange(endMonth, count);
 
@@ -46,6 +45,10 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   });
 
   return corsJson(request, { endMonth, count, history, reservations, properties: Object.values(PROPERTIES) });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return corsJson(request, { error: message }, 500);
+  }
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

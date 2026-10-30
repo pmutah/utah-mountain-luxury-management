@@ -22,6 +22,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
     let message = detail || `API ${path} failed: ${res.status}`;
+    if (/<!doctype html/i.test(detail) || /error code:\s*1101/i.test(detail)) {
+      message = 'The dashboard could not load. Storage writes are paused for the rest of the day.';
+    }
     try {
       const parsed = JSON.parse(detail) as { error?: string; message?: string };
       if (parsed.error) message = parsed.error;

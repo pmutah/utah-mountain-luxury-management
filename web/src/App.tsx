@@ -74,8 +74,7 @@ function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [, portfolio, hist] = await Promise.all([
-        api.syncCalendar().catch(() => null),
+      const [portfolio, hist] = await Promise.all([
         api.getPortfolio(currentMonth),
         api.getHistory(currentMonth, 12),
       ]);
