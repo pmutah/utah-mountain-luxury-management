@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderPlace, workOrderWhen, type CleanLang } from '../lib/clean';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
 
@@ -160,6 +160,9 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     </p>
                     <p className="mt-1 text-sm" data-bot="clean-window">
                       {workOrderWhen(job.house, job.priority, lang)}
+                    </p>
+                    <p className="mt-1 text-sm" data-bot="clean-place">
+                      {workOrderPlace(job.house, lang)}
                     </p>
                   </div>
                   <p className="text-sm text-[var(--uml-muted)]">

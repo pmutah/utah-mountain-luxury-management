@@ -1,4 +1,4 @@
-import type { Reservation } from './api';
+import { PROPERTIES, type Reservation } from './api';
 import { houseStay } from './house-stay';
 import type { HouseId } from './luxury';
 import { buildTurnovers, type Turnover } from './today';
@@ -46,6 +46,13 @@ export function workOrderWhen(house: HouseId, sameDay: boolean, lang: CleanLang)
   return sameDay
     ? `Checkout at ${stay.checkOut}. The next guest arrives at ${stay.checkIn}.`
     : `Checkout at ${stay.checkOut}.`;
+}
+
+/** Where to clean. The door code and Wi-Fi stay off the work order. */
+export function workOrderPlace(house: HouseId, lang: CleanLang): string {
+  const stay = houseStay(house);
+  const address = PROPERTIES[house]?.address ?? '';
+  return lang === 'es' ? `Dirección: ${address}. ${stay.parking}` : `${address}. ${stay.parking}`;
 }
 
 /** The photo line counts only after a room photo is attached and the box is checked. */

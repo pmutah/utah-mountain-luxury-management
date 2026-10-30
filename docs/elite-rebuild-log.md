@@ -160,3 +160,7 @@
 ## 2026-10-29 — occupancy file
 
 - Overview can download the taken nights. The file says which house is unavailable. Names, payouts, and cancelled stays stay out. Downloading does not change a booking.
+
+## 2026-10-29 — cleaner work order address
+
+- The paper work order names the house address and where to park. The door code and Wi-Fi stay off it. Printing does not change a booking.
