@@ -7,6 +7,48 @@ export type CleanStep = {
   label: string;
 };
 
+export type CleanLang = 'en' | 'es';
+
+const COPY: Record<CleanLang, Record<string, string>> = {
+  en: {
+    beds: 'Strip and remake every bed',
+    linens: 'Start the linens',
+    kitchen: 'Kitchen, dishes, and coffee',
+    baths: 'Bathrooms and towels',
+    floors: 'Floors and trash',
+    photos: 'Photo each room before you leave',
+    window: 'Same-day turn. Finish before 4pm.',
+  },
+  es: {
+    beds: 'Quita y tiende cada cama',
+    linens: 'Empieza la ropa de cama',
+    kitchen: 'Cocina, platos y café',
+    baths: 'Baños y toallas',
+    floors: 'Pisos y basura',
+    photos: 'Foto de cada cuarto antes de irte',
+    window: 'Salida y llegada el mismo día. Termina antes de las 4pm.',
+  },
+};
+
+export function cleanLabel(id: string, lang: CleanLang): string {
+  return COPY[lang][id] ?? id;
+}
+
+/** The photo line counts only after a room photo is attached and the box is checked. */
+export function stepDone(stepId: string, checked: boolean, photoCount: number): boolean {
+  if (stepId === 'photos') return checked && photoCount > 0;
+  return checked;
+}
+
+export function jobDoneCount(
+  steps: ReadonlyArray<{ id: string }>,
+  checks: Record<string, boolean>,
+  jobId: string,
+  photoCount: number,
+): number {
+  return steps.filter((step) => stepDone(step.id, Boolean(checks[`${jobId}:${step.id}`]), photoCount)).length;
+}
+
 export type CleanJob = Turnover & {
   priority: boolean;
   steps: CleanStep[];

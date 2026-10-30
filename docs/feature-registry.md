@@ -17,6 +17,6 @@ Existing expenses, bookings, receipts, and construction records stay in Cloudfla
 | Market | Hospitable calendar push | planned | After 7 days of shadow mode and a write token. |
 | Booking | Our own direct site, beside Hospitable Direct | sample | `/book` quotes the host net, applies the 20% fill rate when the year is short, and emails a request. It does not charge or hold dates. |
 | Guest | Trip portal, lock codes, upsells | sample | The stay app shows the trip steps and an add-on menu. Early arrival and late checkout appear only when that night is open. A request stays on the phone. The app stays off until it is turned on for that house. |
-| Ops | Cleaner desk for the next two weeks | sample | `#/clean` lists turnovers and a room checklist. Checks stay in the browser. It does not create or delete tasks, bookings, or expenses. |
+| Ops | Cleaner desk for the next two weeks | sample | `#/clean` lists turnovers in English or Spanish. The photo line stays open until a room photo is attached in this tab. Checks stay in the browser. Photos are not uploaded. It does not create or delete tasks, bookings, or expenses. |
 | Owner | Todd portal and statements | sample | `#/owner` is a read-only Ranch and River statement after the 20% fee. Print makes a paper copy. Lindon, household, and construction stay off that page. |
 | AI | Agents hub | sample | `#/agents` opens Co-host and Build and lists the shared jobs. It does not claim a job or change the books. |

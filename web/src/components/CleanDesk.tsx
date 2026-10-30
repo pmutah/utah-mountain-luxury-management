@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, type CleanLang } from '../lib/clean';
 import { currentDayIso } from '../lib/months';
 
 type OpenTask = {
@@ -13,6 +13,15 @@ type OpenTask = {
 };
 
 const CHECKS_KEY = 'uml-clean-checks';
+const LANG_KEY = 'uml-clean-lang';
+
+function loadLang(): CleanLang {
+  try {
+    return sessionStorage.getItem(LANG_KEY) === 'es' ? 'es' : 'en';
+  } catch {
+    return 'en';
+  }
+}
 
 function loadChecks(): Record<string, boolean> {
   try {
@@ -31,9 +40,14 @@ function shortDate(iso: string) {
   });
 }
 
-function gapLabel(gap: number | null) {
-  if (gap === null) return 'Nothing booked after this checkout.';
-  if (gap === 0) return 'Same-day clean. Next guest arrives today.';
+function gapLabel(gap: number | null, lang: CleanLang) {
+  if (gap === null) {
+    return lang === 'es' ? 'No hay otra llegada después de esta salida.' : 'Nothing booked after this checkout.';
+  }
+  if (gap === 0) {
+    return lang === 'es' ? 'Limpieza el mismo día. El siguiente huésped llega hoy.' : 'Same-day clean. Next guest arrives today.';
+  }
+  if (lang === 'es') return gap === 1 ? '1 noche antes de la siguiente llegada.' : `${gap} noches antes de la siguiente llegada.`;
   return `${gap} night${gap === 1 ? '' : 's'} before the next arrival.`;
 }
 
@@ -42,6 +56,15 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   const jobs = useMemo(() => cleanJobs(reservations, asOf), [reservations, asOf]);
   const [checks, setChecks] = useState<Record<string, boolean>>(loadChecks);
   const [tasks, setTasks] = useState<OpenTask[]>([]);
+  const [lang, setLang] = useState<CleanLang>(loadLang);
+  const [photos, setPhotos] = useState<Record<string, string[]>>({});
+  const photosRef = useRef(photos);
+
+  useEffect(() => {
+    return () => {
+      Object.values(photosRef.current).flat().forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   useEffect(() => {
     let cancel = false;
@@ -61,7 +84,27 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
     };
   }, []);
 
+  function chooseLang(next: CleanLang) {
+    setLang(next);
+    try {
+      sessionStorage.setItem(LANG_KEY, next);
+    } catch {
+      // The labels still switch for this visit.
+    }
+  }
+
+  function addPhoto(jobId: string, file: File | undefined) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    setPhotos((current) => {
+      const next = { ...current, [jobId]: [...(current[jobId] ?? []), url] };
+      photosRef.current = next;
+      return next;
+    });
+  }
+
   function toggle(jobId: string, stepId: string) {
+    if (stepId === 'photos' && (photos[jobId]?.length ?? 0) === 0) return;
     setChecks((current) => {
       const next = { ...current, [`${jobId}:${stepId}`]: !current[`${jobId}:${stepId}`] };
       sessionStorage.setItem(CHECKS_KEY, JSON.stringify(next));
@@ -75,23 +118,34 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
         <p className="uml-kicker">Clean</p>
         <h2 className="font-display text-5xl">The next two weeks</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
-          Turnovers come from the bookings already on the calendar. Checks stay on this browser. They do not change a booking or an expense.
+          {lang === 'es'
+            ? 'Las salidas salen de las reservas que ya están en el calendario. Las marcas se quedan en este navegador. Una foto se queda en esta pestaña y no se sube. No cambia una reserva ni un gasto.'
+            : 'Turnovers come from the bookings already on the calendar. Checks stay on this browser. A room photo stays in this tab and is not uploaded. They do not change a booking or an expense.'}
         </p>
+        <div className="mt-4 flex gap-2" data-bot="clean-lang">
+          <button type="button" className="uml-nav" data-bot="clean-lang-en" aria-pressed={lang === 'en'} onClick={() => chooseLang('en')}>
+            English
+          </button>
+          <button type="button" className="uml-nav" data-bot="clean-lang-es" aria-pressed={lang === 'es'} onClick={() => chooseLang('es')}>
+            Español
+          </button>
+        </div>
       </div>
       {jobs.length === 0 ? (
         <p className="uml-panel rounded-3xl p-6 text-sm text-[var(--uml-muted)]">No checkouts in the next two weeks.</p>
       ) : (
         <div className="space-y-4">
           {jobs.map((job) => {
-            const done = job.steps.filter((step) => checks[`${job.id}:${step.id}`]).length;
+            const photoCount = photos[job.id]?.length ?? 0;
+            const done = jobDoneCount(job.steps, checks, job.id, photoCount);
             return (
               <article key={job.id} className="uml-panel rounded-3xl p-6" data-bot="clean-job">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="uml-kicker">{job.priority ? 'Same-day' : job.house}</p>
+                    <p className="uml-kicker">{job.priority ? (lang === 'es' ? 'Mismo día' : 'Same-day') : job.house}</p>
                     <h3 className="font-display text-4xl">{job.houseName}</h3>
                     <p className="mt-1 text-sm text-[var(--uml-muted)]">
-                      {shortDate(job.checkout)} · {gapLabel(job.gapNights)}
+                      {shortDate(job.checkout)} · {gapLabel(job.gapNights, lang)}
                     </p>
                   </div>
                   <p className="text-sm text-[var(--uml-muted)]">
@@ -101,20 +155,54 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                 <ul className="mt-4 space-y-2">
                   {job.steps.map((step) => {
                     const key = `${job.id}:${step.id}`;
+                    const checked = stepDone(step.id, Boolean(checks[key]), photoCount);
                     return (
                       <li key={step.id}>
                         <label className="flex items-center gap-3 text-sm">
                           <input
                             type="checkbox"
-                            checked={Boolean(checks[key])}
+                            data-bot={step.id === 'photos' ? 'clean-photo-check' : undefined}
+                            checked={checked}
                             onChange={() => toggle(job.id, step.id)}
                           />
-                          {step.label}
+                          {cleanLabel(step.id, lang)}
                         </label>
                       </li>
                     );
                   })}
                 </ul>
+                <div className="mt-4">
+                  <label className="uml-nav inline-block cursor-pointer">
+                    {lang === 'es' ? 'Agregar foto del cuarto' : 'Add a room photo'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="sr-only"
+                      data-bot="clean-photo"
+                      onChange={(event) => {
+                        addPhoto(job.id, event.target.files?.[0]);
+                        event.target.value = '';
+                      }}
+                    />
+                  </label>
+                  {photoCount > 0 && (
+                    <div className="mt-3 flex gap-2" data-bot="clean-photo-strip">
+                      {photos[job.id]?.map((url) => (
+                        <img key={url} src={url} alt="" className="h-16 w-16 rounded-xl object-cover" />
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="clean-photo-note">
+                    {photoCount === 0
+                      ? lang === 'es'
+                        ? 'La línea de fotos sigue abierta hasta que haya una foto.'
+                        : 'The photo line stays open until a room photo is attached.'
+                      : lang === 'es'
+                        ? `${photoCount} en esta pestaña. No se sube.`
+                        : `${photoCount} in this tab. Not uploaded.`}
+                  </p>
+                </div>
               </article>
             );
           })}

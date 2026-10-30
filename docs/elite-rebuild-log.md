@@ -71,3 +71,7 @@
 ## 2026-10-29 — owner statement print
 
 - Todd's statement can be printed. The paper copy is Ranch and River after the 20% fee, then half. The rest of the dashboard stays off the page. Nothing on the statement can be edited.
+
+## 2026-10-29 — cleaner photos
+
+- The clean desk can be read in English or Spanish. The photo line stays open until a room photo is attached in this tab. The photo is not uploaded, and the checklist still does not change a booking or an expense.
