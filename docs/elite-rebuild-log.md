@@ -372,3 +372,7 @@
 ## 2026-10-30 — a block is not a booked night on the shadow run
 
 - The shadow run leaves a calendar block closed and does not count it as a booked night. The rate stays. Nothing is sent.
+
+## 2026-10-30 — blocks leave the pace share
+
+- The 30, 60, and 90 night share leaves a calendar block out of the sellable nights. A stay still counts as booked. Nothing is sent.

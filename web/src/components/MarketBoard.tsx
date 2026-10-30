@@ -185,7 +185,7 @@ export function MarketBoard() {
     .map((id) => [...compsFor(house), ...benchFor(house)].find((comp) => comp.id === id))
     .filter((comp): comp is NonNullable<typeof comp> => Boolean(comp));
 
-  const windows = stays && paceState === 'live' ? forwardWindows(house, stays, today) : null;
+  const windows = stays && paceState === 'live' ? forwardWindows(house, stays, today, closed[house] ?? []) : null;
   const trialNight =
     (trial && shadow.nights.find((night) => night.date === trial.date)) ||
     shadow.nights.find((night) => house !== 'river' || night.date >= RIVER_FIRST_STAY) ||
@@ -335,7 +335,7 @@ export function MarketBoard() {
         <div className="mt-6" data-bot="market-pace">
           <p className="uml-kicker">Next 30, 60, and 90 nights</p>
           <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
-            Our share is the live calendar. The comp share is the sample set. A booked night stays at the published rate.
+            Our share is the live calendar. The comp share is the sample set. A booked night stays at the published rate. A calendar block is left out of the sellable nights.
           </p>
           {house === 'river' && today < RIVER_FIRST_STAY && (
             <p className="mt-2 text-xs text-[var(--uml-muted)]">Nights before November 1 are closed and left out.</p>
@@ -354,7 +354,9 @@ export function MarketBoard() {
                   <p className="mt-1 text-sm text-[var(--uml-muted)]">
                     {paceState === 'loading' && 'Checking the calendar…'}
                     {paceState === 'off' && 'Our calendar is not on this server yet.'}
-                    {paceState === 'live' && ours && `${ours.booked} of ${ours.sellable} nights booked · ${ours.startingStays} ${ours.startingStays === 1 ? 'stay begins' : 'stays begin'} here`}
+                    {paceState === 'live' &&
+                      ours &&
+                      `${ours.booked} of ${ours.sellable} nights booked · ${ours.startingStays} ${ours.startingStays === 1 ? 'stay begins' : 'stays begin'} here · ${ours.held} calendar blocks left out`}
                   </p>
                   <p className="mt-2 text-sm">Sample comps {comps}% booked</p>
                 </article>

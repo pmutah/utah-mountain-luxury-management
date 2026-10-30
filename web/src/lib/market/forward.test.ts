@@ -18,6 +18,7 @@ test('River nights before the first stay are left out of the 30-day pace', () =>
   assert.equal(window.booked, 3);
   assert.equal(window.bookedShare, 11);
   assert.equal(window.startingStays, 1);
+  assert.equal(window.held, 0);
 });
 
 test('a block occupies the night and does not count as a starting stay', () => {
@@ -41,6 +42,24 @@ test('checkout morning is free', () => {
   );
   assert.equal(window.booked, 1);
   assert.equal(window.startingStays, 1);
+});
+
+test('a calendar block is left out of the sellable nights', () => {
+  const window = forwardWindow('ranch', [], '2026-11-01', 30, ['2026-11-06', '2026-11-07']);
+  assert.equal(window.sellable, 28);
+  assert.equal(window.booked, 0);
+  assert.equal(window.held, 2);
+  assert.equal(window.bookedShare, 0);
+  const withStay = forwardWindow(
+    'ranch',
+    [{ propertyId: 'ranch', checkIn: '2026-11-06', checkOut: '2026-11-08', status: 'confirmed', payout: 0 }],
+    '2026-11-01',
+    30,
+    ['2026-11-10'],
+  );
+  assert.equal(withStay.booked, 2);
+  assert.equal(withStay.held, 1);
+  assert.equal(withStay.sellable, 29);
 });
 
 test('sample booked share uses the first window only', () => {
