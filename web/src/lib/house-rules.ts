@@ -43,7 +43,12 @@ export function houseRules(house: HouseId): HouseRule[] {
   return RULES[house];
 }
 
-/** The request button stays off until the quote is valid, the calendar check has finished, and the rules are read. */
-export function directRequestReady(input: { quoteOk: boolean; rulesRead: boolean; calendarLoading: boolean }): boolean {
-  return input.quoteOk && input.rulesRead && !input.calendarLoading;
+/** The request button stays off until the quote is valid, the party fits, the calendar check has finished, and the rules are read. */
+export function directRequestReady(input: {
+  quoteOk: boolean;
+  rulesRead: boolean;
+  calendarLoading: boolean;
+  partyOk: boolean;
+}): boolean {
+  return input.quoteOk && input.partyOk && input.rulesRead && !input.calendarLoading;
 }

@@ -1,3 +1,4 @@
+import { partyFits } from './house-stay';
 import { addDays, isWeekendNight } from './market/dates';
 import { promotionForNight, type YearPace } from './market/fill';
 import { nightAsk } from './market/rates';
@@ -78,7 +79,7 @@ export function quoteStay(
   checkIn: string,
   checkOut: string,
   taken: readonly string[] = [],
-  options?: { asOf?: string; pace?: YearPace },
+  options?: { asOf?: string; pace?: YearPace; guests?: number },
 ): StayQuote {
   const asOf = options?.asOf && /^\d{4}-\d{2}-\d{2}$/.test(options.asOf) ? options.asOf : checkIn;
   const pace = options?.pace ?? 'unknown';
@@ -141,6 +142,10 @@ export function quoteStay(
       ok: false,
       reason: 'A Friday or Saturday by itself needs to be inside 7 days. Otherwise book both weekend nights.',
     };
+  }
+  if (options?.guests !== undefined) {
+    const party = partyFits(house, options.guests);
+    if (!party.ok) return { ...priced, ok: false, reason: party.reason };
   }
 
   return { ...priced, ok: true, reason: null };

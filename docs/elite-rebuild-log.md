@@ -107,3 +107,8 @@
 ## 2026-10-29 — cleaner fix note
 
 - A cleaner can write what needs a fix on a turnover. The note stays in this browser and shows on the agents brief. It does not create a task or change a booking or an expense.
+
+## 2026-10-29 — booking page house and party
+
+- The booking page shows the published house: sleep count, check-in and check-out, arrival, parking, and a few nearby places. Door codes stay off that page.
+- A party larger than the house is refused. The request stays off until the guest count fits and the house rules are read. Nothing is charged.

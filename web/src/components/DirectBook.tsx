@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PROPERTIES } from '../lib/api';
 import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
+import { houseStay, partyFits } from '../lib/house-stay';
 import { directRequestReady, houseRules } from '../lib/house-rules';
 import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
@@ -39,6 +40,7 @@ export function DirectBook() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
+  const [guests, setGuests] = useState('');
   const [rulesRead, setRulesRead] = useState(false);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
@@ -80,14 +82,23 @@ export function DirectBook() {
     };
   }, []);
 
+  const stay = houseStay(house);
+  const guestCount = /^\d+$/.test(guests) ? Number(guests) : null;
+  const party = guestCount === null ? partyFits(house, 0) : partyFits(house, guestCount);
   const quote = useMemo(
-    () => quoteStay(house, checkIn, checkOut, taken[house] ?? [], { asOf: today, pace }),
-    [house, checkIn, checkOut, taken, today, pace],
+    () =>
+      quoteStay(house, checkIn, checkOut, taken[house] ?? [], {
+        asOf: today,
+        pace,
+        ...(guestCount !== null ? { guests: guestCount } : {}),
+      }),
+    [house, checkIn, checkOut, taken, today, pace, guestCount],
   );
   const canRequest = directRequestReady({
     quoteOk: quote.ok,
     rulesRead,
     calendarLoading: calendar === 'loading',
+    partyOk: party.ok,
   });
   const photo = HOUSE_PHOTOS[house];
 
@@ -108,6 +119,7 @@ export function DirectBook() {
           returning: false,
           note: [
             form.note,
+            `Overnight guests ${guests}.`,
             `Preview quote ${formatWhole(quote.stayTotal)} before tax (${quote.nights.length} nights).`,
           ]
             .filter(Boolean)
@@ -165,6 +177,23 @@ export function DirectBook() {
             {photo && (
               <img src={photo.src} alt={PROPERTIES[house].name} className="h-64 w-full object-cover" />
             )}
+            <div className="space-y-3 px-6 pt-6" data-bot="stay-house-facts">
+              <p className="uml-kicker">The house</p>
+              <p className="font-display text-3xl">Sleeps {stay.sleeps}</p>
+              <p className="text-sm text-[var(--uml-muted)]">
+                Check-in {stay.checkIn} · Check-out {stay.checkOut}
+              </p>
+              {stay.bedrooms && <p className="text-sm">{stay.bedrooms}</p>}
+              <p className="text-sm text-[var(--uml-muted)]">{stay.arrival}</p>
+              <p className="text-sm text-[var(--uml-muted)]">{stay.parking}</p>
+              <ul className="space-y-1 text-sm" data-bot="stay-nearby">
+                {stay.nearby.map((place) => (
+                  <li key={place.name}>
+                    {place.name}. {place.note}
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="space-y-4 p-6">
               <p className="uml-kicker">{PROPERTIES[house].address}</p>
               <StayMonth
@@ -243,6 +272,24 @@ export function DirectBook() {
                   ? `${taken[house]?.length ?? 0} nights ahead are already booked.`
                   : 'Calendar check is not on this server yet. Confirm the dates before accepting.'}
             </p>
+
+            <label className="mt-6 block text-sm">
+              Overnight guests
+              <input
+                inputMode="numeric"
+                aria-label="Overnight guests"
+                data-bot="stay-guests"
+                value={guests}
+                placeholder={`Up to ${stay.sleeps}`}
+                onChange={(event) => setGuests(event.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                className="mt-2 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
+              />
+            </label>
+            {!party.ok && (
+              <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-party">
+                {party.reason}
+              </p>
+            )}
 
             <div className="mt-6" data-bot="stay-rules">
               <p className="uml-kicker">House rules</p>

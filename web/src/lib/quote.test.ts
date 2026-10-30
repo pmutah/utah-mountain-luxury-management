@@ -56,6 +56,14 @@ test('a Ranch weekday adds the house cleaning fee to the direct price', () => {
   assert.equal(quote.promotionNights, 1);
 });
 
+test('a party larger than the house is not quoted', () => {
+  const quote = quoteStay('river', '2026-11-06', '2026-11-08', [], { guests: 26 });
+  assert.equal(quote.ok, false);
+  assert.match(quote.reason ?? '', /sleeps 25/);
+  const open = quoteStay('river', '2026-11-06', '2026-11-08', [], { guests: 25 });
+  assert.equal(open.ok, true);
+});
+
 test('a lone Ranch weekend night waits until the last week', () => {
   const early = quoteStay('ranch', '2026-11-06', '2026-11-07', [], { asOf: '2026-10-29' });
   assert.equal(early.ok, false);
