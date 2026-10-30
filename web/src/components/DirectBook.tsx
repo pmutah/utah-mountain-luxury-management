@@ -16,6 +16,7 @@ import type { HouseId } from '../lib/market/types';
 import { quoteStay, directSavings } from '../lib/quote';
 import { openArrivals } from '../lib/open-arrivals';
 import { alsoHeld, alsoOpen } from '../lib/also-open';
+import { compoundOffer } from '../lib/compound';
 import { longestStay } from '../lib/longest-stay';
 import { shortestStay } from '../lib/shortest-stay';
 import { stayLengths } from '../lib/stay-lengths';
@@ -136,6 +137,12 @@ export function DirectBook() {
       stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
     return alsoHeld(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined, closed, childCount ?? undefined);
   }, [calendar, house, checkIn, checkOut, taken, closed, today, stays, guestCount, childCount]);
+  const compound = useMemo(() => {
+    if (calendar !== 'live' || guestCount === null) return { show: false } as const;
+    const paceFor = (id: HouseId): YearPace =>
+      stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
+    return compoundOffer(checkIn, checkOut, guestCount, childCount ?? undefined, taken, today, paceFor, closed);
+  }, [calendar, checkIn, checkOut, guestCount, childCount, taken, closed, today, stays]);
   const extension = useMemo(() => {
     if (calendar !== 'live' || quote.ok) return null;
     const next = shortestStay(house, checkIn, taken[house] ?? [], today, pace, guestCount ?? undefined);
@@ -614,6 +621,28 @@ export function DirectBook() {
                 {party.reason}
               </p>
             )}
+            {compound.show && (
+              <div className="mt-4" data-bot="stay-compound" data-ok={compound.ok ? 'yes' : 'no'}>
+                <p className="uml-kicker">Ranch and River together</p>
+                {compound.ok ? (
+                  <>
+                    <p className="mt-1 text-sm" data-bot="stay-compound-split">
+                      {compound.line}
+                    </p>
+                    <p className="mt-1 text-sm" data-bot="stay-compound-total">
+                      {formatWhole(compound.total)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm" data-bot="stay-compound-reason">
+                    {compound.reason}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-[var(--uml-muted)]">
+                  This quote does not hold either house and does not send a request.
+                </p>
+              </div>
+            )}
             {guestLine && (
               <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-party-note" data-note={guestLine}>
                 {guestLine} Nothing is sent until you use the button.
@@ -848,6 +877,12 @@ export function DirectBook() {
             {line}
           </p>
         ))}
+        {compound.show &&
+          compound.paper.map((line) => (
+            <p key={line} data-bot="stay-compound-paper">
+              {line}
+            </p>
+          ))}
         <p>{guide.close}</p>
       </div>
     </div>

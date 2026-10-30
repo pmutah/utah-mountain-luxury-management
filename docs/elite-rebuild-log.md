@@ -465,6 +465,10 @@
 
 - An empty read of the saved expenses cannot replace the ledger. A write that would drop a row other than turnover cleaning is refused. This is on the branch and is not deployed.
 
+## 2026-10-30 — Ranch and River together
+
+- A party larger than the River House can quote both houses for the same dates. Twenty-five stay at the River House and the rest at the Ranch House. Each house keeps an adult. The page and the paper show that quote. Nothing is held, charged, or sent. A party that fits one house does not see it.
+
 ## 2026-10-30 — hot tub and grocery prep
 
 - When the next stay has not started, Ranch can request the hot tub and River can request a grocery drop. The cleaner, the overview, Todd’s arrivals, the nightly brief, and the unsent daily text say so. Nothing is charged yet. Lindon has neither.
