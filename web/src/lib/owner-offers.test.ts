@@ -30,6 +30,17 @@ test('Todd sees Ranch and River quote choices with no price', () => {
   assert.match(turns[0]?.text ?? '', /Ranch checkout Nov 4\. The next stay starts November 4, 2026\. The door code opens November 3, 2026/);
   assert.match(turns[1]?.text ?? '', /River: no checkout in the next 90 days/);
   assert.equal(turns.some((line) => line.text.includes('Lindon') || line.text.includes('$')), false);
+  const namedTurns = ownerTurnLines(
+    [
+      { id: 'a', propertyId: 'ranch', checkIn: '2026-10-28', checkOut: '2026-11-04', status: 'confirmed' },
+      { id: 'b', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-08', status: 'confirmed' },
+    ],
+    '2026-11-01',
+    { a: '2:00 PM', b: '801-555-0100' },
+  );
+  assert.match(namedTurns[0]?.text ?? '', /This checkout names a departure\. Leave at 2:00 PM/);
+  assert.equal(namedTurns[0]?.text.includes('801'), false);
+  assert.equal(namedTurns[0]?.text.includes('$'), false);
   assert.equal(/password|code\s*\d/i.test(turns.map((line) => line.text).join(' ')), false);
   const arrivals = ownerArrivalLines(
     [

@@ -1,6 +1,6 @@
 import type { Reservation } from '../lib/api';
-import { workOrderArrival, workOrderCheckoutParty, workOrderNext, workOrderParty, workOrderRules, workOrderWhen } from '../lib/clean';
-import { useArrivalWindows } from '../hooks/useArrivalWindows';
+import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderNext, workOrderParty, workOrderRules, workOrderWhen } from '../lib/clean';
+import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { codesOpenTomorrow } from '../lib/house-stay';
 import { formatWhole } from '../lib/luxury';
 import { currentDayIso } from '../lib/months';
@@ -67,7 +67,7 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
   const asOf = currentDayIso();
   const desk = buildTodayDesk(reservations, asOf);
   const turns = buildTurnovers(reservations, asOf);
-  const arrivalWindows = useArrivalWindows();
+  const preferenceTimes = usePreferenceTimes();
   return (
     <section className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="today-desk">
       <p className="uml-kicker">Today</p>
@@ -156,10 +156,15 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                   {workOrderWhen(turn.house, turn.gapNights === 0, 'en')}
                 </p>
                 <p data-bot="today-turnover-checkout">{workOrderCheckoutParty(turn.checkoutGuests, 'en')}</p>
+                {preferenceTimes && (
+                  <p data-bot="today-turnover-departure">
+                    {workOrderDeparture(preferenceTimes.departure[turn.checkoutStayId], 'en')}
+                  </p>
+                )}
                 <p data-bot="today-turnover-next">{workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}</p>
                 {turn.nextCheckIn && <p data-bot="today-turnover-party">{workOrderParty(turn.nextGuests, 'en')}</p>}
-                {turn.nextCheckIn && arrivalWindows && (
-                  <p data-bot="today-turnover-arrival">{workOrderArrival(arrivalWindows[turn.nextStayId ?? ''], 'en')}</p>
+                {turn.nextCheckIn && preferenceTimes && (
+                  <p data-bot="today-turnover-arrival">{workOrderArrival(preferenceTimes.arrival[turn.nextStayId ?? ''], 'en')}</p>
                 )}
                 {workOrderRules(turn.house, 'en').map((line) => (
                   <p key={line} data-bot="today-turnover-rule">

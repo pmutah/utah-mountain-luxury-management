@@ -6,6 +6,7 @@ import {
   type Reservation,
 } from '../lib/api';
 import { guestArrivalLine } from '../lib/arrival';
+import { guestDepartureLine } from '../lib/departure';
 import { currentDayIso } from '../lib/months';
 
 function norm(name: string) {
@@ -33,6 +34,8 @@ function checklist(answers?: GuestPreferenceAnswers | null) {
   if (answers.dogs && answers.dogs !== 'no') lines.push(`Dogs: ${answers.dogs}.`);
   const arrival = guestArrivalLine(answers.arrivalWindow);
   if (arrival) lines.push(arrival);
+  const departure = guestDepartureLine(answers.earlyLate);
+  if (departure) lines.push(departure);
   if (answers.smileItem) lines.push(`Leave ${answers.smileItem}.`);
   if (lines.length === 0) lines.push('Preference card is on file, with nothing to stage.');
   return lines;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderCheckoutParty, workOrderWhen, type CleanLang } from '../lib/clean';
-import { useArrivalWindows } from '../hooks/useArrivalWindows';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderWhen, type CleanLang } from '../lib/clean';
+import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
 
@@ -56,7 +56,7 @@ function gapLabel(gap: number | null, lang: CleanLang) {
 export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   const asOf = currentDayIso();
   const jobs = useMemo(() => cleanJobs(reservations, asOf), [reservations, asOf]);
-  const arrivalWindows = useArrivalWindows();
+  const preferenceTimes = usePreferenceTimes();
   const [checks, setChecks] = useState<Record<string, boolean>>(loadChecks);
   const [tasks, setTasks] = useState<OpenTask[]>([]);
   const [lang, setLang] = useState<CleanLang>(loadLang);
@@ -166,6 +166,11 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     <p className="mt-1 text-sm" data-bot="clean-checkout-party">
                       {workOrderCheckoutParty(job.checkoutGuests, lang)}
                     </p>
+                    {preferenceTimes && (
+                      <p className="mt-1 text-sm" data-bot="clean-departure">
+                        {workOrderDeparture(preferenceTimes.departure[job.checkoutStayId], lang)}
+                      </p>
+                    )}
                     <p className="mt-1 text-sm" data-bot="clean-next">
                       {workOrderNext(job.nextCheckIn, job.gapNights, lang)}
                     </p>
@@ -174,9 +179,9 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                         {workOrderParty(job.nextGuests, lang)}
                       </p>
                     )}
-                    {job.nextCheckIn && arrivalWindows && (
+                    {job.nextCheckIn && preferenceTimes && (
                       <p className="mt-1 text-sm" data-bot="clean-arrival">
-                        {workOrderArrival(arrivalWindows[job.nextStayId ?? ''], lang)}
+                        {workOrderArrival(preferenceTimes.arrival[job.nextStayId ?? ''], lang)}
                       </p>
                     )}
                     <p className="mt-1 text-sm" data-bot="clean-place">

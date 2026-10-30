@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderCheckoutParty, workOrderWhen } from './clean.ts';
+import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -84,6 +84,11 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.match(workOrderArrival('8–10 PM', 'es'), /horas de silencio/);
   assert.match(workOrderArrival('801-555-0100', 'en'), /does not name an arrival time/);
   assert.equal(workOrderArrival('801-555-0100', 'en').includes('801'), false);
+  assert.match(workOrderDeparture('11:00 AM', 'en'), /Leave at 11:00 AM/);
+  assert.match(workOrderDeparture('2:00 PM', 'en'), /Nothing is charged yet/);
+  assert.match(workOrderDeparture('2:00 PM', 'es'), /Todavía no se cobra nada/);
+  assert.match(workOrderDeparture('801-555-0100', 'en'), /does not name a departure time/);
+  assert.equal(workOrderDeparture('801-555-0100', 'en').includes('801'), false);
   assert.equal(workOrderCheckoutParty(null, 'en'), 'This checkout does not say how many guests. Names stay off this list.');
   assert.match(workOrderCheckoutParty(9, 'es'), /9 huéspedes/);
 });

@@ -11,6 +11,7 @@ import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
 import { hostAccessPhrase } from '../lib/house-stay';
 import { hostArrivalPhrase } from '../lib/arrival';
+import { hostDeparturePhrase } from '../lib/departure';
 import { hostPartyPhrase } from '../lib/note-party';
 import { houseMenu, hostAddonPhrase } from '../lib/upsells';
 import { loadBookedNights } from '../lib/booked-nights';
@@ -310,6 +311,9 @@ export function GuestsPanel({
                 </p>
                 <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-arrival" data-in={stay.checkIn}>
                   {hostArrivalPhrase(survey?.answers?.arrivalWindow)}
+                </p>
+                <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-departure" data-out={stay.checkOut}>
+                  {hostDeparturePhrase(survey?.answers?.earlyLate)}
                 </p>
                 {stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river' ? (
                   <>

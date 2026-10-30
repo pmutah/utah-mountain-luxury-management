@@ -7,7 +7,7 @@ import { agreementBrief } from './stay-agreement';
 import { nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals';
 import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
-import { guestLeavingLine, workOrderArrival, workOrderCheckoutParty, workOrderNext, workOrderParty, workOrderWhen } from './clean';
+import { guestLeavingLine, workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderNext, workOrderParty, workOrderWhen } from './clean';
 import { arrivalBrief } from './arrival';
 import { partyBrief } from './note-party';
 import { listingOpportunities } from './listing';
@@ -56,6 +56,8 @@ export function agentBrief(input: {
   closed?: readonly ClosedSpan[];
   /** Reservation id to a saved arrival window. Omit until the preference cards have loaded. */
   arrivalWindows?: Readonly<Record<string, string | undefined>> | null;
+  /** Reservation id to a saved departure time. Omit until the preference cards have loaded. */
+  departureWindows?: Readonly<Record<string, string | undefined>> | null;
 }): BriefLine[] {
   const days = Math.max(0, Math.min(SHADOW_DAYS_REQUIRED, Math.floor(input.shadowDays)));
   const lines: BriefLine[] = [
@@ -99,13 +101,16 @@ export function agentBrief(input: {
       turn.nextCheckIn && input.arrivalWindows
         ? ` ${workOrderArrival(input.arrivalWindows[turn.nextStayId ?? ''], 'en')}`
         : '';
+    const departure = input.departureWindows
+      ? ` ${workOrderDeparture(input.departureWindows[turn.checkoutStayId], 'en')}`
+      : '';
     const leaving = ` ${workOrderCheckoutParty(turn.checkoutGuests, 'en')}`;
     const text =
       turn.gapNights === 0
-        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${arrival}${leaving}`
+        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${arrival}${departure}${leaving}`
         : turn.gapNights === null
-          ? `${turn.houseName} checkout ${when}. Nothing booked after it. ${window} ${next}${leaving}`
-          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}${arrival}${leaving}`;
+          ? `${turn.houseName} checkout ${when}. Nothing booked after it. ${window} ${next}${departure}${leaving}`
+          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}${arrival}${departure}${leaving}`;
     lines.push({ agent: 'co-host', text });
   }
   if (turns.length > shown.length) {

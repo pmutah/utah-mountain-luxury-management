@@ -82,6 +82,24 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
     guestArrival: '6:00 PM',
   });
   assert.equal(named.guestArrival, 'Arrival around 6:00 PM.');
+  const leaving = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    guestDeparture: '11:00 AM',
+  });
+  assert.equal(leaving.guestDeparture, 'Leave at 11:00 AM.');
+  const badLeave = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    guestDeparture: '801-555-0100',
+  });
+  assert.equal(badLeave.guestDeparture, '');
   const junk = tripSheet({
     house: 'River House',
     checkIn: '2026-11-06',

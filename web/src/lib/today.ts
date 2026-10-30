@@ -57,6 +57,8 @@ export type Turnover = {
   nextGuests: number | null;
   /** The next stay's id, used to read a preference arrival time. Null when nothing follows. */
   nextStayId: string | null;
+  /** This checkout's id, used to read a preference departure time. */
+  checkoutStayId: string;
   /** Guest count from the checkout booking note. Null when the note does not say. Names are not stored. */
   checkoutGuests: number | null;
 };
@@ -80,6 +82,7 @@ export function buildTurnovers(reservations: Reservation[], asOf: string, horizo
         gapNights: next ? nightsBetween(stay.checkOut, next.checkIn) : null,
         nextGuests: next ? noteGuestCount(next.note) : null,
         nextStayId: next?.id ?? null,
+        checkoutStayId: stay.id,
         checkoutGuests: noteGuestCount(stay.note),
       };
     })

@@ -1,6 +1,7 @@
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import type { GuestPreferenceAnswers } from '../lib/api';
 import { ARRIVAL_SLOTS, guestArrivalLine } from '../lib/arrival';
+import { DEPARTURE_SLOTS, guestDepartureLine } from '../lib/departure';
 import { vipStepIds, type VipStepId } from '../lib/survey-steps';
 
 const OCCASIONS = [
@@ -70,17 +71,19 @@ function Chip({
   selected,
   onClick,
   time,
+  bot,
 }: {
   label: string;
   selected: boolean;
   onClick: () => void;
   time?: string;
+  bot?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      data-bot={time ? 'stay-pref-arrival-slot' : undefined}
+      data-bot={bot ?? (time ? 'stay-pref-arrival-slot' : undefined)}
       data-time={time}
       className={`min-h-12 px-4 py-3 rounded-full text-[15px] font-medium border transition ${
         selected
@@ -288,6 +291,28 @@ export function GuestVipSurvey({
             </div>
             <p className="text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-pref-arrival-note">
               {guestArrivalLine(answers.arrivalWindow) || 'No arrival time yet.'}
+            </p>
+          </Step>
+        )}
+        {step === 'leave' && (
+          <Step
+            title="When will you leave?"
+            hint="Checkout is 11:00 AM. Leave at 2:00 PM is a request. Nothing is charged yet. Choosing a time does not send this form."
+          >
+            <div className="flex flex-wrap gap-2" data-bot="stay-pref-departure">
+              {DEPARTURE_SLOTS.map((slot) => (
+                <Chip
+                  key={slot}
+                  label={slot}
+                  time={slot}
+                  bot="stay-pref-departure-slot"
+                  selected={answers.earlyLate === slot}
+                  onClick={() => set('earlyLate', answers.earlyLate === slot ? '' : slot)}
+                />
+              ))}
+            </div>
+            <p className="text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-pref-departure-note">
+              {guestDepartureLine(answers.earlyLate) || 'No departure time yet.'}
             </p>
           </Step>
         )}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Reservation, type SharedWorkItem } from '../lib/api';
-import { useArrivalWindows } from '../hooks/useArrivalWindows';
+import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
 import { loadDateBlocks } from '../lib/booked-nights';
@@ -29,7 +29,9 @@ export function AgentsHub({
   const [workState, setWorkState] = useState<'loading' | 'live' | 'off'>('loading');
   const [fixes] = useState(loadCleanFixes);
   const [closed, setClosed] = useState<ClosedSpan[]>([]);
-  const arrivalWindows = useArrivalWindows();
+  const preferenceTimes = usePreferenceTimes();
+  const arrivalWindows = preferenceTimes?.arrival ?? null;
+  const departureWindows = preferenceTimes?.departure ?? null;
   const today = denverToday();
   const brief = useMemo(
     () =>
@@ -42,8 +44,9 @@ export function AgentsHub({
         fixes,
         closed,
         arrivalWindows,
+        departureWindows,
       }),
-    [today, reservations, workState, open.length, calendar, fixes, closed, arrivalWindows],
+    [today, reservations, workState, open.length, calendar, fixes, closed, arrivalWindows, departureWindows],
   );
 
   useEffect(() => {

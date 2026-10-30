@@ -1,5 +1,6 @@
 import type { GuestPreferenceAnswers } from './api';
 import { guestArrivalLine } from './arrival';
+import { guestDepartureLine } from './departure';
 
 export type StayCardSection = {
   id: string;
@@ -109,6 +110,8 @@ export function buildStayCard(input: {
 
   const namedArrival = guestArrivalLine(a.arrivalWindow);
   if (namedArrival) pushSection(sections, 'arrival', 'Arrival time', [namedArrival], 'ops');
+  const namedDeparture = guestDepartureLine(a.earlyLate);
+  if (namedDeparture) pushSection(sections, 'departure', 'Departure time', [namedDeparture], 'ops');
 
   const occasions = list(a.occasions) ?? a.celebration;
   pushSection(sections, 'occasion', 'Occasion', [

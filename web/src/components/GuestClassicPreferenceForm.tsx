@@ -1,6 +1,7 @@
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from 'react';
 import type { GuestPreferenceAnswers } from '../lib/api';
 import { arrivalSelectOptions, guestArrivalLine } from '../lib/arrival';
+import { DEPARTURE_SLOTS, guestDepartureLine } from '../lib/departure';
 
 const WHY_OPTIONS = [
   'Family / reunion',
@@ -145,6 +146,25 @@ export function GuestClassicPreferenceForm({
               <p className="text-xs text-stone-500">
                 Check-in is 4:00 PM. After 9:00 PM, quiet hours still apply. Choosing a time does not send this form.
                 {guestArrivalLine(answers.arrivalWindow) ? ` ${guestArrivalLine(answers.arrivalWindow)}` : ''}
+              </p>
+            </Field>
+            <Field label="Departure time">
+              <select
+                className={inputClass}
+                data-bot="stay-classic-departure"
+                value={answers.earlyLate ?? ''}
+                onChange={(e) => set('earlyLate', e.target.value)}
+              >
+                <option value="">Not sure yet</option>
+                {DEPARTURE_SLOTS.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-stone-500">
+                Checkout is 11:00 AM. Leave at 2:00 PM is a request. Nothing is charged yet. Choosing a time does not send this form.
+                {guestDepartureLine(answers.earlyLate) ? ` ${guestDepartureLine(answers.earlyLate)}` : ''}
               </p>
             </Field>
             <Field label="How you are arriving">

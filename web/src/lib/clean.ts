@@ -1,5 +1,6 @@
 import { PROPERTIES, type Reservation } from './api';
 import { guestArrivalLine } from './arrival';
+import { guestDepartureLine } from './departure';
 import { houseRules } from './house-rules';
 import { houseStay, nearbyGroups } from './house-stay';
 import type { HouseId } from './luxury';
@@ -113,6 +114,26 @@ export function workOrderArrival(window: string | null | undefined, lang: CleanL
   return lang === 'es'
     ? `La siguiente estancia dice la hora de llegada. ${named} Los nombres no están en esta lista.`
     : `The next stay names an arrival. ${named} Names stay off this list.`;
+}
+
+const DEPARTURE_ES: Record<string, string> = {
+  'Leave at 11:00 AM.': 'Salida a las 11:00 AM.',
+  'Leave at 2:00 PM. Nothing is charged yet. A same-day arrival still starts at 4:00 PM.':
+    'Salida a las 2:00 PM. Todavía no se cobra nada. Una llegada el mismo día sigue siendo a las 4:00 PM.',
+};
+
+/** When this checkout said they would leave. A phone or other typed time stays off the sentence. */
+export function workOrderDeparture(window: string | null | undefined, lang: CleanLang): string {
+  const line = guestDepartureLine(window);
+  if (!line) {
+    return lang === 'es'
+      ? 'Esta salida no dice a qué hora se van. Los nombres no están en esta lista.'
+      : 'This checkout does not name a departure time. Names stay off this list.';
+  }
+  const named = lang === 'es' ? (DEPARTURE_ES[line] ?? line) : line;
+  return lang === 'es'
+    ? `Esta salida dice la hora de partida. ${named} Los nombres no están en esta lista.`
+    : `This checkout names a departure. ${named} Names stay off this list.`;
 }
 
 /** How many people are checking out. Names stay off the sentence. */

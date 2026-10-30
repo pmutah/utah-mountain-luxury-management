@@ -415,3 +415,8 @@
 
 - The cleaner work order and the overview turnover say whether the next stay named an arrival time. The same line is in the nightly brief when preference cards have loaded.
 - Todd’s 90-day Ranch and River list includes that time. A phone stays off the line. Names and prices stay off. Nothing is sent.
+
+## 2026-10-30 — departure time on the checkout
+
+- A preference card can name checkout at 11:00 AM or a 2:00 PM leave. The 2:00 PM choice is a request. Nothing is charged yet, and a same-day arrival still starts at 4:00 PM. Choosing a time does not send the form.
+- The cleaner, the overview, Todd’s next checkout, and the nightly brief say whether this checkout named that time. A phone stays off the line. Nothing is sent.

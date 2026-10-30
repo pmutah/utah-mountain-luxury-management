@@ -3,6 +3,7 @@ export type VipStepId =
   | 'occasion'
   | 'party'
   | 'arrive'
+  | 'leave'
   | 'setting'
   | 'activities'
   | 'fishing'
@@ -19,7 +20,7 @@ export type VipStepId =
 
 /** River preference steps. Arrival is asked before the house is set, and sending stays on the last step. */
 export function vipStepIds(activities: readonly string[] | undefined): VipStepId[] {
-  const next: VipStepId[] = ['welcome', 'occasion', 'party', 'arrive', 'setting', 'activities'];
+  const next: VipStepId[] = ['welcome', 'occasion', 'party', 'arrive', 'leave', 'setting', 'activities'];
   if (activities?.includes('Fishing')) next.push('fishing');
   if (activities?.includes('Mountain / trail biking')) next.push('bikes');
   if (activities?.includes('Skiing')) next.push('skiing');

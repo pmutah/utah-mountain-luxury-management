@@ -72,9 +72,11 @@ test('the night brief names the work and leaves the guest off it', () => {
     openJobs: 0,
     calendarReady: true,
     arrivalWindows: { in: '6:00 PM' },
+    departureWindows: { out: '2:00 PM' },
   });
   const turnText = turnArrival.map((line) => line.text).join('\n');
   assert.match(turnText, /The next stay names an arrival\. Arrival around 6:00 PM\./);
+  assert.match(turnText, /This checkout names a departure\. Leave at 2:00 PM\. Nothing is charged yet\./);
   assert.equal(turnText.includes('801'), false);
   assert.equal(turnText.includes('Ada'), false);
   assert.equal(text.includes('Ada'), false);

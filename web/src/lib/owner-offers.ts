@@ -1,5 +1,6 @@
 import type { Reservation } from './api';
 import { hostArrivalPhrase } from './arrival';
+import { hostDeparturePhrase } from './departure';
 import { occupiedByHouse } from './availability';
 import { bookingStartSummary } from './booking-starts';
 import { workOrderNext } from './clean';
@@ -94,6 +95,7 @@ function shortWhen(iso: string): string {
 export function ownerTurnLines(
   stays: Array<Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'>>,
   asOf: string,
+  windows?: Readonly<Record<string, string | undefined>> | null,
 ): OwnerOfferLine[] {
   const turns = buildTurnovers(
     stays.map((stay) => ({
@@ -113,9 +115,10 @@ export function ownerTurnLines(
     const name = house === 'ranch' ? 'Ranch' : 'River';
     const turn = turns.find((item) => item.house === house);
     if (!turn) return { id: house, text: `${name}: no checkout in the next 90 days.` };
+    const departure = windows ? ` ${hostDeparturePhrase(windows[turn.checkoutStayId])}` : '';
     return {
       id: house,
-      text: `${name} checkout ${shortWhen(turn.checkout)}. ${workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}`,
+      text: `${name} checkout ${shortWhen(turn.checkout)}. ${workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}${departure}`,
     };
   });
 }
