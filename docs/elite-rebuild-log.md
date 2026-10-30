@@ -296,3 +296,7 @@
 ## 2026-10-29 — a map and the drive notes on the work order
 
 - The cleaner work order links the address to a map and lists the before-you-go notes. Those notes are not the checklist. The door code stays off the paper.
+
+## 2026-10-29 — arrival, parking, and house rules on the trip sheet
+
+- The on-screen trip sheet now shows how to arrive, where to park, and the house rules, the same lines as the paper. A line that names a door code or Wi-Fi is left off.

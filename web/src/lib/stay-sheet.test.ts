@@ -31,6 +31,21 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   assert.equal(sheet.address, 'Vivian Park, Provo Canyon, Utah 84604');
   assert.match(sheet.privateNote, /not on this paper/);
   assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
+  assert.equal(sheet.parking, 'Park in the drive.');
+  assert.equal(sheet.rules, 'No parties.');
+  const secret = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    arrival: 'Door code is 1234',
+    parking: 'Wi-Fi password is hidden',
+    rules: 'Quiet hours. Door code 4321',
+  });
+  assert.equal(secret.arrival, '');
+  assert.equal(secret.parking, '');
+  assert.equal(secret.rules, '');
   assert.deepEqual(sheet.notes, [{ title: 'Septic', body: 'Only toilet paper goes in the toilets.' }]);
   assert.equal(sheet.nearby[0]?.kind, 'ski');
   assert.equal(nearbyGroups(sheet.nearby)[0]?.label, 'Ski');

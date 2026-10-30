@@ -32,7 +32,7 @@ export type TripSheet = {
 
 const SECRET = /door\s*code|wi-?fi|password/i;
 
-function publicEmergency(value: string | undefined): string {
+function publicText(value: string | undefined): string {
   const text = value?.trim() ?? '';
   if (!text || SECRET.test(text)) return '';
   return text;
@@ -95,12 +95,12 @@ export function tripSheet(input: {
     when: `Check-in ${input.checkInTime} on ${longDate(input.checkIn)}. Checkout ${input.checkOutTime} on ${longDate(input.checkOut)}.`,
     address: input.address?.trim() ?? '',
     privateNote: 'Door code and Wi-Fi stay on the phone. They are not on this paper.',
-    arrival: input.arrival?.trim() ?? '',
-    parking: input.parking?.trim() ?? '',
-    rules: input.rules?.trim() ?? '',
+    arrival: publicText(input.arrival),
+    parking: publicText(input.parking),
     notes: publicNotes(input.notes),
     nearby: publicNearby(input.nearby),
-    emergency: publicEmergency(input.emergency),
+    emergency: publicText(input.emergency),
+    rules: publicText(input.rules),
     checkout: publicCheckout(input.checkout),
   };
 }

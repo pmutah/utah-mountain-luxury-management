@@ -373,6 +373,21 @@ export function StayApp({ token }: { token: string }) {
                   {sheet.emergency}
                 </p>
               )}
+              {sheet.arrival && (
+                <p className="mt-2 text-sm" data-bot="stay-sheet-arrival">
+                  {sheet.arrival}
+                </p>
+              )}
+              {sheet.parking && (
+                <p className="mt-2 text-sm" data-bot="stay-sheet-parking">
+                  {sheet.parking}
+                </p>
+              )}
+              {sheet.rules && (
+                <p className="mt-2 text-sm" data-bot="stay-sheet-rules">
+                  {sheet.rules}
+                </p>
+              )}
               {sheet.checkout.length > 0 && (
                 <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-checkout">
                   {sheet.checkout.map((step) => (
@@ -410,9 +425,9 @@ export function StayApp({ token }: { token: string }) {
                 </ul>
               )}
               {sheet.emergency && <p data-bot="stay-sheet-print-emergency">{sheet.emergency}</p>}
-              {sheet.arrival && <p>{sheet.arrival}</p>}
-              {sheet.parking && <p>{sheet.parking}</p>}
-              {sheet.rules && <p>{sheet.rules}</p>}
+              {sheet.arrival && <p data-bot="stay-sheet-print-arrival">{sheet.arrival}</p>}
+              {sheet.parking && <p data-bot="stay-sheet-print-parking">{sheet.parking}</p>}
+              {sheet.rules && <p data-bot="stay-sheet-print-rules">{sheet.rules}</p>}
               {sheet.checkout.length > 0 && (
                 <ul data-bot="stay-sheet-print-checkout">
                   {sheet.checkout.map((step) => (

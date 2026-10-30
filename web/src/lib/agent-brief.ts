@@ -111,7 +111,7 @@ export function agentBrief(input: {
   });
   lines.push({
     agent: 'nora',
-    text: 'Door codes stay hidden until the house rules are read on the guest phone. A printed trip sheet leaves the code on the phone and keeps the house notes.',
+    text: 'Door codes stay hidden until the house rules are read on the guest phone. A printed trip sheet leaves the code on the phone and keeps the house notes and the house rules.',
   });
   lines.push({
     agent: 'muse',
