@@ -189,6 +189,10 @@
 
 - The market desk shows the same next arrivals as the booking page. The nightly brief names the first date and the length, with no dollar amount. Opening one does not send a request. Nothing is sent to Hospitable.
 
+## 2026-10-29 — other houses for the same dates
+
+- The booking page lists the other houses that will quote the dates already chosen. A party that does not fit is left off. Choosing a house does not send a request.
+
 ## 2026-10-29 — house notes on the trip sheet and the work order
 
 - The guest trip sheet and the cleaner work order name the published house notes. A note that includes a door code or Wi-Fi is left off. Printing does not change a reservation.

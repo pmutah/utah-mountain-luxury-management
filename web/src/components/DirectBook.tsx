@@ -11,6 +11,7 @@ import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
 import { quoteStay, directSavings } from '../lib/quote';
 import { openArrivals } from '../lib/open-arrivals';
+import { alsoOpen } from '../lib/also-open';
 import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
@@ -113,6 +114,12 @@ export function DirectBook() {
     () => (calendar === 'live' ? openArrivals(house, taken[house] ?? [], today, pace) : []),
     [calendar, house, taken, today, pace],
   );
+  const others = useMemo(() => {
+    if (calendar !== 'live') return [];
+    const paceFor = (id: HouseId): YearPace =>
+      stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
+    return alsoOpen(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined);
+  }, [calendar, house, checkIn, checkOut, taken, today, stays, guestCount]);
   const canRequest = directRequestReady({
     quoteOk: quote.ok,
     rulesRead,
@@ -345,6 +352,30 @@ export function DirectBook() {
                   ? `${taken[house]?.length ?? 0} nights ahead are already booked.`
                   : 'Calendar check is not on this server yet. Confirm the dates before accepting.'}
             </p>
+            {others.length > 0 && (
+              <div className="mt-4" data-bot="stay-also">
+                <p className="uml-kicker">Also open</p>
+                <p className="mt-1 text-xs text-[var(--uml-muted)]">
+                  These houses will quote the same dates. Choosing one does not send a request.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {others.map((item) => (
+                    <button
+                      key={item.house}
+                      type="button"
+                      data-bot={`stay-also-${item.house}`}
+                      className="rounded-full border border-[var(--uml-line)] px-4 py-2 text-sm"
+                      onClick={() => {
+                        setHouse(item.house);
+                        setRulesRead(false);
+                      }}
+                    >
+                      {PROPERTIES[item.house].name} · {formatWhole(item.direct)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <label className="mt-6 block text-sm">
               Overnight guests
