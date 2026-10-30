@@ -3,7 +3,7 @@ import { formatCurrency, type Expense, type Reservation } from '../lib/api';
 import { loadDateBlocks } from '../lib/booked-nights';
 import { denverToday } from '../lib/market/dates';
 import { aheadChannelsLine, aheadLine, gapLine, ownerAhead, type ClosedSpan } from '../lib/owner-ahead';
-import { ownerOfferLines, ownerStartLines } from '../lib/owner-offers';
+import { ownerOfferLines, ownerStartLines, ownerTurnLines } from '../lib/owner-offers';
 import { buildOwnerStatement } from '../lib/owner-statement';
 import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statement-file';
 import type { ReportPeriod } from '../lib/report';
@@ -33,6 +33,7 @@ export function OwnerStatement({
   const ahead = useMemo(() => ownerAhead(reservations, denverToday(), closed), [reservations, closed]);
   const offers = useMemo(() => ownerOfferLines(reservations, denverToday(), closed), [reservations, closed]);
   const starts = useMemo(() => ownerStartLines(reservations, denverToday(), closed), [reservations, closed]);
+  const turns = useMemo(() => ownerTurnLines(reservations, denverToday()), [reservations]);
 
   useEffect(() => {
     let cancel = false;
@@ -172,6 +173,16 @@ export function OwnerStatement({
             </ul>
           </>
         )}
+        <p className="mt-4 text-sm text-[var(--uml-muted)]">
+          The next checkout. No names and no prices. Lindon is not on this list. This is not in the spreadsheet.
+        </p>
+        <ul className="mt-2 space-y-2 text-sm" data-bot="owner-turns">
+          {turns.map((line) => (
+            <li key={line.id} data-bot={`owner-turn-${line.id}`}>
+              {line.text}
+            </li>
+          ))}
+        </ul>
       </div>
       {statement.months.length > 0 && (
         <div className="uml-panel rounded-3xl p-6" data-bot="owner-months">

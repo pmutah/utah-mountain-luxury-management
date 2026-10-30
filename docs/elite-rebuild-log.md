@@ -344,3 +344,7 @@
 ## 2026-10-29 — the next stay on the work order
 
 - A turnover names the date the next stay starts and the date that door code opens. The code stays off the work order, the morning list, and the brief. Nothing is booked or sent.
+
+## 2026-10-29 — Todd’s next checkout
+
+- Todd’s page names the next Ranch and River checkout, when the following stay starts, and when that door code opens. Names, prices, and the code stay off. Lindon is not on the list, and the line is not in the spreadsheet.
