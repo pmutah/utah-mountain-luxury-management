@@ -1,6 +1,7 @@
 import { occupiedByHouse, type StaySpan } from './availability';
 import { addDays, denverToday } from './market/dates';
 import type { HouseId } from './market/types';
+import { noteGuestCount } from './note-party';
 import type { PaceStay } from './revenue-goals';
 
 export type DateBlock = { propertyId: string; start: string; end: string };
@@ -70,26 +71,30 @@ export async function loadBookedNights(): Promise<Record<HouseId, string[]> | nu
   return calendar?.nights ?? null;
 }
 
-/** Host payout and dates only. Guest names stay on the server response and are not kept. */
+/** Host payout, dates, and a party count when the note states one. Guest names stay on the server response and are not kept. */
 export async function loadPaceStays(): Promise<PaceStay[] | null> {
   const res = await fetch('/api/reservations').catch(() => null);
   const type = res?.headers.get('content-type') ?? '';
   if (!res?.ok || !type.includes('application/json')) return null;
   const body = (await res.json()) as {
     reservations?: Array<{
+      id?: string;
       propertyId?: string;
       checkIn?: string;
       checkOut?: string;
       status?: string;
       payout?: number;
+      note?: string;
     }>;
   };
   return (body.reservations ?? []).map((stay) => ({
+    id: typeof stay.id === 'string' && stay.id ? stay.id : undefined,
     propertyId: stay.propertyId ?? '',
     checkIn: stay.checkIn ?? '',
     checkOut: stay.checkOut ?? '',
     status: stay.status,
     payout: Number(stay.payout) || 0,
+    partySize: noteGuestCount(typeof stay.note === 'string' ? stay.note : undefined),
   }));
 }
 

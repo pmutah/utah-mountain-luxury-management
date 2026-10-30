@@ -425,3 +425,8 @@
 
 - The booking page can name 11:00 AM or, when that morning is open, 2:00 PM. Choosing 2:00 PM checks the late checkout request. Choosing 11:00 AM clears it. Nothing is charged, and nothing is sent until the request button is used.
 - The printed guide and the quote link include that time. A 2:00 PM leave stays off the quote when the morning is not open.
+
+## 2026-10-30 — party, arrival, and departure on the daily text
+
+- The unsent daily text now says which stays beginning in the next 90 days name a party size. When preference cards have loaded, it also says which of those stays name an arrival time and which checkouts name a departure time.
+- A booking note is reduced to a count before it reaches the page. A phone or a name cannot come through as a time. Nothing is sent.

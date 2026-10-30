@@ -1,6 +1,9 @@
 import { comparePhrase } from '../also-open';
+import { arrivalBrief } from '../arrival';
 import { bookingStartSummary } from '../booking-starts';
 import { RIVER_FIRST_STAY } from '../brand';
+import { departureBrief } from '../departure';
+import { partyBrief } from '../note-party';
 import { addonPhrase, lengthPhrase } from '../open-arrivals';
 import { promotionForNight, type YearPace } from './fill';
 import { buildMarketBoard } from './board';
@@ -105,6 +108,16 @@ export function portfolioDigest(input: {
   calendarLive: boolean;
   comps?: Partial<Record<HouseId, SampleComp[]>>;
   closed?: Record<HouseId, string[]>;
+  stays?: readonly {
+    id?: string;
+    propertyId: string;
+    checkIn: string;
+    checkOut: string;
+    status?: string;
+    partySize?: number | null;
+  }[];
+  arrivalWindows?: Readonly<Record<string, string | undefined>> | null;
+  departureWindows?: Readonly<Record<string, string | undefined>> | null;
 }): string {
   const lines = [`UML shadow ${input.asOf}`];
   for (const house of PORTFOLIO) {
@@ -147,6 +160,19 @@ export function portfolioDigest(input: {
     lines.push(
       `Other houses: ${PORTFOLIO.map((house) => comparePhrase(house, input.taken, input.asOf, paceFor, input.closed)).join(' ')}`,
     );
+  }
+  if (input.stays) {
+    const rows = input.stays.map((stay) => ({
+      id: stay.id ?? '',
+      propertyId: stay.propertyId,
+      checkIn: stay.checkIn,
+      checkOut: stay.checkOut,
+      status: stay.status,
+      note: stay.partySize ? `${stay.partySize} guests` : undefined,
+    }));
+    lines.push(`Parties: ${partyBrief(rows, input.asOf)}`);
+    if (input.arrivalWindows) lines.push(`Arrivals: ${arrivalBrief(rows, input.arrivalWindows, input.asOf)}`);
+    if (input.departureWindows) lines.push(`Departures: ${departureBrief(rows, input.departureWindows, input.asOf)}`);
   }
   lines.push('Nothing sent to Hospitable.');
   return lines.join('\n');

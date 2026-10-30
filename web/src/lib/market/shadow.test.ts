@@ -99,5 +99,37 @@ test('the daily text names every house and leaves a paused house alone', () => {
   assert.equal(quiet.includes('Booking page:'), false);
   assert.equal(quiet.includes('Booking calendar:'), false);
   assert.equal(quiet.includes('Other houses:'), false);
+  assert.equal(quiet.includes('Parties:'), false);
+  assert.equal(text.includes('Arrivals:'), false);
+  assert.equal(text.includes('Departures:'), false);
   assert.match(quiet, /Nothing sent to Hospitable/);
+});
+
+test('the daily text names party size, arrival, and departure without a name or a price', () => {
+  const text = portfolioDigest({
+    asOf: '2026-10-29',
+    taken: { river: [], ranch: [], lindon: [] },
+    paused: { river: false, ranch: false, lindon: false },
+    pace: { river: 'unknown', ranch: 'unknown', lindon: 'unknown' },
+    calendarLive: false,
+    stays: [
+      { id: 'ranch-1', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-06', status: 'confirmed', partySize: 4 },
+      { id: 'river-1', propertyId: 'river', checkIn: '2026-11-10', checkOut: '2026-11-13', status: 'confirmed', partySize: null },
+    ],
+    arrivalWindows: { 'ranch-1': '6:00 PM', 'river-1': '801-555-0100' },
+    departureWindows: { 'ranch-1': '11:00 AM', 'river-1': 'Ada Lovelace' },
+  });
+  const parties = text.split('\n').find((line) => line.startsWith('Parties:')) ?? '';
+  const arrivals = text.split('\n').find((line) => line.startsWith('Arrivals:')) ?? '';
+  const departures = text.split('\n').find((line) => line.startsWith('Departures:')) ?? '';
+  assert.match(parties, /1 stay names a party size/);
+  assert.match(parties, /River Nov 10/);
+  assert.match(arrivals, /Ranch Nov 4, Arrival around 6:00 PM/);
+  assert.match(departures, /Ranch Nov 6, Leave at 11:00 AM/);
+  assert.match(departures, /River Nov 13/);
+  assert.equal(parties.includes('$'), false);
+  assert.equal(arrivals.includes('801'), false);
+  assert.equal(departures.includes('Ada'), false);
+  assert.equal(text.includes('Guest'), false);
+  assert.match(text, /Nothing sent to Hospitable/);
 });

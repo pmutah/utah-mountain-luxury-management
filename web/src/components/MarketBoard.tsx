@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
+import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { chooseComps, loadCompChoices, saveCompChoices, type CompChoice } from '../lib/market/comps';
 import { benchFor, compsFor } from '../lib/market/fixtures';
 import { RIVER_FIRST_STAY } from '../lib/brand';
@@ -126,6 +127,7 @@ export function MarketBoard() {
   const [closed, setClosed] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
   const [stays, setStays] = useState<PaceStay[] | null>(null);
+  const preferenceTimes = usePreferenceTimes();
   const [paceState, setPaceState] = useState<'loading' | 'live' | 'off'>('loading');
   const [compChoices, setCompChoices] = useState(loadCompChoices);
   const [storedLog] = useState(loadShadowLog);
@@ -165,8 +167,11 @@ export function MarketBoard() {
       calendarLive: calendar === 'live',
       comps: activeComps,
       closed,
+      stays: paceState === 'live' && stays ? stays : undefined,
+      arrivalWindows: paceState === 'live' && preferenceTimes ? preferenceTimes.arrival : null,
+      departureWindows: paceState === 'live' && preferenceTimes ? preferenceTimes.departure : null,
     });
-  }, [today, taken, closed, paused, stays, paceState, calendar, activeComps]);
+  }, [today, taken, closed, paused, stays, paceState, calendar, activeComps, preferenceTimes]);
   const settled = calendar !== 'loading' && paceState !== 'loading';
   const shadowLog = useMemo(
     () => (settled ? recordShadowDay(storedLog, today, daily) : storedLog),
