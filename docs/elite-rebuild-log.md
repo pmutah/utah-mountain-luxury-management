@@ -328,3 +328,7 @@
 ## 2026-10-29 — quiet hours on the morning turnover list
 
 - Overview names checkout time and the guest's quiet hours on each turnover. The list does not change a booking.
+
+## 2026-10-29 — house rules in the request note
+
+- A booking request includes the house rules the guest read. Checking the box does not send the request. The note does not include a door code.

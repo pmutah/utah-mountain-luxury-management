@@ -43,6 +43,14 @@ export function houseRules(house: HouseId): HouseRule[] {
   return RULES[house];
 }
 
+/** The rules a request note would include. This does not send the request. */
+export function rulesNote(house: HouseId): string {
+  const lines = houseRules(house)
+    .map((rule) => rule.text.trim())
+    .filter((text) => text.length > 0 && !/door\s*code|wi-?fi|password/i.test(text));
+  return lines.length > 0 ? `House rules read: ${lines.join(' ')}` : '';
+}
+
 /** The request button stays off until the quote is valid, the party fits, the calendar check has finished, and the rules are read. */
 export function directRequestReady(input: {
   quoteOk: boolean;

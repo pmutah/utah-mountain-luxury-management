@@ -4,7 +4,7 @@ import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { houseStay, partyFits, accessLine, earlyLine, nearbyGroups } from '../lib/house-stay';
 import { placeHref, placeSite } from '../lib/place-link';
-import { directRequestReady, houseRules } from '../lib/house-rules';
+import { directRequestReady, houseRules, rulesNote } from '../lib/house-rules';
 import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
 import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
@@ -189,6 +189,7 @@ export function DirectBook() {
             `Overnight guests ${guests}.`,
             `Preview quote ${formatWhole(quote.stayTotal)} before tax (${quote.nights.length} nights).`,
             addonNote,
+            rulesNote(house),
           ]
             .filter(Boolean)
             .join(' '),
@@ -596,6 +597,9 @@ export function DirectBook() {
                 />
                 I have read the house rules. This request does not sign the stay agreement.
               </label>
+              <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="stay-rules-note" data-note={rulesNote(house)}>
+                A request includes these rules in the note. Nothing is sent until you use the button.
+              </p>
             </div>
 
             {sent ? (
