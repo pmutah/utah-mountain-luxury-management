@@ -1,4 +1,5 @@
 import type { GuestPreferenceAnswers } from './api';
+import { guestArrivalLine } from './arrival';
 
 export type StayCardSection = {
   id: string;
@@ -105,6 +106,9 @@ export function buildStayCard(input: {
   if (vip) {
     pushSection(sections, 'checklist', 'Pre-arrival checklist', vipArrivalChecklist(a), 'ops');
   }
+
+  const namedArrival = guestArrivalLine(a.arrivalWindow);
+  if (namedArrival) pushSection(sections, 'arrival', 'Arrival time', [namedArrival], 'ops');
 
   const occasions = list(a.occasions) ?? a.celebration;
   pushSection(sections, 'occasion', 'Occasion', [

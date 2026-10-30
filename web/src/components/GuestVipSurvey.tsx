@@ -1,5 +1,7 @@
 import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import type { GuestPreferenceAnswers } from '../lib/api';
+import { ARRIVAL_SLOTS, guestArrivalLine } from '../lib/arrival';
+import { vipStepIds, type VipStepId } from '../lib/survey-steps';
 
 const OCCASIONS = [
   "New Year's",
@@ -58,24 +60,6 @@ const SETTINGS = [
   { id: 'mix', label: 'A mix', hint: 'Days out, nights in' },
 ] as const;
 
-type StepId =
-  | 'welcome'
-  | 'occasion'
-  | 'party'
-  | 'setting'
-  | 'activities'
-  | 'fishing'
-  | 'bikes'
-  | 'skiing'
-  | 'amenities'
-  | 'food'
-  | 'snacks'
-  | 'drinks'
-  | 'allergies'
-  | 'movie'
-  | 'popcorn'
-  | 'else';
-
 function toggleValue(list: string[] | undefined, value: string): string[] {
   const current = list ?? [];
   return current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
@@ -85,15 +69,19 @@ function Chip({
   label,
   selected,
   onClick,
+  time,
 }: {
   label: string;
   selected: boolean;
   onClick: () => void;
+  time?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-bot={time ? 'stay-pref-arrival-slot' : undefined}
+      data-time={time}
       className={`min-h-12 px-4 py-3 rounded-full text-[15px] font-medium border transition ${
         selected
           ? 'bg-[#f3e6c9] text-[#1a1410] border-[#d4b56a] shadow-[0_0_0_1px_#d4b56a]'
@@ -163,17 +151,10 @@ export function GuestVipSurvey({
   guideHref?: string;
   onSubmit: () => void;
 }) {
-  const [step, setStep] = useState<StepId>('welcome');
+  const [step, setStep] = useState<VipStepId>('welcome');
   const first = meta.guestName.split(' ')[0] || meta.guestName;
 
-  const steps = useMemo<StepId[]>(() => {
-    const next: StepId[] = ['welcome', 'occasion', 'party', 'setting', 'activities'];
-    if (answers.activities?.includes('Fishing')) next.push('fishing');
-    if (answers.activities?.includes('Mountain / trail biking')) next.push('bikes');
-    if (answers.activities?.includes('Skiing')) next.push('skiing');
-    next.push('amenities', 'food', 'snacks', 'drinks', 'allergies', 'movie', 'popcorn', 'else');
-    return next;
-  }, [answers.activities]);
+  const steps = useMemo(() => vipStepIds(answers.activities), [answers.activities]);
 
   const index = Math.max(0, steps.indexOf(step));
   const progress = Math.round((index / Math.max(steps.length - 1, 1)) * 100);
@@ -287,6 +268,27 @@ export function GuestVipSurvey({
               value={answers.partyNames ?? ''}
               onChange={(e) => set('partyNames', e.target.value)}
             />
+          </Step>
+        )}
+        {step === 'arrive' && (
+          <Step
+            title="When will you arrive?"
+            hint="Check-in is 4:00 PM. After 9:00 PM, quiet hours still apply. Choosing a time does not send this form, and it does not open the door code."
+          >
+            <div className="flex flex-wrap gap-2" data-bot="stay-pref-arrival">
+              {ARRIVAL_SLOTS.map((slot) => (
+                <Chip
+                  key={slot}
+                  label={slot}
+                  time={slot}
+                  selected={answers.arrivalWindow === slot}
+                  onClick={() => set('arrivalWindow', answers.arrivalWindow === slot ? '' : slot)}
+                />
+              ))}
+            </div>
+            <p className="text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-pref-arrival-note">
+              {guestArrivalLine(answers.arrivalWindow) || 'No arrival time yet.'}
+            </p>
           </Step>
         )}
         {step === 'setting' && (

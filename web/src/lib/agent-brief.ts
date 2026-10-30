@@ -8,6 +8,7 @@ import { nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals';
 import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
 import { guestLeavingLine, workOrderCheckoutParty, workOrderNext, workOrderParty, workOrderWhen } from './clean';
+import { arrivalBrief } from './arrival';
 import { partyBrief } from './note-party';
 import { listingOpportunities } from './listing';
 import { addDays } from './market/dates';
@@ -53,6 +54,8 @@ export function agentBrief(input: {
   calendarReady: boolean;
   fixes?: readonly CleanFix[];
   closed?: readonly ClosedSpan[];
+  /** Reservation id to a saved arrival window. Omit until the preference cards have loaded. */
+  arrivalWindows?: Readonly<Record<string, string | undefined>> | null;
 }): BriefLine[] {
   const days = Math.max(0, Math.min(SHADOW_DAYS_REQUIRED, Math.floor(input.shadowDays)));
   const lines: BriefLine[] = [
@@ -106,6 +109,9 @@ export function agentBrief(input: {
   }
   if (input.calendarReady) lines.push({ agent: 'co-host', text: guestLeavingLine() });
   if (input.calendarReady) lines.push({ agent: 'co-host', text: partyBrief(input.stays, input.asOf) });
+  if (input.calendarReady && input.arrivalWindows) {
+    lines.push({ agent: 'co-host', text: arrivalBrief(input.stays, input.arrivalWindows, input.asOf) });
+  }
   for (const fix of (input.fixes ?? []).slice(0, 3)) {
     lines.push({
       agent: 'co-host',

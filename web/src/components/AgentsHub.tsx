@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Reservation, type SharedWorkItem } from '../lib/api';
+import { guestArrivalLine } from '../lib/arrival';
 import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
 import { loadDateBlocks } from '../lib/booked-nights';
@@ -28,6 +29,7 @@ export function AgentsHub({
   const [workState, setWorkState] = useState<'loading' | 'live' | 'off'>('loading');
   const [fixes] = useState(loadCleanFixes);
   const [closed, setClosed] = useState<ClosedSpan[]>([]);
+  const [arrivalWindows, setArrivalWindows] = useState<Record<string, string> | null>(null);
   const today = denverToday();
   const brief = useMemo(
     () =>
@@ -39,8 +41,9 @@ export function AgentsHub({
         calendarReady: calendar !== 'loading',
         fixes,
         closed,
+        arrivalWindows,
       }),
-    [today, reservations, workState, open.length, calendar, fixes, closed],
+    [today, reservations, workState, open.length, calendar, fixes, closed, arrivalWindows],
   );
 
   useEffect(() => {
@@ -51,6 +54,27 @@ export function AgentsHub({
       })
       .catch(() => {
         if (!cancel) setClosed([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancel = false;
+    api
+      .getGuestSurveys()
+      .then((data) => {
+        if (cancel) return;
+        const next: Record<string, string> = {};
+        for (const survey of data.surveys ?? []) {
+          const raw = survey.answers?.arrivalWindow ?? '';
+          if (guestArrivalLine(raw)) next[survey.reservationId] = raw;
+        }
+        setArrivalWindows(next);
+      })
+      .catch(() => {
+        if (!cancel) setArrivalWindows(null);
       });
     return () => {
       cancel = true;
@@ -81,7 +105,7 @@ export function AgentsHub({
         <p className="uml-kicker">Agents</p>
         <h2 className="font-display text-5xl">Who is working</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
-          Five agents already run. Tonight’s brief is read from the calendar and the shadow run. It does not claim a job, send a text, or change the books.
+          Five agents already run. Tonight’s brief is read from the calendar, the preference cards, and the shadow run. It does not claim a job, send a text, or change the books.
         </p>
       </div>
       <div className="uml-panel rounded-3xl p-6" data-bot="agent-brief" data-blocks={closed.length}>

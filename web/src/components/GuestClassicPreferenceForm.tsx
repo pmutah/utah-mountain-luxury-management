@@ -1,5 +1,6 @@
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from 'react';
 import type { GuestPreferenceAnswers } from '../lib/api';
+import { arrivalSelectOptions, guestArrivalLine } from '../lib/arrival';
 
 const WHY_OPTIONS = [
   'Family / reunion',
@@ -127,14 +128,24 @@ export function GuestClassicPreferenceForm({
 
           <section className="space-y-4">
             <h2 className="text-lg font-serif">Arrival</h2>
-            <Field label="Arrival window">
-              <select className={inputClass} value={answers.arrivalWindow ?? ''} onChange={(e) => set('arrivalWindow', e.target.value)}>
+            <Field label="Arrival time">
+              <select
+                className={inputClass}
+                data-bot="stay-classic-arrival"
+                value={answers.arrivalWindow ?? ''}
+                onChange={(e) => set('arrivalWindow', e.target.value)}
+              >
                 <option value="">Not sure yet</option>
-                <option>4–6 PM</option>
-                <option>6–8 PM</option>
-                <option>8–10 PM</option>
-                <option>After 10 PM</option>
+                {arrivalSelectOptions(answers.arrivalWindow).map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot}
+                  </option>
+                ))}
               </select>
+              <p className="text-xs text-stone-500">
+                Check-in is 4:00 PM. After 9:00 PM, quiet hours still apply. Choosing a time does not send this form.
+                {guestArrivalLine(answers.arrivalWindow) ? ` ${guestArrivalLine(answers.arrivalWindow)}` : ''}
+              </p>
             </Field>
             <Field label="How you are arriving">
               <input className={inputClass} placeholder="Car, fly SLC then drive…" value={answers.arrivingHow ?? ''} onChange={(e) => set('arrivingHow', e.target.value)} />

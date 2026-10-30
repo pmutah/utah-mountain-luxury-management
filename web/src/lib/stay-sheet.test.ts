@@ -72,4 +72,23 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   assert.equal(Object.hasOwn(sheet, 'wifiPassword'), false);
   assert.equal(JSON.stringify(sheet).includes('1234'), false);
   assert.equal(JSON.stringify(sheet).toLowerCase().includes('network secret'), false);
+  assert.equal(sheet.guestArrival, '');
+  const named = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    guestArrival: '6:00 PM',
+  });
+  assert.equal(named.guestArrival, 'Arrival around 6:00 PM.');
+  const junk = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    guestArrival: '801-555-0100',
+  });
+  assert.equal(junk.guestArrival, '');
 });

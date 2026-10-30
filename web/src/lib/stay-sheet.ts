@@ -1,3 +1,4 @@
+import { guestArrivalLine } from './arrival';
 import { placeHref, placeSite } from './place-link';
 import type { PlaceKind } from './house-stay';
 import { agreementLine } from './stay-agreement';
@@ -23,6 +24,7 @@ export type TripSheet = {
   address: string;
   privateNote: string;
   arrival: string;
+  guestArrival: string;
   parking: string;
   rules: string;
   agreement: string;
@@ -85,6 +87,7 @@ export function tripSheet(input: {
   checkOutTime: string;
   address?: string;
   arrival?: string;
+  guestArrival?: string;
   parking?: string;
   rules?: string;
   houseId?: string;
@@ -99,6 +102,7 @@ export function tripSheet(input: {
     address: input.address?.trim() ?? '',
     privateNote: 'Door code and Wi-Fi stay on the phone. They are not on this paper.',
     arrival: publicText(input.arrival),
+    guestArrival: guestArrivalLine(input.guestArrival),
     parking: publicText(input.parking),
     notes: publicNotes(input.notes),
     nearby: publicNearby(input.nearby),

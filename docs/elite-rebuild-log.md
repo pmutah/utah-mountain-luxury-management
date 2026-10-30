@@ -404,3 +404,9 @@
 ## 2026-10-30 — booked nights ahead leave blocks out
 
 - The booking page counts nights ahead as booked only when they are stays. A calendar block stays closed and is not part of that count. Nothing is sent.
+
+## 2026-10-30 — arrival time on the preference card
+
+- River’s preference form asks when the guest will arrive. Choosing a time does not send the form and does not open the door code.
+- A host stay card and the nightly brief say whether that card named an arrival time. A phone or any other typed window stays off those lines.
+- The trip sheet shows that time when the card already has one. Nothing is sent.

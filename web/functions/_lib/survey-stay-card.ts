@@ -1,4 +1,5 @@
 import type { GuestPreferenceAnswers } from './survey-store';
+import { guestArrivalLine } from '../../src/lib/arrival';
 import { RIVER_VIP_ARRIVAL_DEFAULTS } from './survey-fields';
 
 export type StayCardSection = {
@@ -99,6 +100,9 @@ export function buildStayCard(input: {
   if (vip) {
     pushSection(sections, 'checklist', 'Pre-arrival checklist', vipArrivalChecklist(a), 'ops');
   }
+
+  const namedArrival = guestArrivalLine(a.arrivalWindow);
+  if (namedArrival) pushSection(sections, 'arrival', 'Arrival time', [namedArrival], 'ops');
 
   const occasions = list(a.occasions) ?? a.celebration;
   pushSection(sections, 'occasion', 'Occasion', [

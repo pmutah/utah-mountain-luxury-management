@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '../lib/api';
+import { guestArrivalLine } from '../lib/arrival';
 import { loadBookedNights } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/journey';
 import { denverToday } from '../lib/market/dates';
@@ -123,6 +124,24 @@ export function StayApp({ token }: { token: string }) {
   const [groceryList, setGroceryList] = useState(() => loadGroceryList(token));
   const [rulesRead, setRulesRead] = useState(() => loadRuleAck(token));
   const [checkoutOn, setCheckoutOn] = useState<boolean[]>(() => loadCheckoutChecks(token));
+  const [arrivalWindow, setArrivalWindow] = useState('');
+
+  useEffect(() => {
+    let cancel = false;
+    void api
+      .getPublicStayPreference(token)
+      .then((pref) => {
+        if (cancel) return;
+        const raw = pref.answers?.arrivalWindow ?? '';
+        setArrivalWindow(guestArrivalLine(raw) ? raw : '');
+      })
+      .catch(() => {
+        if (!cancel) setArrivalWindow('');
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [token]);
 
   useEffect(() => {
     api
@@ -262,6 +281,7 @@ export function StayApp({ token }: { token: string }) {
     checkOutTime: guide.checkOutTime,
     address: guide.address,
     arrival: guide.arrival,
+    guestArrival: arrivalWindow,
     parking: guide.parking,
     rules: guide.houseRules,
     houseId: data.propertyId,
@@ -355,6 +375,11 @@ export function StayApp({ token }: { token: string }) {
               <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-sheet-when">
                 {sheet.when}
               </p>
+              {sheet.guestArrival && (
+                <p className="mt-2 text-sm" data-bot="stay-sheet-named-arrival">
+                  {sheet.guestArrival}
+                </p>
+              )}
               {sheet.address && (
                 <p className="mt-2 text-sm" data-bot="stay-sheet-address">
                   {sheet.address}
@@ -417,6 +442,7 @@ export function StayApp({ token }: { token: string }) {
               <p className="text-xs uppercase tracking-widest">Trip sheet</p>
               <h2 className="text-3xl">{sheet.house}</h2>
               <p>{sheet.when}</p>
+              {sheet.guestArrival && <p data-bot="stay-sheet-print-arrival-time">{sheet.guestArrival}</p>}
               {sheet.address && <p data-bot="stay-sheet-print-address">{sheet.address}</p>}
               {sheet.nearby.length > 0 && <PlaceGroups places={sheet.nearby} bot="stay-sheet-print-nearby" />}
               <p>{sheet.privateNote}</p>

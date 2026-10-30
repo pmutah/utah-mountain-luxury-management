@@ -40,6 +40,28 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /The next stay is for 9 guests\. Names stay off this list\./);
   assert.match(text, /This checkout does not say how many guests\. Names stay off this list\./);
   assert.match(text, /1 stay names a party size\. 1 does not: Lindon Nov 1\. Names stay off this line\./);
+  assert.equal(text.includes('arrival time'), false);
+  const withArrival = agentBrief({
+    asOf: '2026-11-01',
+    stays: [
+      {
+        id: 'next',
+        propertyId: 'ranch',
+        checkIn: '2026-11-04',
+        checkOut: '2026-11-08',
+        note: 'Ada Lovelace · 9 guests · 801-555-0100',
+      },
+      { id: 'later', propertyId: 'lindon', checkIn: '2026-11-01', checkOut: '2026-11-07' },
+    ],
+    shadowDays: 1,
+    openJobs: 0,
+    calendarReady: true,
+    arrivalWindows: { next: '6:00 PM', later: '801-555-0100' },
+  });
+  const arrivalText = withArrival.map((line) => line.text).join('\n');
+  assert.match(arrivalText, /1 stay names an arrival time: Ranch Nov 4, Arrival around 6:00 PM\. 1 does not: Lindon Nov 1\./);
+  assert.equal(arrivalText.includes('801'), false);
+  assert.equal(arrivalText.includes('Ada'), false);
   assert.equal(text.includes('Ada'), false);
   assert.equal(text.includes('801'), false);
   assert.match(text, /No next stay is on the calendar/);

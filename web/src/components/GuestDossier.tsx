@@ -5,6 +5,7 @@ import {
   type GuestSurveyRecord,
   type Reservation,
 } from '../lib/api';
+import { guestArrivalLine } from '../lib/arrival';
 import { currentDayIso } from '../lib/months';
 
 function norm(name: string) {
@@ -30,7 +31,8 @@ function checklist(answers?: GuestPreferenceAnswers | null) {
   if (answers.extraPillows) lines.push(`Extra pillows: ${answers.extraPillows}.`);
   if (answers.allergies) lines.push(`Allergies: ${answers.allergies}.`);
   if (answers.dogs && answers.dogs !== 'no') lines.push(`Dogs: ${answers.dogs}.`);
-  if (answers.arrivalWindow) lines.push(`Arrival window: ${answers.arrivalWindow}.`);
+  const arrival = guestArrivalLine(answers.arrivalWindow);
+  if (arrival) lines.push(arrival);
   if (answers.smileItem) lines.push(`Leave ${answers.smileItem}.`);
   if (lines.length === 0) lines.push('Preference card is on file, with nothing to stage.');
   return lines;
