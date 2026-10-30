@@ -1,4 +1,5 @@
 import type { Reservation } from './api';
+import { hostArrivalPhrase } from './arrival';
 import { occupiedByHouse } from './availability';
 import { bookingStartSummary } from './booking-starts';
 import { workOrderNext } from './clean';
@@ -128,8 +129,9 @@ function nightsBetween(checkIn: string, checkOut: string): number {
 
 /** Ranch and River stays that begin in the next 90 days. No names, no prices, and no Lindon. */
 export function ownerArrivalLines(
-  stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status' | 'note'>>,
+  stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status' | 'note'> & { id?: string }>,
   asOf: string,
+  windows?: Readonly<Record<string, string | undefined>> | null,
 ): OwnerArrivalLine[] {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
     return [{ id: 'none', text: 'No Ranch or River stay begins in the next 90 days.' }];
@@ -152,9 +154,10 @@ export function ownerArrivalLines(
           ? 'The booking says 1 guest.'
           : `The booking says ${count} guests.`;
     const house = stay.propertyId === 'ranch' ? 'Ranch' : 'River';
+    const arrival = windows ? ` ${hostArrivalPhrase(stay.id ? windows[stay.id] : undefined)}` : '';
     return {
       id: `${stay.propertyId}-${stay.checkIn}-${stay.checkOut}`,
-      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}`,
+      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}${arrival}`,
     };
   });
 }

@@ -62,6 +62,21 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(arrivalText, /1 stay names an arrival time: Ranch Nov 4, Arrival around 6:00 PM\. 1 does not: Lindon Nov 1\./);
   assert.equal(arrivalText.includes('801'), false);
   assert.equal(arrivalText.includes('Ada'), false);
+  const turnArrival = agentBrief({
+    asOf: '2026-11-01',
+    stays: [
+      { id: 'out', propertyId: 'ranch', checkIn: '2026-11-01', checkOut: '2026-11-04', status: 'confirmed' },
+      { id: 'in', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-07', note: 'Ada Lovelace · 801-555-0100' },
+    ],
+    shadowDays: 1,
+    openJobs: 0,
+    calendarReady: true,
+    arrivalWindows: { in: '6:00 PM' },
+  });
+  const turnText = turnArrival.map((line) => line.text).join('\n');
+  assert.match(turnText, /The next stay names an arrival\. Arrival around 6:00 PM\./);
+  assert.equal(turnText.includes('801'), false);
+  assert.equal(turnText.includes('Ada'), false);
   assert.equal(text.includes('Ada'), false);
   assert.equal(text.includes('801'), false);
   assert.match(text, /No next stay is on the calendar/);

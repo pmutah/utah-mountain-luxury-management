@@ -410,3 +410,8 @@
 - River’s preference form asks when the guest will arrive. Choosing a time does not send the form and does not open the door code.
 - A host stay card and the nightly brief say whether that card named an arrival time. A phone or any other typed window stays off those lines.
 - The trip sheet shows that time when the card already has one. Nothing is sent.
+
+## 2026-10-30 — arrival time on the turn and on Todd’s list
+
+- The cleaner work order and the overview turnover say whether the next stay named an arrival time. The same line is in the nightly brief when preference cards have loaded.
+- Todd’s 90-day Ranch and River list includes that time. A phone stays off the line. Names and prices stay off. Nothing is sent.

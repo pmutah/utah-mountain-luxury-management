@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Reservation, type SharedWorkItem } from '../lib/api';
-import { guestArrivalLine } from '../lib/arrival';
+import { useArrivalWindows } from '../hooks/useArrivalWindows';
 import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
 import { loadDateBlocks } from '../lib/booked-nights';
@@ -29,7 +29,7 @@ export function AgentsHub({
   const [workState, setWorkState] = useState<'loading' | 'live' | 'off'>('loading');
   const [fixes] = useState(loadCleanFixes);
   const [closed, setClosed] = useState<ClosedSpan[]>([]);
-  const [arrivalWindows, setArrivalWindows] = useState<Record<string, string> | null>(null);
+  const arrivalWindows = useArrivalWindows();
   const today = denverToday();
   const brief = useMemo(
     () =>
@@ -54,27 +54,6 @@ export function AgentsHub({
       })
       .catch(() => {
         if (!cancel) setClosed([]);
-      });
-    return () => {
-      cancel = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancel = false;
-    api
-      .getGuestSurveys()
-      .then((data) => {
-        if (cancel) return;
-        const next: Record<string, string> = {};
-        for (const survey of data.surveys ?? []) {
-          const raw = survey.answers?.arrivalWindow ?? '';
-          if (guestArrivalLine(raw)) next[survey.reservationId] = raw;
-        }
-        setArrivalWindows(next);
-      })
-      .catch(() => {
-        if (!cancel) setArrivalWindows(null);
       });
     return () => {
       cancel = true;

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderCheckoutParty, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderCheckoutParty, workOrderWhen, type CleanLang } from '../lib/clean';
+import { useArrivalWindows } from '../hooks/useArrivalWindows';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
 
@@ -55,6 +56,7 @@ function gapLabel(gap: number | null, lang: CleanLang) {
 export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   const asOf = currentDayIso();
   const jobs = useMemo(() => cleanJobs(reservations, asOf), [reservations, asOf]);
+  const arrivalWindows = useArrivalWindows();
   const [checks, setChecks] = useState<Record<string, boolean>>(loadChecks);
   const [tasks, setTasks] = useState<OpenTask[]>([]);
   const [lang, setLang] = useState<CleanLang>(loadLang);
@@ -170,6 +172,11 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     {job.nextCheckIn && (
                       <p className="mt-1 text-sm" data-bot="clean-party">
                         {workOrderParty(job.nextGuests, lang)}
+                      </p>
+                    )}
+                    {job.nextCheckIn && arrivalWindows && (
+                      <p className="mt-1 text-sm" data-bot="clean-arrival">
+                        {workOrderArrival(arrivalWindows[job.nextStayId ?? ''], lang)}
                       </p>
                     )}
                     <p className="mt-1 text-sm" data-bot="clean-place">

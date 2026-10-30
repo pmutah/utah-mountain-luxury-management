@@ -7,7 +7,7 @@ import { agreementBrief } from './stay-agreement';
 import { nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals';
 import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
-import { guestLeavingLine, workOrderCheckoutParty, workOrderNext, workOrderParty, workOrderWhen } from './clean';
+import { guestLeavingLine, workOrderArrival, workOrderCheckoutParty, workOrderNext, workOrderParty, workOrderWhen } from './clean';
 import { arrivalBrief } from './arrival';
 import { partyBrief } from './note-party';
 import { listingOpportunities } from './listing';
@@ -95,13 +95,17 @@ export function agentBrief(input: {
     const window = workOrderWhen(turn.house, turn.gapNights === 0, 'en');
     const next = workOrderNext(turn.nextCheckIn, turn.gapNights, 'en');
     const party = turn.nextCheckIn ? ` ${workOrderParty(turn.nextGuests, 'en')}` : '';
+    const arrival =
+      turn.nextCheckIn && input.arrivalWindows
+        ? ` ${workOrderArrival(input.arrivalWindows[turn.nextStayId ?? ''], 'en')}`
+        : '';
     const leaving = ` ${workOrderCheckoutParty(turn.checkoutGuests, 'en')}`;
     const text =
       turn.gapNights === 0
-        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${leaving}`
+        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${arrival}${leaving}`
         : turn.gapNights === null
           ? `${turn.houseName} checkout ${when}. Nothing booked after it. ${window} ${next}${leaving}`
-          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}${leaving}`;
+          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}${arrival}${leaving}`;
     lines.push({ agent: 'co-host', text });
   }
   if (turns.length > shown.length) {

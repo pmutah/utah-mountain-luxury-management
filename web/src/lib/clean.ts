@@ -1,4 +1,5 @@
 import { PROPERTIES, type Reservation } from './api';
+import { guestArrivalLine } from './arrival';
 import { houseRules } from './house-rules';
 import { houseStay, nearbyGroups } from './house-stay';
 import type { HouseId } from './luxury';
@@ -85,6 +86,33 @@ export function workOrderParty(count: number | null, lang: CleanLang): string {
     return `La siguiente estancia es para ${count} ${count === 1 ? 'huésped' : 'huéspedes'}. Los nombres no están en esta lista.`;
   }
   return `The next stay is for ${count === 1 ? '1 guest' : `${count} guests`}. Names stay off this list.`;
+}
+
+function arrivalInSpanish(line: string): string {
+  const around = line.match(/^Arrival around (.+)\.$/);
+  if (around) return `Llegada alrededor de las ${around[1]}.`;
+  const between = line.match(/^Arrival between (.+) and (.+?)\.( Quiet hours still apply\.)?$/);
+  if (between) {
+    const quiet = between[3] ? ' Las horas de silencio siguen aplicando.' : '';
+    return `Llegada entre las ${between[1]} y las ${between[2]}.${quiet}`;
+  }
+  const after = line.match(/^Arrival after (.+)\. Quiet hours still apply\.$/);
+  if (after) return `Llegada después de las ${after[1]}. Las horas de silencio siguen aplicando.`;
+  return line;
+}
+
+/** When the next stay said they would arrive. A phone or other typed window stays off the sentence. */
+export function workOrderArrival(window: string | null | undefined, lang: CleanLang): string {
+  const line = guestArrivalLine(window);
+  if (!line) {
+    return lang === 'es'
+      ? 'La siguiente estancia no dice a qué hora llega. Los nombres no están en esta lista.'
+      : 'The next stay does not name an arrival time. Names stay off this list.';
+  }
+  const named = lang === 'es' ? arrivalInSpanish(line) : line;
+  return lang === 'es'
+    ? `La siguiente estancia dice la hora de llegada. ${named} Los nombres no están en esta lista.`
+    : `The next stay names an arrival. ${named} Names stay off this list.`;
 }
 
 /** How many people are checking out. Names stay off the sentence. */
