@@ -1,7 +1,8 @@
 import type { Reservation } from './api';
 import { hostArrivalPhrase } from './arrival';
-import { hostDeparturePhrase } from './departure';
 import { occupiedByHouse } from './availability';
+import { hostDeparturePhrase, hostLaterLeavePhrase } from './departure';
+import { checkoutNightIsFree } from './journey';
 import { bookingStartSummary } from './booking-starts';
 import { workOrderNext } from './clean';
 import { addDays } from './market/dates';
@@ -96,6 +97,7 @@ export function ownerTurnLines(
   stays: Array<Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'>>,
   asOf: string,
   windows?: Readonly<Record<string, string | undefined>> | null,
+  closed: readonly { propertyId: string; start: string; end: string }[] = [],
 ): OwnerOfferLine[] {
   const turns = buildTurnovers(
     stays.map((stay) => ({
@@ -111,14 +113,25 @@ export function ownerTurnLines(
     asOf,
     90,
   );
+  const held = occupiedByHouse(
+    [
+      ...stays
+        .filter((stay) => stay.status !== 'cancelled')
+        .map((stay) => ({ propertyId: stay.propertyId, checkIn: stay.checkIn, checkOut: stay.checkOut })),
+      ...closed.map((block) => ({ propertyId: block.propertyId, checkIn: block.start, checkOut: block.end })),
+    ],
+    asOf,
+    addDays(asOf, 180),
+  );
   return HOUSES.map((house) => {
     const name = house === 'ranch' ? 'Ranch' : 'River';
     const turn = turns.find((item) => item.house === house);
     if (!turn) return { id: house, text: `${name}: no checkout in the next 90 days.` };
     const departure = windows ? ` ${hostDeparturePhrase(windows[turn.checkoutStayId])}` : '';
+    const later = ` ${hostLaterLeavePhrase(checkoutNightIsFree(turn.checkout, held[house] ?? []))}`;
     return {
       id: house,
-      text: `${name} checkout ${shortWhen(turn.checkout)}. ${workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}${departure}`,
+      text: `${name} checkout ${shortWhen(turn.checkout)}. ${workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}${departure}${later}`,
     };
   });
 }

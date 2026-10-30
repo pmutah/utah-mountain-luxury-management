@@ -36,6 +36,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /Other houses from these bookings:/);
   assert.equal(text.split('\n').find((line) => line.includes('Other houses from these bookings:'))?.includes('$') ?? false, false);
   assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
+  assert.match(text, /A 2:00 PM leave is not open for this checkout/);
   assert.match(text, /The next stay starts November 4, 2026\. The door code opens November 3, 2026/);
   assert.match(text, /The next stay is for 9 guests\. Names stay off this list\./);
   assert.match(text, /This checkout does not say how many guests\. Names stay off this list\./);

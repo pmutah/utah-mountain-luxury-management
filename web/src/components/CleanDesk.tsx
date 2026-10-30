@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderLaterLeave, workOrderWhen, type CleanLang } from '../lib/clean';
+import { loadBookedNights } from '../lib/booked-nights';
+import { checkoutNightIsFree } from '../lib/journey';
+import type { HouseId } from '../lib/market/types';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
@@ -57,6 +60,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   const asOf = currentDayIso();
   const jobs = useMemo(() => cleanJobs(reservations, asOf), [reservations, asOf]);
   const preferenceTimes = usePreferenceTimes();
+  const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
   const [checks, setChecks] = useState<Record<string, boolean>>(loadChecks);
   const [tasks, setTasks] = useState<OpenTask[]>([]);
   const [lang, setLang] = useState<CleanLang>(loadLang);
@@ -67,6 +71,18 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   useEffect(() => {
     return () => {
       Object.values(photosRef.current).flat().forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancel = false;
+    loadBookedNights()
+      .then((nights) => {
+        if (!cancel) setTaken(nights);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
     };
   }, []);
 
@@ -169,6 +185,11 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     {preferenceTimes && (
                       <p className="mt-1 text-sm" data-bot="clean-departure">
                         {workOrderDeparture(preferenceTimes.departure[job.checkoutStayId], lang)}
+                      </p>
+                    )}
+                    {taken && (
+                      <p className="mt-1 text-sm" data-bot="clean-later-leave">
+                        {workOrderLaterLeave(checkoutNightIsFree(job.checkout, taken[job.house] ?? []), lang)}
                       </p>
                     )}
                     <p className="mt-1 text-sm" data-bot="clean-next">

@@ -439,3 +439,7 @@
 
 - The trip’s checkout step says 11:00 AM. When that morning is open, it also says a 2:00 PM leave is a request and nothing is charged yet. When someone arrives that day, it says a later leave is not open. A saved leave time is shown, and a phone is not.
 - The trip sheet says the same thing on the screen and on the paper. Nothing is charged or sent.
+
+## 2026-10-30 — whether a later leave is open for the host
+
+- The guest list, the overview, the cleaner, Todd’s next checkout, and the nightly brief say whether a 2:00 PM leave is a request or that checkout morning is already taken. The sentence waits until the calendar has loaded. Nothing is charged or sent.

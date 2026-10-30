@@ -36,8 +36,8 @@ export function OwnerStatement({
   const offers = useMemo(() => ownerOfferLines(reservations, denverToday(), closed), [reservations, closed]);
   const starts = useMemo(() => ownerStartLines(reservations, denverToday(), closed), [reservations, closed]);
   const turns = useMemo(
-    () => ownerTurnLines(reservations, denverToday(), preferenceTimes?.departure),
-    [reservations, preferenceTimes],
+    () => ownerTurnLines(reservations, denverToday(), preferenceTimes?.departure, closed),
+    [reservations, preferenceTimes, closed],
   );
   const arrivals = useMemo(
     () => ownerArrivalLines(reservations, denverToday(), preferenceTimes?.arrival),
@@ -183,7 +183,7 @@ export function OwnerStatement({
           </>
         )}
         <p className="mt-4 text-sm text-[var(--uml-muted)]">
-          The next checkout, including a departure time when the preference card named one. No names and no prices. Lindon is not on this list. This is not in the spreadsheet.
+          The next checkout, including a departure time when the preference card named one, and whether a 2:00 PM leave is open. No names and no prices. Lindon is not on this list. This is not in the spreadsheet.
         </p>
         <ul className="mt-2 space-y-2 text-sm" data-bot="owner-turns">
           {turns.map((line) => (

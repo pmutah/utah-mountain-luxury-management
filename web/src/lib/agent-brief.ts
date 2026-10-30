@@ -1,5 +1,7 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
+import { hostLaterLeavePhrase } from './departure';
+import { checkoutNightIsFree } from './journey';
 import { comparePhrase } from './also-open';
 import { bookingStartSummary } from './booking-starts';
 import { codesOpenTomorrow } from './house-stay';
@@ -92,6 +94,16 @@ export function agentBrief(input: {
     lines.push({ agent: 'co-host', text: 'No checkouts in the next two weeks.' });
   }
   const shown = turns.slice(0, 4);
+  const held = occupiedByHouse(
+    [
+      ...input.stays
+        .filter((stay) => stay.status !== 'cancelled')
+        .map((stay) => ({ propertyId: stay.propertyId, checkIn: stay.checkIn, checkOut: stay.checkOut })),
+      ...(input.closed ?? []).map((block) => ({ propertyId: block.propertyId, checkIn: block.start, checkOut: block.end })),
+    ],
+    input.asOf,
+    addDays(input.asOf, 120),
+  );
   for (const turn of shown) {
     const when = shortDate(turn.checkout);
     const window = workOrderWhen(turn.house, turn.gapNights === 0, 'en');
@@ -105,12 +117,13 @@ export function agentBrief(input: {
       ? ` ${workOrderDeparture(input.departureWindows[turn.checkoutStayId], 'en')}`
       : '';
     const leaving = ` ${workOrderCheckoutParty(turn.checkoutGuests, 'en', turn.checkoutChildren)}`;
+    const later = ` ${hostLaterLeavePhrase(checkoutNightIsFree(turn.checkout, held[turn.house] ?? []))}`;
     const text =
       turn.gapNights === 0
-        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${arrival}${departure}${leaving}`
+        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${arrival}${departure}${leaving}${later}`
         : turn.gapNights === null
-          ? `${turn.houseName} checkout ${when}. Nothing booked after it. ${window} ${next}${departure}${leaving}`
-          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}${arrival}${departure}${leaving}`;
+          ? `${turn.houseName} checkout ${when}. Nothing booked after it. ${window} ${next}${departure}${leaving}${later}`
+          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}${arrival}${departure}${leaving}${later}`;
     lines.push({ agent: 'co-host', text });
   }
   if (turns.length > shown.length) {

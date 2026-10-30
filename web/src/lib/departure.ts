@@ -22,6 +22,12 @@ export function guestDepartureLine(value: string | null | undefined): string {
   return LINES[text];
 }
 
+/** Whether a 2:00 PM leave can be requested. A taken checkout morning stays closed. */
+export function hostLaterLeavePhrase(open: boolean): string {
+  if (open) return 'Leave at 2:00 PM is a request. Nothing is charged yet. A same-day arrival still starts at 4:00 PM.';
+  return 'A 2:00 PM leave is not open for this checkout.';
+}
+
 /** The sentence on a host stay card. An unknown value is treated as unnamed. */
 export function hostDeparturePhrase(value: string | null | undefined): string {
   const line = guestDepartureLine(value);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderWhen } from './clean.ts';
+import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderLaterLeave, workOrderCheckoutParty, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -74,6 +74,9 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.equal(/password|code\s*\d/i.test(workOrderNext('2026-11-04', 0, 'en')), false);
   assert.equal(workOrderParty(9, 'en'), 'The next stay is for 9 guests. Names stay off this list.');
   assert.equal(workOrderParty(20, 'en', 2), 'The next stay is for 20 guests, including 2 children. Names stay off this list.');
+  assert.match(workOrderLaterLeave(true, 'en'), /Nothing is charged yet/);
+  assert.match(workOrderLaterLeave(false, 'es'), /no está abierta/);
+  assert.equal(workOrderLaterLeave(false, 'en').includes('$'), false);
   assert.match(workOrderParty(20, 'es', 2), /incluyendo 2 niños/);
   assert.match(workOrderParty(9, 'es'), /9 huéspedes/);
   assert.match(workOrderParty(null, 'en'), /does not say how many guests/);

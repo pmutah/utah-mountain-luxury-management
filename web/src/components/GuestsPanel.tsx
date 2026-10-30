@@ -11,7 +11,8 @@ import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
 import { hostAccessPhrase } from '../lib/house-stay';
 import { hostArrivalPhrase } from '../lib/arrival';
-import { hostDeparturePhrase } from '../lib/departure';
+import { hostDeparturePhrase, hostLaterLeavePhrase } from '../lib/departure';
+import { checkoutNightIsFree } from '../lib/journey';
 import { hostPartyPhrase } from '../lib/note-party';
 import { houseMenu, hostAddonPhrase } from '../lib/upsells';
 import { loadBookedNights } from '../lib/booked-nights';
@@ -315,6 +316,11 @@ export function GuestsPanel({
                 <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-departure" data-out={stay.checkOut}>
                   {hostDeparturePhrase(survey?.answers?.earlyLate)}
                 </p>
+                {taken && stay.checkOut >= today && (stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river') && (
+                  <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-later-leave" data-out={stay.checkOut}>
+                    {hostLaterLeavePhrase(checkoutNightIsFree(stay.checkOut, taken[stay.propertyId] ?? []))}
+                  </p>
+                )}
                 {stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river' ? (
                   <>
                     <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-addons" data-in={stay.checkIn}>

@@ -1,5 +1,9 @@
+import { useEffect, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderNext, workOrderParty, workOrderRules, workOrderWhen } from '../lib/clean';
+import { loadBookedNights } from '../lib/booked-nights';
+import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderLaterLeave, workOrderNext, workOrderParty, workOrderRules, workOrderWhen } from '../lib/clean';
+import { checkoutNightIsFree } from '../lib/journey';
+import type { HouseId } from '../lib/market/types';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { codesOpenTomorrow } from '../lib/house-stay';
 import { formatWhole } from '../lib/luxury';
@@ -68,6 +72,18 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
   const desk = buildTodayDesk(reservations, asOf);
   const turns = buildTurnovers(reservations, asOf);
   const preferenceTimes = usePreferenceTimes();
+  const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    loadBookedNights()
+      .then((nights) => {
+        if (!cancel) setTaken(nights);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, []);
   return (
     <section className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="today-desk">
       <p className="uml-kicker">Today</p>
@@ -159,6 +175,11 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                 {preferenceTimes && (
                   <p data-bot="today-turnover-departure">
                     {workOrderDeparture(preferenceTimes.departure[turn.checkoutStayId], 'en')}
+                  </p>
+                )}
+                {taken && (
+                  <p data-bot="today-turnover-later-leave">
+                    {workOrderLaterLeave(checkoutNightIsFree(turn.checkout, taken[turn.house] ?? []), 'en')}
                   </p>
                 )}
                 <p data-bot="today-turnover-next">{workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}</p>

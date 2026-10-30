@@ -1,6 +1,6 @@
 import { PROPERTIES, type Reservation } from './api';
 import { guestArrivalLine } from './arrival';
-import { guestDepartureLine } from './departure';
+import { guestDepartureLine, hostLaterLeavePhrase } from './departure';
 import { houseRules } from './house-rules';
 import { houseStay, nearbyGroups } from './house-stay';
 import type { HouseId } from './luxury';
@@ -146,6 +146,17 @@ export function workOrderDeparture(window: string | null | undefined, lang: Clea
   return lang === 'es'
     ? `Esta salida dice la hora de partida. ${named} Los nombres no están en esta lista.`
     : `This checkout names a departure. ${named} Names stay off this list.`;
+}
+
+/** Whether this checkout morning can take a 2:00 PM request. Names stay off the sentence. */
+export function workOrderLaterLeave(open: boolean, lang: CleanLang): string {
+  const line = hostLaterLeavePhrase(open);
+  if (lang === 'es') {
+    return open
+      ? 'Salir a las 2:00 PM es una solicitud. Todavía no se cobra nada. Una llegada el mismo día sigue siendo a las 4:00 PM. Los nombres no están en esta lista.'
+      : 'Una salida a las 2:00 PM no está abierta para esta limpieza. Los nombres no están en esta lista.';
+  }
+  return `${line} Names stay off this list.`;
 }
 
 /** How many people are checking out. Names stay off the sentence. */
