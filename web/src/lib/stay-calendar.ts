@@ -14,6 +14,7 @@ export type StayDay = {
   inMonth: boolean;
   guest: number;
   direct: number;
+  minNights: number;
   booked: boolean;
   closed: boolean;
   past: boolean;
@@ -58,6 +59,7 @@ export function monthDays(
       inMonth: iso.slice(0, 7) === yearMonth,
       guest: ask.guest,
       direct: priced.direct,
+      minNights: ask.minNights,
       booked: booked.has(iso),
       closed: ask.closed,
       past: iso < today,
@@ -67,6 +69,14 @@ export function monthDays(
     });
   }
   return days;
+}
+
+/** The arrival night's minimum, when that house asks for more than one night. */
+export function arrivalMinimum(house: HouseId, checkIn: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn)) return null;
+  const ask = nightAsk(house, checkIn);
+  if (ask.closed || ask.minNights <= 1) return null;
+  return ask.minNights;
 }
 
 /**

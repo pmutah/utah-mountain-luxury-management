@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { monthDays, pickStay } from './stay-calendar.ts';
+import { arrivalMinimum, monthDays, pickStay } from './stay-calendar.ts';
 
 const open = { checkIn: '2026-11-06', checkOut: '2026-11-08' };
 
@@ -31,4 +31,12 @@ test('the month marks booked nights and the nights inside the stay', () => {
   assert.equal(eighth?.isCheckOut, true);
   assert.equal(eighth?.inStay, false);
   assert.equal(twentieth?.booked, true);
+  assert.equal(sixth?.minNights, 2);
+  const october = monthDays('2026-10', 'river', [], open, '2026-10-29').find((day) => day.iso === '2026-10-30');
+  assert.equal(october?.closed, true);
+  const peak = monthDays('2027-06', 'river', [], open, '2026-10-29').find((day) => day.iso === '2027-06-04');
+  assert.equal(peak?.minNights, 4);
+  assert.equal(arrivalMinimum('river', '2026-11-06'), 2);
+  assert.equal(arrivalMinimum('river', '2026-10-30'), null);
+  assert.equal(arrivalMinimum('lindon', '2026-11-04'), null);
 });

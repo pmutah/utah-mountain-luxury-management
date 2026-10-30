@@ -124,3 +124,7 @@
 ## 2026-10-29 — cleaner work order
 
 - The cleaner desk names checkout at 11:00 AM, and a same-day turn also names the 4:00 PM arrival. Print makes a paper copy of the jobs. It does not create a task or change a booking.
+
+## 2026-10-29 — calendar closed nights
+
+- The booking calendar marks a night Closed before the River House opens, and Booked when it is already taken. An arrival that needs more than one night says so under the month. Nothing is charged.

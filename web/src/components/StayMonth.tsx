@@ -3,7 +3,7 @@ import { formatWhole } from '../lib/luxury';
 import { denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
-import { monthDays, monthLabel, pickStay, shiftMonth, type StayPick } from '../lib/stay-calendar';
+import { monthDays, monthLabel, pickStay, shiftMonth, arrivalMinimum, type StayPick } from '../lib/stay-calendar';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -28,6 +28,7 @@ export function StayMonth({
   const days = monthDays(month, house, taken, stay, today, pace);
   const earliest = today.slice(0, 7);
   const latest = shiftMonth(earliest, 17);
+  const minimum = arrivalMinimum(house, checkIn);
 
   return (
     <div data-bot="stay-month">
@@ -70,7 +71,7 @@ export function StayMonth({
               data-date={day.iso}
               disabled={disabled}
               aria-pressed={selected}
-              aria-label={`${day.iso}${day.booked ? ', booked' : ''}`}
+              aria-label={`${day.iso}${day.booked ? ', booked' : day.closed && !day.past ? ', closed' : ''}`}
               onClick={() => onPick(pickStay(stay, day.iso, taken, house, today))}
               className={`min-h-14 rounded-xl px-1 py-1 text-left ${
                 day.inMonth ? '' : 'invisible'
@@ -81,6 +82,8 @@ export function StayMonth({
               <span className="block text-sm">{Number(day.iso.slice(8))}</span>
               {day.inMonth && day.booked ? (
                 <span className="block text-[9px] uppercase tracking-wide">Booked</span>
+              ) : day.inMonth && day.closed && !day.past ? (
+                <span className="block text-[9px] uppercase tracking-wide">Closed</span>
               ) : day.inMonth && !day.closed && !day.past ? (
                 <span className="block text-[9px] tabular-nums">{formatWhole(day.direct)}</span>
               ) : null}
@@ -88,8 +91,9 @@ export function StayMonth({
           );
         })}
       </div>
-      <p className="mt-2 text-xs text-[var(--uml-muted)]">
+      <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="stay-minimum">
         {checkOut ? 'Gold nights are the stay. Prices are the direct nightly rate.' : 'Choose the check-out morning. Prices are the direct nightly rate.'}
+        {minimum ? ` This arrival needs at least ${minimum} nights.` : ''}
       </p>
     </div>
   );
