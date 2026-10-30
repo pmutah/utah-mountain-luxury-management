@@ -12,6 +12,7 @@ import { addonPhrase, lengthPhrase } from './open-arrivals';
 import type { ClosedSpan } from './owner-ahead';
 import { grossPace, type PaceStay } from './revenue-goals';
 import { noteChildCount, noteGuestCount } from './note-party';
+import { stayPrepPhrase } from './upsells';
 import { buildTurnovers } from './today';
 
 const HOUSES = ['ranch', 'river'] as const;
@@ -189,9 +190,10 @@ export function ownerArrivalLines(
     const arrival = windows ? ` ${hostArrivalPhrase(stay.id ? windows[stay.id] : undefined)}` : '';
     const houseId = stay.propertyId === 'river' ? 'river' : 'ranch';
     const early = ` ${hostEarlyPhrase(earlyStayOpen(stay.checkIn, held[houseId], asOf))}`;
+    const prep = stayPrepPhrase(houseId, stay.checkIn, asOf);
     return {
       id: `${stay.propertyId}-${stay.checkIn}-${stay.checkOut}`,
-      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}${arrival}${early}`,
+      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}${arrival}${early}${prep ? ` ${prep}` : ''}`,
     };
   });
 }

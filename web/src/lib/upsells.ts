@@ -110,6 +110,15 @@ function spokenList(items: readonly string[]): string {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 }
 
+/** Ranch hot tub or River groceries before the stay starts. Lindon has neither. Nothing is charged. */
+export function stayPrepPhrase(house: HouseId, checkIn: string, asOf: string, who: 'this' | 'next' = 'this'): string {
+  if (house !== 'ranch' && house !== 'river') return '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || asOf >= checkIn) return '';
+  const item = house === 'ranch' ? 'the hot tub' : 'a grocery drop';
+  const subject = who === 'next' ? 'The next stay' : 'This stay';
+  return `${subject} can request ${item}. Nothing is charged yet.`;
+}
+
 /** What this stay can request. No price and no guest name. */
 export function hostAddonPhrase(input: {
   house: HouseId;

@@ -456,3 +456,7 @@
 ## 2026-10-30 — service window on the daily text
 
 - The unsent daily text names the checkouts in the next two weeks and whether a 2:00 PM leave or a 1:00 PM arrival is open. Names stay off that line. Nothing is sent.
+
+## 2026-10-30 — hot tub and grocery prep
+
+- When the next stay has not started, Ranch can request the hot tub and River can request a grocery drop. The cleaner, the overview, Todd’s arrivals, the nightly brief, and the unsent daily text say so. Nothing is charged yet. Lindon has neither.

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { guestOffers, groceryListForSave, hostAddonPhrase, houseMenu, quoteOfferNote, quoteOffers, toggleUpsell } from './upsells.ts';
+import { guestOffers, groceryListForSave, hostAddonPhrase, houseMenu, quoteOfferNote, quoteOffers, stayPrepPhrase, toggleUpsell } from './upsells.ts';
 
 test('Ranch before an open calendar offers early, late, and the hot tub', () => {
   const ids = guestOffers({
@@ -173,4 +173,13 @@ test('the guest list names add-ons for a stay and leaves the price off', () => {
     }).includes('$'),
     false,
   );
+});
+
+test('prep names the hot tub or a grocery drop and skips Lindon', () => {
+  assert.equal(stayPrepPhrase('ranch', '2026-11-06', '2026-10-29', 'next'), 'The next stay can request the hot tub. Nothing is charged yet.');
+  assert.equal(stayPrepPhrase('river', '2026-11-06', '2026-10-29'), 'This stay can request a grocery drop. Nothing is charged yet.');
+  assert.equal(stayPrepPhrase('lindon', '2026-11-06', '2026-10-29'), '');
+  assert.equal(stayPrepPhrase('ranch', '2026-11-06', '2026-11-06'), '');
+  assert.equal(stayPrepPhrase('ranch', '2026-11-06', '2026-10-29').includes('$'), false);
+  assert.equal(stayPrepPhrase('ranch', '2026-11-06', '2026-10-29').includes('Guest'), false);
 });

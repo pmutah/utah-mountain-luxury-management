@@ -5,6 +5,7 @@ import { checkoutNightIsFree } from './journey';
 import { comparePhrase } from './also-open';
 import { bookingStartSummary } from './booking-starts';
 import { codesOpenTomorrow, earlyStayOpen, hostEarlyPhrase } from './house-stay';
+import { stayPrepPhrase } from './upsells';
 import { agreementBrief } from './stay-agreement';
 import { nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals';
 import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owner-ahead';
@@ -121,12 +122,13 @@ export function agentBrief(input: {
     const early = turn.nextCheckIn
       ? ` ${hostEarlyPhrase(earlyStayOpen(turn.nextCheckIn, held[turn.house] ?? [], input.asOf))}`
       : '';
+    const prep = turn.nextCheckIn ? ` ${stayPrepPhrase(turn.house, turn.nextCheckIn, input.asOf, 'next')}` : '';
     const text =
       turn.gapNights === 0
-        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${arrival}${departure}${leaving}${later}${early}`
+        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${arrival}${departure}${leaving}${later}${early}${prep}`
         : turn.gapNights === null
           ? `${turn.houseName} checkout ${when}. Nothing booked after it. ${window} ${next}${departure}${leaving}${later}`
-          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}${arrival}${departure}${leaving}${later}${early}`;
+          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}${arrival}${departure}${leaving}${later}${early}${prep}`;
     lines.push({ agent: 'co-host', text });
   }
   if (turns.length > shown.length) {

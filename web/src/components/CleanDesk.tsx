@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderLaterLeave, workOrderEarly, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderLaterLeave, workOrderEarly, workOrderPrep, workOrderWhen, type CleanLang } from '../lib/clean';
 import { earlyStayOpen } from '../lib/house-stay';
 import { loadBookedNights } from '../lib/booked-nights';
 import { checkoutNightIsFree } from '../lib/journey';
@@ -199,6 +199,11 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     {taken && job.nextCheckIn && (
                       <p className="mt-1 text-sm" data-bot="clean-early">
                         {workOrderEarly(earlyStayOpen(job.nextCheckIn, taken[job.house] ?? [], asOf), lang)}
+                      </p>
+                    )}
+                    {job.nextCheckIn && workOrderPrep(job.house, job.nextCheckIn, asOf, lang) && (
+                      <p className="mt-1 text-sm" data-bot="clean-prep">
+                        {workOrderPrep(job.house, job.nextCheckIn, asOf, lang)}
                       </p>
                     )}
                     {job.nextCheckIn && (

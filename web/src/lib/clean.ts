@@ -4,6 +4,7 @@ import { guestDepartureLine, hostLaterLeavePhrase } from './departure';
 import { houseRules } from './house-rules';
 import { earlyStayOpen, hostEarlyPhrase, houseStay, nearbyGroups } from './house-stay';
 import { checkoutNightIsFree } from './journey';
+import { stayPrepPhrase } from './upsells';
 import type { HouseId } from './luxury';
 import { addDays } from './market/dates';
 import { buildTurnovers, type Turnover } from './today';
@@ -184,10 +185,22 @@ export function serviceBrief(
     const nights = taken[turn.house] ?? [];
     const leave = hostLaterLeavePhrase(checkoutNightIsFree(turn.checkout, nights));
     const early = turn.nextCheckIn ? ` ${hostEarlyPhrase(earlyStayOpen(turn.nextCheckIn, nights, asOf))}` : '';
-    return `${turn.houseName} ${shortWhen(turn.checkout)}: ${leave}${early}`;
+    const prep = turn.nextCheckIn ? ` ${stayPrepPhrase(turn.house, turn.nextCheckIn, asOf, 'next')}` : '';
+    return `${turn.houseName} ${shortWhen(turn.checkout)}: ${leave}${early}${prep}`;
   });
   const more = turns.length - shown.length;
   return `Next checkouts: ${shown.join(' ')}${more > 0 ? ` ${more} more.` : ''} ${tail}`;
+}
+
+/** Ranch hot tub or River groceries for the next stay. Names stay off the sentence. */
+export function workOrderPrep(house: HouseId, checkIn: string, asOf: string, lang: CleanLang): string {
+  const line = stayPrepPhrase(house, checkIn, asOf, 'next');
+  if (!line) return '';
+  if (lang === 'es') {
+    const item = house === 'ranch' ? 'el jacuzzi' : 'una entrega de víveres';
+    return `La siguiente estancia puede pedir ${item}. Todavía no se cobra nada. Los nombres no están en esta lista.`;
+  }
+  return `${line} Names stay off this list.`;
 }
 
 /** Whether the next stay can ask to arrive at 1:00 PM. Names stay off the sentence. */

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Reservation } from '../lib/api';
 import { loadBookedNights } from '../lib/booked-nights';
-import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderEarly, workOrderLaterLeave, workOrderNext, workOrderParty, workOrderRules, workOrderWhen } from '../lib/clean';
+import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderEarly, workOrderLaterLeave, workOrderNext, workOrderParty, workOrderPrep, workOrderRules, workOrderWhen } from '../lib/clean';
 import { earlyStayOpen } from '../lib/house-stay';
 import { checkoutNightIsFree } from '../lib/journey';
 import type { HouseId } from '../lib/market/types';
@@ -189,6 +189,9 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                   <p data-bot="today-turnover-early">
                     {workOrderEarly(earlyStayOpen(turn.nextCheckIn, taken[turn.house] ?? [], asOf), 'en')}
                   </p>
+                )}
+                {turn.nextCheckIn && workOrderPrep(turn.house, turn.nextCheckIn, asOf, 'en') && (
+                  <p data-bot="today-turnover-prep">{workOrderPrep(turn.house, turn.nextCheckIn, asOf, 'en')}</p>
                 )}
                 {turn.nextCheckIn && preferenceTimes && (
                   <p data-bot="today-turnover-arrival">{workOrderArrival(preferenceTimes.arrival[turn.nextStayId ?? ''], 'en')}</p>

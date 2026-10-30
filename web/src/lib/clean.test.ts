@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderLaterLeave, workOrderEarly, serviceBrief, workOrderCheckoutParty, workOrderWhen } from './clean.ts';
+import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderLaterLeave, workOrderEarly, workOrderPrep, serviceBrief, workOrderCheckoutParty, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -80,6 +80,9 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.match(workOrderEarly(true, 'en'), /Arrive at 1:00 PM is a request/);
   assert.equal(/password|code\s*\d/i.test(workOrderEarly(true, 'en')), false);
   assert.match(workOrderEarly(false, 'es'), /no está abierta/);
+  assert.match(workOrderPrep('ranch', '2026-11-06', '2026-10-29', 'en'), /hot tub/);
+  assert.equal(workOrderPrep('lindon', '2026-11-06', '2026-10-29', 'en'), '');
+  assert.equal(workOrderPrep('ranch', '2026-11-06', '2026-10-29', 'en').includes('$'), false);
   const service = serviceBrief(
     [
       { id: 'out', propertyId: 'ranch', checkIn: '2026-11-01', checkOut: '2026-11-04', status: 'confirmed' },
@@ -89,6 +92,7 @@ test('the photo line stays open until a room photo is attached', () => {
     '2026-10-29',
   );
   assert.match(service, /Ranch Nov 4: A 2:00 PM leave is not open for this checkout\. An early arrival is not open for this stay/);
+  assert.match(service, /The next stay can request the hot tub/);
   assert.match(service, /Ranch Nov 8: Leave at 2:00 PM is a request/);
   assert.equal(service.includes('$'), false);
   assert.equal(service.includes('Guest'), false);
