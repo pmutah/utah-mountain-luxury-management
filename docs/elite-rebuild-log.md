@@ -324,3 +324,7 @@
 ## 2026-10-29 — quiet hours on the work order
 
 - The cleaner work order names the guest's quiet hours and no-smoking rule in English or Spanish. That rule is not the checklist. The door code stays off the paper.
+
+## 2026-10-29 — quiet hours on the morning turnover list
+
+- Overview names checkout time and the guest's quiet hours on each turnover. The list does not change a booking.

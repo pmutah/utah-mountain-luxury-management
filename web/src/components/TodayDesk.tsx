@@ -1,4 +1,5 @@
 import type { Reservation } from '../lib/api';
+import { workOrderRules, workOrderWhen } from '../lib/clean';
 import { formatWhole } from '../lib/luxury';
 import { currentDayIso } from '../lib/months';
 import { occupancyCalendar, occupancyFilename } from '../lib/occupancy-calendar';
@@ -127,19 +128,32 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
       </div>
       <div className="mt-6" data-bot="turnovers">
         <p className="uml-kicker">Turnovers</p>
+        <p className="mt-2 text-sm text-[var(--uml-muted)]">
+          Quiet hours are the guest&rsquo;s rule. This list does not change a booking.
+        </p>
         {turns.length === 0 ? (
           <p className="mt-2 text-sm text-[var(--uml-muted)]">No turnovers in the next two weeks.</p>
         ) : (
-          <ul className="mt-2 space-y-2">
+          <ul className="mt-2 space-y-3">
             {turns.map((turn) => (
-              <li key={turn.id} className="text-sm">
-                <span className="text-[#d4b56a]">{shortDate(turn.checkout)}</span>
-                {` · ${turn.houseName} · `}
-                {turn.gapNights === null
-                  ? 'nothing booked after'
-                  : turn.gapNights === 0
-                    ? 'same-day clean'
-                    : `${turn.gapNights} night${turn.gapNights === 1 ? '' : 's'} before the next arrival`}
+              <li key={turn.id} className="text-sm" data-bot="today-turnover" data-house={turn.house}>
+                <p>
+                  <span className="text-[#d4b56a]">{shortDate(turn.checkout)}</span>
+                  {` · ${turn.houseName} · `}
+                  {turn.gapNights === null
+                    ? 'nothing booked after'
+                    : turn.gapNights === 0
+                      ? 'same-day clean'
+                      : `${turn.gapNights} night${turn.gapNights === 1 ? '' : 's'} before the next arrival`}
+                </p>
+                <p className="text-[var(--uml-muted)]" data-bot="today-turnover-when">
+                  {workOrderWhen(turn.house, turn.gapNights === 0, 'en')}
+                </p>
+                {workOrderRules(turn.house, 'en').map((line) => (
+                  <p key={line} data-bot="today-turnover-rule">
+                    {line}
+                  </p>
+                ))}
               </li>
             ))}
           </ul>
