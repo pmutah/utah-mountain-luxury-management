@@ -21,6 +21,8 @@ import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 import { listingOpportunities } from '../lib/listing';
 import { directNight } from '../lib/quote';
+import { openArrivals } from '../lib/open-arrivals';
+import { stayLinkSearch } from '../lib/stay-link';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
 
 const HOUSES: { id: HouseId; label: string }[] = [
@@ -194,6 +196,10 @@ export function MarketBoard() {
     trialNight && trialNight.action !== 'closed' && trialNight.action !== 'booked'
       ? directNight(house, trialNight.date, taken[house] ?? [], today, housePace)
       : null;
+  const openings = useMemo(
+    () => (calendar === 'live' ? openArrivals(house, taken[house] ?? [], today, pace) : []),
+    [calendar, house, taken, today, pace],
+  );
 
   function writeChoice(next: CompChoice) {
     const all = { ...compChoices, [house]: next };
@@ -321,6 +327,29 @@ export function MarketBoard() {
             })}
           </div>
         </div>
+        {openings.length > 0 && (
+          <div className="mt-6" data-bot="market-open">
+            <p className="uml-kicker">Open on our booking page</p>
+            <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
+              The same next arrivals a guest can pick. Opening one does not send a request.
+            </p>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {openings.map((item) => (
+                <li key={item.checkIn}>
+                  <a
+                    className="inline-block rounded-full border border-[var(--uml-line)] px-4 py-2 text-sm"
+                    data-bot="market-open-link"
+                    data-in={item.checkIn}
+                    data-out={item.checkOut}
+                    href={`/book${stayLinkSearch({ house, checkIn: item.checkIn, checkOut: item.checkOut, guests: '' })}`}
+                  >
+                    {item.label} · {formatWhole(item.direct)}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-shadow">

@@ -1,5 +1,6 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
+import { nextOpenPhrase } from './open-arrivals';
 import { aheadChannelsLine, ownerAhead } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
 import { workOrderWhen } from './clean';
@@ -57,6 +58,7 @@ export function agentBrief(input: {
   if (input.calendarReady) lines.push(...shadowBrief(input.asOf, input.stays));
   if (input.calendarReady) {
     lines.push({ agent: 'co-host', text: aheadChannelsLine(ownerAhead(input.stays, input.asOf)) });
+    lines.push({ agent: 'co-host', text: nextOpenBrief(input.asOf, input.stays) });
   }
 
   const turns = input.calendarReady
@@ -121,6 +123,25 @@ export function agentBrief(input: {
 
 const SHADOW_HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 const SHADOW_LABEL: Record<HouseId, string> = { river: 'River', ranch: 'Ranch', lindon: 'Lindon' };
+
+function nextOpenBrief(
+  asOf: string,
+  stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number }>,
+): string {
+  const taken = occupiedByHouse(stays, asOf, addDays(asOf, 180));
+  const paceStays: PaceStay[] = stays.map((stay) => ({
+    propertyId: stay.propertyId,
+    checkIn: stay.checkIn,
+    checkOut: stay.checkOut,
+    status: stay.status,
+    payout: Number(stay.payout) || 0,
+  }));
+  const parts = SHADOW_HOUSES.map((house) => {
+    const pace: YearPace = grossPace(house, paceStays, asOf).stillNeeded > 0 ? 'short' : 'met';
+    return nextOpenPhrase(house, taken[house], asOf, pace);
+  });
+  return `Next open arrival from these bookings: ${parts.join('. ')}.`;
+}
 
 function shadowBrief(
   asOf: string,

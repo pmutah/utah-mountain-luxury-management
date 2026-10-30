@@ -67,3 +67,20 @@ export function openArrivals(
   }
   return found;
 }
+
+const HOUSE_NAME: Record<HouseId, string> = { river: 'River', ranch: 'Ranch', lindon: 'Lindon' };
+
+/** First open arrival, with no price. The brief can say it. */
+export function nextOpenPhrase(house: HouseId, taken: readonly string[], asOf: string, pace: YearPace): string {
+  const first = openArrivals(house, taken, asOf, pace, 1)[0];
+  const name = HOUSE_NAME[house];
+  if (!first) return `${name} has no open arrival in the next six months`;
+  const [year, month, day] = first.checkIn.split('-').map(Number);
+  const when = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+  const nights = first.nights === 1 ? '1 night' : `${first.nights} nights`;
+  return `${name} ${when} for ${nights}`;
+}
