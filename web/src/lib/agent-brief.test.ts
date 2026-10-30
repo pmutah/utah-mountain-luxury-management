@@ -34,6 +34,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /Before checkout the guest was asked to start the dishwasher/);
   assert.equal(text.includes('River checkout'), false);
   assert.match(text, /Still open on our booking page: photos and card payment/);
+  assert.match(text, /No door code opens on the guest phone tomorrow/);
   assert.match(text, /Door codes stay hidden/);
   assert.match(text, /printed trip sheet leaves the code/);
   assert.match(text, /keeps the house notes and the house rules/);

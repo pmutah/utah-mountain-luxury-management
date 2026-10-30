@@ -1,6 +1,7 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
 import { bookingStartSummary } from './booking-starts';
+import { codesOpenTomorrow } from './house-stay';
 import { nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals';
 import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
@@ -111,6 +112,9 @@ export function agentBrief(input: {
       ? `Still open on our booking page: ${openLabel}.`
       : 'Our booking page has no open listing items.',
   });
+  if (input.calendarReady) {
+    lines.push({ agent: 'nora', text: codesOpenTomorrow(input.stays, input.asOf, 'brief') });
+  }
   lines.push({
     agent: 'nora',
     text: 'Door codes stay hidden until the house rules are read on the guest phone. A printed trip sheet leaves the code on the phone and keeps the house notes and the house rules.',

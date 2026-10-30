@@ -1,5 +1,6 @@
 import type { Reservation } from '../lib/api';
 import { workOrderRules, workOrderWhen } from '../lib/clean';
+import { codesOpenTomorrow } from '../lib/house-stay';
 import { formatWhole } from '../lib/luxury';
 import { currentDayIso } from '../lib/months';
 import { occupancyCalendar, occupancyFilename } from '../lib/occupancy-calendar';
@@ -68,6 +69,9 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
   return (
     <section className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="today-desk">
       <p className="uml-kicker">Today</p>
+      <p className="mt-2 text-sm" data-bot="today-codes">
+        {codesOpenTomorrow(reservations, asOf, 'list')}
+      </p>
       <h2 className="font-display text-4xl leading-none mt-1">The next seven days</h2>
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {HOUSES.map((house) => {

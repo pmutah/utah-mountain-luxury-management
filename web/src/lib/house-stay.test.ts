@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { houseStay, partyFits, accessLine, earlyLine, hostAccessPhrase, nearbyGroups } from './house-stay.ts';
+import { houseStay, partyFits, accessLine, earlyLine, hostAccessPhrase, codesOpenTomorrow, nearbyGroups } from './house-stay.ts';
 
 test('the booking page uses the published house and refuses a party that does not fit', () => {
   const river = houseStay('river');
@@ -39,6 +39,18 @@ test('the booking page uses the published house and refuses a party that does no
   assert.equal(hostAccessPhrase('2026-11-06', '2026-11-08', '2026-11-08'), 'This stay has checked out. The door code stays off this list.');
   assert.equal(hostAccessPhrase('bad', '2026-11-08', '2026-10-29'), null);
   assert.equal(/password/i.test(hostAccessPhrase('2026-11-06', '2026-11-08', '2026-10-29') ?? ''), false);
+  const opening = codesOpenTomorrow(
+    [
+      { propertyId: 'lindon', checkIn: '2026-10-31', checkOut: '2026-11-02' },
+      { propertyId: 'lindon', checkIn: '2026-11-01', checkOut: '2026-11-03' },
+      { propertyId: 'river', checkIn: '2026-10-31', checkOut: '2026-11-02', status: 'cancelled' },
+    ],
+    '2026-10-29',
+    'brief',
+  );
+  assert.equal(opening, 'Door codes that open tomorrow on the guest phone: Lindon 1. Codes stay off this brief.');
+  assert.equal(opening.includes('Guest'), false);
+  assert.equal(codesOpenTomorrow([], '2026-10-29', 'list'), 'No door code opens on the guest phone tomorrow. Codes stay off this list.');
   assert.equal(accessLine('bad'), null);
   assert.match(earlyLine('2026-11-06', [], '2026-10-29') ?? '', /Arriving early is a request/);
   assert.equal(earlyLine('2026-11-06', ['2026-11-05'], '2026-10-29'), null);

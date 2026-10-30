@@ -168,6 +168,33 @@ function longDate(iso: string): string {
   });
 }
 
+const CODE_HOUSES = ['river', 'ranch', 'lindon'] as const;
+const CODE_LABEL: Record<(typeof CODE_HOUSES)[number], string> = { river: 'River', ranch: 'Ranch', lindon: 'Lindon' };
+
+/** How many door codes open tomorrow. Names and the codes stay off the sentence. */
+export function codesOpenTomorrow(
+  stays: readonly { propertyId: string; checkIn: string; checkOut: string; status?: string }[],
+  asOf: string,
+  page: 'brief' | 'list',
+): string {
+  const where = page === 'brief' ? 'this brief' : 'this list';
+  const none = `No door code opens on the guest phone tomorrow. Codes stay off ${where}.`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return none;
+  const tomorrow = addDays(asOf, 1);
+  const counts: Record<(typeof CODE_HOUSES)[number], number> = { river: 0, ranch: 0, lindon: 0 };
+  for (const stay of stays) {
+    if (stay.status === 'cancelled' || stay.status === 'blocked') continue;
+    if (stay.propertyId !== 'river' && stay.propertyId !== 'ranch' && stay.propertyId !== 'lindon') continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(stay.checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(stay.checkOut)) continue;
+    if (stay.checkOut <= stay.checkIn) continue;
+    if (addDays(stay.checkIn, -1) !== tomorrow) continue;
+    counts[stay.propertyId] += 1;
+  }
+  const parts = CODE_HOUSES.filter((house) => counts[house] > 0).map((house) => `${CODE_LABEL[house]} ${counts[house]}`);
+  if (parts.length === 0) return none;
+  return `Door codes that open tomorrow on the guest phone: ${parts.join(', ')}. Codes stay off ${where}.`;
+}
+
 /** When this stay's door code opens, without the code. Past stays say the code stays off the list. */
 export function hostAccessPhrase(checkIn: string, checkOut: string, asOf: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut) || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return null;

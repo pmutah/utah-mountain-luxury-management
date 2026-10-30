@@ -332,3 +332,7 @@
 ## 2026-10-29 — house rules in the request note
 
 - A booking request includes the house rules the guest read. Checking the box does not send the request. The note does not include a door code.
+
+## 2026-10-29 — door codes that open tomorrow
+
+- Overview and the nightly brief say how many door codes open tomorrow, by house. Names and the codes stay off. Nothing is sent.
