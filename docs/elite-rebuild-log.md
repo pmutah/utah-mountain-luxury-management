@@ -50,3 +50,7 @@
 ## 2026-10-29 — portfolio daily text
 
 - The Market tab leads with one shadow summary for River, Ranch, and Lindon. A paused house stays at its published rates. The text is on the page and is not sent.
+
+## 2026-10-29 — comp pin and hide
+
+- Each house's top 10 can be pinned or hidden in this browser. A hidden sample is replaced by the next bench home, and the rate band uses the set that remains. Nothing is written to the books.

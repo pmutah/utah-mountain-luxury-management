@@ -41,8 +41,8 @@ function scoreComp(comp: SampleComp, house: HouseId): number {
   return Math.round(rating + favorite + distance - bedGap * 3);
 }
 
-export function buildMarketBoard(house: HouseId, from: string, days = 90): MarketBoard {
-  const comps = compsFor(house);
+export function buildMarketBoard(house: HouseId, from: string, days = 90, selected?: SampleComp[]): MarketBoard {
+  const comps = selected ?? compsFor(house);
   const nights: NightRow[] = eachNight(from, days).map((iso) => {
     const priced = comps.map((comp) => ({
       rate: compAsk(comp, iso),

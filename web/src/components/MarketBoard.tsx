@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
+import { chooseComps, loadCompChoices, saveCompChoices, type CompChoice } from '../lib/market/comps';
+import { benchFor, compsFor } from '../lib/market/fixtures';
 import { buildMarketBoard } from '../lib/market/board';
 import { addDays, denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
@@ -102,8 +104,17 @@ export function MarketBoard() {
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
   const [stays, setStays] = useState<PaceStay[] | null>(null);
   const [paceState, setPaceState] = useState<'loading' | 'live' | 'off'>('loading');
+  const [compChoices, setCompChoices] = useState(loadCompChoices);
   const today = denverToday();
-  const board = useMemo(() => buildMarketBoard(house, today, 90), [house, today]);
+  const activeComps = useMemo(
+    () => ({
+      river: chooseComps('river', compChoices.river),
+      ranch: chooseComps('ranch', compChoices.ranch),
+      lindon: chooseComps('lindon', compChoices.lindon),
+    }),
+    [compChoices],
+  );
+  const board = useMemo(() => buildMarketBoard(house, today, 90, activeComps[house]), [house, today, activeComps]);
   const pace: YearPace =
     paceState !== 'live' || !stays ? 'unknown' : grossPace(house, stays, today).stillNeeded > 0 ? 'short' : 'met';
   const shadow = useMemo(
@@ -119,9 +130,21 @@ export function MarketBoard() {
       paused,
       pace: { river: paceOf('river'), ranch: paceOf('ranch'), lindon: paceOf('lindon') },
       calendarLive: calendar === 'live',
+      comps: activeComps,
     });
-  }, [today, taken, paused, stays, paceState, calendar]);
+  }, [today, taken, paused, stays, paceState, calendar, activeComps]);
   const moves = groupMoves(shadow.nights);
+  const choice = compChoices[house];
+  const cards = [...board.comps].sort((a, b) => Number(choice.pinned.includes(b.id)) - Number(choice.pinned.includes(a.id)));
+  const hidden = choice.excluded
+    .map((id) => [...compsFor(house), ...benchFor(house)].find((comp) => comp.id === id))
+    .filter((comp): comp is NonNullable<typeof comp> => Boolean(comp));
+
+  function writeChoice(next: CompChoice) {
+    const all = { ...compChoices, [house]: next };
+    setCompChoices(all);
+    saveCompChoices(all);
+  }
 
   useEffect(() => {
     let cancel = false;
@@ -267,12 +290,15 @@ export function MarketBoard() {
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {board.comps.map((comp, index) => (
+      <div className="grid gap-3 sm:grid-cols-2" data-bot="market-comps">
+        {cards.map((comp, index) => (
           <article key={comp.id} className="uml-panel rounded-3xl p-4" data-bot={index === 0 ? 'market-top-comp' : undefined}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="uml-kicker">#{index + 1} · {comp.area}</p>
+                <p className="uml-kicker">
+                  #{index + 1} · {comp.area}
+                  {choice.pinned.includes(comp.id) ? ' · Pinned' : ''}
+                </p>
                 <h3 className="font-display text-2xl leading-tight mt-1">{comp.name.replace('Sample · ', '')}</h3>
               </div>
               <p className="uml-num text-lg">{formatWhole(comp.nextWeekendAsk)}</p>
@@ -281,9 +307,68 @@ export function MarketBoard() {
               {comp.beds} bed · sleeps {comp.sleeps} · {comp.rating.toFixed(2)} · {comp.reviews} reviews
               {comp.guestFavorite ? ' · Guest favorite' : ''} · {comp.distanceMi} mi · {comp.occupancy}% booked
             </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                className="uml-nav"
+                data-bot="comp-pin"
+                data-id={comp.id}
+                aria-pressed={choice.pinned.includes(comp.id)}
+                onClick={() =>
+                  writeChoice({
+                    pinned: choice.pinned.includes(comp.id)
+                      ? choice.pinned.filter((id) => id !== comp.id)
+                      : [...choice.pinned, comp.id],
+                    excluded: choice.excluded.filter((id) => id !== comp.id),
+                  })
+                }
+              >
+                {choice.pinned.includes(comp.id) ? 'Unpin' : 'Pin'}
+              </button>
+              <button
+                type="button"
+                className="uml-nav"
+                data-bot="comp-hide"
+                data-id={comp.id}
+                onClick={() =>
+                  writeChoice({
+                    pinned: choice.pinned.filter((id) => id !== comp.id),
+                    excluded: [...choice.excluded, comp.id],
+                  })
+                }
+              >
+                Hide
+              </button>
+            </div>
           </article>
         ))}
       </div>
+      {hidden.length > 0 && (
+        <div className="uml-panel rounded-3xl p-4" data-bot="market-hidden-comps">
+          <p className="uml-kicker">Hidden</p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {hidden.map((comp) => (
+              <li key={comp.id} className="flex items-center justify-between gap-3">
+                <span>{comp.name.replace('Sample · ', '')}</span>
+                <button
+                  type="button"
+                  className="uml-nav"
+                  data-bot="comp-restore"
+                  data-id={comp.id}
+                  onClick={() =>
+                    writeChoice({
+                      pinned: choice.pinned,
+                      excluded: choice.excluded.filter((id) => id !== comp.id),
+                    })
+                  }
+                >
+                  Restore
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

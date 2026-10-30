@@ -53,6 +53,20 @@ export const SAMPLE_COMPS: SampleComp[] = [
   { id: 'lindon-10', house: 'lindon', name: 'Sample · State Street cottage', area: 'Pleasant Grove', beds: 2, sleeps: 5, rating: 4.68, reviews: 90, guestFavorite: false, distanceMi: 2.2, baseGuest: 125, occupancy: 0.82 },
 ];
 
+/** Alternates that step in when a primary comp is hidden. Still sample data. */
+export const BENCH_COMPS: SampleComp[] = [
+  { id: 'river-b1', house: 'river', name: 'Sample · Vivian Park lodge', area: 'Vivian Park', beds: 7, sleeps: 18, rating: 4.9, reviews: 36, guestFavorite: true, distanceMi: 1.2, baseGuest: 2300, occupancy: 0.6 },
+  { id: 'river-b2', house: 'river', name: 'Sample · Sundance estate', area: 'Sundance', beds: 8, sleeps: 20, rating: 4.94, reviews: 52, guestFavorite: true, distanceMi: 2.8, baseGuest: 2600, occupancy: 0.57 },
+  { id: 'ranch-b1', house: 'ranch', name: 'Sample · Lindon estate', area: 'Lindon', beds: 7, sleeps: 18, rating: 4.93, reviews: 29, guestFavorite: true, distanceMi: 0.6, baseGuest: 860, occupancy: 0.52 },
+  { id: 'ranch-b2', house: 'ranch', name: 'Sample · Pleasant Grove modern', area: 'Pleasant Grove', beds: 6, sleeps: 16, rating: 4.89, reviews: 47, guestFavorite: true, distanceMi: 1.7, baseGuest: 760, occupancy: 0.61 },
+  { id: 'lindon-b1', house: 'lindon', name: 'Sample · Mahogany home', area: 'Lindon', beds: 4, sleeps: 8, rating: 4.92, reviews: 33, guestFavorite: true, distanceMi: 0.4, baseGuest: 205, occupancy: 0.66 },
+  { id: 'lindon-b2', house: 'lindon', name: 'Sample · Geneva cottage', area: 'Lindon', beds: 3, sleeps: 6, rating: 4.84, reviews: 71, guestFavorite: false, distanceMi: 0.9, baseGuest: 170, occupancy: 0.74 },
+];
+
 export function compsFor(house: HouseId): SampleComp[] {
   return SAMPLE_COMPS.filter((comp) => comp.house === house);
+}
+
+export function benchFor(house: HouseId): SampleComp[] {
+  return BENCH_COMPS.filter((comp) => comp.house === house);
 }

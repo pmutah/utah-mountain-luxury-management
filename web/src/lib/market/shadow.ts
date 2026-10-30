@@ -1,6 +1,7 @@
 import { RIVER_FIRST_STAY } from '../brand';
 import { promotionForNight, type YearPace } from './fill';
 import { buildMarketBoard } from './board';
+import type { SampleComp } from './fixtures';
 import type { HouseId, MarketBoard, NightRow } from './types';
 
 export type GuardAction = NightRow['action'] | 'booked' | 'closed' | 'paused';
@@ -94,11 +95,12 @@ export function portfolioDigest(input: {
   paused: Record<HouseId, boolean>;
   pace: Record<HouseId, YearPace>;
   calendarLive: boolean;
+  comps?: Partial<Record<HouseId, SampleComp[]>>;
 }): string {
   const lines = [`UML shadow ${input.asOf}`];
   for (const house of PORTFOLIO) {
     const run = runShadow(
-      buildMarketBoard(house, input.asOf, 90),
+      buildMarketBoard(house, input.asOf, 90, input.comps?.[house]),
       input.calendarLive ? (input.taken[house] ?? []) : [],
       input.paused[house],
       input.asOf,
