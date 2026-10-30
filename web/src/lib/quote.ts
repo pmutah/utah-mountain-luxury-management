@@ -79,7 +79,7 @@ export function quoteStay(
   checkIn: string,
   checkOut: string,
   taken: readonly string[] = [],
-  options?: { asOf?: string; pace?: YearPace; guests?: number; closed?: readonly string[] },
+  options?: { asOf?: string; pace?: YearPace; guests?: number; children?: number; closed?: readonly string[] },
 ): StayQuote {
   const asOf = options?.asOf && /^\d{4}-\d{2}-\d{2}$/.test(options.asOf) ? options.asOf : checkIn;
   const pace = options?.pace ?? 'unknown';
@@ -150,7 +150,7 @@ export function quoteStay(
     };
   }
   if (options?.guests !== undefined) {
-    const party = partyFits(house, options.guests);
+    const party = partyFits(house, options.guests, options.children);
     if (!party.ok) return { ...priced, ok: false, reason: party.reason };
   }
 

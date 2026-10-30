@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { houseStay, partyFits, accessLine, earlyLine, hostAccessPhrase, codesOpenTomorrow, nearbyGroups } from './house-stay.ts';
+import { houseStay, partyFits, partyNote, accessLine, earlyLine, hostAccessPhrase, codesOpenTomorrow, nearbyGroups } from './house-stay.ts';
 
 test('the booking page uses the published house and refuses a party that does not fit', () => {
   const river = houseStay('river');
@@ -61,4 +61,11 @@ test('the booking page uses the published house and refuses a party that does no
   assert.match(partyFits('river', 26).reason ?? '', /sleeps 25/);
   assert.equal(partyFits('lindon', 0).ok, false);
   assert.equal(partyFits('ranch', 1.5).ok, false);
+  assert.equal(partyFits('ranch', 4, 1).ok, true);
+  assert.equal(partyFits('ranch', 4, 4).ok, false);
+  assert.match(partyFits('ranch', 4, 4).reason ?? '', /adult/);
+  assert.match(partyFits('ranch', 4, 5).reason ?? '', /part of the overnight/);
+  assert.equal(partyNote('4', '1'), 'Overnight guests 4, including 1 child.');
+  assert.equal(partyNote('4', ''), 'Overnight guests 4.');
+  assert.equal(partyNote('4', '4').includes('door code'), false);
 });

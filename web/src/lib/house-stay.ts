@@ -148,14 +148,31 @@ export function houseStay(house: HouseId): HouseStay {
   return { sleeps: SLEEPS[house], emergency: STAY_EMERGENCY, ...STAY[house], checkout: STAY_CHECKOUT };
 }
 
-/** A direct request names the overnight party. Extra guests are not priced; the party has to fit. */
-export function partyFits(house: HouseId, guests: number): { ok: boolean; reason: string | null } {
+/** A direct request names the overnight party. Children count toward that number. Extra guests are not priced. */
+export function partyFits(house: HouseId, guests: number, children?: number): { ok: boolean; reason: string | null } {
   if (!Number.isInteger(guests) || guests < 1) {
     return { ok: false, reason: 'Add the number of overnight guests.' };
   }
   const sleeps = SLEEPS[house];
   if (guests > sleeps) return { ok: false, reason: `${LABEL[house]} sleeps ${sleeps}.` };
+  if (children !== undefined && children !== 0) {
+    if (!Number.isInteger(children) || children < 0 || children > guests) {
+      return { ok: false, reason: 'Children are part of the overnight guests.' };
+    }
+    if (children === guests) return { ok: false, reason: 'A stay needs an adult.' };
+  }
   return { ok: true, reason: null };
+}
+
+/** The party line a request note would include. This does not send the request. */
+export function partyNote(guests: string, children: string): string {
+  if (!/^\d+$/.test(guests)) return '';
+  const count = Number(guests);
+  if (count < 1) return '';
+  if (!/^\d+$/.test(children)) return `Overnight guests ${count}.`;
+  const kids = Number(children);
+  if (kids < 1 || kids > count) return `Overnight guests ${count}.`;
+  return `Overnight guests ${count}, including ${kids} ${kids === 1 ? 'child' : 'children'}.`;
 }
 
 function longDate(iso: string): string {

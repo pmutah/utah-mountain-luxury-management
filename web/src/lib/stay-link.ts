@@ -10,6 +10,7 @@ export type StayLink = {
   checkIn: string;
   checkOut: string;
   guests: string;
+  children?: string;
   addons?: UpsellId[];
   arrive?: ArrivalSlot;
 };
@@ -39,6 +40,8 @@ export function readStayLink(search: string): Partial<StayLink> {
   }
   const guests = params.get('guests') ?? '';
   if (/^\d{1,2}$/.test(guests)) link.guests = guests;
+  const children = params.get('children') ?? '';
+  if (/^\d{1,2}$/.test(children)) link.children = children;
   const addons = readAddons(params.get('addons') ?? '');
   if (addons.length > 0) link.addons = addons;
   const arrive = params.get('arrive') ?? '';
@@ -62,6 +65,7 @@ export function stayLinkSearch(link: StayLink & { addons?: readonly UpsellId[] }
   params.set('in', link.checkIn);
   params.set('out', link.checkOut);
   if (/^\d{1,2}$/.test(link.guests)) params.set('guests', link.guests);
+  if (link.children && /^\d{1,2}$/.test(link.children)) params.set('children', link.children);
   const addons = readAddons((link.addons ?? []).join(','));
   if (addons.length > 0) params.set('addons', addons.join(','));
   if (link.arrive && isArrivalSlot(link.arrive)) params.set('arrive', link.arrive);

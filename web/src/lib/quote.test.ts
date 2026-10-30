@@ -71,6 +71,10 @@ test('a party larger than the house is not quoted', () => {
   assert.match(quote.reason ?? '', /sleeps 25/);
   const open = quoteStay('river', '2026-11-06', '2026-11-08', [], { guests: 25 });
   assert.equal(open.ok, true);
+  const kids = quoteStay('ranch', '2026-11-04', '2026-11-05', [], { guests: 4, children: 4 });
+  assert.equal(kids.ok, false);
+  assert.match(kids.reason ?? '', /adult/);
+  assert.equal(quoteStay('ranch', '2026-11-04', '2026-11-05', [], { guests: 4, children: 1 }).ok, true);
 });
 
 test('a lone Ranch weekend night waits until the last week', () => {

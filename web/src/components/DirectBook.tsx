@@ -3,7 +3,7 @@ import { ARRIVAL_SLOTS, arrivalNote } from '../lib/arrival';
 import { PROPERTIES } from '../lib/api';
 import { loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
-import { houseStay, partyFits, accessLine, earlyLine, nearbyGroups } from '../lib/house-stay';
+import { houseStay, partyFits, partyNote, accessLine, earlyLine, nearbyGroups } from '../lib/house-stay';
 import { placeHref, placeSite } from '../lib/place-link';
 import { directRequestReady, houseRules, rulesNote } from '../lib/house-rules';
 import { agreementLine, agreementNote } from '../lib/stay-agreement';
@@ -55,6 +55,7 @@ export function DirectBook() {
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
   const [guests, setGuests] = useState(linked.guests ?? '');
+  const [children, setChildren] = useState(linked.children ?? '');
   const [rulesRead, setRulesRead] = useState(false);
   const [addons, setAddons] = useState<UpsellId[]>(linked.addons ?? []);
   const [arrival, setArrival] = useState<string | null>(linked.arrive ?? null);
@@ -102,16 +103,18 @@ export function DirectBook() {
 
   const stay = houseStay(house);
   const guestCount = /^\d+$/.test(guests) ? Number(guests) : null;
-  const party = guestCount === null ? partyFits(house, 0) : partyFits(house, guestCount);
+  const childCount = /^\d+$/.test(children) ? Number(children) : null;
+  const party = guestCount === null ? partyFits(house, 0) : partyFits(house, guestCount, childCount ?? undefined);
+  const guestLine = partyNote(guests, children);
   const quote = useMemo(
     () =>
       quoteStay(house, checkIn, checkOut, taken[house] ?? [], {
         asOf: today,
         pace,
         closed: closed[house] ?? [],
-        ...(guestCount !== null ? { guests: guestCount } : {}),
+        ...(guestCount !== null ? { guests: guestCount, ...(childCount !== null ? { children: childCount } : {}) } : {}),
       }),
-    [house, checkIn, checkOut, taken, closed, today, pace, guestCount],
+    [house, checkIn, checkOut, taken, closed, today, pace, guestCount, childCount],
   );
   const splitLine = quote.ok && party.ok && guestCount !== null ? splitStayLine(quote.stayTotal, guestCount) : null;
   const saved = quote.ok ? directSavings(quote.channelTotal, quote.stayTotal) : null;
@@ -123,14 +126,14 @@ export function DirectBook() {
     if (calendar !== 'live') return [];
     const paceFor = (id: HouseId): YearPace =>
       stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
-    return alsoOpen(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined, closed);
-  }, [calendar, house, checkIn, checkOut, taken, closed, today, stays, guestCount]);
+    return alsoOpen(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined, closed, childCount ?? undefined);
+  }, [calendar, house, checkIn, checkOut, taken, closed, today, stays, guestCount, childCount]);
   const held = useMemo(() => {
     if (calendar !== 'live') return [];
     const paceFor = (id: HouseId): YearPace =>
       stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
-    return alsoHeld(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined, closed);
-  }, [calendar, house, checkIn, checkOut, taken, closed, today, stays, guestCount]);
+    return alsoHeld(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined, closed, childCount ?? undefined);
+  }, [calendar, house, checkIn, checkOut, taken, closed, today, stays, guestCount, childCount]);
   const extension = useMemo(() => {
     if (calendar !== 'live' || quote.ok) return null;
     const next = shortestStay(house, checkIn, taken[house] ?? [], today, pace, guestCount ?? undefined);
@@ -174,6 +177,7 @@ export function DirectBook() {
     checkIn,
     checkOut,
     guests,
+    children,
     addons: calendar === 'live' ? selectedOffers.map((offer) => offer.id) : addons,
     arrive: earlyArrival || !arrival ? undefined : (ARRIVAL_SLOTS.find((slot) => slot === arrival) ?? undefined),
   })}`;
@@ -201,7 +205,7 @@ export function DirectBook() {
           returning: false,
           note: [
             form.note,
-            `Overnight guests ${guests}.`,
+            guestLine,
             arrivalLine,
             `Preview quote ${formatWhole(quote.stayTotal)} before tax (${quote.nights.length} nights).`,
             addonNote,
@@ -573,9 +577,26 @@ export function DirectBook() {
                 className="mt-2 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
               />
             </label>
+            <label className="mt-4 block text-sm">
+              Children, included in that count
+              <input
+                inputMode="numeric"
+                aria-label="Children"
+                data-bot="stay-children"
+                value={children}
+                placeholder="0"
+                onChange={(event) => setChildren(event.target.value.replace(/[^\d]/g, '').slice(0, 2))}
+                className="mt-2 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
+              />
+            </label>
             {!party.ok && (
               <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-party">
                 {party.reason}
+              </p>
+            )}
+            {guestLine && (
+              <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-party-note" data-note={guestLine}>
+                {guestLine} Nothing is sent until you use the button.
               </p>
             )}
             {splitLine && (
@@ -619,7 +640,7 @@ export function DirectBook() {
             </div>
             <div className="mt-4" data-bot="stay-share">
               <p className="text-xs text-[var(--uml-muted)]">
-                This link reopens the quote, the arrival time, and the add-ons that are checked. It does not send a request.
+                This link reopens the quote, the arrival time, how many guests are children, and the add-ons that are checked. It does not send a request.
               </p>
               <p className="mt-1 text-sm">{sharePath}</p>
               <button

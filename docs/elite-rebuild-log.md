@@ -380,3 +380,7 @@
 ## 2026-10-30 — an arrival time on the quote
 
 - The booking page can name an arrival from 4:00 PM through after 9:00 PM. That time is on the quote link and would be in the request note. Arrive at 1:00 PM replaces it. Choosing a time does not send the request.
+
+## 2026-10-30 — children in the party
+
+- Children count toward the overnight guests. A party of only children stays closed. That count is on the quote link and would be in the request note. Nothing is sent.

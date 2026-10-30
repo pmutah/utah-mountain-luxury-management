@@ -30,13 +30,14 @@ export function alsoOpen(
   paceFor: (house: HouseId) => YearPace,
   guests?: number,
   closed?: Partial<Record<HouseId, readonly string[]>>,
+  children?: number,
 ): AlsoOpen[] {
   return HOUSES.filter((id) => id !== house).flatMap((id) => {
     const quote = quoteStay(id, checkIn, checkOut, taken[id] ?? [], {
       asOf,
       pace: paceFor(id),
       closed: closed?.[id] ?? [],
-      ...(guests !== undefined ? { guests } : {}),
+      ...(guests !== undefined ? { guests, ...(children !== undefined ? { children } : {}) } : {}),
     });
     if (!quote.ok) return [];
     return [{ house: id, direct: quote.stayTotal, nights: quote.nights.length }];
@@ -53,18 +54,19 @@ export function alsoHeld(
   paceFor: (house: HouseId) => YearPace,
   guests?: number,
   closed?: Partial<Record<HouseId, readonly string[]>>,
+  children?: number,
 ): AlsoHeld[] {
   return HOUSES.filter((id) => id !== house).flatMap((id) => {
     const quote = quoteStay(id, checkIn, checkOut, taken[id] ?? [], {
       asOf,
       pace: paceFor(id),
       closed: closed?.[id] ?? [],
-      ...(guests !== undefined ? { guests } : {}),
+      ...(guests !== undefined ? { guests, ...(children !== undefined ? { children } : {}) } : {}),
     });
     if (quote.ok || !quote.reason) return [];
     const name = HOUSE_NAME[id];
     const reason = quote.reason.includes('sleeps') ? quote.reason : `${name}: ${quote.reason}`;
-    const blocked = /sleeps|already booked|first stays/i.test(quote.reason);
+    const blocked = /sleeps|already booked|first stays|adult|children are part/i.test(quote.reason);
     const longerStay =
       blocked || /closed on the calendar/i.test(quote.reason)
         ? null
