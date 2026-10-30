@@ -6,7 +6,7 @@ Existing expenses, bookings, receipts, and construction records stay in Cloudfla
 
 | Area | Feature | Status | Notes |
 | --- | --- | --- | --- |
-| Data safety | KV backup and integrity baseline | live | Private folder outside the repo. Re-run `uml-data-backups/backup-kv.mjs`. |
+| Data safety | KV backup and integrity baseline | live | Private folder outside the repo. Re-run `uml-data-backups/backup-kv.mjs`. An empty read cannot replace the saved expenses. That guard is on this branch and is not deployed. |
 | Market | Top 10 comps per house | sample | Pin and hide are saved in this browser. A hidden comp is replaced from the bench. Live comps replace the samples when a key exists. |
 | Market | 90-day rate band and percentile | sample | Gold line is our ask. Band is open comps. | 
 | Market | Next 30, 60, and 90 nights | sample | Our booked share uses the live calendar. The comp share is still the sample set. | 

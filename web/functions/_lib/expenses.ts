@@ -3,6 +3,7 @@ import type { SettingsEnv } from './kv';
 import type { ReservationRecord } from './agent/types';
 import type { PaidBy } from './paid-by';
 import { parsePaidDateFromNote } from './expense-month';
+import { ledgerSafeToSave } from './ledger-guard';
 
 export interface ExpenseRecord {
   id: string;
@@ -97,7 +98,7 @@ export async function persistMissingPaidDates(env: SettingsEnv): Promise<number>
     if (hydrated.paidDate && hydrated.paidDate !== e.paidDate) written++;
     return hydrated;
   });
-  if (written > 0) await saveCustomExpenses(env, next);
+  if (written > 0 && ledgerSafeToSave(custom, next)) await saveCustomExpenses(env, next);
   return written;
 }
 
@@ -155,8 +156,9 @@ export async function ensureTurnoverCleaningExpenses(
     return keepIds.has(e.id);
   });
 
-  if (written > 0 || merged.length !== custom.length) {
+  if ((written > 0 || merged.length !== custom.length) && ledgerSafeToSave(custom, merged)) {
     await saveCustomExpenses(env, merged);
+    return written;
   }
-  return written;
+  return 0;
 }
