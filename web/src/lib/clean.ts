@@ -1,4 +1,5 @@
 import { PROPERTIES, type Reservation } from './api';
+import { houseRules } from './house-rules';
 import { houseStay, nearbyGroups } from './house-stay';
 import type { HouseId } from './luxury';
 import { buildTurnovers, type Turnover } from './today';
@@ -67,6 +68,23 @@ export function workOrderEssentials(house: HouseId): string[] {
   return (group?.places ?? [])
     .filter((place) => !/door\s*code|wi-?fi|password/i.test(`${place.name} ${place.note}`))
     .map((place) => `${place.name}. ${place.note}`);
+}
+
+const RULES_ES: Record<string, string> = {
+  'Whole-house rental only. Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.':
+    'Solo la casa completa. Horas de silencio en este vecindario de montaña. No fiestas ni eventos sin aprobación por escrito. Sigue las notas del séptico y la basura. No fumar adentro.',
+  'Quiet hours 10 PM to 8 AM. No parties. Stay within the booked guest count. No smoking indoors.':
+    'Horas de silencio de 10 PM a 8 AM. No fiestas. Quédate dentro del número de huéspedes reservado. No fumar adentro.',
+  'Quiet hours 10 PM to 8 AM. No smoking indoors. No parties.':
+    'Horas de silencio de 10 PM a 8 AM. No fumar adentro. No fiestas.',
+};
+
+/** The guest's stay rule. Quiet hours and no smoking. This is not the cleaner checklist. */
+export function workOrderRules(house: HouseId, lang: CleanLang): string[] {
+  return houseRules(house)
+    .filter((rule) => rule.id === 'stay')
+    .map((rule) => (lang === 'es' ? (RULES_ES[rule.text] ?? rule.text) : rule.text))
+    .filter((text) => text.length > 0 && !/door\s*code|wi-?fi|password/i.test(text));
 }
 
 /** Published house notes for the cleaner. A note that names a door code or Wi-Fi is left off. */

@@ -320,3 +320,7 @@
 ## 2026-10-29 — when the door code opens, on each stay
 
 - Each stay on the guest list says when the door code opens on the guest phone, or that the stay has checked out. The code stays off the list. Nothing is sent.
+
+## 2026-10-29 — quiet hours on the work order
+
+- The cleaner work order names the guest's quiet hours and no-smoking rule in English or Spanish. That rule is not the checklist. The door code stays off the paper.

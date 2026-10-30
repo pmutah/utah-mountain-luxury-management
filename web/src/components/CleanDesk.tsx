@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderWhen, type CleanLang } from '../lib/clean';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
 
@@ -173,6 +173,20 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                         </p>
                         <ul className="mt-1 space-y-1 text-sm">
                           {workOrderEssentials(job.house).map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {workOrderRules(job.house, lang).length > 0 && (
+                      <div className="mt-2" data-bot="clean-rules">
+                        <p className="text-sm text-[var(--uml-muted)]">
+                          {lang === 'es'
+                            ? 'Al huésped se le pidió seguir esto. No es tu lista.'
+                            : 'The guest was asked to follow this. It is not your checklist.'}
+                        </p>
+                        <ul className="mt-1 space-y-1 text-sm">
+                          {workOrderRules(job.house, lang).map((line) => (
                             <li key={line}>{line}</li>
                           ))}
                         </ul>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderWhen } from './clean.ts';
+import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -49,6 +49,12 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.match(workOrderEssentials('river').join(' '), /Winter driving/);
   assert.match(workOrderEssentials('lindon').join(' '), /Sundays/);
   assert.equal(/password/i.test(workOrderEssentials('river').join(' ')), false);
+  assert.match(workOrderRules('ranch', 'en').join(' '), /Quiet hours 10 PM to 8 AM/);
+  assert.match(workOrderRules('ranch', 'es').join(' '), /Horas de silencio/);
+  assert.match(workOrderRules('lindon', 'en').join(' '), /No smoking indoors/);
+  assert.match(workOrderRules('river', 'en').join(' '), /mountain neighborhood/);
+  assert.equal(workOrderRules('ranch', 'en').join(' ').includes('hot tub'), false);
+  assert.equal(/password/i.test(workOrderRules('river', 'en').join(' ')), false);
   assert.match(workOrderNotes('ranch')[0] ?? '', /Hot tub/);
   assert.match(workOrderNotes('river').join(' '), /Septic/);
   assert.match(workOrderNotes('river').join(' '), /Provo River/);
