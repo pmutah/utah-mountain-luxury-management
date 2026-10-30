@@ -71,11 +71,17 @@ export function OwnerStatement({
       {statement.months.length > 0 && (
         <div className="uml-panel rounded-3xl p-6" data-bot="owner-months">
           <p className="uml-kicker">Each month</p>
+          <p className="mt-2 text-sm text-[var(--uml-muted)]">Ranch and River on each line add up to that month.</p>
           <ul className="mt-4 space-y-2 text-sm">
             {statement.months.map((row) => (
-              <li key={row.month} className="flex items-baseline justify-between gap-4" data-bot="owner-month">
+              <li key={row.month} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1" data-bot="owner-month">
                 <span>{row.label}</span>
-                <span className="uml-num">{formatCurrency(row.todd)}</span>
+                <span className="text-[var(--uml-muted)]">
+                  Ranch <span className="uml-num" data-bot="owner-month-ranch">{formatCurrency(row.ranch)}</span>
+                  {' · '}
+                  River <span className="uml-num" data-bot="owner-month-river">{formatCurrency(row.river)}</span>
+                </span>
+                <span className="uml-num" data-bot="owner-month-total">{formatCurrency(row.todd)}</span>
               </li>
             ))}
           </ul>

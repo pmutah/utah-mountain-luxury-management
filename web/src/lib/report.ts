@@ -80,6 +80,9 @@ export type MonthlyReportPoint = {
   ranch: number;
   lindon: number;
   river: number;
+  /** This house's profit under the report's owner filter. Todd's report stores his share. */
+  ranchProfit: number;
+  riverProfit: number;
   mortgage: number;
   cleaning: number;
   operating: number;
@@ -573,6 +576,8 @@ export function buildPortfolioReport(
       ranch: revFor('ranch'),
       lindon: revFor('lindon'),
       river: revFor('river'),
+      ranchProfit: monthRows.find((row) => row.propertyId === 'ranch')?.profit ?? 0,
+      riverProfit: monthRows.find((row) => row.propertyId === 'river')?.profit ?? 0,
       mortgage: tot.mortgage,
       cleaning: tot.cleaning,
       operating: tot.operating,

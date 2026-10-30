@@ -112,3 +112,7 @@
 
 - The booking page shows the published house: sleep count, check-in and check-out, arrival, parking, and a few nearby places. Door codes stay off that page.
 - A party larger than the house is refused. The request stays off until the guest count fits and the house rules are read. Nothing is charged.
+
+## 2026-10-29 — owner month by house
+
+- Each month on Todd’s statement shows Ranch and River. Those two shares add up to that month, the months add up to his share, and each house’s lines add up to that house. Lindon stays off the page.
