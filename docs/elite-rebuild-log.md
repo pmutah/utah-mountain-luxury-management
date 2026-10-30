@@ -288,3 +288,7 @@
 ## 2026-10-29 — nearby places grouped on the quote
 
 - The booking page groups nearby places into ski, food, outdoors, family, and before you go. The same order is on the printed house guide.
+
+## 2026-10-29 — nearby groups on the trip sheet
+
+- The trip sheet groups nearby places the same way as the booking page. A place that names a door code or Wi-Fi stays off.

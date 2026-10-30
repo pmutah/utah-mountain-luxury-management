@@ -1,4 +1,5 @@
 import { placeHref, placeSite } from './place-link';
+import type { PlaceKind } from './house-stay';
 
 function longDate(iso: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
@@ -13,7 +14,7 @@ function longDate(iso: string): string {
 
 export type TripNote = { title: string; body: string };
 
-export type TripPlace = { name: string; note: string; area: string; href: string; site: string | null };
+export type TripPlace = { name: string; note: string; area: string; href: string; site: string | null; kind: PlaceKind };
 
 export type TripSheet = {
   house: string;
@@ -47,13 +48,16 @@ function publicNotes(notes: readonly { title?: string; body?: string }[] | undef
     .filter((note) => note.title.length > 0 && note.body.length > 0 && !SECRET.test(`${note.title} ${note.body}`));
 }
 
-function publicNearby(places: readonly { name?: string; note?: string; area?: string; url?: string }[] | undefined): TripPlace[] {
+function publicNearby(
+  places: readonly { name?: string; note?: string; area?: string; url?: string; kind?: string }[] | undefined,
+): TripPlace[] {
   return (places ?? [])
     .map((place) => ({
       name: place.name?.trim() ?? '',
       note: place.note?.trim() ?? '',
       area: place.area?.trim() ?? '',
       url: place.url?.trim() ?? '',
+      kind: place.kind,
     }))
     .filter((place) => place.name.length > 0 && !SECRET.test(`${place.name} ${place.note} ${place.area} ${place.url}`))
     .map((place) => ({
@@ -62,7 +66,12 @@ function publicNearby(places: readonly { name?: string; note?: string; area?: st
       area: place.area,
       href: placeHref(place),
       site: placeSite(place.url),
+      kind: isKind(place.kind) ? place.kind : 'essentials',
     }));
+}
+
+function isKind(value: string | undefined): value is PlaceKind {
+  return value === 'ski' || value === 'food' || value === 'outdoors' || value === 'family' || value === 'essentials';
 }
 
 /** Paper copy of a stay. Door codes and Wi-Fi are not fields on this sheet. */
@@ -77,7 +86,7 @@ export function tripSheet(input: {
   parking?: string;
   rules?: string;
   notes?: readonly { title?: string; body?: string }[];
-  nearby?: readonly { name?: string; note?: string; area?: string; url?: string }[];
+  nearby?: readonly { name?: string; note?: string; area?: string; url?: string; kind?: string }[];
   emergency?: string;
   checkout?: readonly string[];
 }): TripSheet {

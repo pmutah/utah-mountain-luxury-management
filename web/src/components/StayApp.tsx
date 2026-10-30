@@ -5,7 +5,8 @@ import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/j
 import { denverToday } from '../lib/market/dates';
 import { checkoutDoneCount, checkoutSteps, loadCheckoutChecks, saveCheckoutChecks } from '../lib/stay-checkout';
 import { codesReady, loadRuleAck, saveRuleAck } from '../lib/stay-rules';
-import { tripSheet } from '../lib/stay-sheet';
+import { tripSheet, type TripPlace } from '../lib/stay-sheet';
+import { nearbyGroups } from '../lib/house-stay';
 import { guestOffers, loadGroceryList, loadUpsellRequests, saveGroceryList, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { AppIcon } from './AppIcon';
 import { GuestConcierge } from './GuestConcierge';
@@ -32,6 +33,29 @@ const PLACE_KINDS: Array<{ id: GuidePlace['kind'] | 'all'; label: string }> = [
 
 function longDate(iso: string) {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function PlaceGroups({ places, bot }: { places: TripPlace[]; bot: string }) {
+  return (
+    <div className="mt-2 space-y-2 text-sm" data-bot={bot}>
+      {nearbyGroups(places).map((group) => (
+        <div key={group.kind} data-bot={`${bot}-${group.kind}`}>
+          <p className="text-xs uppercase tracking-[0.16em]">{group.label}</p>
+          <ul className="mt-1 space-y-1">
+            {group.places.map((place) => (
+              <li key={`${place.name}-${place.note}`}>
+                <a href={place.href} target="_blank" rel="noreferrer">
+                  {place.name}
+                </a>
+                {place.area ? `, ${place.area}` : ''}. {place.note}
+                {place.site ? ` ${place.site}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function mapsLink(query: string) {
@@ -334,19 +358,7 @@ export function StayApp({ token }: { token: string }) {
                   {sheet.address}
                 </p>
               )}
-              {sheet.nearby.length > 0 && (
-                <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-nearby">
-                  {sheet.nearby.map((place) => (
-                    <li key={`${place.name}-${place.note}`}>
-                      <a href={place.href} target="_blank" rel="noreferrer">
-                        {place.name}
-                      </a>
-                      {place.area ? `, ${place.area}` : ''}. {place.note}
-                      {place.site ? ` ${place.site}` : ''}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {sheet.nearby.length > 0 && <PlaceGroups places={sheet.nearby} bot="stay-sheet-nearby" />}
               {sheet.notes.length > 0 && (
                 <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-notes">
                   {sheet.notes.map((note) => (
@@ -386,17 +398,7 @@ export function StayApp({ token }: { token: string }) {
               <h2 className="text-3xl">{sheet.house}</h2>
               <p>{sheet.when}</p>
               {sheet.address && <p data-bot="stay-sheet-print-address">{sheet.address}</p>}
-              {sheet.nearby.length > 0 && (
-                <ul data-bot="stay-sheet-print-nearby">
-                  {sheet.nearby.map((place) => (
-                    <li key={`${place.name}-${place.note}`}>
-                      {place.name}
-                      {place.area ? `, ${place.area}` : ''}. {place.note}
-                      {place.site ? ` ${place.site}` : ''}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {sheet.nearby.length > 0 && <PlaceGroups places={sheet.nearby} bot="stay-sheet-print-nearby" />}
               <p>{sheet.privateNote}</p>
               {sheet.notes.length > 0 && (
                 <ul data-bot="stay-sheet-print-notes">

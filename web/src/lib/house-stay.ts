@@ -26,7 +26,9 @@ const KIND_LABEL: Record<PlaceKind, string> = {
 const KIND_ORDER: PlaceKind[] = ['ski', 'food', 'outdoors', 'family', 'essentials'];
 
 /** Nearby places in the guest-guide order. An empty group is left off. */
-export function nearbyGroups(places: readonly NearbyPlace[]): Array<{ kind: PlaceKind; label: string; places: NearbyPlace[] }> {
+export function nearbyGroups<T extends { kind: PlaceKind }>(
+  places: readonly T[],
+): Array<{ kind: PlaceKind; label: string; places: T[] }> {
   return KIND_ORDER.map((kind) => ({
     kind,
     label: KIND_LABEL[kind],

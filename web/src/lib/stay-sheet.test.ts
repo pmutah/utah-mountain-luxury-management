@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { nearbyGroups } from './house-stay.ts';
 import { tripSheet } from './stay-sheet.ts';
 
 test('a trip sheet names the arrival and leaves the door code off the paper', () => {
@@ -21,7 +22,7 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
     emergency: 'For a fire, medical emergency, or anyone in danger, call 911 first, then call us.',
     checkout: ['Strip the beds', ' ', 'Door code 9999'],
     nearby: [
-      { name: 'Sundance Mountain Resort', note: 'Your home mountain.', area: 'About 10 minutes up the canyon', url: 'https://www.sundanceresort.com' },
+      { name: 'Sundance Mountain Resort', note: 'Your home mountain.', area: 'About 10 minutes up the canyon', url: 'https://www.sundanceresort.com', kind: 'ski' },
       { name: 'Wi-Fi', note: 'password hidden' },
     ],
   });
@@ -31,7 +32,8 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   assert.match(sheet.privateNote, /not on this paper/);
   assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
   assert.deepEqual(sheet.notes, [{ title: 'Septic', body: 'Only toilet paper goes in the toilets.' }]);
-  assert.equal(sheet.nearby[0]?.name, 'Sundance Mountain Resort');
+  assert.equal(sheet.nearby[0]?.kind, 'ski');
+  assert.equal(nearbyGroups(sheet.nearby)[0]?.label, 'Ski');
   assert.equal(sheet.nearby[0]?.site, 'sundanceresort.com');
   assert.match(sheet.nearby[0]?.href ?? '', /^https:\/\/www\.sundanceresort\.com/);
   assert.equal(/password/i.test(JSON.stringify(sheet.nearby)), false);
