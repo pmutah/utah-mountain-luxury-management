@@ -5,6 +5,7 @@ import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/j
 import { denverToday } from '../lib/market/dates';
 import { checkoutDoneCount, checkoutSteps, loadCheckoutChecks, saveCheckoutChecks } from '../lib/stay-checkout';
 import { codesReady, loadRuleAck, saveRuleAck } from '../lib/stay-rules';
+import { tripSheet } from '../lib/stay-sheet';
 import { guestOffers, loadGroceryList, loadUpsellRequests, saveGroceryList, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { AppIcon } from './AppIcon';
 import { GuestConcierge } from './GuestConcierge';
@@ -228,6 +229,17 @@ export function StayApp({ token }: { token: string }) {
     phase: access.phase,
     nightBeforeFree,
   });
+  const sheet = tripSheet({
+    house,
+    checkIn: data.checkIn,
+    checkOut: data.checkOut,
+    checkInTime: guide.checkInTime,
+    checkOutTime: guide.checkOutTime,
+    arrival: guide.arrival,
+    parking: guide.parking,
+    rules: guide.houseRules,
+    checkout: leaving,
+  });
 
   return (
     <div className="guest-survey min-h-screen pb-24 text-[#f6f1e8]" data-bot="stay-app">
@@ -308,6 +320,40 @@ export function StayApp({ token }: { token: string }) {
                 ))}
               </ol>
             </Card>
+            <Card>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d4b56a]">Trip sheet</p>
+              <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-sheet-when">
+                {sheet.when}
+              </p>
+              <p className="mt-2 text-sm text-white/60" data-bot="stay-sheet-private">
+                {sheet.privateNote}
+              </p>
+              <button
+                type="button"
+                className="mt-4 rounded-full border border-[#d4b56a]/50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
+                data-bot="stay-print"
+                data-print-hide
+                onClick={() => window.print()}
+              >
+                Print
+              </button>
+            </Card>
+            <div className="stay-sheet-source" data-bot="stay-sheet">
+              <p className="text-xs uppercase tracking-widest">Trip sheet</p>
+              <h2 className="text-3xl">{sheet.house}</h2>
+              <p>{sheet.when}</p>
+              <p>{sheet.privateNote}</p>
+              {sheet.arrival && <p>{sheet.arrival}</p>}
+              {sheet.parking && <p>{sheet.parking}</p>}
+              {sheet.rules && <p>{sheet.rules}</p>}
+              {sheet.checkout.length > 0 && (
+                <ul>
+                  {sheet.checkout.map((step, index) => (
+                    <li key={`${index}-${step}`}>{step}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
             {offers.length > 0 && (
               <Card>
                 <Kicker>Add-ons</Kicker>

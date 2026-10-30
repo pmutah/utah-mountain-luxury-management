@@ -113,6 +113,18 @@ body {
   font-weight: 500;
 }
 
+.stay-sheet-source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .guest-survey-hero {
   background:
     radial-gradient(120% 80% at 100% -10%, rgba(212, 181, 106, 0.22), transparent 46%),
@@ -161,5 +173,21 @@ body {
     background: white;
     color: #1c2b27;
     border: 1px solid #1c2b27;
+  }
+  [data-bot="stay-sheet"],
+  [data-bot="stay-sheet"] * {
+    visibility: visible;
+  }
+  .stay-sheet-source {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    color: #1c2b27;
+    background: white;
   }
 }

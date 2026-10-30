@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { tripSheet } from './stay-sheet.ts';
+
+test('a trip sheet names the arrival and leaves the door code off the paper', () => {
+  const sheet = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    arrival: 'The house sits at Vivian Park.',
+    parking: 'Park in the drive.',
+    rules: 'No parties.',
+    checkout: ['Strip the beds', ' '],
+  });
+  assert.equal(sheet.house, 'River House');
+  assert.equal(sheet.when, 'Check-in 4:00 PM on November 6, 2026. Checkout 11:00 AM on November 8, 2026.');
+  assert.match(sheet.privateNote, /not on this paper/);
+  assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
+  assert.deepEqual(sheet.checkout, ['Strip the beds']);
+  assert.equal(Object.hasOwn(sheet, 'doorCode'), false);
+  assert.equal(Object.hasOwn(sheet, 'wifiPassword'), false);
+});

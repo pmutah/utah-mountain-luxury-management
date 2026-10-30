@@ -144,3 +144,7 @@
 ## 2026-10-29 — owner statement file
 
 - Todd can download the Ranch and River statement he already sees. The spreadsheet uses the same month lines. Lindon, household purchases, and construction stay out of the file. Downloading does not change the books.
+
+## 2026-10-29 — guest trip sheet
+
+- The stay app can print a trip sheet with check-in at 4:00 PM and checkout at 11:00 AM. The paper copy leaves the door code and Wi-Fi on the phone. Printing does not change the reservation.
