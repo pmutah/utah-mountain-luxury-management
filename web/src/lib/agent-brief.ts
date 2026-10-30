@@ -1,6 +1,13 @@
 import type { Reservation } from './api';
+import { occupiedByHouse } from './availability';
 import { listingOpportunities } from './listing';
+import { addDays } from './market/dates';
+import type { YearPace } from './market/fill';
+import { buildMarketBoard } from './market/board';
+import { runShadow } from './market/shadow';
 import { SHADOW_DAYS_REQUIRED } from './market/shadow-log';
+import type { HouseId } from './market/types';
+import { grossPace, type PaceStay } from './revenue-goals';
 import { buildTurnovers } from './today';
 
 export type BriefAgent = 'amanda' | 'co-host' | 'nora' | 'muse' | 'build';
@@ -26,7 +33,7 @@ function blankStay(stay: Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'ch
 /** A read-only night brief. It does not claim a job or name a guest. */
 export function agentBrief(input: {
   asOf: string;
-  stays: Array<Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'>>;
+  stays: Array<Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number }>;
   shadowDays: number;
   openJobs: number;
   calendarReady: boolean;
@@ -41,6 +48,7 @@ export function agentBrief(input: {
           : `Shadow day ${days} of ${SHADOW_DAYS_REQUIRED}. Hospitable write closed.`,
     },
   ];
+  if (input.calendarReady) lines.push(...shadowBrief(input.asOf, input.stays));
 
   const turns = input.calendarReady
     ? buildTurnovers(input.stays.map(blankStay), input.asOf).sort(
@@ -93,4 +101,30 @@ export function agentBrief(input: {
     text: 'River build costs stay in the build chat. This brief does not change partner spend.',
   });
   return lines;
+}
+
+const SHADOW_HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
+const SHADOW_LABEL: Record<HouseId, string> = { river: 'River', ranch: 'Ranch', lindon: 'Lindon' };
+
+function shadowBrief(
+  asOf: string,
+  stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number }>,
+): BriefLine[] {
+  const taken = occupiedByHouse(stays, asOf, addDays(asOf, 90));
+  const paceStays: PaceStay[] = stays.map((stay) => ({
+    propertyId: stay.propertyId,
+    checkIn: stay.checkIn,
+    checkOut: stay.checkOut,
+    status: stay.status,
+    payout: Number(stay.payout) || 0,
+  }));
+  return SHADOW_HOUSES.map((house) => {
+    const pace: YearPace = grossPace(house, paceStays, asOf).stillNeeded > 0 ? 'short' : 'met';
+    const run = runShadow(buildMarketBoard(house, asOf, 90), taken[house], false, asOf, pace);
+    const counts = run.counts;
+    return {
+      agent: 'amanda',
+      text: `${SHADOW_LABEL[house]}: ${counts.raise} raises, ${counts.promote} promotions, ${counts.booked} booked left alone, ${counts.closed} closed. Nothing sent.`,
+    };
+  });
 }

@@ -99,3 +99,7 @@
 ## 2026-10-29 — guest checkout list
 
 - The stay page turns the checkout note into steps the guest can check off. The checks stay on that phone. They do not change the reservation.
+
+## 2026-10-29 — shadow counts on the brief
+
+- Amanda’s brief now counts raises, promotions, booked nights left alone, and closed nights for River, Ranch, and Lindon. The lines do not include a dollar amount. Nothing is sent to Hospitable.

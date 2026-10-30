@@ -60,7 +60,7 @@ export function AgentsHub({
         <p className="uml-kicker">Agents</p>
         <h2 className="font-display text-5xl">Who is working</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
-          Five agents already run. Tonight’s brief is read from the calendar and the shadow clock. It does not claim a job, send a text, or change the books.
+          Five agents already run. Tonight’s brief is read from the calendar and the shadow run. It does not claim a job, send a text, or change the books.
         </p>
       </div>
       <div className="uml-panel rounded-3xl p-6" data-bot="agent-brief">
