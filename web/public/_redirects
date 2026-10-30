@@ -2,3 +2,5 @@
 /esign/* /index.html 200
 /book /index.html 200
 /book/* /index.html 200
+/houses /index.html 200
+/houses/* /index.html 200

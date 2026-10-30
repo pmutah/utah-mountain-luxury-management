@@ -28,6 +28,9 @@ const ConstructionProjectView = lazy(() =>
 const DirectBook = lazy(() =>
   import('./components/DirectBook').then((m) => ({ default: m.DirectBook })),
 );
+const HouseSite = lazy(() =>
+  import('./components/HouseSite').then((m) => ({ default: m.HouseSite })),
+);
 const OwnerStatement = lazy(() =>
   import('./components/OwnerStatement').then((m) => ({ default: m.OwnerStatement })),
 );
@@ -397,6 +400,13 @@ export default function App() {
   const esignMatch = window.location.pathname.match(/^\/esign\/([^/]+)/);
   if (esignMatch?.[1]) {
     return <EsignCeremony token={esignMatch[1]} />;
+  }
+  if (window.location.pathname === '/houses' || window.location.pathname.startsWith('/houses/')) {
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <HouseSite />
+      </Suspense>
+    );
   }
   if (window.location.pathname === '/book' || window.location.pathname.startsWith('/book/')) {
     return (

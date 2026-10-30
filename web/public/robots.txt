@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /llms.txt
+Allow: /houses
+Allow: /book
 Allow: /api/agent/map
 Disallow: /api/

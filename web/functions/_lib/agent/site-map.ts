@@ -58,6 +58,8 @@ export const AGENT_SITE_MAP = {
     thisMap: 'GET /api/agent/map',
     market:
       'GET /api/market/overview?house=river|ranch|lindon — top 10 sample comps and a 90-day shadow rate band. Does not change live rates.',
+    publicHouses:
+      'GET /houses and /houses/river|ranch|lindon — public pages from the guest guide. No door codes, no prices, no card. A group larger than the River House links to the two-house quote, which does not hold dates.',
     publicBook:
       'GET /book — guest quote preview from the season rates. GET /api/book/availability returns booked nights only, with no guest names. POST /api/book emails a request and refuses nights that are already booked. It does not charge a card or hold dates.',
     sharedWork:

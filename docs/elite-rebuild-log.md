@@ -465,6 +465,10 @@
 
 - An empty read of the saved expenses cannot replace the ledger. A write that would drop a row other than turnover cleaning is refused. This is on the branch and is not deployed.
 
+## 2026-10-30 — public house pages
+
+- `/houses` lists River, Ranch, and Lindon from the published guest guide. Each page has the photo, the address, the rules, and a link to the quote. The River picture is marked as a rendering. A large party can open the two-house quote. Nothing is charged or held, and door codes stay off the page.
+
 ## 2026-10-30 — Ranch and River together
 
 - A party larger than the River House can quote both houses for the same dates. Twenty-five stay at the River House and the rest at the Ranch House. Each house keeps an adult. The page and the paper show that quote. Nothing is held, charged, or sent. A party that fits one house does not see it.

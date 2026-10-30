@@ -262,7 +262,10 @@ export function DirectBook() {
         </div>
         <p className="mb-8 max-w-2xl text-sm text-[var(--uml-muted)]">
           This is a preview of our own booking page. The quote uses the season rates already on the books.
-          It does not charge a card, and it does not hold the dates. Live direct booking still runs on the Hospitable site.
+          It does not charge a card, and it does not hold the dates. Live direct booking still runs on the Hospitable site.{' '}
+          <a href="/houses" className="underline" data-bot="stay-houses-page">
+            The houses
+          </a>
         </p>
 
         <div className="mb-6 grid gap-3 sm:grid-cols-3" data-bot="stay-houses">
