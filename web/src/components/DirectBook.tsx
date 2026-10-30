@@ -10,6 +10,7 @@ import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
 import { quoteStay, directSavings } from '../lib/quote';
+import { openArrivals } from '../lib/open-arrivals';
 import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
@@ -108,6 +109,10 @@ export function DirectBook() {
   );
   const splitLine = quote.ok && party.ok && guestCount !== null ? splitStayLine(quote.stayTotal, guestCount) : null;
   const saved = quote.ok ? directSavings(quote.channelTotal, quote.stayTotal) : null;
+  const openings = useMemo(
+    () => (calendar === 'live' ? openArrivals(house, taken[house] ?? [], today, pace) : []),
+    [calendar, house, taken, today, pace],
+  );
   const canRequest = directRequestReady({
     quoteOk: quote.ok,
     rulesRead,
@@ -232,6 +237,33 @@ export function DirectBook() {
               >
                 {PROPERTIES[house].address}
               </a>
+              {openings.length > 0 && (
+                <div data-bot="stay-open">
+                  <p className="uml-kicker">Open arrivals</p>
+                  <p className="mt-1 text-xs text-[var(--uml-muted)]">
+                    The shortest stay this page will quote. Picking one fills the dates and does not send a request.
+                  </p>
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {openings.map((item) => (
+                      <li key={item.checkIn}>
+                        <button
+                          type="button"
+                          data-bot="stay-open-pick"
+                          data-in={item.checkIn}
+                          data-out={item.checkOut}
+                          className="rounded-full border border-[var(--uml-line)] px-4 py-2 text-left text-sm"
+                          onClick={() => {
+                            setCheckIn(item.checkIn);
+                            setCheckOut(item.checkOut);
+                          }}
+                        >
+                          {item.label} · {formatWhole(item.direct)}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <StayMonth
                 house={house}
                 taken={taken[house] ?? []}
