@@ -1,3 +1,4 @@
+import { comparePhrase } from '../also-open';
 import { bookingStartSummary } from '../booking-starts';
 import { RIVER_FIRST_STAY } from '../brand';
 import { addonPhrase, lengthPhrase } from '../open-arrivals';
@@ -133,6 +134,8 @@ export function portfolioDigest(input: {
       bookingStartSummary(house, input.taken[house] ?? [], input.asOf, input.pace[house]),
     ).filter((line) => line.length > 0);
     if (starts.length > 0) lines.push(`Booking calendar: ${starts.join(' ')}`);
+    const paceFor = (id: HouseId) => input.pace[id];
+    lines.push(`Other houses: ${PORTFOLIO.map((house) => comparePhrase(house, input.taken, input.asOf, paceFor)).join(' ')}`);
   }
   lines.push('Nothing sent to Hospitable.');
   return lines.join('\n');

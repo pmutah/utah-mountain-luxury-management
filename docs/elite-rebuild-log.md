@@ -356,3 +356,7 @@
 ## 2026-10-30 — open the longer stay
 
 - When another house only needs more nights, the page can open that longer stay. A party that does not fit, and a booked house, stay closed. Nothing is sent.
+
+## 2026-10-30 — other houses on the next arrival
+
+- The market desk, the unsent daily text, and the nightly brief say which other houses will quote the next open arrival. A booked house and a house that is not open yet are named. No prices, and nothing is sent.

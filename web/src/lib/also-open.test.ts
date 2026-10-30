@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { alsoHeld, alsoOpen } from './also-open.ts';
+import { alsoHeld, alsoOpen, comparePhrase } from './also-open.ts';
 import { quoteStay } from './quote.ts';
 
 const pace = () => 'unknown' as const;
@@ -48,4 +48,10 @@ test('the other houses quote the same dates, and a party has to fit', () => {
   assert.equal(ranchLonger?.longer?.checkOut, '2026-11-15');
   assert.equal(river?.longer?.nights, 2);
   assert.equal(river?.longer?.checkOut, '2026-11-15');
+  const compared = comparePhrase('river', {}, '2026-10-29', pace);
+  assert.match(compared, /River: Ranch and Lindon will quote the same dates/);
+  assert.equal(compared.includes('$'), false);
+  const blocked = comparePhrase('ranch', { lindon: ['2026-10-29'] }, '2026-10-29', pace);
+  assert.match(blocked, /Lindon is booked/);
+  assert.match(blocked, /River is not open yet/);
 });

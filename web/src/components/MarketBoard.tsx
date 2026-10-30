@@ -23,6 +23,7 @@ import { listingOpportunities } from '../lib/listing';
 import { bookingStartSummary } from '../lib/booking-starts';
 import { directNight } from '../lib/quote';
 import { shortestStay } from '../lib/shortest-stay';
+import { comparePhrase } from '../lib/also-open';
 import { addonPhrase, openArrivals } from '../lib/open-arrivals';
 import { stayLengths } from '../lib/stay-lengths';
 import { stayLinkSearch } from '../lib/stay-link';
@@ -209,6 +210,12 @@ export function MarketBoard() {
     return stayLengths(house, first.checkIn, taken[house] ?? [], today, pace);
   }, [calendar, openings, house, taken, today, pace]);
   const addons = calendar === 'live' ? addonPhrase(house, taken[house] ?? [], today, pace) : '';
+  const compared = useMemo(() => {
+    if (calendar !== 'live') return '';
+    const paceFor = (id: HouseId): YearPace =>
+      paceState !== 'live' || !stays ? 'unknown' : grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met';
+    return comparePhrase(house, taken, today, paceFor);
+  }, [calendar, house, taken, today, paceState, stays]);
   const starts = useMemo(
     () => (calendar === 'live' ? bookingStartSummary(house, taken[house] ?? [], today, pace) : ''),
     [calendar, house, taken, today, pace],
@@ -395,6 +402,11 @@ export function MarketBoard() {
             {addons && (
               <p className="mt-4 text-sm text-[var(--uml-muted)]" data-bot="market-addons">
                 {addons}. These stay requests. This desk does not send them.
+              </p>
+            )}
+            {compared && (
+              <p className="mt-4 text-sm" data-bot="market-compare">
+                {compared} This desk does not send a request.
               </p>
             )}
           </div>

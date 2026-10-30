@@ -1,5 +1,6 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
+import { comparePhrase } from './also-open';
 import { bookingStartSummary } from './booking-starts';
 import { codesOpenTomorrow } from './house-stay';
 import { agreementBrief } from './stay-agreement';
@@ -68,6 +69,7 @@ export function agentBrief(input: {
     lines.push({ agent: 'co-host', text: lengthBrief(input.asOf, input.stays, input.closed ?? []) });
     lines.push({ agent: 'co-host', text: addonBrief(input.asOf, input.stays, input.closed ?? []) });
     lines.push({ agent: 'co-host', text: startBrief(input.asOf, input.stays, input.closed ?? []) });
+    lines.push({ agent: 'co-host', text: compareBrief(input.asOf, input.stays, input.closed ?? []) });
   }
 
   const turns = input.calendarReady
@@ -211,6 +213,24 @@ function addonBrief(
     return addonPhrase(house, taken[house], asOf, pace);
   });
   return `Add-ons from these bookings: ${parts.join('. ')}.`;
+}
+
+function compareBrief(
+  asOf: string,
+  stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number }>,
+  closed: readonly ClosedSpan[],
+): string {
+  const taken = occupiedByHouse(withClosed(stays, closed), asOf, addDays(asOf, 180));
+  const paceStays: PaceStay[] = stays.map((stay) => ({
+    propertyId: stay.propertyId,
+    checkIn: stay.checkIn,
+    checkOut: stay.checkOut,
+    status: stay.status,
+    payout: Number(stay.payout) || 0,
+  }));
+  const paceFor = (house: HouseId): YearPace => (grossPace(house, paceStays, asOf).stillNeeded > 0 ? 'short' : 'met');
+  const parts = SHADOW_HOUSES.map((house) => comparePhrase(house, taken, asOf, paceFor));
+  return `Other houses from these bookings: ${parts.join(' ')}`;
 }
 
 function startBrief(

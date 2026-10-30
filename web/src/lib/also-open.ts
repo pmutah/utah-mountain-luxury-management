@@ -1,9 +1,11 @@
 import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
+import { openArrivals } from './open-arrivals';
 import { quoteStay } from './quote';
 import { shortestStay } from './shortest-stay';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
+const HOUSE_NAME: Record<HouseId, string> = { river: 'River', ranch: 'Ranch', lindon: 'Lindon' };
 
 export type AlsoOpen = {
   house: HouseId;
@@ -56,7 +58,7 @@ export function alsoHeld(
       ...(guests !== undefined ? { guests } : {}),
     });
     if (quote.ok || !quote.reason) return [];
-    const name = id === 'ranch' ? 'Ranch' : id === 'lindon' ? 'Lindon' : 'River';
+    const name = HOUSE_NAME[id];
     const reason = quote.reason.includes('sleeps') ? quote.reason : `${name}: ${quote.reason}`;
     const blocked = /sleeps|already booked|first stays/i.test(quote.reason);
     const longerStay = blocked
@@ -66,4 +68,29 @@ export function alsoHeld(
     const longer = longerStay && longerStay.nights > asked ? { checkOut: longerStay.checkOut, nights: longerStay.nights } : null;
     return [{ house: id, reason, longer }];
   });
+}
+
+/** How the other houses treat this house's next open arrival. No prices. */
+export function comparePhrase(
+  house: HouseId,
+  taken: Partial<Record<HouseId, readonly string[]>>,
+  asOf: string,
+  paceFor: (house: HouseId) => YearPace,
+): string {
+  const name = HOUSE_NAME[house];
+  const first = openArrivals(house, taken[house] ?? [], asOf, paceFor(house), 1)[0];
+  if (!first) return `${name} has no open arrival to compare.`;
+  const open = alsoOpen(house, first.checkIn, first.checkOut, taken, asOf, paceFor).map((item) => HOUSE_NAME[item.house]);
+  const held = alsoHeld(house, first.checkIn, first.checkOut, taken, asOf, paceFor);
+  const bits: string[] = [];
+  if (open.length > 0) bits.push(`${open.join(' and ')} will quote the same dates`);
+  for (const item of held) {
+    const other = HOUSE_NAME[item.house];
+    if (item.longer) bits.push(`${other} needs ${item.longer.nights} nights`);
+    else if (/already booked/i.test(item.reason)) bits.push(`${other} is booked`);
+    else if (/first stays/i.test(item.reason)) bits.push(`${other} is not open yet`);
+    else if (/sleeps/i.test(item.reason)) bits.push(item.reason);
+    else bits.push(`${other} will not quote these dates`);
+  }
+  return bits.length > 0 ? `${name}: ${bits.join('. ')}.` : `${name} has no other house to compare.`;
 }
