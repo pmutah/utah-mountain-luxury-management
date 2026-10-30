@@ -256,3 +256,7 @@
 ## 2026-10-29 — add-ons stay on the quote link
 
 - The booking link keeps the add-ons that are checked. A name, an email, and an unknown add-on stay off the link. Opening it does not send the request. An add-on the nights cannot take is left off once the calendar is known.
+
+## 2026-10-29 — add-ons on each stay
+
+- The guest list says which add-ons that stay can request. The line has no price and no send. An early arrival stays off when the night before is booked.

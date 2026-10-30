@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { guestOffers, groceryListForSave, houseMenu, quoteOfferNote, quoteOffers, toggleUpsell } from './upsells.ts';
+import { guestOffers, groceryListForSave, hostAddonPhrase, houseMenu, quoteOfferNote, quoteOffers, toggleUpsell } from './upsells.ts';
 
 test('Ranch before an open calendar offers early, late, and the hot tub', () => {
   const ids = guestOffers({
@@ -120,4 +120,57 @@ test('the booking page offers add-ons only when the nights are open', () => {
   }).filter((offer) => offer.id === 'early');
   assert.equal(quoteOfferNote(early), 'Add-on request: Arrive at 1:00 PM. Nothing is charged yet.');
   assert.equal(quoteOfferNote([]), '');
+});
+
+test('the guest list names add-ons for a stay and leaves the price off', () => {
+  assert.equal(
+    hostAddonPhrase({
+      house: 'river',
+      checkIn: '2026-11-06',
+      checkOut: '2026-11-08',
+      asOf: '2026-10-29',
+      taken: [],
+    }),
+    'Can request an early arrival, a later checkout, and a grocery drop. This page does not send that request.',
+  );
+  assert.equal(
+    hostAddonPhrase({
+      house: 'river',
+      checkIn: '2026-12-13',
+      checkOut: '2026-12-15',
+      asOf: '2026-10-29',
+      taken: ['2026-12-12'],
+    }).includes('early'),
+    false,
+  );
+  assert.equal(
+    hostAddonPhrase({
+      house: 'ranch',
+      checkIn: '2026-11-04',
+      checkOut: '2026-11-05',
+      asOf: '2026-10-29',
+      taken: null,
+    }),
+    'Checking the calendar for add-ons.',
+  );
+  assert.equal(
+    hostAddonPhrase({
+      house: 'lindon',
+      checkIn: '2026-10-01',
+      checkOut: '2026-10-03',
+      asOf: '2026-10-29',
+      taken: [],
+    }),
+    'No add-on for this stay.',
+  );
+  assert.equal(
+    hostAddonPhrase({
+      house: 'river',
+      checkIn: '2026-11-06',
+      checkOut: '2026-11-08',
+      asOf: '2026-10-29',
+      taken: [],
+    }).includes('$'),
+    false,
+  );
 });

@@ -9,7 +9,10 @@ import {
 import { GuestStayCard } from './GuestStayCard';
 import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
-import { houseMenu } from '../lib/upsells';
+import { houseMenu, hostAddonPhrase } from '../lib/upsells';
+import { loadBookedNights } from '../lib/booked-nights';
+import { denverToday } from '../lib/market/dates';
+import type { HouseId } from '../lib/market/types';
 
 type HouseFilter = 'all' | 'ranch' | 'lindon' | 'river';
 
@@ -76,6 +79,8 @@ export function GuestsPanel({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [houseFilter, setHouseFilter] = useState<HouseFilter>('all');
   const [houseQuery, setHouseQuery] = useState('');
+  const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
+  const today = denverToday();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,6 +113,18 @@ export function GuestsPanel({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let cancel = false;
+    loadBookedNights()
+      .then((nights) => {
+        if (!cancel) setTaken(nights);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   const byId = useMemo(() => {
     const map = new Map(surveys.map((s) => [s.reservationId, s]));
@@ -181,7 +198,7 @@ export function GuestsPanel({
       <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-upsells">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">Add-ons</p>
         <p className="mt-2 text-sm text-slate-400">
-          Guests can request these from the stay app when the night is open. A request stays on their phone. A grocery list stays on that phone too. Nothing is ordered or charged.
+          Guests can request these from the stay app when the night is open. Each stay below says which of these that stay can request. A request stays on their phone. A grocery list stays on that phone too. Nothing is ordered or charged. This page does not send a request.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {(['ranch', 'lindon', 'river'] as const).map((house) => (
@@ -285,6 +302,17 @@ export function GuestsPanel({
                   {stay.confirmationCode ? ` · ${stay.confirmationCode}` : ''}
                 </p>
                 {stay.note && <p className="text-xs text-slate-400 mt-1">{stay.note}</p>}
+                {stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river' ? (
+                  <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-addons" data-in={stay.checkIn}>
+                    {hostAddonPhrase({
+                      house: stay.propertyId,
+                      checkIn: stay.checkIn,
+                      checkOut: stay.checkOut,
+                      asOf: today,
+                      taken: taken ? (taken[stay.propertyId] ?? []) : null,
+                    })}
+                  </p>
+                ) : null}
               </div>
               <div className="text-right">
                 <p className="text-xs font-black uppercase text-cyan-400">{statusLabel(stay, survey)}</p>

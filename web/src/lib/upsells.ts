@@ -97,6 +97,40 @@ export function quoteOfferNote(offers: readonly UpsellOffer[]): string {
   return `Add-on request: ${offers.map((offer) => offer.name).join(', ')}. Nothing is charged yet.`;
 }
 
+const HOST_SPOKEN: Record<UpsellId, string> = {
+  early: 'an early arrival',
+  late: 'a later checkout',
+  tub: 'the hot tub',
+  groceries: 'a grocery drop',
+};
+
+function spokenList(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+/** What this stay can request. No price and no guest name. */
+export function hostAddonPhrase(input: {
+  house: HouseId;
+  checkIn: string;
+  checkOut: string;
+  asOf: string;
+  taken: readonly string[] | null;
+}): string {
+  if (!input.taken) return 'Checking the calendar for add-ons.';
+  const offers = quoteOffers({
+    house: input.house,
+    checkIn: input.checkIn,
+    checkOut: input.checkOut,
+    asOf: input.asOf,
+    taken: input.taken,
+    calendarLive: true,
+  });
+  if (offers.length === 0) return 'No add-on for this stay.';
+  return `Can request ${spokenList(offers.map((offer) => HOST_SPOKEN[offer.id]))}. This page does not send that request.`;
+}
+
 const STORAGE_KEY = 'uml-upsell-requests';
 
 function readStore(): Record<string, UpsellId[]> {
