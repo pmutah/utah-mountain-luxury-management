@@ -9,6 +9,7 @@ import {
 import { GuestStayCard } from './GuestStayCard';
 import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
+import { hostAccessPhrase } from '../lib/house-stay';
 import { houseMenu, hostAddonPhrase } from '../lib/upsells';
 import { loadBookedNights } from '../lib/booked-nights';
 import { denverToday } from '../lib/market/dates';
@@ -303,15 +304,22 @@ export function GuestsPanel({
                 </p>
                 {stay.note && <p className="text-xs text-slate-400 mt-1">{stay.note}</p>}
                 {stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river' ? (
-                  <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-addons" data-in={stay.checkIn}>
-                    {hostAddonPhrase({
-                      house: stay.propertyId,
-                      checkIn: stay.checkIn,
-                      checkOut: stay.checkOut,
-                      asOf: today,
-                      taken: taken ? (taken[stay.propertyId] ?? []) : null,
-                    })}
-                  </p>
+                  <>
+                    <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-addons" data-in={stay.checkIn}>
+                      {hostAddonPhrase({
+                        house: stay.propertyId,
+                        checkIn: stay.checkIn,
+                        checkOut: stay.checkOut,
+                        asOf: today,
+                        taken: taken ? (taken[stay.propertyId] ?? []) : null,
+                      })}
+                    </p>
+                    {hostAccessPhrase(stay.checkIn, stay.checkOut, today) && (
+                      <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-access" data-in={stay.checkIn}>
+                        {hostAccessPhrase(stay.checkIn, stay.checkOut, today)}
+                      </p>
+                    )}
+                  </>
                 ) : null}
               </div>
               <div className="text-right">

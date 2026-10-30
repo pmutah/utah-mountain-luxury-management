@@ -168,6 +168,16 @@ function longDate(iso: string): string {
   });
 }
 
+/** When this stay's door code opens, without the code. Past stays say the code stays off the list. */
+export function hostAccessPhrase(checkIn: string, checkOut: string, asOf: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOut) || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return null;
+  if (checkOut <= checkIn) return null;
+  if (asOf >= checkOut) return 'This stay has checked out. The door code stays off this list.';
+  const opensOn = addDays(checkIn, -1);
+  if (asOf >= opensOn) return 'The door code can be on the guest phone now. It stays off this list.';
+  return accessLine(checkIn);
+}
+
 /** When the guest phone shows the door code. This page never includes the code. */
 export function accessLine(checkIn: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn)) return null;

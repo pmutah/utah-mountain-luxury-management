@@ -316,3 +316,7 @@
 ## 2026-10-29 — a too-short night cannot start a stay
 
 - A night marked too short cannot be chosen as check-in. It can still be the checkout morning. Nothing is booked.
+
+## 2026-10-29 — when the door code opens, on each stay
+
+- Each stay on the guest list says when the door code opens on the guest phone, or that the stay has checked out. The code stays off the list. Nothing is sent.
