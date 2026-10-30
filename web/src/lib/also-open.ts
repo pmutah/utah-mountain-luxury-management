@@ -1,6 +1,7 @@
 import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
 import { quoteStay } from './quote';
+import { shortestStay } from './shortest-stay';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 
@@ -13,6 +14,8 @@ export type AlsoOpen = {
 export type AlsoHeld = {
   house: HouseId;
   reason: string;
+  /** A longer stay from the same check-in. Absent when the house still will not quote. */
+  longer: { checkOut: string; nights: number } | null;
 };
 
 /** Other houses that will quote these dates. Choosing one does not hold the nights. */
@@ -55,6 +58,12 @@ export function alsoHeld(
     if (quote.ok || !quote.reason) return [];
     const name = id === 'ranch' ? 'Ranch' : id === 'lindon' ? 'Lindon' : 'River';
     const reason = quote.reason.includes('sleeps') ? quote.reason : `${name}: ${quote.reason}`;
-    return [{ house: id, reason }];
+    const blocked = /sleeps|already booked|first stays/i.test(quote.reason);
+    const longerStay = blocked
+      ? null
+      : shortestStay(id, checkIn, taken[id] ?? [], asOf, paceFor(id), guests);
+    const asked = quote.nights.length;
+    const longer = longerStay && longerStay.nights > asked ? { checkOut: longerStay.checkOut, nights: longerStay.nights } : null;
+    return [{ house: id, reason, longer }];
   });
 }

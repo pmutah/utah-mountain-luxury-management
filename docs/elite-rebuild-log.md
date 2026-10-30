@@ -352,3 +352,7 @@
 ## 2026-10-30 — houses that will not quote
 
 - The booking page says why another house will not take the same dates. A party that does not fit, or nights already booked, stays off the offer. Nothing is sent.
+
+## 2026-10-30 — open the longer stay
+
+- When another house only needs more nights, the page can open that longer stay. A party that does not fit, and a booked house, stay closed. Nothing is sent.

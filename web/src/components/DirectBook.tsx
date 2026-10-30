@@ -526,10 +526,28 @@ export function DirectBook() {
                   {held.map((item) => (
                     <li key={item.house} data-bot={`stay-held-${item.house}`}>
                       {item.reason}
+                      {item.longer && (
+                        <button
+                          type="button"
+                          className="ml-2 underline"
+                          data-bot={`stay-held-open-${item.house}`}
+                          data-nights={item.longer.nights}
+                          data-out={item.longer.checkOut}
+                          onClick={() => {
+                            setHouse(item.house);
+                            setCheckOut(item.longer?.checkOut ?? checkOut);
+                            setRulesRead(false);
+                          }}
+                        >
+                          Look at {item.longer.nights} nights
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
-                <p className="mt-1 text-xs text-[var(--uml-muted)]">These houses are not offered. Nothing is sent.</p>
+                <p className="mt-1 text-xs text-[var(--uml-muted)]">
+                  A longer stay can be opened. A party that does not fit stays closed. Nothing is sent.
+                </p>
               </div>
             )}
 

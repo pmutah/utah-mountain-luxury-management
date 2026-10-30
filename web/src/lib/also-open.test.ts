@@ -40,4 +40,12 @@ test('the other houses quote the same dates, and a party has to fit', () => {
   const bookedHeld = alsoHeld('river', '2026-11-01', '2026-11-03', { ranch: ['2026-11-01'] }, '2026-10-29', pace);
   assert.match(bookedHeld[0]?.reason ?? '', /Ranch: Those nights are already booked/);
   assert.equal(held.some((item) => item.reason.includes('$')), false);
+  assert.equal(held.every((item) => item.longer === null), true);
+  const short = alsoHeld('lindon', '2026-11-13', '2026-11-14', {}, '2026-10-30', pace);
+  const ranchLonger = short.find((item) => item.house === 'ranch');
+  const river = short.find((item) => item.house === 'river');
+  assert.equal(ranchLonger?.longer?.nights, 2);
+  assert.equal(ranchLonger?.longer?.checkOut, '2026-11-15');
+  assert.equal(river?.longer?.nights, 2);
+  assert.equal(river?.longer?.checkOut, '2026-11-15');
 });
