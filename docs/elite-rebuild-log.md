@@ -79,3 +79,7 @@
 ## 2026-10-29 — shadow day clock
 
 - Each Denver day the shadow run finishes is saved in this browser. Seven different days are required before a rate can be sent, and a Hospitable write token is still required after that. Opening Market on the same day does not add a second day. Nothing is sent.
+
+## 2026-10-29 — house rules before the door code
+
+- The stay page hides the door code and Wi-Fi until the guest taps that they read the house rules. The tap stays on that phone. It does not sign the stay agreement and does not change the reservation. The guest app stays off until it is turned on for that house.

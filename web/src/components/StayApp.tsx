@@ -3,6 +3,7 @@ import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '..
 import { loadBookedNights } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/journey';
 import { denverToday } from '../lib/market/dates';
+import { codesReady, loadRuleAck, saveRuleAck } from '../lib/stay-rules';
 import { guestOffers, loadUpsellRequests, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { AppIcon } from './AppIcon';
 import { GuestConcierge } from './GuestConcierge';
@@ -93,6 +94,7 @@ export function StayApp({ token }: { token: string }) {
   const [kind, setKind] = useState<GuidePlace['kind'] | 'all'>('all');
   const [previewNights, setPreviewNights] = useState<string[] | null>(null);
   const [requested, setRequested] = useState<UpsellId[]>(() => loadUpsellRequests(token));
+  const [rulesRead, setRulesRead] = useState(() => loadRuleAck(token));
 
   useEffect(() => {
     api
@@ -203,6 +205,7 @@ export function StayApp({ token }: { token: string }) {
       : previewNights
         ? checkoutNightIsFree(data.checkOut, previewNights)
         : null;
+  const showCodes = codesReady({ unlocked: access.unlocked, acknowledged: rulesRead });
   const offers = guestOffers({
     house: data.propertyId,
     phase: access.phase,
@@ -244,9 +247,11 @@ export function StayApp({ token }: { token: string }) {
         )}
         {access.preview && (
           <p className="rounded-2xl bg-[#d4b56a]/15 px-4 py-2 text-sm text-[#d4b56a]">
-            {data.enabled
-              ? `Owner preview. Codes are showing early. The guest sees them on ${longDate(access.opensOn)}.`
-              : `Owner preview. The ${house} guest app is off, so guests only see the preference form. Turn it on in Guests → Guest app.`}
+            {!data.enabled
+              ? `Owner preview. The ${house} guest app is off, so guests only see the preference form. Turn it on in Guests → Guest app.`
+              : showCodes
+                ? `Owner preview. Codes are showing early. The guest sees them on ${longDate(access.opensOn)}.`
+                : `Owner preview. The door code stays hidden until the house rules are read on this phone. The guest sees the code on ${longDate(access.opensOn)}.`}
           </p>
         )}
 
@@ -335,8 +340,10 @@ export function StayApp({ token }: { token: string }) {
             )}
             <Card>
               <Kicker>Getting in</Kicker>
-              {access.unlocked ? (
-                <div className="mt-4 space-y-5">
+              {access.phase === 'after' ? (
+                <p className="mt-3 text-[#d7cfc3]">Thank you for staying with us. We hope to see you again.</p>
+              ) : showCodes ? (
+                <div className="mt-4 space-y-5" data-bot="stay-door">
                   {access.doorCode ? (
                     <CopyValue label="Door code" value={access.doorCode} big />
                   ) : (
@@ -346,12 +353,29 @@ export function StayApp({ token }: { token: string }) {
                   {access.wifiName && <CopyValue label="Wi-Fi network" value={access.wifiName} />}
                   {access.wifiPassword && <CopyValue label="Wi-Fi password" value={access.wifiPassword} />}
                 </div>
-              ) : access.phase === 'after' ? (
-                <p className="mt-3 text-[#d7cfc3]">Thank you for staying with us. We hope to see you again.</p>
               ) : (
-                <p className="mt-3 text-[#d7cfc3]">
-                  Your door code and Wi-Fi appear here on {longDate(access.opensOn)}, the day before check-in.
-                </p>
+                <div className="mt-3 space-y-3" data-bot="stay-rules-gate">
+                  <p className="text-sm leading-relaxed text-[#d7cfc3]">
+                    {access.unlocked
+                      ? 'The door code is ready after you read the house rules.'
+                      : `Your door code and Wi-Fi appear here on ${longDate(access.opensOn)}, the day before check-in, after you read the house rules.`}
+                  </p>
+                  <p className="text-sm leading-relaxed text-[#f6f1e8]">{guide.houseRules}</p>
+                  <p className="text-xs text-white/50">
+                    This stays on this phone. It does not sign the stay agreement, and it does not change the reservation.
+                  </p>
+                  <button
+                    type="button"
+                    className="rounded-full border border-[#d4b56a]/50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
+                    data-bot="stay-rules-read"
+                    onClick={() => {
+                      setRulesRead(true);
+                      saveRuleAck(token, true);
+                    }}
+                  >
+                    I have read the house rules
+                  </button>
+                </div>
               )}
             </Card>
 

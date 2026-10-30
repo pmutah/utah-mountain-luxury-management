@@ -198,6 +198,12 @@ export function GuestsPanel({
           ))}
         </div>
       </section>
+      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-rules">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">House rules</p>
+        <p className="mt-2 text-sm text-slate-400">
+          The door code stays hidden on the guest phone until they tap that they read the house rules. That tap stays on the phone. It does not sign the stay agreement.
+        </p>
+      </section>
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-sm text-slate-400">
         <p>
           Gmail: {gmail.connected ? gmail.email : 'not connected — sign in as utahmountainluxury@gmail.com'}
