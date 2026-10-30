@@ -128,3 +128,7 @@
 ## 2026-10-29 — calendar closed nights
 
 - The booking calendar marks a night Closed before the River House opens, and Booked when it is already taken. An arrival that needs more than one night says so under the month. Nothing is charged.
+
+## 2026-10-29 — minimum stay on the pricing desk
+
+- Market names the booking-page minimum on a shadow move and on the what-if line when that night asks for more than one night. The typed ask still does not change the published rate.

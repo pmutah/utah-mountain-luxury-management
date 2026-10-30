@@ -43,6 +43,7 @@ function groupMoves(nights: NightRow[]) {
     action: NightRow['action'];
     reason: string;
     season: string | null;
+    minNights: number;
     from: number;
     base: number;
     offer: number;
@@ -54,7 +55,8 @@ function groupMoves(nights: NightRow[]) {
       last &&
       addDays(last.last, 1) === night.date &&
       last.action === night.action &&
-      last.reason === night.reason
+      last.reason === night.reason &&
+      last.minNights === night.minNights
     ) {
       last.last = night.date;
       continue;
@@ -65,10 +67,11 @@ function groupMoves(nights: NightRow[]) {
       action: night.action,
       reason: night.reason,
       season: night.season,
-    from: night.ourGuest,
-    base: night.proposedGuest,
-    offer: night.offerGuest,
-  });
+      minNights: night.minNights,
+      from: night.ourGuest,
+      base: night.proposedGuest,
+      offer: night.offerGuest,
+    });
   }
   return groups.slice(0, 6);
 }
@@ -365,6 +368,7 @@ export function MarketBoard() {
                 <p>
                   <span className="text-[#d4b56a]">{dateSpan(move.first, move.last)}</span>
                   {move.season ? ` · ${move.season}` : ''}
+                  {move.minNights > 1 ? ` · at least ${move.minNights} nights` : ''}
                   {move.action === 'raise'
                     ? ` · ${formatWhole(move.from)} → ${formatWhole(move.base)}`
                     : ` · 20% off · ${formatWhole(move.base)} base · ${formatWhole(move.offer)} after`}
@@ -410,6 +414,9 @@ export function MarketBoard() {
               {verdict.note}
               {verdict.wouldRaise && trialNight.action !== 'raise' ? ' The shadow run is not raising this night.' : ''}
               {' '}Floor {formatWhole(trialNight.floorGuest)} · ceiling {formatWhole(trialNight.ourGuest * 2)} · most tonight {formatWhole(verdict.dailyCap)}.
+              {trialNight.action !== 'closed' && trialNight.minNights > 1
+                ? ` Our booking page asks for at least ${trialNight.minNights} nights.`
+                : ''}
             </p>
           </form>
         )}

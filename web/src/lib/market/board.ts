@@ -27,9 +27,9 @@ function compAsk(comp: SampleComp, iso: string): number {
   return Math.round(comp.baseGuest * monthFactor(iso) * weekend * wobble);
 }
 
-function ourGuest(house: HouseId, iso: string): { guest: number; floorGuest: number; season: string | null; lock: boolean } {
+function ourGuest(house: HouseId, iso: string): { guest: number; floorGuest: number; season: string | null; lock: boolean; minNights: number } {
   const ask = nightAsk(house, iso);
-  return { guest: ask.guest, floorGuest: ask.floorGuest, season: ask.season, lock: ask.lock };
+  return { guest: ask.guest, floorGuest: ask.floorGuest, season: ask.season, lock: ask.lock, minNights: ask.minNights };
 }
 
 function scoreComp(comp: SampleComp, house: HouseId): number {
@@ -76,6 +76,7 @@ export function buildMarketBoard(house: HouseId, from: string, days = 90, select
       offerGuest: move.proposedGuest,
       action: move.action,
       reason: move.reason,
+      minNights: ours.minNights,
       compBookedShare: Math.round(((priced.length - openRates.length) / priced.length) * 100),
     };
   });

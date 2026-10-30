@@ -17,6 +17,8 @@ export type NightRow = {
   promotionPercent: 0 | 20;
   /** Guest price after that promotion, never under the floor. Equals proposedGuest when the percent is 0. */
   offerGuest: number;
+  /** Direct booking minimum for this night. One means the house does not add a longer stay. */
+  minNights: number;
   action: 'hold' | 'raise' | 'promote' | 'locked' | 'booked' | 'closed' | 'paused';
   reason: string;
   compBookedShare: number;

@@ -45,6 +45,7 @@ test('the river board prices June weekends above the sample canyon comps', () =>
   assert.equal(friday.season, 'June and July peak');
   assert.ok(friday.ourGuest > friday.median);
   assert.equal(friday.proposedGuest >= friday.ourGuest, true);
+  assert.equal(friday.minNights, 4);
   assert.equal(board.comps.length, 10);
   assert.equal(board.source, 'sample');
 });
