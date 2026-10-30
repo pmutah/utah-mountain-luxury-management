@@ -132,3 +132,7 @@
 ## 2026-10-29 — minimum stay on the pricing desk
 
 - Market names the booking-page minimum on a shadow move and on the what-if line when that night asks for more than one night. The typed ask still does not change the published rate.
+
+## 2026-10-29 — party split on the booking page
+
+- Two or more overnight guests see how the direct stay total splits. Leftover pennies sit on the first shares so the shares add up to the stay. Nothing is charged.

@@ -10,6 +10,7 @@ import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
 import { quoteStay } from '../lib/quote';
+import { splitStayLine } from '../lib/stay-split';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
 import { BrandMark } from './BrandMark';
 import { StayMonth } from './StayMonth';
@@ -94,6 +95,7 @@ export function DirectBook() {
       }),
     [house, checkIn, checkOut, taken, today, pace, guestCount],
   );
+  const splitLine = quote.ok && party.ok && guestCount !== null ? splitStayLine(quote.stayTotal, guestCount) : null;
   const canRequest = directRequestReady({
     quoteOk: quote.ok,
     rulesRead,
@@ -288,6 +290,11 @@ export function DirectBook() {
             {!party.ok && (
               <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-party">
                 {party.reason}
+              </p>
+            )}
+            {splitLine && (
+              <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-split">
+                {splitLine}
               </p>
             )}
 
