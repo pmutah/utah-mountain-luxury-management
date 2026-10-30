@@ -1,4 +1,5 @@
 import { RIVER_FIRST_STAY } from '../brand';
+import { addonPhrase, lengthPhrase } from '../open-arrivals';
 import { promotionForNight, type YearPace } from './fill';
 import { buildMarketBoard } from './board';
 import type { SampleComp } from './fixtures';
@@ -121,6 +122,12 @@ export function portfolioDigest(input: {
     lines.push(
       `${LABEL[house]}: ${run.counts.raise} raises, ${run.counts.promote} promotions, ${run.counts.booked} booked left alone${raiseBit}`,
     );
+  }
+  if (input.calendarLive) {
+    const quote = PORTFOLIO.map((house) => lengthPhrase(house, input.taken[house] ?? [], input.asOf, input.pace[house]));
+    const extras = PORTFOLIO.map((house) => addonPhrase(house, input.taken[house] ?? [], input.asOf, input.pace[house]));
+    lines.push(`Booking page: ${quote.join('. ')}.`);
+    lines.push(`Add-ons: ${extras.join('. ')}.`);
   }
   lines.push('Nothing sent to Hospitable.');
   return lines.join('\n');

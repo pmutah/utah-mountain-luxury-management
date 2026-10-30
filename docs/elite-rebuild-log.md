@@ -280,3 +280,7 @@
 ## 2026-10-29 — a printable house guide
 
 - The booking page can print the house guide. The paper leaves off the request form. It does not hold the dates or charge a card. The door code stays off the paper.
+
+## 2026-10-29 — the daily text names the next quote
+
+- The unsent daily text names the lengths and add-ons the next open arrival can take when the calendar is live. It still ends with nothing sent to Hospitable.
