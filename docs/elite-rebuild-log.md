@@ -75,3 +75,7 @@
 ## 2026-10-29 — cleaner photos
 
 - The clean desk can be read in English or Spanish. The photo line stays open until a room photo is attached in this tab. The photo is not uploaded, and the checklist still does not change a booking or an expense.
+
+## 2026-10-29 — shadow day clock
+
+- Each Denver day the shadow run finishes is saved in this browser. Seven different days are required before a rate can be sent, and a Hospitable write token is still required after that. Opening Market on the same day does not add a second day. Nothing is sent.

@@ -13,8 +13,8 @@ Existing expenses, bookings, receipts, and construction records stay in Cloudfla
 | Market | What-if nightly ask | sample | A typed ask is judged against the floor, the ceiling, and the 8% cap. It does not change the published rate. |
 | Market | Listing opportunities | sample | Titles are on our booking page. A lone weekend night waits until the last week. Photos and card payment stay open. Nothing posts to Airbnb or VRBO. |
 | Market | Shadow rate moves, 8% cap, holiday lock, floors | sample | Does not write Airbnb, VRBO, or Hospitable. |
-| Market | Daily shadow run | sample | One text covers River, Ranch, and Lindon. Booked, closed, and paused nights stay at the published rate. Promotions follow the fill rules. The text is shown and not sent. |
-| Market | Hospitable calendar push | planned | After 7 days of shadow mode and a write token. |
+| Market | Daily shadow run | sample | One text covers River, Ranch, and Lindon. Booked, closed, and paused nights stay at the published rate. Promotions follow the fill rules. Each finished Denver day is saved on this browser, up to seven. The text is shown and not sent. |
+| Market | Hospitable calendar push | planned | Seven saved shadow days and a write token are both required. The write stays closed. |
 | Booking | Our own direct site, beside Hospitable Direct | sample | `/book` quotes the host net, applies the 20% fill rate when the year is short, and emails a request. It does not charge or hold dates. |
 | Guest | Trip portal, lock codes, upsells | sample | The stay app shows the trip steps and an add-on menu. Early arrival and late checkout appear only when that night is open. A request stays on the phone. The app stays off until it is turned on for that house. |
 | Ops | Cleaner desk for the next two weeks | sample | `#/clean` lists turnovers in English or Spanish. The photo line stays open until a room photo is attached in this tab. Checks stay in the browser. Photos are not uploaded. It does not create or delete tasks, bookings, or expenses. |

@@ -8,6 +8,14 @@ import { addDays, denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
 import { forwardWindows, sampleBookedShare } from '../lib/market/forward';
 import { runShadow, portfolioDigest } from '../lib/market/shadow';
+import {
+  hospitablePushAllowed,
+  loadShadowLog,
+  recordShadowDay,
+  saveShadowLog,
+  shadowClock,
+  shadowClockLine,
+} from '../lib/market/shadow-log';
 import { judgeTrial } from '../lib/market/whatif';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
@@ -109,6 +117,7 @@ export function MarketBoard() {
   const [stays, setStays] = useState<PaceStay[] | null>(null);
   const [paceState, setPaceState] = useState<'loading' | 'live' | 'off'>('loading');
   const [compChoices, setCompChoices] = useState(loadCompChoices);
+  const [storedLog] = useState(loadShadowLog);
   const [trial, setTrial] = useState<{ date: string; text: string } | null>(null);
   const today = denverToday();
   const activeComps = useMemo(
@@ -138,6 +147,17 @@ export function MarketBoard() {
       comps: activeComps,
     });
   }, [today, taken, paused, stays, paceState, calendar, activeComps]);
+  const settled = calendar !== 'loading' && paceState !== 'loading';
+  const shadowLog = useMemo(
+    () => (settled ? recordShadowDay(storedLog, today, daily) : storedLog),
+    [settled, storedLog, today, daily],
+  );
+  const clock = shadowClock(shadowLog, today);
+  const pushOpen = hospitablePushAllowed(clock.ready, false);
+  useEffect(() => {
+    if (!settled) return;
+    saveShadowLog(shadowLog);
+  }, [settled, shadowLog]);
   const moves = groupMoves(shadow.nights);
   const choice = compChoices[house];
   const cards = [...board.comps].sort((a, b) => Number(choice.pinned.includes(b.id)) - Number(choice.pinned.includes(a.id)));
@@ -217,6 +237,17 @@ export function MarketBoard() {
         <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6" data-bot="market-daily-text">
           {daily}
         </pre>
+        <p className="mt-3 text-sm" data-bot="market-shadow-clock">
+          {settled ? shadowClockLine(clock) : 'This Denver day is counted once the calendar check finishes.'}
+        </p>
+        <p className="mt-1 text-sm text-[var(--uml-muted)]" data-bot="market-shadow-dates">
+          {clock.dates.length === 0
+            ? 'No shadow day is saved on this browser yet.'
+            : `Saved on this browser: ${clock.dates.map(shortDate).join(', ')}.`}
+        </p>
+        <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="market-shadow-push">
+          {pushOpen ? 'Hospitable write open.' : 'Hospitable write closed.'}
+        </p>
       </div>
       <div className="uml-panel rounded-3xl p-5 sm:p-6">
         <p className="uml-kicker">Market</p>
