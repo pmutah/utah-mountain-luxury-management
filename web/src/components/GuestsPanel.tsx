@@ -181,7 +181,7 @@ export function GuestsPanel({
       <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-upsells">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">Add-ons</p>
         <p className="mt-2 text-sm text-slate-400">
-          Guests can request these from the stay app when the night is open. A request stays on their phone. Nothing is charged.
+          Guests can request these from the stay app when the night is open. A request stays on their phone. A grocery list stays on that phone too. Nothing is ordered or charged.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {(['ranch', 'lindon', 'river'] as const).map((house) => (

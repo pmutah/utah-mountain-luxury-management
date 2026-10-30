@@ -5,7 +5,7 @@ import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/j
 import { denverToday } from '../lib/market/dates';
 import { checkoutDoneCount, checkoutSteps, loadCheckoutChecks, saveCheckoutChecks } from '../lib/stay-checkout';
 import { codesReady, loadRuleAck, saveRuleAck } from '../lib/stay-rules';
-import { guestOffers, loadUpsellRequests, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
+import { guestOffers, loadGroceryList, loadUpsellRequests, saveGroceryList, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { AppIcon } from './AppIcon';
 import { GuestConcierge } from './GuestConcierge';
 import { GuestPreferenceForm } from './GuestPreferenceForm';
@@ -95,6 +95,7 @@ export function StayApp({ token }: { token: string }) {
   const [kind, setKind] = useState<GuidePlace['kind'] | 'all'>('all');
   const [previewNights, setPreviewNights] = useState<string[] | null>(null);
   const [requested, setRequested] = useState<UpsellId[]>(() => loadUpsellRequests(token));
+  const [groceryList, setGroceryList] = useState(() => loadGroceryList(token));
   const [rulesRead, setRulesRead] = useState(() => loadRuleAck(token));
   const [checkoutOn, setCheckoutOn] = useState<boolean[]>(() => loadCheckoutChecks(token));
 
@@ -317,25 +318,46 @@ export function StayApp({ token }: { token: string }) {
                   {offers.map((offer) => {
                     const on = requested.includes(offer.id);
                     return (
-                      <li key={offer.id} className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-lg">{offer.name}</p>
-                          <p className="text-sm leading-relaxed text-[#d7cfc3]">{offer.detail}</p>
-                          <p className="mt-1 text-sm text-[#d4b56a]">${offer.price}</p>
+                      <li key={offer.id} className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-lg">{offer.name}</p>
+                            <p className="text-sm leading-relaxed text-[#d7cfc3]">{offer.detail}</p>
+                            <p className="mt-1 text-sm text-[#d4b56a]">${offer.price}</p>
+                          </div>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-full border border-[#d4b56a]/50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
+                            data-bot={`stay-upsell-${offer.id}`}
+                            aria-pressed={on}
+                            onClick={() => {
+                              const next = toggleUpsell(requested, offer.id);
+                              setRequested(next);
+                              saveUpsellRequests(token, next);
+                            }}
+                          >
+                            {on ? 'Requested' : 'Request'}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          className="shrink-0 rounded-full border border-[#d4b56a]/50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
-                          data-bot={`stay-upsell-${offer.id}`}
-                          aria-pressed={on}
-                          onClick={() => {
-                            const next = toggleUpsell(requested, offer.id);
-                            setRequested(next);
-                            saveUpsellRequests(token, next);
-                          }}
-                        >
-                          {on ? 'Requested' : 'Request'}
-                        </button>
+                        {offer.id === 'groceries' && on && (
+                          <label className="block text-sm">
+                            Grocery list
+                            <textarea
+                              className="mt-2 min-h-24 w-full rounded-2xl border border-white/15 bg-transparent px-4 py-3 text-[#f6f1e8]"
+                              data-bot="stay-grocery-list"
+                              value={groceryList}
+                              placeholder="Milk, eggs, coffee"
+                              onChange={(event) => {
+                                const next = event.target.value.slice(0, 400);
+                                setGroceryList(next);
+                                saveGroceryList(token, next);
+                              }}
+                            />
+                            <span className="mt-2 block text-xs text-white/50" data-bot="stay-grocery-note">
+                              This list stays on this phone. Nothing is ordered or charged.
+                            </span>
+                          </label>
+                        )}
                       </li>
                     );
                   })}

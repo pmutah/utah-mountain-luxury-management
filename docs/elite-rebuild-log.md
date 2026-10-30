@@ -116,3 +116,7 @@
 ## 2026-10-29 — owner month by house
 
 - Each month on Todd’s statement shows Ranch and River. Those two shares add up to that month, the months add up to his share, and each house’s lines add up to that house. Lindon stays off the page.
+
+## 2026-10-29 — grocery list on the stay
+
+- A River guest can write a grocery list with the canyon drop request. The list stays on that phone. Nothing is ordered or charged.

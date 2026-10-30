@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { guestOffers, houseMenu, toggleUpsell } from './upsells.ts';
+import { guestOffers, groceryListForSave, houseMenu, toggleUpsell } from './upsells.ts';
 
 test('Ranch before an open calendar offers early, late, and the hot tub', () => {
   const ids = guestOffers({
@@ -67,6 +67,12 @@ test('the host menu keeps every offer for that house', () => {
   );
   assert.equal(houseMenu('river').some((offer) => offer.id === 'groceries'), true);
   assert.equal(houseMenu('ranch').some((offer) => offer.id === 'tub'), true);
+});
+
+test('a grocery list stays short and a blank one is dropped', () => {
+  assert.equal(groceryListForSave('   '), '');
+  assert.equal(groceryListForSave('  milk, eggs  '), '  milk, eggs  ');
+  assert.equal(groceryListForSave('a'.repeat(500)).length, 400);
 });
 
 test('a request toggles on and off', () => {
