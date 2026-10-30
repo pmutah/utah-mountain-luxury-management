@@ -3,6 +3,7 @@ import { nightAsk } from './market/rates';
 import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
 import { quoteStay } from './quote';
+import { stayLengths } from './stay-lengths';
 
 export type OpenArrival = {
   checkIn: string;
@@ -83,4 +84,20 @@ export function nextOpenPhrase(house: HouseId, taken: readonly string[], asOf: s
   });
   const nights = first.nights === 1 ? '1 night' : `${first.nights} nights`;
   return `${name} ${when} for ${nights}`;
+}
+
+/** Lengths the booking page can quote from the next open arrival. No price. */
+export function lengthPhrase(house: HouseId, taken: readonly string[], asOf: string, pace: YearPace): string {
+  const name = HOUSE_NAME[house];
+  const first = openArrivals(house, taken, asOf, pace, 1)[0];
+  if (!first) return `${name} has no length to quote in the next six months`;
+  const [year, month, day] = first.checkIn.split('-').map(Number);
+  const when = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+  const lengths = stayLengths(house, first.checkIn, taken, asOf, pace);
+  const nights = lengths ? lengths.choices.map((choice) => choice.nights).join(', ') : String(first.nights);
+  return `${name} ${when} can quote ${nights} nights`;
 }

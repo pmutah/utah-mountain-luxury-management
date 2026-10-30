@@ -10,6 +10,7 @@ const CHOICES = [2, 3, 4, 7, 14, 28];
 export type StayLengthChoice = {
   nights: number;
   checkOut: string;
+  direct: number;
 };
 
 export type StayLengths = {
@@ -37,7 +38,7 @@ export function stayLengths(
   for (const nights of wanted) {
     const quote = quoteStay(house, checkIn, addDays(checkIn, nights), taken, options);
     if (!quote.ok) continue;
-    choices.push({ nights: quote.nights.length, checkOut: quote.checkOut });
+    choices.push({ nights: quote.nights.length, checkOut: quote.checkOut, direct: quote.stayTotal });
   }
   if (choices.length < 2) return null;
   return { through: cap.through, choices };

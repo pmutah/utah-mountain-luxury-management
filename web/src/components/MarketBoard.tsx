@@ -22,6 +22,7 @@ import { formatWhole } from '../lib/luxury';
 import { listingOpportunities } from '../lib/listing';
 import { directNight } from '../lib/quote';
 import { openArrivals } from '../lib/open-arrivals';
+import { stayLengths } from '../lib/stay-lengths';
 import { stayLinkSearch } from '../lib/stay-link';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
 
@@ -200,6 +201,11 @@ export function MarketBoard() {
     () => (calendar === 'live' ? openArrivals(house, taken[house] ?? [], today, pace) : []),
     [calendar, house, taken, today, pace],
   );
+  const lengths = useMemo(() => {
+    const first = openings[0];
+    if (calendar !== 'live' || !first) return null;
+    return stayLengths(house, first.checkIn, taken[house] ?? [], today, pace);
+  }, [calendar, openings, house, taken, today, pace]);
 
   function writeChoice(next: CompChoice) {
     const all = { ...compChoices, [house]: next };
@@ -348,6 +354,33 @@ export function MarketBoard() {
                 </li>
               ))}
             </ul>
+            {lengths && (
+              <div className="mt-4" data-bot="market-lengths">
+                <p className="text-sm text-[var(--uml-muted)]">
+                  Lengths our booking page can quote from the first open arrival. Opening one does not send a request.
+                </p>
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {lengths.choices.map((choice) => (
+                    <li key={choice.checkOut}>
+                      <a
+                        className="inline-block rounded-full border border-[var(--uml-line)] px-4 py-2 text-sm"
+                        data-bot="market-length"
+                        data-nights={choice.nights}
+                        data-out={choice.checkOut}
+                        href={`/book${stayLinkSearch({
+                          house,
+                          checkIn: openings[0]?.checkIn ?? '',
+                          checkOut: choice.checkOut,
+                          guests: '',
+                        })}`}
+                      >
+                        {choice.nights === 1 ? '1 night' : `${choice.nights} nights`} · {formatWhole(choice.direct)}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

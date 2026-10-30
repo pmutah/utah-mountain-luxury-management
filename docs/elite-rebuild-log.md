@@ -228,3 +228,7 @@
 ## 2026-10-29 — choose a length inside the open stretch
 
 - The booking page lists the lengths a check-in can quote, from the shortest stay to the open stretch. A length that fails the minimum is left off. Choosing one fills the checkout and does not send a request.
+
+## 2026-10-29 — length choices on the market desk
+
+- The market desk and the nightly brief list the lengths the next open arrival can quote. The brief leaves the price off. Opening a length on the desk does not send a request, and nothing is sent to Hospitable.

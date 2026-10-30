@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { openArrivals, nextOpenPhrase } from './open-arrivals.ts';
+import { openArrivals, nextOpenPhrase, lengthPhrase } from './open-arrivals.ts';
 import { quoteStay } from './quote.ts';
+import { stayLengths } from './stay-lengths.ts';
 
 test('the next open arrival is a stay the booking page will quote', () => {
   const openings = openArrivals('river', [], '2026-10-29', 'short');
@@ -16,6 +17,9 @@ test('the next open arrival is a stay the booking page will quote', () => {
   assert.equal(openings[1]?.checkIn, '2026-11-03');
   assert.equal(openings.every((item) => item.checkIn >= '2026-11-01'), true);
   assert.equal(nextOpenPhrase('river', [], '2026-10-29', 'short'), 'River Nov 1 for 2 nights');
+  assert.equal(lengthPhrase('river', [], '2026-10-29', 'short'), 'River Nov 1 can quote 2, 3, 4, 7, 14, 28 nights');
+  const week = stayLengths('river', '2026-11-01', [], '2026-10-29', 'short')?.choices.find((choice) => choice.nights === 7);
+  assert.equal(week?.direct, quoteStay('river', '2026-11-01', '2026-11-08', [], { asOf: '2026-10-29', pace: 'short' }).stayTotal);
 });
 
 test('a booked stay is skipped and a Ranch weekday can be one night', () => {
