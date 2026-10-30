@@ -11,6 +11,8 @@ function longDate(iso: string): string {
 
 export type TripNote = { title: string; body: string };
 
+export type TripPlace = { name: string; note: string };
+
 export type TripSheet = {
   house: string;
   when: string;
@@ -20,6 +22,7 @@ export type TripSheet = {
   parking: string;
   rules: string;
   notes: TripNote[];
+  nearby: TripPlace[];
   emergency: string;
   checkout: string[];
 };
@@ -42,6 +45,12 @@ function publicNotes(notes: readonly { title?: string; body?: string }[] | undef
     .filter((note) => note.title.length > 0 && note.body.length > 0 && !SECRET.test(`${note.title} ${note.body}`));
 }
 
+function publicNearby(places: readonly { name?: string; note?: string }[] | undefined): TripPlace[] {
+  return (places ?? [])
+    .map((place) => ({ name: place.name?.trim() ?? '', note: place.note?.trim() ?? '' }))
+    .filter((place) => place.name.length > 0 && !SECRET.test(`${place.name} ${place.note}`));
+}
+
 /** Paper copy of a stay. Door codes and Wi-Fi are not fields on this sheet. */
 export function tripSheet(input: {
   house: string;
@@ -54,6 +63,7 @@ export function tripSheet(input: {
   parking?: string;
   rules?: string;
   notes?: readonly { title?: string; body?: string }[];
+  nearby?: readonly { name?: string; note?: string }[];
   emergency?: string;
   checkout?: readonly string[];
 }): TripSheet {
@@ -66,6 +76,7 @@ export function tripSheet(input: {
     parking: input.parking?.trim() ?? '',
     rules: input.rules?.trim() ?? '',
     notes: publicNotes(input.notes),
+    nearby: publicNearby(input.nearby),
     emergency: publicEmergency(input.emergency),
     checkout: publicCheckout(input.checkout),
   };

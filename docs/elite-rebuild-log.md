@@ -260,3 +260,7 @@
 ## 2026-10-29 — add-ons on each stay
 
 - The guest list says which add-ons that stay can request. The line has no price and no send. An early arrival stays off when the night before is booked.
+
+## 2026-10-29 — nearby places on the trip sheet
+
+- The printed trip sheet lists the nearby places from the guest guide. A place that names a door code or Wi-Fi is left off. Printing does not change a reservation.

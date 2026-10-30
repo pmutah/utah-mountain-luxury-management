@@ -240,6 +240,7 @@ export function StayApp({ token }: { token: string }) {
     parking: guide.parking,
     rules: guide.houseRules,
     notes: guide.sections,
+    nearby: guide.places,
     emergency: guide.emergency,
     checkout: leaving,
   });
@@ -333,6 +334,15 @@ export function StayApp({ token }: { token: string }) {
                   {sheet.address}
                 </p>
               )}
+              {sheet.nearby.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-nearby">
+                  {sheet.nearby.map((place) => (
+                    <li key={`${place.name}-${place.note}`}>
+                      {place.name}. {place.note}
+                    </li>
+                  ))}
+                </ul>
+              )}
               {sheet.notes.length > 0 && (
                 <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-notes">
                   {sheet.notes.map((note) => (
@@ -372,6 +382,15 @@ export function StayApp({ token }: { token: string }) {
               <h2 className="text-3xl">{sheet.house}</h2>
               <p>{sheet.when}</p>
               {sheet.address && <p data-bot="stay-sheet-print-address">{sheet.address}</p>}
+              {sheet.nearby.length > 0 && (
+                <ul data-bot="stay-sheet-print-nearby">
+                  {sheet.nearby.map((place) => (
+                    <li key={`${place.name}-${place.note}`}>
+                      {place.name}. {place.note}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <p>{sheet.privateNote}</p>
               {sheet.notes.length > 0 && (
                 <ul data-bot="stay-sheet-print-notes">
