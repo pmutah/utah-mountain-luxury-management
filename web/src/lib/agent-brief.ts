@@ -3,7 +3,7 @@ import { occupiedByHouse } from './availability';
 import { nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals';
 import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
-import { workOrderWhen } from './clean';
+import { workOrderWhen, guestLeavingLine } from './clean';
 import { listingOpportunities } from './listing';
 import { addDays } from './market/dates';
 import type { YearPace } from './market/fill';
@@ -91,6 +91,7 @@ export function agentBrief(input: {
   if (turns.length > shown.length) {
     lines.push({ agent: 'co-host', text: `${turns.length - shown.length} more checkouts in the next two weeks.` });
   }
+  if (input.calendarReady) lines.push({ agent: 'co-host', text: guestLeavingLine() });
   for (const fix of (input.fixes ?? []).slice(0, 3)) {
     lines.push({
       agent: 'co-host',

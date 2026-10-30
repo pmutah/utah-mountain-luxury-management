@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, jobDoneCount, workOrderNotes, workOrderPlace, workOrderWhen } from './clean.ts';
+import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderLeaving, workOrderNotes, workOrderPlace, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -48,5 +48,11 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.match(workOrderNotes('river').join(' '), /Provo River/);
   assert.equal(workOrderNotes('lindon').length, 0);
   assert.equal(workOrderNotes('river').join(' ').toLowerCase().includes('password'), false);
+  assert.equal(workOrderLeaving('en')[0], 'Start the dishwasher.');
+  assert.equal(workOrderLeaving('en').length, 5);
+  assert.equal(workOrderLeaving('es')[0], 'Enciende el lavavajillas.');
+  assert.equal(/door code|wi-fi|password/i.test(workOrderLeaving('en').join(' ')), false);
+  assert.equal(/door code|wi-fi|password/i.test(guestLeavingLine()), false);
+  assert.match(guestLeavingLine(), /start the dishwasher/);
   assert.match(workOrderWhen('ranch', true, 'es'), /11:00 AM/);
 });

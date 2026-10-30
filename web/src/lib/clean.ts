@@ -62,6 +62,28 @@ export function workOrderNotes(house: HouseId): string[] {
     .map((note) => `${note.title}. ${note.body}`);
 }
 
+const LEAVING_ES: Record<string, string> = {
+  'Start the dishwasher.': 'Enciende el lavavajillas.',
+  'Put used towels in the laundry room.': 'Pon las toallas usadas en el cuarto de lavado.',
+  'Take kitchen trash to the outside bins.': 'Lleva la basura de la cocina a los botes de afuera.',
+  'Turn off lights and the fireplace, close windows.': 'Apaga las luces y la chimenea, y cierra las ventanas.',
+  'Lock the door behind you. The lock will reset for the next guests.':
+    'Cierra la puerta al salir. La cerradura se reinicia para los siguientes huéspedes.',
+};
+
+/** What the guest was asked to do before leaving. This is not the cleaner checklist. */
+export function workOrderLeaving(lang: CleanLang): string[] {
+  return houseStay('ranch').checkout
+    .map((step) => step.trim())
+    .filter((step) => step.length > 0 && !/door\s*code|wi-?fi|password/i.test(step))
+    .map((step) => (lang === 'es' ? (LEAVING_ES[step] ?? step) : step));
+}
+
+/** One brief line. No door code. */
+export function guestLeavingLine(): string {
+  return 'Before checkout the guest was asked to start the dishwasher, put used towels in the laundry room, take the kitchen trash out, turn off the lights and the fireplace, and lock the door.';
+}
+
 /** The photo line counts only after a room photo is attached and the box is checked. */
 export function stepDone(stepId: string, checked: boolean, photoCount: number): boolean {
   if (stepId === 'photos') return checked && photoCount > 0;

@@ -248,3 +248,7 @@
 ## 2026-10-29 — add-ons on the market desk and the brief
 
 - The market desk and the nightly brief name the add-ons the next open arrival can request. The lines have no prices. The desk does not send the request.
+
+## 2026-10-29 — guest checkout steps on the work order
+
+- The cleaner work order lists what the guest was asked to do before leaving, in English or Spanish. That list is not the cleaner checklist. A step that names a door code or Wi-Fi is left off. The nightly brief says the same steps once.
