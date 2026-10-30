@@ -208,3 +208,7 @@
 ## 2026-10-29 — where the stays on the books were booked
 
 - Todd’s page and the nightly brief say how many Ranch and River stays still on the books came from Airbnb, VRBO, or somewhere else. Names and payouts stay off that line. It does not change a booking, and nothing is sent to Hospitable.
+
+## 2026-10-29 — the open stretch before the next stay
+
+- Todd’s page and the nightly brief name the next open stretch on Ranch and River. River nights before November 1 are left out. Names and payouts stay off that line. It does not change a booking.

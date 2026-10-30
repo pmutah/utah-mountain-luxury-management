@@ -2,6 +2,14 @@ import type { Reservation } from './api';
 import { addDays } from './market/dates';
 import { channelLabel, type ChannelName } from './report';
 
+export type OwnerGap = {
+  start: string;
+  nights: number;
+  until: string;
+  startLabel: string;
+  untilLabel: string;
+};
+
 export type OwnerAheadHouse = {
   id: 'ranch' | 'river';
   name: string;
@@ -9,6 +17,7 @@ export type OwnerAheadHouse = {
   coming: number;
   nights: number;
   nextArrival: string | null;
+  gaps: OwnerGap[];
 };
 
 export type AheadChannel = {
@@ -47,6 +56,52 @@ function nightsLeft(checkIn: string, checkOut: string, asOf: string): number {
   return nights;
 }
 
+const HORIZON_NIGHTS = 120;
+
+function shortDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function openGaps(houseId: 'ranch' | 'river', stays: readonly AheadStay[], asOf: string): OwnerGap[] {
+  const horizon = addDays(asOf, HORIZON_NIGHTS);
+  const taken = new Set<string>();
+  for (const stay of stays) {
+    if (!stillOn(stay, asOf, houseId)) continue;
+    let night = stay.checkIn > asOf ? stay.checkIn : asOf;
+    while (night < stay.checkOut && night < horizon) {
+      taken.add(night);
+      night = addDays(night, 1);
+    }
+  }
+  const found: OwnerGap[] = [];
+  let cursor = houseId === 'river' && asOf < '2026-11-01' ? '2026-11-01' : asOf;
+  while (cursor < horizon && found.length < 2) {
+    if (taken.has(cursor)) {
+      cursor = addDays(cursor, 1);
+      continue;
+    }
+    const start = cursor;
+    let nights = 0;
+    while (cursor < horizon && !taken.has(cursor)) {
+      nights += 1;
+      cursor = addDays(cursor, 1);
+    }
+    found.push({
+      start,
+      nights,
+      until: cursor,
+      startLabel: longDate(start),
+      untilLabel: longDate(cursor),
+    });
+  }
+  return found;
+}
+
 function isDate(value: string | undefined): value is string {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
@@ -79,6 +134,7 @@ export function ownerAhead(stays: readonly AheadStay[], asOf: string): OwnerAhea
       coming: coming.length,
       nights: mine.reduce((sum, stay) => sum + nightsLeft(stay.checkIn, stay.checkOut, asOf), 0),
       nextArrival: next ? longDate(next) : null,
+      gaps: openGaps(house.id, stays, asOf),
     };
   });
   const counted = stays.filter((stay) => stillOn(stay, asOf));
@@ -104,4 +160,20 @@ export function aheadChannelsLine(ahead: OwnerAhead): string {
     .map((channel) => `${channel.stays} ${channel.name === 'Other' ? 'other' : channel.name}`);
   if (parts.length === 0) return 'Nothing still on the books.';
   return `Where they booked: ${parts.join(', ')}.`;
+}
+
+export function gapLine(name: string, gap: OwnerGap): string {
+  const nights = gap.nights === 1 ? '1 night' : `${gap.nights} nights`;
+  return `${name} is open ${gap.startLabel} for ${nights}, until ${gap.untilLabel}.`;
+}
+
+/** First open stretch on Ranch and River. No payouts. */
+export function gapBrief(ahead: OwnerAhead): string {
+  const parts = ahead.houses.map((house) => {
+    const gap = house.gaps[0];
+    if (!gap) return `${house.name} has no open stretch in the next 120 nights`;
+    const nights = gap.nights === 1 ? '1 night' : `${gap.nights} nights`;
+    return `${house.name} ${shortDate(gap.start)} for ${nights}`;
+  });
+  return `Open stretch from these bookings: ${parts.join('. ')}.`;
 }

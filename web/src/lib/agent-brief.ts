@@ -1,7 +1,7 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
 import { nextOpenPhrase } from './open-arrivals';
-import { aheadChannelsLine, ownerAhead } from './owner-ahead';
+import { aheadChannelsLine, gapBrief, ownerAhead } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
 import { workOrderWhen } from './clean';
 import { listingOpportunities } from './listing';
@@ -58,6 +58,7 @@ export function agentBrief(input: {
   if (input.calendarReady) lines.push(...shadowBrief(input.asOf, input.stays));
   if (input.calendarReady) {
     lines.push({ agent: 'co-host', text: aheadChannelsLine(ownerAhead(input.stays, input.asOf)) });
+    lines.push({ agent: 'co-host', text: gapBrief(ownerAhead(input.stays, input.asOf)) });
     lines.push({ agent: 'co-host', text: nextOpenBrief(input.asOf, input.stays) });
   }
 

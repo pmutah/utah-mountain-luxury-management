@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { aheadChannelsLine, aheadLine, ownerAhead } from './owner-ahead.ts';
+import { aheadChannelsLine, aheadLine, gapBrief, gapLine, ownerAhead } from './owner-ahead.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { id: 's', guestName: 'Secret Guest', source: 'Airbnb', payout: 99999, ...partial };
@@ -32,6 +32,15 @@ test('ahead counts Ranch and River nights still left and leaves names off', () =
   assert.equal(aheadLine(ranch!), 'Ranch: 1 stay in the house, 1 still to come, 4 nights left. Next arrival November 4, 2026.');
   assert.equal(aheadLine(river!), 'River: 0 stays in the house, 1 still to come, 2 nights left. Next arrival November 10, 2026.');
   assert.equal(aheadChannelsLine(ahead), 'Where they booked: 1 Airbnb, 1 VRBO, 1 other.');
+  assert.equal(ranch?.gaps[0]?.start, '2026-10-31');
+  assert.equal(ranch?.gaps[0]?.nights, 4);
+  assert.equal(ranch?.gaps[0]?.until, '2026-11-04');
+  assert.equal(ranch?.gaps[1]?.start, '2026-11-06');
+  assert.equal(river?.gaps[0]?.start, '2026-11-01');
+  assert.equal(river?.gaps[0]?.nights, 9);
+  assert.equal(river?.gaps[0]?.until, '2026-11-10');
+  assert.match(gapLine('Ranch', ranch!.gaps[0]!), /October 31, 2026 for 4 nights, until November 4, 2026/);
+  assert.match(gapBrief(ahead), /Ranch Oct 31 for 4 nights\. River Nov 1 for 9 nights/);
   const text = JSON.stringify(ahead);
   assert.equal(text.includes('Secret Guest'), false);
   assert.equal(text.includes('99999'), false);

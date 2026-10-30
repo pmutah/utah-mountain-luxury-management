@@ -20,6 +20,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /Shadow day 1 of 7/);
   assert.match(text, /Hospitable write closed/);
   assert.match(text, /Where they booked: 1 Airbnb, 1 VRBO/);
+  assert.match(text, /Open stretch from these bookings: Ranch Nov 8 for \d+ nights\. River Nov 1 for 120 nights/);
   assert.match(text, /Next open arrival from these bookings: River Nov 1 for 2 nights\. Ranch Nov 8 for 1 night\. Lindon Nov 7 for 1 night\./);
   assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
@@ -52,6 +53,7 @@ test('seven shadow days still leave the write closed', () => {
   assert.match(text, /Hospitable write closed/);
   assert.match(text, /No checkouts in the next two weeks/);
   assert.match(text, /Nothing still on the books/);
+  assert.match(text, /Open stretch from these bookings: Ranch Nov 1 for 120 nights\. River Nov 1 for 120 nights/);
   assert.match(text, /Next open arrival from these bookings: River Nov 1 for 2 nights\. Ranch Nov 1 for 1 night\. Lindon Nov 1 for 1 night\./);
   assert.match(text, /No shared jobs are open/);
 });
