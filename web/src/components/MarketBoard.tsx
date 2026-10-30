@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { chooseComps, loadCompChoices, saveCompChoices, type CompChoice } from '../lib/market/comps';
 import { benchFor, compsFor } from '../lib/market/fixtures';
+import { RIVER_FIRST_STAY } from '../lib/brand';
 import { buildMarketBoard } from '../lib/market/board';
 import { addDays, denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
+import { forwardWindows, sampleBookedShare } from '../lib/market/forward';
 import { runShadow, portfolioDigest } from '../lib/market/shadow';
+import { judgeTrial } from '../lib/market/whatif';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
@@ -105,6 +108,7 @@ export function MarketBoard() {
   const [stays, setStays] = useState<PaceStay[] | null>(null);
   const [paceState, setPaceState] = useState<'loading' | 'live' | 'off'>('loading');
   const [compChoices, setCompChoices] = useState(loadCompChoices);
+  const [trial, setTrial] = useState<{ date: string; text: string } | null>(null);
   const today = denverToday();
   const activeComps = useMemo(
     () => ({
@@ -139,6 +143,26 @@ export function MarketBoard() {
   const hidden = choice.excluded
     .map((id) => [...compsFor(house), ...benchFor(house)].find((comp) => comp.id === id))
     .filter((comp): comp is NonNullable<typeof comp> => Boolean(comp));
+
+  const windows = stays && paceState === 'live' ? forwardWindows(house, stays, today) : null;
+  const trialNight =
+    (trial && shadow.nights.find((night) => night.date === trial.date)) ||
+    shadow.nights.find((night) => house !== 'river' || night.date >= RIVER_FIRST_STAY) ||
+    shadow.nights[0];
+  const trialText = trial && trial.date === trialNight?.date ? trial.text : String(trialNight?.ourGuest ?? '');
+  const verdict = trialNight
+    ? judgeTrial({
+        publishedGuest: trialNight.ourGuest,
+        trialGuest: Number(trialText),
+        floorGuest: trialNight.floorGuest,
+        ceilingGuest: trialNight.ourGuest * 2,
+        maxMove: 0.08,
+        compRates: trialNight.compRates,
+        closed: trialNight.action === 'closed',
+        booked: trialNight.action === 'booked',
+        holiday: board.nights.some((night) => night.date === trialNight.date && night.action === 'locked'),
+      })
+    : null;
 
   function writeChoice(next: CompChoice) {
     const all = { ...compChoices, [house]: next };
@@ -225,6 +249,36 @@ export function MarketBoard() {
           <Stat label="Our percentile" value={`p${board.summary.ourPercentile}`} hint={`Target p${board.targetPercentile}`} />
           <Stat label="Comps booked, 30 days" value={`${board.summary.compPace30}%`} hint={`${shadow.counts.raise} shadow raises`} />
         </dl>
+        <div className="mt-6" data-bot="market-pace">
+          <p className="uml-kicker">Next 30, 60, and 90 nights</p>
+          <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
+            Our share is the live calendar. The comp share is the sample set. A booked night stays at the published rate.
+          </p>
+          {house === 'river' && today < RIVER_FIRST_STAY && (
+            <p className="mt-2 text-xs text-[var(--uml-muted)]">Nights before November 1 are closed and left out.</p>
+          )}
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {([30, 60, 90] as const).map((days) => {
+              const ours = windows?.find((window) => window.days === days);
+              const comps = sampleBookedShare(
+                board.nights.map((night) => night.compBookedShare),
+                days,
+              );
+              return (
+                <article key={days} className="rounded-2xl border border-white/10 p-4" data-bot={`market-pace-${days}`}>
+                  <p className="uml-kicker">{days} nights</p>
+                  <p className="font-display text-3xl uml-num mt-1">{ours ? `${ours.bookedShare}%` : '—'}</p>
+                  <p className="mt-1 text-sm text-[var(--uml-muted)]">
+                    {paceState === 'loading' && 'Checking the calendar…'}
+                    {paceState === 'off' && 'Our calendar is not on this server yet.'}
+                    {paceState === 'live' && ours && `${ours.booked} of ${ours.sellable} nights booked · ${ours.startingStays} ${ours.startingStays === 1 ? 'stay begins' : 'stays begin'} here`}
+                  </p>
+                  <p className="mt-2 text-sm">Sample comps {comps}% booked</p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-shadow">
@@ -287,6 +341,45 @@ export function MarketBoard() {
               </li>
             ))}
           </ul>
+        )}
+        {trialNight && verdict && (
+          <form className="mt-6 grid gap-3 sm:grid-cols-[12rem_10rem_1fr] sm:items-end" data-bot="market-whatif" onSubmit={(event) => event.preventDefault()}>
+            <label className="block text-sm">
+              <span className="uml-kicker">Try a night</span>
+              <select
+                className="mt-2 w-full rounded-xl border border-white/15 bg-transparent px-3 py-2"
+                data-bot="market-whatif-date"
+                value={trialNight.date}
+                onChange={(event) => {
+                  const date = event.target.value;
+                  const next = shadow.nights.find((night) => night.date === date);
+                  setTrial({ date, text: String(next?.ourGuest ?? '') });
+                }}
+              >
+                {shadow.nights.slice(0, 21).map((night) => (
+                  <option key={night.date} value={night.date}>
+                    {shortDate(night.date)}
+                    {night.season ? ` · ${night.season}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="uml-kicker">Nightly ask</span>
+              <input
+                className="mt-2 w-full rounded-xl border border-white/15 bg-transparent px-3 py-2 uml-num"
+                data-bot="market-whatif-price"
+                inputMode="numeric"
+                value={trialText}
+                onChange={(event) => setTrial({ date: trialNight.date, text: event.target.value })}
+              />
+            </label>
+            <p className="text-sm" data-bot="market-whatif-verdict">
+              {verdict.note}
+              {verdict.wouldRaise && trialNight.action !== 'raise' ? ' The shadow run is not raising this night.' : ''}
+              {' '}Floor {formatWhole(trialNight.floorGuest)} · ceiling {formatWhole(trialNight.ourGuest * 2)} · most tonight {formatWhole(verdict.dailyCap)}.
+            </p>
+          </form>
         )}
       </div>
 

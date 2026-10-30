@@ -5,6 +5,8 @@ export type NightRow = {
   season: string | null;
   ourGuest: number;
   floorGuest: number;
+  /** Open comp asks for this night. The what-if uses these to place a trial price. */
+  compRates: number[];
   p25: number;
   median: number;
   p75: number;

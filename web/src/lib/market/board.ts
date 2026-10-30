@@ -65,6 +65,7 @@ export function buildMarketBoard(house: HouseId, from: string, days = 90, select
       season: ours.season,
       ourGuest: ours.guest,
       floorGuest: ours.floorGuest,
+      compRates: band,
       p25: Math.round(percentileValue(band, 25)),
       median: Math.round(median(band)),
       p75: Math.round(percentileValue(band, 75)),

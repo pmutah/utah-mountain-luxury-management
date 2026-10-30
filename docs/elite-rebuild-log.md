@@ -54,3 +54,8 @@
 ## 2026-10-29 — comp pin and hide
 
 - Each house's top 10 can be pinned or hidden in this browser. A hidden sample is replaced by the next bench home, and the rate band uses the set that remains. Nothing is written to the books.
+
+## 2026-10-29 — pace windows and a what-if ask
+
+- Market shows how full the next 30, 60, and 90 nights are on the live calendar, beside the sample comp pace. River nights before November 1 are left out.
+- A typed nightly ask is checked against the floor, the ceiling, and the 8% cap. A lower number is not a new base. Nothing is written to Airbnb, VRBO, or Hospitable.
