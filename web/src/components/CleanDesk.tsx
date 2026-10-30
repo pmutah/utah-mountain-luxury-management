@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderLeaving, workOrderNotes, workOrderPlace, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderWhen, type CleanLang } from '../lib/clean';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
 
@@ -162,8 +162,22 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                       {workOrderWhen(job.house, job.priority, lang)}
                     </p>
                     <p className="mt-1 text-sm" data-bot="clean-place">
-                      {workOrderPlace(job.house, lang)}
+                      <a href={workOrderMap(job.house)} target="_blank" rel="noreferrer" data-bot="clean-map">
+                        {workOrderPlace(job.house, lang)}
+                      </a>
                     </p>
+                    {workOrderEssentials(job.house).length > 0 && (
+                      <div className="mt-2" data-bot="clean-essentials">
+                        <p className="text-sm text-[var(--uml-muted)]">
+                          {lang === 'es' ? 'Antes de ir. Es para el camino, no es tu lista.' : 'Before you go. This is for the drive, not your checklist.'}
+                        </p>
+                        <ul className="mt-1 space-y-1 text-sm">
+                          {workOrderEssentials(job.house).map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {workOrderNotes(job.house).length > 0 && (
                       <ul className="mt-2 space-y-1 text-sm" data-bot="clean-notes">
                         {workOrderNotes(job.house).map((line) => (

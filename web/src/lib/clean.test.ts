@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderLeaving, workOrderNotes, workOrderPlace, workOrderWhen } from './clean.ts';
+import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -43,6 +43,12 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.match(workOrderPlace('river', 'es'), /Dirección: Vivian Park/);
   assert.equal(workOrderPlace('river', 'en').toLowerCase().includes('code'), false);
   assert.equal(workOrderPlace('ranch', 'en').includes('Wi-Fi'), false);
+  assert.match(workOrderMap('lindon'), /google\.com\/maps\/search/);
+  assert.match(workOrderMap('lindon'), /Harcliff/);
+  assert.equal(/password|door/i.test(workOrderMap('river')), false);
+  assert.match(workOrderEssentials('river').join(' '), /Winter driving/);
+  assert.match(workOrderEssentials('lindon').join(' '), /Sundays/);
+  assert.equal(/password/i.test(workOrderEssentials('river').join(' ')), false);
   assert.match(workOrderNotes('ranch')[0] ?? '', /Hot tub/);
   assert.match(workOrderNotes('river').join(' '), /Septic/);
   assert.match(workOrderNotes('river').join(' '), /Provo River/);

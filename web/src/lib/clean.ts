@@ -1,5 +1,5 @@
 import { PROPERTIES, type Reservation } from './api';
-import { houseStay } from './house-stay';
+import { houseStay, nearbyGroups } from './house-stay';
 import type { HouseId } from './luxury';
 import { buildTurnovers, type Turnover } from './today';
 
@@ -53,6 +53,20 @@ export function workOrderPlace(house: HouseId, lang: CleanLang): string {
   const stay = houseStay(house);
   const address = PROPERTIES[house]?.address ?? '';
   return lang === 'es' ? `Dirección: ${address}. ${stay.parking}` : `${address}. ${stay.parking}`;
+}
+
+/** A map for the street address. The query is the address only. */
+export function workOrderMap(house: HouseId): string {
+  const address = PROPERTIES[house]?.address ?? '';
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
+/** Drive notes from the published guide. These are not cleaner checklist steps. */
+export function workOrderEssentials(house: HouseId): string[] {
+  const group = nearbyGroups(houseStay(house).nearby).find((item) => item.kind === 'essentials');
+  return (group?.places ?? [])
+    .filter((place) => !/door\s*code|wi-?fi|password/i.test(`${place.name} ${place.note}`))
+    .map((place) => `${place.name}. ${place.note}`);
 }
 
 /** Published house notes for the cleaner. A note that names a door code or Wi-Fi is left off. */
