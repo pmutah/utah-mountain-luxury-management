@@ -21,7 +21,7 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 - `#/guests`
 - `#/ranch` `#/lindon`
 - `#/river` — River rental. `#/river/launch` is the November 1 opening page. `#/river/build` is build costs.
-- `/book` — month calendar of nightly prices, the published house, and a guest count that has to fit. Two or more guests see how the stay total splits. Booked nights are refused. It does not charge a card or hold the dates.
+- `/book` — month calendar of nightly prices, the published house, and a guest count that has to fit. Two or more guests see how the stay total splits. The page address reopens that quote. Booked nights are refused. It does not charge a card or hold the dates.
 - `#/ours` — Brandon & Stephanie household / furnishings (photo, paste text, or manual; off rental P&L)
 
 ### JavaScript bridge

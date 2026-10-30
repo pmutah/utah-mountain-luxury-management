@@ -10,6 +10,7 @@ import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
 import { quoteStay } from '../lib/quote';
+import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
 import { BrandMark } from './BrandMark';
@@ -34,14 +35,16 @@ const EMPTY_TAKEN: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [
 
 export function DirectBook() {
   const opening = nextOpenFriday(denverToday());
-  const [house, setHouse] = useState<HouseId>('river');
-  const [checkIn, setCheckIn] = useState(opening);
-  const [checkOut, setCheckOut] = useState(addDays(opening, 2));
+  const linked = readStayLink(typeof window === 'undefined' ? '' : window.location.search);
+  const [house, setHouse] = useState<HouseId>(linked.house ?? 'river');
+  const [checkIn, setCheckIn] = useState(linked.checkIn ?? opening);
+  const [checkOut, setCheckOut] = useState(linked.checkOut ?? addDays(linked.checkIn ?? opening, 2));
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
-  const [guests, setGuests] = useState('');
+  const [guests, setGuests] = useState(linked.guests ?? '');
   const [rulesRead, setRulesRead] = useState(false);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
@@ -82,6 +85,14 @@ export function DirectBook() {
       cancel = true;
     };
   }, []);
+
+  const sharePath = `/book${stayLinkSearch({ house, checkIn, checkOut, guests })}`;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (`${window.location.pathname}${window.location.search}` === sharePath) return;
+    window.history.replaceState(null, '', sharePath);
+  }, [sharePath]);
 
   const stay = houseStay(house);
   const guestCount = /^\d+$/.test(guests) ? Number(guests) : null;
@@ -297,6 +308,24 @@ export function DirectBook() {
                 {splitLine}
               </p>
             )}
+            <div className="mt-4" data-bot="stay-share">
+              <p className="text-xs text-[var(--uml-muted)]">This link reopens the quote. It does not send a request.</p>
+              <p className="mt-1 text-sm">{sharePath}</p>
+              <button
+                type="button"
+                data-bot="stay-share-copy"
+                className="uml-gold-btn mt-2 rounded-full px-4 py-2 text-sm"
+                onClick={() => {
+                  const url = `${window.location.origin}${sharePath}`;
+                  void navigator.clipboard.writeText(url).then(
+                    () => setCopied(true),
+                    () => setCopied(false),
+                  );
+                }}
+              >
+                {copied ? 'Copied' : 'Copy quote link'}
+              </button>
+            </div>
 
             <div className="mt-6" data-bot="stay-rules">
               <p className="uml-kicker">House rules</p>

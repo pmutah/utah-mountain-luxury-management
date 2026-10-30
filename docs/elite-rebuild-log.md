@@ -136,3 +136,7 @@
 ## 2026-10-29 — party split on the booking page
 
 - Two or more overnight guests see how the direct stay total splits. Leftover pennies sit on the first shares so the shares add up to the stay. Nothing is charged.
+
+## 2026-10-29 — shareable stay quote
+
+- The booking page address keeps the house, the dates, and the party. Opening that link shows the same quote again. A name or email in the address is ignored. Copying the link does not send a request.
