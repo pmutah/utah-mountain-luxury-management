@@ -25,7 +25,9 @@ test('the trip starts with the group form and keeps the door code on its date', 
   assert.match(code?.detail ?? '', /Nov 5/);
   const early = steps.find((step) => step.id === 'early');
   assert.equal(early?.state, 'now');
-  assert.match(early?.detail ?? '', /door code still opens on Nov 5/);
+  assert.match(early?.detail ?? '', /Arrive at 1:00 PM is a request/);
+  assert.match(early?.detail ?? '', /Nothing is charged yet/);
+  assert.equal(/password|code\s*\d/i.test(early?.detail ?? ''), false);
   assert.equal(steps.find((step) => step.id === 'arrive')?.state, 'later');
   assert.equal(steps.find((step) => step.id === 'leave')?.detail, '11:00 AM on Nov 8');
 });
@@ -47,9 +49,9 @@ test('checkout names a later leave only when that morning is open', () => {
   assert.match(named.find((step) => step.id === 'leave')?.detail ?? '', /Checkout is 11:00 AM on Nov 8/);
 });
 
-test('a booked night before arrival hides the early offer', () => {
+test('a booked night before arrival keeps the early arrival closed', () => {
   const steps = arrivalJourney({ ...stay, nightBeforeFree: false });
-  assert.equal(steps.some((step) => step.id === 'early'), false);
+  assert.match(steps.find((step) => step.id === 'early')?.detail ?? '', /An early arrival is not open/);
   assert.equal(nightBeforeIsFree('2026-11-06', ['2026-11-05']), false);
   assert.equal(nightBeforeIsFree('2026-11-06', ['2026-11-06']), true);
 });

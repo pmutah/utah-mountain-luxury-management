@@ -293,6 +293,7 @@ export function StayApp({ token }: { token: string }) {
     guestArrival: arrivalWindow,
     guestDeparture: departureWindow,
     laterLeaveOpen: checkoutNightFree === null ? undefined : checkoutNightFree,
+    nightBeforeFree,
     parking: guide.parking,
     rules: guide.houseRules,
     houseId: data.propertyId,
@@ -396,6 +397,11 @@ export function StayApp({ token }: { token: string }) {
                   {sheet.guestDeparture}
                 </p>
               )}
+              {sheet.earlyRule && (
+                <p className="mt-2 text-sm" data-bot="stay-sheet-early-rule">
+                  {sheet.earlyRule}
+                </p>
+              )}
               {sheet.checkoutRule && (
                 <p className="mt-2 text-sm" data-bot="stay-sheet-checkout-rule">
                   {sheet.checkoutRule}
@@ -465,6 +471,7 @@ export function StayApp({ token }: { token: string }) {
               <p>{sheet.when}</p>
               {sheet.guestArrival && <p data-bot="stay-sheet-print-arrival-time">{sheet.guestArrival}</p>}
               {sheet.guestDeparture && <p data-bot="stay-sheet-print-departure-time">{sheet.guestDeparture}</p>}
+              {sheet.earlyRule && <p data-bot="stay-sheet-print-early-rule">{sheet.earlyRule}</p>}
               {sheet.checkoutRule && <p data-bot="stay-sheet-print-checkout-rule">{sheet.checkoutRule}</p>}
               {sheet.address && <p data-bot="stay-sheet-print-address">{sheet.address}</p>}
               {sheet.nearby.length > 0 && <PlaceGroups places={sheet.nearby} bot="stay-sheet-print-nearby" />}

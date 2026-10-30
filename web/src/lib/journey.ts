@@ -90,11 +90,13 @@ export function arrivalJourney(input: {
       state: input.phase === 'after' ? 'done' : codeOpen ? 'now' : 'later',
     },
   ];
-  if (input.phase === 'before' && input.nightBeforeFree === true && input.asOf < input.checkIn) {
+  if (input.phase === 'before' && input.asOf < input.checkIn && typeof input.nightBeforeFree === 'boolean') {
     steps.push({
       id: 'early',
       title: 'Arrive early',
-      detail: `The night before is open. Ask us if you want to arrive before ${input.checkInTime}. The door code still opens on ${label(input.opensOn)}.`,
+      detail: input.nightBeforeFree
+        ? 'Arrive at 1:00 PM is a request. Nothing is charged yet. The door code still opens the day before.'
+        : 'An early arrival is not open for this stay.',
       state: 'now',
     });
   }

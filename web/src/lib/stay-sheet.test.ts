@@ -124,6 +124,33 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   });
   assert.match(takenLeave.checkoutRule, /not open for this stay/);
   assert.equal(takenLeave.checkoutRule.includes('2:00 PM'), false);
+  const earlyOpen = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    nightBeforeFree: true,
+  });
+  assert.match(earlyOpen.earlyRule, /Arrive at 1:00 PM is a request/);
+  assert.equal(/password|code\s*\d/i.test(earlyOpen.earlyRule), false);
+  assert.equal(earlyOpen.earlyRule.includes('$'), false);
+  const earlyClosed = tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    nightBeforeFree: false,
+  });
+  assert.match(earlyClosed.earlyRule, /An early arrival is not open/);
+  assert.equal(tripSheet({
+    house: 'River House',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+  }).earlyRule, '');
   const junk = tripSheet({
     house: 'River House',
     checkIn: '2026-11-06',

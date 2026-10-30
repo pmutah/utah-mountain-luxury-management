@@ -1,5 +1,6 @@
 import { guestArrivalLine } from './arrival';
 import { guestDepartureLine } from './departure';
+import { hostEarlyPhrase } from './house-stay';
 import { placeHref, placeSite } from './place-link';
 import type { PlaceKind } from './house-stay';
 import { agreementLine } from './stay-agreement';
@@ -28,6 +29,7 @@ export type TripSheet = {
   guestArrival: string;
   guestDeparture: string;
   checkoutRule: string;
+  earlyRule: string;
   parking: string;
   rules: string;
   agreement: string;
@@ -102,6 +104,7 @@ export function tripSheet(input: {
   guestArrival?: string;
   guestDeparture?: string;
   laterLeaveOpen?: boolean;
+  nightBeforeFree?: boolean | null;
   parking?: string;
   rules?: string;
   houseId?: string;
@@ -119,6 +122,7 @@ export function tripSheet(input: {
     guestArrival: guestArrivalLine(input.guestArrival),
     guestDeparture: guestDepartureLine(input.guestDeparture),
     checkoutRule: checkoutRule(input),
+    earlyRule: typeof input.nightBeforeFree === 'boolean' ? hostEarlyPhrase(input.nightBeforeFree) : '',
     parking: publicText(input.parking),
     notes: publicNotes(input.notes),
     nearby: publicNearby(input.nearby),

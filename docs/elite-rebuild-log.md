@@ -447,3 +447,8 @@
 ## 2026-10-30 — whether the next stay can arrive at 1:00 PM
 
 - The guest list, the overview, the cleaner, Todd’s arrivals, and the nightly brief say whether Arrive at 1:00 PM is a request. It stays closed when the night before is taken or the stay has already started. The door code stays off the sentence. Nothing is charged or sent.
+
+## 2026-10-30 — early arrival on the guest trip
+
+- The trip’s early step says Arrive at 1:00 PM is a request when the night before is open, and that an early arrival is not open when that night is taken. An unknown calendar does not invent the offer.
+- The trip sheet says the same thing on the screen and on the paper. Nothing is charged or sent.
