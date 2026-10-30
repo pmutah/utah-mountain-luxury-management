@@ -13,7 +13,7 @@ import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
 import { quoteStay, directSavings } from '../lib/quote';
 import { openArrivals } from '../lib/open-arrivals';
-import { alsoOpen } from '../lib/also-open';
+import { alsoHeld, alsoOpen } from '../lib/also-open';
 import { longestStay } from '../lib/longest-stay';
 import { shortestStay } from '../lib/shortest-stay';
 import { stayLengths } from '../lib/stay-lengths';
@@ -119,6 +119,12 @@ export function DirectBook() {
     const paceFor = (id: HouseId): YearPace =>
       stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
     return alsoOpen(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined);
+  }, [calendar, house, checkIn, checkOut, taken, today, stays, guestCount]);
+  const held = useMemo(() => {
+    if (calendar !== 'live') return [];
+    const paceFor = (id: HouseId): YearPace =>
+      stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
+    return alsoHeld(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined);
   }, [calendar, house, checkIn, checkOut, taken, today, stays, guestCount]);
   const extension = useMemo(() => {
     if (calendar !== 'live' || quote.ok) return null;
@@ -511,6 +517,19 @@ export function DirectBook() {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+            {held.length > 0 && (
+              <div className="mt-4" data-bot="stay-held">
+                <p className="uml-kicker">Not these dates</p>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {held.map((item) => (
+                    <li key={item.house} data-bot={`stay-held-${item.house}`}>
+                      {item.reason}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs text-[var(--uml-muted)]">These houses are not offered. Nothing is sent.</p>
               </div>
             )}
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { alsoOpen } from './also-open.ts';
+import { alsoHeld, alsoOpen } from './also-open.ts';
 import { quoteStay } from './quote.ts';
 
 const pace = () => 'unknown' as const;
@@ -30,4 +30,14 @@ test('the other houses quote the same dates, and a party has to fit', () => {
     booked.map((item) => item.house),
     ['lindon'],
   );
+  const held = alsoHeld('river', '2026-11-01', '2026-11-03', {}, '2026-10-29', pace, 25);
+  assert.deepEqual(
+    held.map((item) => item.house),
+    ['ranch', 'lindon'],
+  );
+  assert.match(held[0]?.reason ?? '', /sleeps 20/);
+  assert.match(held[1]?.reason ?? '', /sleeps 12/);
+  const bookedHeld = alsoHeld('river', '2026-11-01', '2026-11-03', { ranch: ['2026-11-01'] }, '2026-10-29', pace);
+  assert.match(bookedHeld[0]?.reason ?? '', /Ranch: Those nights are already booked/);
+  assert.equal(held.some((item) => item.reason.includes('$')), false);
 });

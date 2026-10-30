@@ -348,3 +348,7 @@
 ## 2026-10-29 — Todd’s next checkout
 
 - Todd’s page names the next Ranch and River checkout, when the following stay starts, and when that door code opens. Names, prices, and the code stay off. Lindon is not on the list, and the line is not in the spreadsheet.
+
+## 2026-10-30 — houses that will not quote
+
+- The booking page says why another house will not take the same dates. A party that does not fit, or nights already booked, stays off the offer. Nothing is sent.
