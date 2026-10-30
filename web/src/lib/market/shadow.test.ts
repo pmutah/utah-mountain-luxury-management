@@ -102,6 +102,7 @@ test('the daily text names every house and leaves a paused house alone', () => {
   assert.equal(quiet.includes('Parties:'), false);
   assert.equal(quiet.includes('Children:'), false);
   assert.equal(text.includes('Children:'), false);
+  assert.equal(text.includes('Service:'), false);
   assert.equal(text.includes('Arrivals:'), false);
   assert.equal(text.includes('Departures:'), false);
   assert.match(quiet, /Nothing sent to Hospitable/);
@@ -136,5 +137,20 @@ test('the daily text names party size, arrival, and departure without a name or 
   assert.equal(arrivals.includes('801'), false);
   assert.equal(departures.includes('Ada'), false);
   assert.equal(text.includes('Guest'), false);
+  assert.equal(text.includes('Service:'), false);
   assert.match(text, /Nothing sent to Hospitable/);
+  const live = portfolioDigest({
+    asOf: '2026-10-29',
+    taken: { river: [], ranch: [], lindon: [] },
+    paused: { river: false, ranch: false, lindon: false },
+    pace: { river: 'unknown', ranch: 'unknown', lindon: 'unknown' },
+    calendarLive: true,
+    stays: [
+      { id: 'ranch-1', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-06', status: 'confirmed' },
+    ],
+  });
+  const service = live.split('\n').find((line) => line.startsWith('Service:')) ?? '';
+  assert.match(service, /Ranch Nov 6: Leave at 2:00 PM is a request/);
+  assert.equal(service.includes('$'), false);
+  assert.equal(service.includes('Guest'), false);
 });

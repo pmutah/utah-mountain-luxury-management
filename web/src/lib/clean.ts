@@ -2,7 +2,8 @@ import { PROPERTIES, type Reservation } from './api';
 import { guestArrivalLine } from './arrival';
 import { guestDepartureLine, hostLaterLeavePhrase } from './departure';
 import { houseRules } from './house-rules';
-import { hostEarlyPhrase, houseStay, nearbyGroups } from './house-stay';
+import { earlyStayOpen, hostEarlyPhrase, houseStay, nearbyGroups } from './house-stay';
+import { checkoutNightIsFree } from './journey';
 import type { HouseId } from './luxury';
 import { addDays } from './market/dates';
 import { buildTurnovers, type Turnover } from './today';
@@ -146,6 +147,47 @@ export function workOrderDeparture(window: string | null | undefined, lang: Clea
   return lang === 'es'
     ? `Esta salida dice la hora de partida. ${named} Los nombres no están en esta lista.`
     : `This checkout names a departure. ${named} Names stay off this list.`;
+}
+
+function shortWhen(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(Date.UTC(year!, month! - 1, day)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/** Checkouts in the next two weeks, with the 1:00 PM and 2:00 PM requests. Names stay off the sentence. */
+export function serviceBrief(
+  stays: readonly { id?: string; propertyId: string; checkIn: string; checkOut: string; status?: string }[],
+  taken: Readonly<Record<string, readonly string[]>>,
+  asOf: string,
+): string {
+  const tail = 'Names stay off this line.';
+  const turns = buildTurnovers(
+    stays.map((stay) => ({
+      id: stay.id || `${stay.propertyId}-${stay.checkOut}`,
+      propertyId: stay.propertyId,
+      checkIn: stay.checkIn,
+      checkOut: stay.checkOut,
+      status: stay.status,
+      guestName: '',
+      payout: 0,
+      source: '',
+    })),
+    asOf,
+    14,
+  );
+  if (turns.length === 0) return `No checkouts in the next two weeks. ${tail}`;
+  const shown = turns.slice(0, 4).map((turn) => {
+    const nights = taken[turn.house] ?? [];
+    const leave = hostLaterLeavePhrase(checkoutNightIsFree(turn.checkout, nights));
+    const early = turn.nextCheckIn ? ` ${hostEarlyPhrase(earlyStayOpen(turn.nextCheckIn, nights, asOf))}` : '';
+    return `${turn.houseName} ${shortWhen(turn.checkout)}: ${leave}${early}`;
+  });
+  const more = turns.length - shown.length;
+  return `Next checkouts: ${shown.join(' ')}${more > 0 ? ` ${more} more.` : ''} ${tail}`;
 }
 
 /** Whether the next stay can ask to arrive at 1:00 PM. Names stay off the sentence. */

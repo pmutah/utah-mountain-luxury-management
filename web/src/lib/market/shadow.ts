@@ -2,6 +2,7 @@ import { comparePhrase } from '../also-open';
 import { arrivalBrief } from '../arrival';
 import { bookingStartSummary } from '../booking-starts';
 import { RIVER_FIRST_STAY } from '../brand';
+import { serviceBrief } from '../clean';
 import { departureBrief } from '../departure';
 import { childBrief, partyBrief } from '../note-party';
 import { addonPhrase, lengthPhrase } from '../open-arrivals';
@@ -180,6 +181,7 @@ export function portfolioDigest(input: {
     lines.push(`Children: ${childBrief(rows, input.asOf)}`);
     if (input.arrivalWindows) lines.push(`Arrivals: ${arrivalBrief(rows, input.arrivalWindows, input.asOf)}`);
     if (input.departureWindows) lines.push(`Departures: ${departureBrief(rows, input.departureWindows, input.asOf)}`);
+    if (input.calendarLive) lines.push(`Service: ${serviceBrief(input.stays, input.taken, input.asOf)}`);
   }
   lines.push('Nothing sent to Hospitable.');
   return lines.join('\n');

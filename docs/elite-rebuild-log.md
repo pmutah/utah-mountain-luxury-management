@@ -452,3 +452,7 @@
 
 - The trip’s early step says Arrive at 1:00 PM is a request when the night before is open, and that an early arrival is not open when that night is taken. An unknown calendar does not invent the offer.
 - The trip sheet says the same thing on the screen and on the paper. Nothing is charged or sent.
+
+## 2026-10-30 — service window on the daily text
+
+- The unsent daily text names the checkouts in the next two weeks and whether a 2:00 PM leave or a 1:00 PM arrival is open. Names stay off that line. Nothing is sent.
