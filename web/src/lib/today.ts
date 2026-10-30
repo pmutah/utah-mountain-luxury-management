@@ -1,6 +1,6 @@
 import type { Reservation } from './api';
 import { addDays } from './market/dates';
-import { noteGuestCount } from './note-party';
+import { noteChildCount, noteGuestCount } from './note-party';
 import type { HouseId } from './luxury';
 
 const HOUSES: HouseId[] = ['ranch', 'lindon', 'river'];
@@ -55,12 +55,16 @@ export type Turnover = {
   gapNights: number | null;
   /** Guest count from the next booking note. Null when the note does not say. Names are not stored. */
   nextGuests: number | null;
+  /** Children named beside an adult count on the next booking. Null when the note does not say. */
+  nextChildren: number | null;
   /** The next stay's id, used to read a preference arrival time. Null when nothing follows. */
   nextStayId: string | null;
   /** This checkout's id, used to read a preference departure time. */
   checkoutStayId: string;
   /** Guest count from the checkout booking note. Null when the note does not say. Names are not stored. */
   checkoutGuests: number | null;
+  /** Children named beside an adult count on this checkout. Null when the note does not say. */
+  checkoutChildren: number | null;
 };
 
 export function buildTurnovers(reservations: Reservation[], asOf: string, horizonDays = 14): Turnover[] {
@@ -81,9 +85,11 @@ export function buildTurnovers(reservations: Reservation[], asOf: string, horizo
         nextCheckIn: next?.checkIn ?? null,
         gapNights: next ? nightsBetween(stay.checkOut, next.checkIn) : null,
         nextGuests: next ? noteGuestCount(next.note) : null,
+        nextChildren: next ? noteChildCount(next.note) : null,
         nextStayId: next?.id ?? null,
         checkoutStayId: stay.id,
         checkoutGuests: noteGuestCount(stay.note),
+        checkoutChildren: noteChildCount(stay.note),
       };
     })
     .sort((a, b) => a.checkout.localeCompare(b.checkout) || a.house.localeCompare(b.house));

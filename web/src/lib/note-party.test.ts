@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { hostPartyPhrase, noteGuestCount, partyBrief } from './note-party.ts';
+import { childBrief, hostPartyPhrase, noteChildCount, noteGuestCount, partyBrief } from './note-party.ts';
 
 test('a booking note yields a guest count and leaves the name out', () => {
   assert.equal(noteGuestCount('HA-PGD5TF · 9 guests · Ada Lovelace · 801-555-0100'), 9);
@@ -12,6 +12,19 @@ test('a booking note yields a guest count and leaves the name out', () => {
   assert.equal(hostPartyPhrase('Ada Lovelace · 9 guests'), 'This stay is for 9 guests.');
   assert.equal(hostPartyPhrase('Ada Lovelace').includes('Ada'), false);
   assert.equal(hostPartyPhrase(undefined), 'This stay does not say how many guests.');
+  assert.equal(noteChildCount('18 adults · 2 children'), 2);
+  assert.equal(noteChildCount('1 adult · 1 child'), 1);
+  assert.equal(noteChildCount('Ada Lovelace · 9 guests'), null);
+  assert.equal(hostPartyPhrase('Ada Lovelace · 18 adults · 2 children'), 'This stay is for 20 guests, including 2 children.');
+  assert.equal(hostPartyPhrase('Ada Lovelace · 18 adults · 2 children').includes('Ada'), false);
+  assert.match(childBrief(
+    [
+      { propertyId: 'ranch', checkIn: '2026-11-04', note: 'Ada Lovelace · 18 adults · 2 children' },
+      { propertyId: 'lindon', checkIn: '2026-11-01', note: '9 guests' },
+    ],
+    '2026-11-01',
+  ), /1 stay names children: Ranch Nov 4, 2 children/);
+  assert.equal(childBrief([{ propertyId: 'ranch', checkIn: '2026-11-04', note: 'Ada Lovelace · 9 guests' }], '2026-11-01').includes('Ada'), false);
   const brief = partyBrief(
     [
       { propertyId: 'ranch', checkIn: '2026-11-04', note: 'Ada Lovelace · 9 guests · 801-555-0100' },

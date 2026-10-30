@@ -9,7 +9,7 @@ import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owne
 import type { CleanFix } from './clean-notes';
 import { guestLeavingLine, workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderNext, workOrderParty, workOrderWhen } from './clean';
 import { arrivalBrief } from './arrival';
-import { partyBrief } from './note-party';
+import { childBrief, partyBrief } from './note-party';
 import { listingOpportunities } from './listing';
 import { addDays } from './market/dates';
 import type { YearPace } from './market/fill';
@@ -96,7 +96,7 @@ export function agentBrief(input: {
     const when = shortDate(turn.checkout);
     const window = workOrderWhen(turn.house, turn.gapNights === 0, 'en');
     const next = workOrderNext(turn.nextCheckIn, turn.gapNights, 'en');
-    const party = turn.nextCheckIn ? ` ${workOrderParty(turn.nextGuests, 'en')}` : '';
+    const party = turn.nextCheckIn ? ` ${workOrderParty(turn.nextGuests, 'en', turn.nextChildren)}` : '';
     const arrival =
       turn.nextCheckIn && input.arrivalWindows
         ? ` ${workOrderArrival(input.arrivalWindows[turn.nextStayId ?? ''], 'en')}`
@@ -104,7 +104,7 @@ export function agentBrief(input: {
     const departure = input.departureWindows
       ? ` ${workOrderDeparture(input.departureWindows[turn.checkoutStayId], 'en')}`
       : '';
-    const leaving = ` ${workOrderCheckoutParty(turn.checkoutGuests, 'en')}`;
+    const leaving = ` ${workOrderCheckoutParty(turn.checkoutGuests, 'en', turn.checkoutChildren)}`;
     const text =
       turn.gapNights === 0
         ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}${arrival}${departure}${leaving}`
@@ -118,6 +118,7 @@ export function agentBrief(input: {
   }
   if (input.calendarReady) lines.push({ agent: 'co-host', text: guestLeavingLine() });
   if (input.calendarReady) lines.push({ agent: 'co-host', text: partyBrief(input.stays, input.asOf) });
+  if (input.calendarReady) lines.push({ agent: 'co-host', text: childBrief(input.stays, input.asOf) });
   if (input.calendarReady && input.arrivalWindows) {
     lines.push({ agent: 'co-host', text: arrivalBrief(input.stays, input.arrivalWindows, input.asOf) });
   }

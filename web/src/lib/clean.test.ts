@@ -73,6 +73,8 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.match(workOrderNext(null, null, 'en'), /No next stay is on the calendar/);
   assert.equal(/password|code\s*\d/i.test(workOrderNext('2026-11-04', 0, 'en')), false);
   assert.equal(workOrderParty(9, 'en'), 'The next stay is for 9 guests. Names stay off this list.');
+  assert.equal(workOrderParty(20, 'en', 2), 'The next stay is for 20 guests, including 2 children. Names stay off this list.');
+  assert.match(workOrderParty(20, 'es', 2), /incluyendo 2 niños/);
   assert.match(workOrderParty(9, 'es'), /9 huéspedes/);
   assert.match(workOrderParty(null, 'en'), /does not say how many guests/);
   assert.equal(workOrderParty(9, 'en').includes('Ada'), false);

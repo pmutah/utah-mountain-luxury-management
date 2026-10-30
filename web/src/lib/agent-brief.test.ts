@@ -40,6 +40,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /The next stay is for 9 guests\. Names stay off this list\./);
   assert.match(text, /This checkout does not say how many guests\. Names stay off this list\./);
   assert.match(text, /1 stay names a party size\. 1 does not: Lindon Nov 1\. Names stay off this line\./);
+  assert.match(text, /No stay beginning in the next 90 days names children/);
   assert.equal(text.includes('arrival time'), false);
   const withArrival = agentBrief({
     asOf: '2026-11-01',

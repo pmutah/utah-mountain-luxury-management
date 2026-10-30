@@ -164,7 +164,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                       {workOrderWhen(job.house, job.priority, lang)}
                     </p>
                     <p className="mt-1 text-sm" data-bot="clean-checkout-party">
-                      {workOrderCheckoutParty(job.checkoutGuests, lang)}
+                      {workOrderCheckoutParty(job.checkoutGuests, lang, job.checkoutChildren)}
                     </p>
                     {preferenceTimes && (
                       <p className="mt-1 text-sm" data-bot="clean-departure">
@@ -176,7 +176,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     </p>
                     {job.nextCheckIn && (
                       <p className="mt-1 text-sm" data-bot="clean-party">
-                        {workOrderParty(job.nextGuests, lang)}
+                        {workOrderParty(job.nextGuests, lang, job.nextChildren)}
                       </p>
                     )}
                     {job.nextCheckIn && preferenceTimes && (

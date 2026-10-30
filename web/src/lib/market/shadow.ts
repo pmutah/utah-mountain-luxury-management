@@ -3,7 +3,7 @@ import { arrivalBrief } from '../arrival';
 import { bookingStartSummary } from '../booking-starts';
 import { RIVER_FIRST_STAY } from '../brand';
 import { departureBrief } from '../departure';
-import { partyBrief } from '../note-party';
+import { childBrief, partyBrief } from '../note-party';
 import { addonPhrase, lengthPhrase } from '../open-arrivals';
 import { promotionForNight, type YearPace } from './fill';
 import { buildMarketBoard } from './board';
@@ -115,6 +115,7 @@ export function portfolioDigest(input: {
     checkOut: string;
     status?: string;
     partySize?: number | null;
+    childCount?: number | null;
   }[];
   arrivalWindows?: Readonly<Record<string, string | undefined>> | null;
   departureWindows?: Readonly<Record<string, string | undefined>> | null;
@@ -168,9 +169,15 @@ export function portfolioDigest(input: {
       checkIn: stay.checkIn,
       checkOut: stay.checkOut,
       status: stay.status,
-      note: stay.partySize ? `${stay.partySize} guests` : undefined,
+      note:
+        stay.childCount && stay.childCount >= 1
+          ? `${Math.max((stay.partySize ?? stay.childCount) - stay.childCount, 0)} adults · ${stay.childCount} ${stay.childCount === 1 ? 'child' : 'children'}`
+          : stay.partySize
+            ? `${stay.partySize} guests`
+            : undefined,
     }));
     lines.push(`Parties: ${partyBrief(rows, input.asOf)}`);
+    lines.push(`Children: ${childBrief(rows, input.asOf)}`);
     if (input.arrivalWindows) lines.push(`Arrivals: ${arrivalBrief(rows, input.arrivalWindows, input.asOf)}`);
     if (input.departureWindows) lines.push(`Departures: ${departureBrief(rows, input.departureWindows, input.asOf)}`);
   }

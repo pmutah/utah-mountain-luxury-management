@@ -155,14 +155,14 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                 <p className="text-[var(--uml-muted)]" data-bot="today-turnover-when">
                   {workOrderWhen(turn.house, turn.gapNights === 0, 'en')}
                 </p>
-                <p data-bot="today-turnover-checkout">{workOrderCheckoutParty(turn.checkoutGuests, 'en')}</p>
+                <p data-bot="today-turnover-checkout">{workOrderCheckoutParty(turn.checkoutGuests, 'en', turn.checkoutChildren)}</p>
                 {preferenceTimes && (
                   <p data-bot="today-turnover-departure">
                     {workOrderDeparture(preferenceTimes.departure[turn.checkoutStayId], 'en')}
                   </p>
                 )}
                 <p data-bot="today-turnover-next">{workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}</p>
-                {turn.nextCheckIn && <p data-bot="today-turnover-party">{workOrderParty(turn.nextGuests, 'en')}</p>}
+                {turn.nextCheckIn && <p data-bot="today-turnover-party">{workOrderParty(turn.nextGuests, 'en', turn.nextChildren)}</p>}
                 {turn.nextCheckIn && preferenceTimes && (
                   <p data-bot="today-turnover-arrival">{workOrderArrival(preferenceTimes.arrival[turn.nextStayId ?? ''], 'en')}</p>
                 )}

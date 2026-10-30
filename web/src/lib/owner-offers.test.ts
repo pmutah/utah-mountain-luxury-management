@@ -73,6 +73,12 @@ test('Todd sees Ranch and River quote choices with no price', () => {
     { 'ranch-stay': '6:00 PM', 'river-stay': '801-555-0100' },
   );
   assert.match(named[0]?.text ?? '', /The booking says 9 guests\. This stay names an arrival\. Arrival around 6:00 PM\./);
+  const withChildren = ownerArrivalLines(
+    [{ propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-08', status: 'confirmed', note: 'Ada Lovelace · 18 adults · 2 children' }],
+    '2026-11-01',
+  );
+  assert.match(withChildren[0]?.text ?? '', /The booking says 20 guests, including 2 children\./);
+  assert.equal(withChildren[0]?.text.includes('Ada'), false);
   assert.match(named[1]?.text ?? '', /does not say how many guests\. This stay does not name an arrival time\./);
   assert.equal(named.map((line) => line.text).join(' ').includes('801'), false);
   assert.equal(named.map((line) => line.text).join(' ').includes('Ada'), false);

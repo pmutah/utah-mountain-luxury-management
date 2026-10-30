@@ -9,7 +9,7 @@ import type { YearPace } from './market/fill';
 import { addonPhrase, lengthPhrase } from './open-arrivals';
 import type { ClosedSpan } from './owner-ahead';
 import { grossPace, type PaceStay } from './revenue-goals';
-import { noteGuestCount } from './note-party';
+import { noteChildCount, noteGuestCount } from './note-party';
 import { buildTurnovers } from './today';
 
 const HOUSES = ['ranch', 'river'] as const;
@@ -150,12 +150,16 @@ export function ownerArrivalLines(
   return rows.map((stay) => {
     const nights = nightsBetween(stay.checkIn, stay.checkOut);
     const count = noteGuestCount(stay.note);
+    const children = noteChildCount(stay.note);
+    const kidBit = children !== null && children >= 1 ? (children === 1 ? ', including 1 child' : `, including ${children} children`) : '';
     const party =
       count === null
-        ? 'The booking does not say how many guests.'
+        ? children !== null && children >= 1
+          ? `The booking names ${children === 1 ? '1 child' : `${children} children`} and does not say how many guests.`
+          : 'The booking does not say how many guests.'
         : count === 1
-          ? 'The booking says 1 guest.'
-          : `The booking says ${count} guests.`;
+          ? `The booking says 1 guest${kidBit}.`
+          : `The booking says ${count} guests${kidBit}.`;
     const house = stay.propertyId === 'ranch' ? 'Ranch' : 'River';
     const arrival = windows ? ` ${hostArrivalPhrase(stay.id ? windows[stay.id] : undefined)}` : '';
     return {

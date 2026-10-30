@@ -6,6 +6,7 @@ export type PaceStay = {
   status?: string;
   payout?: number;
   partySize?: number | null;
+  childCount?: number | null;
 };
 
 /** Keep in step with AIRBNB_KEEP and VRBO_KEEP in pricing-doctrine.ts. */

@@ -1,7 +1,7 @@
 import { occupiedByHouse, type StaySpan } from './availability';
 import { addDays, denverToday } from './market/dates';
 import type { HouseId } from './market/types';
-import { noteGuestCount } from './note-party';
+import { noteChildCount, noteGuestCount } from './note-party';
 import type { PaceStay } from './revenue-goals';
 
 export type DateBlock = { propertyId: string; start: string; end: string };
@@ -95,6 +95,7 @@ export async function loadPaceStays(): Promise<PaceStay[] | null> {
     status: stay.status,
     payout: Number(stay.payout) || 0,
     partySize: noteGuestCount(typeof stay.note === 'string' ? stay.note : undefined),
+    childCount: noteChildCount(typeof stay.note === 'string' ? stay.note : undefined),
   }));
 }
 

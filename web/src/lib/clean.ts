@@ -76,17 +76,29 @@ export function workOrderNext(nextCheckIn: string | null, gapNights: number | nu
     : `The next stay starts ${arrive}. The door code opens ${opens}. The code stays off this list.`;
 }
 
+function includingChildren(children: number | null | undefined, lang: CleanLang): string {
+  if (children === null || children === undefined || !Number.isInteger(children) || children < 1 || children > 30) return '';
+  if (lang === 'es') return children === 1 ? ', incluyendo 1 niño' : `, incluyendo ${children} niños`;
+  return children === 1 ? ', including 1 child' : `, including ${children} children`;
+}
+
 /** How many people the next stay is for. Names stay off the sentence. */
-export function workOrderParty(count: number | null, lang: CleanLang): string {
+export function workOrderParty(count: number | null, lang: CleanLang, children?: number | null): string {
+  const kids = includingChildren(children, lang);
   if (count === null || !Number.isInteger(count) || count < 1) {
+    if (kids) {
+      return lang === 'es'
+        ? `La siguiente estancia nombra ${children === 1 ? '1 niño' : `${children} niños`} y no dice cuántos huéspedes. Los nombres no están en esta lista.`
+        : `The next stay names ${children === 1 ? '1 child' : `${children} children`} and does not say how many guests. Names stay off this list.`;
+    }
     return lang === 'es'
       ? 'La siguiente estancia no dice cuántos huéspedes. Los nombres no están en esta lista.'
       : 'The next stay does not say how many guests. Names stay off this list.';
   }
   if (lang === 'es') {
-    return `La siguiente estancia es para ${count} ${count === 1 ? 'huésped' : 'huéspedes'}. Los nombres no están en esta lista.`;
+    return `La siguiente estancia es para ${count} ${count === 1 ? 'huésped' : 'huéspedes'}${kids}. Los nombres no están en esta lista.`;
   }
-  return `The next stay is for ${count === 1 ? '1 guest' : `${count} guests`}. Names stay off this list.`;
+  return `The next stay is for ${count === 1 ? '1 guest' : `${count} guests`}${kids}. Names stay off this list.`;
 }
 
 function arrivalInSpanish(line: string): string {
@@ -137,16 +149,22 @@ export function workOrderDeparture(window: string | null | undefined, lang: Clea
 }
 
 /** How many people are checking out. Names stay off the sentence. */
-export function workOrderCheckoutParty(count: number | null, lang: CleanLang): string {
+export function workOrderCheckoutParty(count: number | null, lang: CleanLang, children?: number | null): string {
+  const kids = includingChildren(children, lang);
   if (count === null || !Number.isInteger(count) || count < 1) {
+    if (kids) {
+      return lang === 'es'
+        ? `Esta salida nombra ${children === 1 ? '1 niño' : `${children} niños`} y no dice cuántos huéspedes. Los nombres no están en esta lista.`
+        : `This checkout names ${children === 1 ? '1 child' : `${children} children`} and does not say how many guests. Names stay off this list.`;
+    }
     return lang === 'es'
       ? 'Esta salida no dice cuántos huéspedes. Los nombres no están en esta lista.'
       : 'This checkout does not say how many guests. Names stay off this list.';
   }
   if (lang === 'es') {
-    return `Esta salida fue de ${count} ${count === 1 ? 'huésped' : 'huéspedes'}. Los nombres no están en esta lista.`;
+    return `Esta salida fue de ${count} ${count === 1 ? 'huésped' : 'huéspedes'}${kids}. Los nombres no están en esta lista.`;
   }
-  return `This checkout was ${count === 1 ? '1 guest' : `${count} guests`}. Names stay off this list.`;
+  return `This checkout was ${count === 1 ? '1 guest' : `${count} guests`}${kids}. Names stay off this list.`;
 }
 
 /** Where to clean. The door code and Wi-Fi stay off the work order. */

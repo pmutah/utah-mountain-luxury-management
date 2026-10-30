@@ -33,11 +33,33 @@ export function noteGuestCount(note: string | undefined): number | null {
   return count >= 1 && count <= 30 ? count : null;
 }
 
+/** Children named beside an adult count. A note that already says "N guests" does not split them out. */
+export function noteChildCount(note: string | undefined): number | null {
+  if (!note || /\b\d{1,2}\s+guests?\b/i.test(note)) return null;
+  const match = note.match(/\b(\d{1,2})\s+child(?:ren)?\b/i);
+  if (!match) return null;
+  const count = Number(match[1]);
+  return count >= 0 && count <= 30 ? count : null;
+}
+
+function childClause(children: number | null): string {
+  if (children === null || children < 1) return '';
+  return children === 1 ? ', including 1 child' : `, including ${children} children`;
+}
+
 /** The party size on a stay card. The raw note stays off this sentence. */
 export function hostPartyPhrase(note: string | undefined): string {
   const count = noteGuestCount(note);
-  if (count === null) return 'This stay does not say how many guests.';
-  return count === 1 ? 'This stay is for 1 guest.' : `This stay is for ${count} guests.`;
+  const children = noteChildCount(note);
+  if (count === null) {
+    if (children !== null && children >= 1) {
+      const named = children === 1 ? '1 child' : `${children} children`;
+      return `This stay names ${named} and does not say how many guests.`;
+    }
+    return 'This stay does not say how many guests.';
+  }
+  const base = count === 1 ? 'This stay is for 1 guest' : `This stay is for ${count} guests`;
+  return `${base}${childClause(children)}.`;
 }
 
 /** Which stays beginning in the next 90 days name a party size. Names stay off the sentence. */
@@ -65,4 +87,31 @@ export function partyBrief(
     return `No stay beginning in the next 90 days names a party size. ${list}. Names stay off this line.`;
   }
   return `${named.length} ${named.length === 1 ? 'stay names' : 'stays name'} a party size. ${missing.length} ${missing.length === 1 ? 'does' : 'do'} not: ${list}. Names stay off this line.`;
+}
+
+/** Which stays beginning in the next 90 days name children. Names stay off the sentence. */
+export function childBrief(
+  stays: readonly { propertyId: string; checkIn: string; status?: string; note?: string }[],
+  asOf: string,
+): string {
+  const tail = 'Names stay off this line.';
+  const none = `No stays begin in the next 90 days. ${tail}`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return none;
+  const until = addDays(asOf, 90);
+  const upcoming = stays
+    .filter((stay) => stay.status !== 'cancelled' && stay.status !== 'blocked' && isHouse(stay.propertyId))
+    .filter((stay) => /^\d{4}-\d{2}-\d{2}$/.test(stay.checkIn) && stay.checkIn >= asOf && stay.checkIn < until)
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn) || a.propertyId.localeCompare(b.propertyId));
+  if (upcoming.length === 0) return none;
+  const named = upcoming.filter((stay) => (noteChildCount(stay.note) ?? 0) >= 1);
+  if (named.length === 0) return `No stay beginning in the next 90 days names children. ${tail}`;
+  const shown = named.slice(0, 6).map((stay) => {
+    const children = noteChildCount(stay.note) ?? 0;
+    const word = children === 1 ? '1 child' : `${children} children`;
+    return `${LABEL[stay.propertyId as (typeof HOUSES)[number]]} ${shortWhen(stay.checkIn)}, ${word}`;
+  });
+  const more = named.length - shown.length;
+  const list = `${shown.join('; ')}${more > 0 ? `; and ${more} more` : ''}`;
+  const word = named.length === 1 ? 'stay names' : 'stays name';
+  return `${named.length} ${word} children: ${list}. ${tail}`;
 }

@@ -45,6 +45,8 @@ test('a same-day turnover is a zero-night gap', () => {
   assert.equal(turns[0]?.gapNights, 0);
   assert.equal(turns[0]?.house, 'ranch');
   assert.equal(turns[0]?.nextGuests, 9);
+  assert.equal(turns[0]?.nextChildren, null);
+  assert.equal(turns[0]?.checkoutChildren, null);
   assert.equal(turns[0]?.nextStayId, 'in');
   assert.equal(turns[0]?.checkoutStayId, 'out');
   assert.equal(turns[0]?.checkoutGuests, null);

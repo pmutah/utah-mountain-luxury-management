@@ -430,3 +430,7 @@
 
 - The unsent daily text now says which stays beginning in the next 90 days name a party size. When preference cards have loaded, it also says which of those stays name an arrival time and which checkouts name a departure time.
 - A booking note is reduced to a count before it reaches the page. A phone or a name cannot come through as a time. Nothing is sent.
+
+## 2026-10-30 — children named on a stay
+
+- When a booking note names children beside an adult count, the guest list, the work order, Todd’s arrivals, the nightly brief, and the unsent daily text say how many are children. A note that only says a guest total stays as that total. Names stay off. Nothing is sent.
