@@ -11,7 +11,7 @@ const LABEL: Record<HouseId, string> = {
   lindon: 'The Lindon House',
 };
 
-export type NearbyPlace = { name: string; note: string };
+export type NearbyPlace = { name: string; note: string; area?: string };
 
 export type HouseNote = { title: string; body: string };
 
@@ -29,6 +29,49 @@ export type HouseStay = {
 };
 
 export const STAY_EMERGENCY = 'For a fire, medical emergency, or anyone in danger, call 911 first, then call us.';
+
+const RIVER_NEARBY: NearbyPlace[] = [
+  { name: 'Sundance Mountain Resort', area: 'About 10 minutes up the canyon', note: 'Your home mountain. Lessons and rentals at the base.' },
+  { name: 'Park City and Deer Valley', area: 'About 45 minutes via Heber', note: 'Big resorts and Main Street dining for a day trip.' },
+  { name: 'Snowbird, Alta, Brighton, Solitude', area: 'About an hour', note: 'Cottonwood Canyon powder days. Leave early for canyon traffic.' },
+  { name: 'Tree Room at Sundance', area: 'Sundance', note: 'Fine dining among Robert Redford’s art collection. Tuesday to Saturday. Reserve ahead.' },
+  { name: 'Foundry Grill at Sundance', area: 'Sundance', note: 'Breakfast, lunch, and dinner by the hearth. Sunday brunch is an event.' },
+  { name: 'Owl Bar at Sundance', area: 'Sundance', note: 'Historic bar with live music and bar food. First come, first served.' },
+  { name: 'Sundance Deli', area: 'Sundance', note: 'Coffee, sandwiches, and pizza to take on a hike.' },
+  { name: 'Communal', area: 'Provo, about 20 minutes', note: 'The best dinner in Utah County. Reserve ahead.' },
+  { name: 'Slackwater', area: 'Riverwoods, Provo', note: 'Pizza and a big patio at the mouth of the canyon.' },
+  { name: 'Provo River tubing and rafting', area: 'Vivian Park', note: 'High Country Adventure runs tubes, rafts, and kayaks that finish at Vivian Park. Spring runoff can close tubing, so check before you go.' },
+  { name: 'Fly fishing the Provo River', area: 'Right outside', note: 'One of Utah’s best trout rivers. A Utah fishing license is required.' },
+  { name: 'Provo River Parkway', area: 'Starts at Vivian Park', note: 'Paved trail down the canyon for walking and biking.' },
+  { name: 'Stewart Falls', area: 'Sundance', note: 'Easy-moderate hike to a two-tier waterfall. Beautiful in fall color.' },
+  { name: 'Bridal Veil Falls', area: 'Lower Provo Canyon', note: 'A 600-foot waterfall a short walk from the parking lot.' },
+  { name: 'Deer Creek Reservoir', area: 'About 10 minutes up canyon', note: 'Boating, paddle boards, and swimming in summer.' },
+  { name: 'Heber Valley Railroad', area: 'Heber', note: 'Scenic train rides. The Vivian Park run has been paused for track work, so check the schedule.' },
+  { name: 'Winter driving', note: 'AWD or 4WD with good tires from November to April. The canyon road can ice up at night.' },
+  { name: 'Groceries', area: 'Orem or Heber', note: 'Stock up before you drive up the canyon. There is no grocery store at Vivian Park.' },
+];
+
+const VALLEY_NEARBY: NearbyPlace[] = [
+  { name: 'Sundance Mountain Resort', area: 'Provo Canyon', note: 'The closest ski hill. Smaller crowds, great for families and first-timers.' },
+  { name: 'Snowbird and Alta', area: 'Little Cottonwood Canyon', note: 'Big-mountain Wasatch skiing. Canyon traffic backs up on powder mornings, so leave early.' },
+  { name: 'Brighton and Solitude', area: 'Big Cottonwood Canyon', note: 'Relaxed resorts with great snow and night skiing at Brighton.' },
+  { name: 'Park City and Deer Valley', area: 'Park City', note: 'Two of the largest resorts in the country, plus Main Street for dinner.' },
+  { name: 'Oteo', area: 'Lindon', note: 'Regional Mexican, the local favorite in Lindon.' },
+  { name: 'Eliane French Bakery', area: 'Lindon', note: 'Croissants, tarts, and take-home entrees. Go early.' },
+  { name: 'Communal', area: 'Provo', note: 'The best dinner in Utah County. Seasonal, farm-to-table. Reserve ahead.' },
+  { name: 'Black Sheep Cafe', area: 'Provo', note: 'Southwestern and Native American cooking. Try the Navajo taco.' },
+  { name: 'Station 22', area: 'Provo', note: 'Comfort food in an old firehouse. Great for breakfast and brunch.' },
+  { name: 'La Vaca', area: 'Provo', note: 'Upscale steakhouse for a celebration dinner.' },
+  { name: 'Pizzeria 712', area: 'Orem', note: 'Wood-fired pizza. Reservations help. Closed Sundays.' },
+  { name: 'Slackwater', area: 'Riverwoods, Provo', note: 'Pizza and shareable plates with one of the best patios in the valley.' },
+  { name: 'Rockwell Ice Cream', area: 'Provo', note: 'Small-batch ice cream a block off Center Street.' },
+  { name: 'Provo River Parkway', area: 'Provo Canyon to Utah Lake', note: 'Paved trail for walking and biking along the river.' },
+  { name: 'Bridal Veil Falls', area: 'Provo Canyon', note: 'A 600-foot waterfall a short walk from the parking lot.' },
+  { name: 'Timpanogos Cave', area: 'American Fork Canyon', note: 'Guided cave tours in summer. Tickets sell out, so book ahead.' },
+  { name: 'Thanksgiving Point', area: 'Lehi', note: 'Museum of Natural Curiosity, dinosaur museum, gardens, and farm.' },
+  { name: 'BYU campus', area: 'Provo', note: 'Games at LaVell Edwards Stadium, museums, and the Creamery.' },
+  { name: 'Most local restaurants close on Sundays', note: 'Plan Sunday meals ahead or cook at the house.' },
+];
 
 /** Published checkout lines. The same list is on every house. Door codes stay off it. */
 export const STAY_CHECKOUT = [
@@ -54,12 +97,7 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>
         body: 'The Provo River runs cold and fast, especially in spring. Watch kids near the bank and wear life jackets on the water.',
       },
     ],
-    nearby: [
-      { name: 'Sundance Mountain Resort', note: 'Your home mountain. Lessons and rentals at the base.' },
-      { name: 'Provo River Parkway', note: 'Paved trail down the canyon for walking and biking.' },
-      { name: 'Bridal Veil Falls', note: 'A 600-foot waterfall a short walk from the parking lot.' },
-      { name: 'Groceries', note: 'Stock up before you drive up the canyon. There is no grocery store at Vivian Park.' },
-    ],
+    nearby: RIVER_NEARBY,
   },
   ranch: {
     checkIn: '4:00 PM',
@@ -70,12 +108,7 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>
     notes: [
       { title: 'Hot tub', body: 'Keep the cover on when not in use. No glass in or near the tub. Kids with an adult only.' },
     ],
-    nearby: [
-      { name: 'Sundance Mountain Resort', note: 'The closest ski hill. Smaller crowds, great for families and first-timers.' },
-      { name: 'Communal', note: 'The best dinner in Utah County. Seasonal, farm-to-table. Reserve ahead.' },
-      { name: 'Thanksgiving Point', note: 'Museum of Natural Curiosity, dinosaur museum, gardens, and farm.' },
-      { name: 'Oteo', note: 'Regional Mexican, the local favorite in Lindon.' },
-    ],
+    nearby: VALLEY_NEARBY,
   },
   lindon: {
     checkIn: '4:00 PM',
@@ -84,12 +117,7 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>
     arrival: 'The house is in Lindon, about 15 minutes from BYU and 45 minutes from the Salt Lake airport.',
     parking: 'Park in the driveway.',
     notes: [],
-    nearby: [
-      { name: 'BYU campus', note: 'Games at LaVell Edwards Stadium, museums, and the Creamery.' },
-      { name: 'Sundance Mountain Resort', note: 'The closest ski hill. Smaller crowds, great for families and first-timers.' },
-      { name: 'Communal', note: 'The best dinner in Utah County. Seasonal, farm-to-table. Reserve ahead.' },
-      { name: 'Thanksgiving Point', note: 'Museum of Natural Curiosity, dinosaur museum, gardens, and farm.' },
-    ],
+    nearby: VALLEY_NEARBY,
   },
 };
 

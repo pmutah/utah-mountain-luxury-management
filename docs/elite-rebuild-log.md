@@ -264,3 +264,7 @@
 ## 2026-10-29 — nearby places on the trip sheet
 
 - The printed trip sheet lists the nearby places from the guest guide. A place that names a door code or Wi-Fi is left off. Printing does not change a reservation.
+
+## 2026-10-29 — the published nearby list on the quote
+
+- The booking page lists the same nearby places as the published guest guide. River has the canyon list. Ranch and Lindon have the valley list. A door code stays off the page.

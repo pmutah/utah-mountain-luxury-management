@@ -286,7 +286,8 @@ export function DirectBook() {
               <ul className="space-y-1 text-sm" data-bot="stay-nearby">
                 {stay.nearby.map((place) => (
                   <li key={place.name}>
-                    {place.name}. {place.note}
+                    {place.name}
+                    {place.area ? `, ${place.area}` : ''}. {place.note}
                   </li>
                 ))}
               </ul>
