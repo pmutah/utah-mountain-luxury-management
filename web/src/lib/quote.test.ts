@@ -46,6 +46,11 @@ test('a night already on the calendar cannot be quoted', () => {
   const taken = quoteStay('lindon', '2026-11-03', '2026-11-06', ['2026-11-04']);
   assert.equal(taken.ok, false);
   assert.equal(taken.reason, 'Those nights are already booked.');
+  const closed = quoteStay('lindon', '2026-11-03', '2026-11-06', ['2026-11-04'], { closed: ['2026-11-04'] });
+  assert.equal(closed.ok, false);
+  assert.equal(closed.reason, 'Those nights are closed on the calendar.');
+  const mixed = quoteStay('lindon', '2026-11-03', '2026-11-06', ['2026-11-04', '2026-11-05'], { closed: ['2026-11-04'] });
+  assert.equal(mixed.reason, 'Those nights are already booked.');
 });
 
 test('a Ranch weekday adds the house cleaning fee to the direct price', () => {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
+import { loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
 import { chooseComps, loadCompChoices, saveCompChoices, type CompChoice } from '../lib/market/comps';
 import { benchFor, compsFor } from '../lib/market/fixtures';
 import { RIVER_FIRST_STAY } from '../lib/brand';
@@ -123,6 +123,7 @@ export function MarketBoard() {
   const [house, setHouse] = useState<HouseId>('river');
   const [paused, setPaused] = useState<Record<HouseId, boolean>>({ ranch: false, lindon: false, river: false });
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
+  const [closed, setClosed] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
   const [stays, setStays] = useState<PaceStay[] | null>(null);
   const [paceState, setPaceState] = useState<'loading' | 'live' | 'off'>('loading');
@@ -155,8 +156,9 @@ export function MarketBoard() {
       pace: { river: paceOf('river'), ranch: paceOf('ranch'), lindon: paceOf('lindon') },
       calendarLive: calendar === 'live',
       comps: activeComps,
+      closed,
     });
-  }, [today, taken, paused, stays, paceState, calendar, activeComps]);
+  }, [today, taken, closed, paused, stays, paceState, calendar, activeComps]);
   const settled = calendar !== 'loading' && paceState !== 'loading';
   const shadowLog = useMemo(
     () => (settled ? recordShadowDay(storedLog, today, daily) : storedLog),
@@ -214,8 +216,8 @@ export function MarketBoard() {
     if (calendar !== 'live') return '';
     const paceFor = (id: HouseId): YearPace =>
       paceState !== 'live' || !stays ? 'unknown' : grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met';
-    return comparePhrase(house, taken, today, paceFor);
-  }, [calendar, house, taken, today, paceState, stays]);
+    return comparePhrase(house, taken, today, paceFor, closed);
+  }, [calendar, house, taken, closed, today, paceState, stays]);
   const starts = useMemo(
     () => (calendar === 'live' ? bookingStartSummary(house, taken[house] ?? [], today, pace) : ''),
     [calendar, house, taken, today, pace],
@@ -233,11 +235,12 @@ export function MarketBoard() {
 
   useEffect(() => {
     let cancel = false;
-    loadBookedNights()
-      .then((nights) => {
+    loadQuoteCalendar()
+      .then((rows) => {
         if (cancel) return;
-        if (nights) {
-          setTaken(nights);
+        if (rows) {
+          setTaken(rows.nights);
+          setClosed(rows.closed);
           setCalendar('live');
         } else setCalendar('off');
       })

@@ -54,4 +54,8 @@ test('the other houses quote the same dates, and a party has to fit', () => {
   const blocked = comparePhrase('ranch', { lindon: ['2026-10-29'] }, '2026-10-29', pace);
   assert.match(blocked, /Lindon is booked/);
   assert.match(blocked, /River is not open yet/);
+  const closedCompare = comparePhrase('river', { ranch: ['2026-11-01'] }, '2026-10-29', pace, { ranch: ['2026-11-01'] });
+  assert.match(closedCompare, /Ranch is closed/);
+  assert.equal(closedCompare.includes('booked'), false);
+  assert.equal(closedCompare.includes('$'), false);
 });

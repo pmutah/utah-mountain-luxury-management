@@ -229,7 +229,12 @@ function compareBrief(
     payout: Number(stay.payout) || 0,
   }));
   const paceFor = (house: HouseId): YearPace => (grossPace(house, paceStays, asOf).stillNeeded > 0 ? 'short' : 'met');
-  const parts = SHADOW_HOUSES.map((house) => comparePhrase(house, taken, asOf, paceFor));
+  const closedDates = occupiedByHouse(
+    closed.map((block) => ({ propertyId: block.propertyId, checkIn: block.start, checkOut: block.end })),
+    asOf,
+    addDays(asOf, 180),
+  );
+  const parts = SHADOW_HOUSES.map((house) => comparePhrase(house, taken, asOf, paceFor, closedDates));
   return `Other houses from these bookings: ${parts.join(' ')}`;
 }
 

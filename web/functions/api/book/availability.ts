@@ -24,7 +24,16 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
       checkOut: block.end,
     })),
   ];
-  return corsJson(request, { from, until, nights: occupiedByHouse(spans, from, until) });
+  const closed = occupiedByHouse(
+    blocks.map((block) => ({
+      propertyId: block.propertyId,
+      checkIn: block.start,
+      checkOut: block.end,
+    })),
+    from,
+    until,
+  );
+  return corsJson(request, { from, until, nights: occupiedByHouse(spans, from, until), closed });
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

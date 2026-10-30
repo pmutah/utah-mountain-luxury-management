@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PROPERTIES } from '../lib/api';
-import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
+import { loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { houseStay, partyFits, accessLine, earlyLine, nearbyGroups } from '../lib/house-stay';
 import { placeHref, placeSite } from '../lib/place-link';
@@ -57,6 +57,7 @@ export function DirectBook() {
   const [rulesRead, setRulesRead] = useState(false);
   const [addons, setAddons] = useState<UpsellId[]>(linked.addons ?? []);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
+  const [closed, setClosed] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
   const [stays, setStays] = useState<PaceStay[] | null>(null);
   const today = denverToday();
@@ -68,11 +69,12 @@ export function DirectBook() {
 
   useEffect(() => {
     let cancel = false;
-    loadBookedNights()
-      .then((nights) => {
+    loadQuoteCalendar()
+      .then((rows) => {
         if (cancel) return;
-        if (nights) {
-          setTaken(nights);
+        if (rows) {
+          setTaken(rows.nights);
+          setClosed(rows.closed);
           setCalendar('live');
         } else setCalendar('off');
       })
@@ -104,9 +106,10 @@ export function DirectBook() {
       quoteStay(house, checkIn, checkOut, taken[house] ?? [], {
         asOf: today,
         pace,
+        closed: closed[house] ?? [],
         ...(guestCount !== null ? { guests: guestCount } : {}),
       }),
-    [house, checkIn, checkOut, taken, today, pace, guestCount],
+    [house, checkIn, checkOut, taken, closed, today, pace, guestCount],
   );
   const splitLine = quote.ok && party.ok && guestCount !== null ? splitStayLine(quote.stayTotal, guestCount) : null;
   const saved = quote.ok ? directSavings(quote.channelTotal, quote.stayTotal) : null;
@@ -118,14 +121,14 @@ export function DirectBook() {
     if (calendar !== 'live') return [];
     const paceFor = (id: HouseId): YearPace =>
       stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
-    return alsoOpen(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined);
-  }, [calendar, house, checkIn, checkOut, taken, today, stays, guestCount]);
+    return alsoOpen(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined, closed);
+  }, [calendar, house, checkIn, checkOut, taken, closed, today, stays, guestCount]);
   const held = useMemo(() => {
     if (calendar !== 'live') return [];
     const paceFor = (id: HouseId): YearPace =>
       stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
-    return alsoHeld(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined);
-  }, [calendar, house, checkIn, checkOut, taken, today, stays, guestCount]);
+    return alsoHeld(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined, closed);
+  }, [calendar, house, checkIn, checkOut, taken, closed, today, stays, guestCount]);
   const extension = useMemo(() => {
     if (calendar !== 'live' || quote.ok) return null;
     const next = shortestStay(house, checkIn, taken[house] ?? [], today, pace, guestCount ?? undefined);

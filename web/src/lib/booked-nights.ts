@@ -16,15 +16,28 @@ export async function loadDateBlocks(): Promise<DateBlock[] | null> {
     .map((block) => ({ propertyId: block.propertyId ?? '', start: block.start ?? '', end: block.end ?? '' }));
 }
 
-/** Dates only. Guest names from the reservations feed are dropped before they reach the page. */
-export async function loadBookedNights(): Promise<Record<HouseId, string[]> | null> {
+const EMPTY_NIGHTS: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [] };
+
+function asNights(value: unknown): Record<HouseId, string[]> | null {
+  if (!value || typeof value !== 'object') return null;
+  const nights = value as Record<HouseId, string[]>;
+  if (!Array.isArray(nights.ranch) || !Array.isArray(nights.lindon) || !Array.isArray(nights.river)) return null;
+  return nights;
+}
+
+/** Booked nights, plus calendar blocks kept apart. Guest names are not included. */
+export async function loadQuoteCalendar(): Promise<{
+  nights: Record<HouseId, string[]>;
+  closed: Record<HouseId, string[]>;
+} | null> {
   const from = denverToday();
   const until = addDays(from, 540);
   const live = await fetch('/api/book/availability').catch(() => null);
   const type = live?.headers.get('content-type') ?? '';
   if (live?.ok && type.includes('application/json')) {
-    const body = (await live.json()) as { nights?: Record<HouseId, string[]> };
-    if (body.nights?.ranch && body.nights.lindon && body.nights.river) return body.nights;
+    const body = (await live.json()) as { nights?: Record<HouseId, string[]>; closed?: Record<HouseId, string[]> };
+    const nights = asNights(body.nights);
+    if (nights) return { nights, closed: asNights(body.closed) ?? EMPTY_NIGHTS };
   }
   if (!import.meta.env.DEV) return null;
   const staysRes = await fetch('/api/reservations').catch(() => null);
@@ -34,6 +47,11 @@ export async function loadBookedNights(): Promise<Record<HouseId, string[]> | nu
   const blocksBody = blocksRes?.ok
     ? ((await blocksRes.json()) as { blocks?: { propertyId: string; start: string; end: string }[] })
     : { blocks: [] };
+  const blocks = (blocksBody.blocks ?? []).map((block) => ({
+    propertyId: block.propertyId,
+    checkIn: block.start,
+    checkOut: block.end,
+  }));
   const spans: StaySpan[] = [
     ...(staysBody.reservations ?? []).map((stay) => ({
       propertyId: stay.propertyId,
@@ -41,13 +59,15 @@ export async function loadBookedNights(): Promise<Record<HouseId, string[]> | nu
       checkOut: stay.checkOut,
       status: stay.status,
     })),
-    ...(blocksBody.blocks ?? []).map((block) => ({
-      propertyId: block.propertyId,
-      checkIn: block.start,
-      checkOut: block.end,
-    })),
+    ...blocks,
   ];
-  return occupiedByHouse(spans, from, until);
+  return { nights: occupiedByHouse(spans, from, until), closed: occupiedByHouse(blocks, from, until) };
+}
+
+/** Dates only. Guest names from the reservations feed are dropped before they reach the page. */
+export async function loadBookedNights(): Promise<Record<HouseId, string[]> | null> {
+  const calendar = await loadQuoteCalendar();
+  return calendar?.nights ?? null;
 }
 
 /** Host payout and dates only. Guest names stay on the server response and are not kept. */

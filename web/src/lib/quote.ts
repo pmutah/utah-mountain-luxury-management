@@ -79,7 +79,7 @@ export function quoteStay(
   checkIn: string,
   checkOut: string,
   taken: readonly string[] = [],
-  options?: { asOf?: string; pace?: YearPace; guests?: number },
+  options?: { asOf?: string; pace?: YearPace; guests?: number; closed?: readonly string[] },
 ): StayQuote {
   const asOf = options?.asOf && /^\d{4}-\d{2}-\d{2}$/.test(options.asOf) ? options.asOf : checkIn;
   const pace = options?.pace ?? 'unknown';
@@ -131,7 +131,13 @@ export function quoteStay(
     return { ...priced, lodging: 0, stayTotal: 0, channelLodging: 0, channelTotal: 0, ok: false, reason: 'The River House takes its first stays on November 1, 2026.' };
   }
   if (dates.some((date) => taken.includes(date))) {
-    return { ...priced, ok: false, reason: 'Those nights are already booked.' };
+    const closed = options?.closed ?? [];
+    const booked = dates.some((date) => taken.includes(date) && !closed.includes(date));
+    return {
+      ...priced,
+      ok: false,
+      reason: booked ? 'Those nights are already booked.' : 'Those nights are closed on the calendar.',
+    };
   }
   if (dates.length < minNights) {
     return { ...priced, ok: false, reason: `This stay needs at least ${minNights} nights.` };

@@ -360,3 +360,7 @@
 ## 2026-10-30 — other houses on the next arrival
 
 - The market desk, the unsent daily text, and the nightly brief say which other houses will quote the next open arrival. A booked house and a house that is not open yet are named. No prices, and nothing is sent.
+
+## 2026-10-30 — a calendar block is closed
+
+- A night blocked on the calendar is described as closed. A night with a stay is still described as booked. The calendar is not changed, and nothing is sent.

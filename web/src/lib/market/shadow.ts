@@ -99,6 +99,7 @@ export function portfolioDigest(input: {
   pace: Record<HouseId, YearPace>;
   calendarLive: boolean;
   comps?: Partial<Record<HouseId, SampleComp[]>>;
+  closed?: Record<HouseId, string[]>;
 }): string {
   const lines = [`UML shadow ${input.asOf}`];
   for (const house of PORTFOLIO) {
@@ -135,7 +136,9 @@ export function portfolioDigest(input: {
     ).filter((line) => line.length > 0);
     if (starts.length > 0) lines.push(`Booking calendar: ${starts.join(' ')}`);
     const paceFor = (id: HouseId) => input.pace[id];
-    lines.push(`Other houses: ${PORTFOLIO.map((house) => comparePhrase(house, input.taken, input.asOf, paceFor)).join(' ')}`);
+    lines.push(
+      `Other houses: ${PORTFOLIO.map((house) => comparePhrase(house, input.taken, input.asOf, paceFor, input.closed)).join(' ')}`,
+    );
   }
   lines.push('Nothing sent to Hospitable.');
   return lines.join('\n');
