@@ -3,6 +3,7 @@ import { nightAsk } from './market/rates';
 import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
 import { directNight } from './quote';
+import { shortestStay } from './shortest-stay';
 
 export type StayPick = {
   checkIn: string;
@@ -15,6 +16,8 @@ export type StayDay = {
   guest: number;
   direct: number;
   minNights: number;
+  /** Shortest stay that can start this night. Empty when this night cannot start one. */
+  startNights: number | null;
   booked: boolean;
   closed: boolean;
   past: boolean;
@@ -54,12 +57,15 @@ export function monthDays(
     const iso = addDays(gridStart, i);
     const ask = nightAsk(house, iso);
     const priced = directNight(house, iso, taken, today, pace);
+    const canStart = iso >= today && !ask.closed && !booked.has(iso);
+    const start = canStart ? shortestStay(house, iso, taken, today, pace) : null;
     days.push({
       iso,
       inMonth: iso.slice(0, 7) === yearMonth,
       guest: ask.guest,
       direct: priced.direct,
       minNights: ask.minNights,
+      startNights: start?.nights ?? null,
       booked: booked.has(iso),
       closed: ask.closed,
       past: iso < today,

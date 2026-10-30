@@ -300,3 +300,7 @@
 ## 2026-10-29 — arrival, parking, and house rules on the trip sheet
 
 - The on-screen trip sheet now shows how to arrive, where to park, and the house rules, the same lines as the paper. A line that names a door code or Wi-Fi is left off.
+
+## 2026-10-29 — the shortest stay on each calendar night
+
+- Each open night on the booking calendar shows the shortest stay that can start that day when it is longer than one night. A Friday or Saturday by itself shows two nights until it is inside 7 days. A gap shorter than that minimum is marked too short. Nothing is booked.

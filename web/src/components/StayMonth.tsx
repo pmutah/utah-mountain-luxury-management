@@ -29,6 +29,8 @@ export function StayMonth({
   const earliest = today.slice(0, 7);
   const latest = shiftMonth(earliest, 17);
   const minimum = arrivalMinimum(house, checkIn);
+  const marked = days.some((day) => day.inMonth && (day.startNights ?? 0) > 1);
+  const tooShort = days.some((day) => day.inMonth && !day.past && !day.closed && !day.booked && day.startNights == null);
 
   return (
     <div data-bot="stay-month">
@@ -71,7 +73,13 @@ export function StayMonth({
               data-date={day.iso}
               disabled={disabled}
               aria-pressed={selected}
-              aria-label={`${day.iso}${day.booked ? ', booked' : day.closed && !day.past ? ', closed' : ''}`}
+              aria-label={`${day.iso}${day.booked ? ', booked' : day.closed && !day.past ? ', closed' : ''}${
+                day.startNights && day.startNights > 1
+                  ? `, at least ${day.startNights} nights`
+                  : day.startNights == null && day.inMonth && !day.past && !day.closed && !day.booked
+                    ? ', too short to start a stay'
+                    : ''
+              }`}
               onClick={() => onPick(pickStay(stay, day.iso, taken, house, today))}
               className={`min-h-14 rounded-xl px-1 py-1 text-left ${
                 day.inMonth ? '' : 'invisible'
@@ -85,7 +93,10 @@ export function StayMonth({
               ) : day.inMonth && day.closed && !day.past ? (
                 <span className="block text-[9px] uppercase tracking-wide">Closed</span>
               ) : day.inMonth && !day.closed && !day.past ? (
-                <span className="block text-[9px] tabular-nums">{formatWhole(day.direct)}</span>
+                <span className="block text-[9px] tabular-nums">
+                  {formatWhole(day.direct)}
+                  {day.startNights && day.startNights > 1 ? ` · ${day.startNights} nt` : day.startNights == null ? ' · too short' : ''}
+                </span>
               ) : null}
             </button>
           );
@@ -93,6 +104,8 @@ export function StayMonth({
       </div>
       <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="stay-minimum">
         {checkOut ? 'Gold nights are the stay. Prices are the direct nightly rate.' : 'Choose the check-out morning. Prices are the direct nightly rate.'}
+        {marked ? ' A night marked with nights is the shortest stay that can start that day.' : ''}
+        {tooShort ? ' A night marked too short cannot start a stay.' : ''}
         {minimum ? ` This arrival needs at least ${minimum} nights.` : ''}
       </p>
     </div>
