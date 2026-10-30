@@ -10,7 +10,7 @@ Existing expenses, bookings, receipts, and construction records stay in Cloudfla
 | Market | Top 10 comps per house | sample | Pin and hide are saved in this browser. A hidden comp is replaced from the bench. Live comps replace the samples when a key exists. |
 | Market | 90-day rate band and percentile | sample | Gold line is our ask. Band is open comps. | 
 | Market | Next 30, 60, and 90 nights | sample | Our booked share uses the live calendar. The comp share is still the sample set. | 
-| Market | What-if nightly ask | sample | A typed ask is judged against the floor, the ceiling, and the 8% cap. When that night asks for more than one night on our booking page, the line says so. It does not change the published rate. |
+| Market | What-if nightly ask | sample | A typed ask is judged against the floor, the ceiling, and the 8% cap. When that night asks for more than one night on our booking page, the line says so. An open night also shows the direct charge that page would use, before tax. It does not change the published rate. |
 | Market | Listing opportunities | sample | Titles are on our booking page. A lone weekend night waits until the last week. Photos and card payment stay open. Nothing posts to Airbnb or VRBO. |
 | Market | Shadow rate moves, 8% cap, holiday lock, floors | sample | Does not write Airbnb, VRBO, or Hospitable. |
 | Market | Daily shadow run | sample | One text covers River, Ranch, and Lindon. Booked, closed, and paused nights stay at the published rate. Promotions follow the fill rules. Each finished Denver day is saved on this browser, up to seven. The text is shown and not sent. |

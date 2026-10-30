@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { quoteStay, directSavings } from './quote.ts';
+import { quoteStay, directNight, directSavings } from './quote.ts';
 
 test('a River shoulder weekend quotes the direct host net and keeps the Airbnb list beside it', () => {
   const quote = quoteStay('river', '2026-11-06', '2026-11-08');
@@ -27,6 +27,7 @@ test('a short year takes 20 percent off the direct host net and leaves the Airbn
   assert.equal(quote.channelLodging, 4972);
   assert.equal(quote.stayTotal, 3360);
   assert.equal(directSavings(quote.channelTotal, quote.stayTotal), 1612);
+  assert.equal(quote.nights[0]?.direct, directNight('river', '2026-11-06', [], '2026-10-29', 'short').direct);
 });
 
 test('River refuses dates before the first stay and a one-night weekend', () => {

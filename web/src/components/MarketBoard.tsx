@@ -20,6 +20,7 @@ import { judgeTrial } from '../lib/market/whatif';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 import { listingOpportunities } from '../lib/listing';
+import { directNight } from '../lib/quote';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
 
 const HOUSES: { id: HouseId; label: string }[] = [
@@ -187,6 +188,12 @@ export function MarketBoard() {
         holiday: board.nights.some((night) => night.date === trialNight.date && night.action === 'locked'),
       })
     : null;
+  const housePace: YearPace =
+    paceState !== 'live' || !stays ? 'unknown' : grossPace(house, stays, today).stillNeeded > 0 ? 'short' : 'met';
+  const bookingNight =
+    trialNight && trialNight.action !== 'closed' && trialNight.action !== 'booked'
+      ? directNight(house, trialNight.date, taken[house] ?? [], today, housePace)
+      : null;
 
   function writeChoice(next: CompChoice) {
     const all = { ...compChoices, [house]: next };
@@ -417,6 +424,13 @@ export function MarketBoard() {
               {trialNight.action !== 'closed' && trialNight.minNights > 1
                 ? ` Our booking page asks for at least ${trialNight.minNights} nights.`
                 : ''}
+              {trialNight.action === 'booked' ? ' Our booking page leaves this night booked.' : ''}
+              {bookingNight ? (
+                <span data-bot="market-direct">
+                  {` Our booking page charges ${formatWhole(bookingNight.direct)} for this night, before tax.`}
+                  {bookingNight.promotionPercent === 20 ? ' The 20% fill rate is on.' : ''}
+                </span>
+              ) : null}
             </p>
           </form>
         )}
