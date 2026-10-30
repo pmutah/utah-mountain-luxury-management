@@ -15,6 +15,21 @@ test('a stay link drops a name, a bad house, and a reversed stay', () => {
   assert.equal(stayLinkSearch({ house: 'river', checkIn: '2026-11-06', checkOut: '2026-11-08', guests: '' }).includes('guests'), false);
 });
 
+test('a stay link keeps the add-ons and drops a name', () => {
+  const link = readStayLink('?house=river&in=2026-11-06&out=2026-11-08&addons=late,nope,early,early&name=Ada&email=ada@example.com');
+  assert.deepEqual(link.addons, ['early', 'late']);
+  assert.equal(JSON.stringify(link).includes('Ada'), false);
+  const search = stayLinkSearch({
+    house: 'river',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    guests: '',
+    addons: ['groceries', 'early'],
+  });
+  assert.equal(search, '?house=river&in=2026-11-06&out=2026-11-08&addons=early%2Cgroceries');
+  assert.equal(search.includes('name'), false);
+});
+
 test('an impossible calendar day is left off the link', () => {
   const link = readStayLink('?house=lindon&in=2026-02-31&out=2026-03-02&guests=4');
   assert.equal(link.house, 'lindon');

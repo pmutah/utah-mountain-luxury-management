@@ -52,7 +52,7 @@ export function DirectBook() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
   const [guests, setGuests] = useState(linked.guests ?? '');
   const [rulesRead, setRulesRead] = useState(false);
-  const [addons, setAddons] = useState<UpsellId[]>([]);
+  const [addons, setAddons] = useState<UpsellId[]>(linked.addons ?? []);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
   const [stays, setStays] = useState<PaceStay[] | null>(null);
@@ -92,14 +92,6 @@ export function DirectBook() {
       cancel = true;
     };
   }, []);
-
-  const sharePath = `/book${stayLinkSearch({ house, checkIn, checkOut, guests })}`;
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (`${window.location.pathname}${window.location.search}` === sharePath) return;
-    window.history.replaceState(null, '', sharePath);
-  }, [sharePath]);
 
   const stay = houseStay(house);
   const guestCount = /^\d+$/.test(guests) ? Number(guests) : null;
@@ -160,6 +152,19 @@ export function DirectBook() {
   });
   const selectedOffers = offers.filter((offer) => addons.includes(offer.id));
   const addonNote = quoteOfferNote(selectedOffers);
+  const sharePath = `/book${stayLinkSearch({
+    house,
+    checkIn,
+    checkOut,
+    guests,
+    addons: calendar === 'live' ? selectedOffers.map((offer) => offer.id) : addons,
+  })}`;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (`${window.location.pathname}${window.location.search}` === sharePath) return;
+    window.history.replaceState(null, '', sharePath);
+  }, [sharePath]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -510,7 +515,7 @@ export function DirectBook() {
               </p>
             )}
             <div className="mt-4" data-bot="stay-share">
-              <p className="text-xs text-[var(--uml-muted)]">This link reopens the quote. It does not send a request.</p>
+              <p className="text-xs text-[var(--uml-muted)]">This link reopens the quote and the add-ons that are checked. It does not send a request.</p>
               <p className="mt-1 text-sm">{sharePath}</p>
               <button
                 type="button"
