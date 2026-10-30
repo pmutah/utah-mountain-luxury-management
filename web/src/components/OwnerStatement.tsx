@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatCurrency, type Expense, type Reservation } from '../lib/api';
+import { denverToday } from '../lib/market/dates';
+import { aheadLine, ownerAhead } from '../lib/owner-ahead';
 import { buildOwnerStatement } from '../lib/owner-statement';
 import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statement-file';
 import type { ReportPeriod } from '../lib/report';
@@ -25,6 +27,7 @@ export function OwnerStatement({
     () => buildOwnerStatement(month, period, reservations, expenses, extraCleaningFees),
     [month, period, reservations, expenses, extraCleaningFees],
   );
+  const ahead = useMemo(() => ownerAhead(reservations, denverToday()), [reservations]);
 
   return (
     <section className="space-y-6" data-bot="owner-statement">
@@ -84,6 +87,25 @@ export function OwnerStatement({
             </p>
           </article>
         ))}
+      </div>
+      <div className="uml-panel rounded-3xl p-6" data-bot="owner-ahead">
+        <p className="uml-kicker">On the books</p>
+        <p className="mt-2 text-sm text-[var(--uml-muted)]">
+          Stays that still have a night left. Names stay off this page. This count is not in the spreadsheet.
+        </p>
+        <ul className="mt-4 space-y-2 text-sm">
+          {ahead.houses.map((house) => (
+            <li
+              key={house.id}
+              data-bot={`owner-ahead-${house.id}`}
+              data-in={house.inHouse}
+              data-coming={house.coming}
+              data-nights={house.nights}
+            >
+              {aheadLine(house)}
+            </li>
+          ))}
+        </ul>
       </div>
       {statement.months.length > 0 && (
         <div className="uml-panel rounded-3xl p-6" data-bot="owner-months">

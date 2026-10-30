@@ -15,7 +15,7 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 - `#/market` — top 10 comps and a 90-day rate band. Sample data until live comps are connected. It does not change Airbnb or VRBO rates.
 - `#/agents` — nightly brief from the calendar and the shadow clock. Checkout lines name 11:00 AM. It does not claim jobs.
 - `#/report` — P&L report
-- `#/owner` — Todd’s Ranch and River statement. Read only. Download saves that same statement. Lindon and household bills are not on it.
+- `#/owner` — Todd’s Ranch and River statement. Read only. Download saves that same statement. A count of stays still on the books leaves names off and is not in the spreadsheet. Lindon and household bills are not on it.
 - `#/clean` — turnovers for the next two weeks, with the address and parking on the work order. The door code stays off the paper.
 - `#/report/documents` — e-sign / document vault
 - `#/guests`

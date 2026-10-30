@@ -172,3 +172,7 @@
 ## 2026-10-29 — address on the guest trip sheet
 
 - The trip sheet names the house address with the check-in and checkout times. The door code and Wi-Fi stay on the phone. Printing does not change the reservation.
+
+## 2026-10-29 — stays still on the books
+
+- Todd’s page counts Ranch and River stays that still have a night left: in the house, still to come, and nights left. Names and payouts stay off that count. It is not in the spreadsheet, and it does not change a booking.
