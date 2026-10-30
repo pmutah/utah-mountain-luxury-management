@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatCurrency, type Expense, type Reservation } from '../lib/api';
 import { buildOwnerStatement } from '../lib/owner-statement';
+import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statement-file';
 import type { ReportPeriod } from '../lib/report';
 
 const PERIODS: Array<{ id: ReportPeriod; label: string }> = [
@@ -49,6 +50,22 @@ export function OwnerStatement({
         ))}
         <button type="button" className="uml-nav" data-bot="owner-print" onClick={() => window.print()}>
           Print
+        </button>
+        <button
+          type="button"
+          className="uml-nav"
+          data-bot="owner-file"
+          onClick={() => {
+            const file = new Blob([ownerStatementCsv(statement)], { type: 'text/csv' });
+            const url = URL.createObjectURL(file);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = ownerStatementFilename(statement.rangeLabel);
+            link.click();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+          }}
+        >
+          Download
         </button>
       </div>
       <div className="uml-panel rounded-[32px] px-6 py-8">

@@ -140,3 +140,7 @@
 ## 2026-10-29 — shareable stay quote
 
 - The booking page address keeps the house, the dates, and the party. Opening that link shows the same quote again. A name or email in the address is ignored. Copying the link does not send a request.
+
+## 2026-10-29 — owner statement file
+
+- Todd can download the Ranch and River statement he already sees. The spreadsheet uses the same month lines. Lindon, household purchases, and construction stay out of the file. Downloading does not change the books.
