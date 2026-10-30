@@ -9,7 +9,7 @@ import { formatWhole } from '../lib/luxury';
 import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
-import { quoteStay } from '../lib/quote';
+import { quoteStay, directSavings } from '../lib/quote';
 import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
@@ -107,6 +107,7 @@ export function DirectBook() {
     [house, checkIn, checkOut, taken, today, pace, guestCount],
   );
   const splitLine = quote.ok && party.ok && guestCount !== null ? splitStayLine(quote.stayTotal, guestCount) : null;
+  const saved = quote.ok ? directSavings(quote.channelTotal, quote.stayTotal) : null;
   const canRequest = directRequestReady({
     quoteOk: quote.ok,
     rulesRead,
@@ -274,6 +275,11 @@ export function DirectBook() {
                     : ''}
                   {' '}Utah lodging tax is added after the rate is confirmed. Nothing is charged on this page.
                 </p>
+                {saved !== null && (
+                  <p className="text-sm" data-bot="stay-save">
+                    This page is {formatWhole(saved)} below the Airbnb guest total, before tax.
+                  </p>
+                )}
               </div>
             ) : (
               <p className="mt-3 font-display text-3xl">{quote.reason}</p>

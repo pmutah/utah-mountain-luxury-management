@@ -151,6 +151,13 @@ export function quoteStay(
   return { ...priced, ok: true, reason: null };
 }
 
+/** How much less this page is than the Airbnb guest total. Nothing is charged. */
+export function directSavings(channelTotal: number, stayTotal: number): number | null {
+  if (!Number.isFinite(channelTotal) || !Number.isFinite(stayTotal)) return null;
+  const saved = Math.round(channelTotal) - Math.round(stayTotal);
+  return saved > 0 ? saved : null;
+}
+
 function leadDays(asOf: string, iso: string): number {
   const [ay, am, ad] = asOf.split('-').map(Number);
   const [by, bm, bd] = iso.split('-').map(Number);

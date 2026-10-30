@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { quoteStay } from './quote.ts';
+import { quoteStay, directSavings } from './quote.ts';
 
 test('a River shoulder weekend quotes the direct host net and keeps the Airbnb list beside it', () => {
   const quote = quoteStay('river', '2026-11-06', '2026-11-08');
@@ -14,6 +14,7 @@ test('a River shoulder weekend quotes the direct host net and keeps the Airbnb l
   assert.equal(quote.stayTotal, 4200);
   assert.equal(quote.promotionNights, 0);
   assert.equal(quote.nights[0]?.season, 'Shoulder');
+  assert.equal(directSavings(quote.channelTotal, quote.stayTotal), 772);
 });
 
 test('a short year takes 20 percent off the direct host net and leaves the Airbnb list', () => {
@@ -25,6 +26,7 @@ test('a short year takes 20 percent off the direct host net and leaves the Airbn
   assert.equal(quote.lodging, 3360);
   assert.equal(quote.channelLodging, 4972);
   assert.equal(quote.stayTotal, 3360);
+  assert.equal(directSavings(quote.channelTotal, quote.stayTotal), 1612);
 });
 
 test('River refuses dates before the first stay and a one-night weekend', () => {
@@ -54,6 +56,7 @@ test('a Ranch weekday adds the house cleaning fee to the direct price', () => {
   assert.equal(quote.cleaning, 350);
   assert.equal(quote.stayTotal, 783);
   assert.equal(quote.promotionNights, 1);
+  assert.equal(directSavings(quote.channelTotal, quote.stayTotal), 207);
 });
 
 test('a party larger than the house is not quoted', () => {
@@ -71,4 +74,9 @@ test('a lone Ranch weekend night waits until the last week', () => {
 
   const late = quoteStay('ranch', '2026-11-06', '2026-11-07', [], { asOf: '2026-11-01' });
   assert.equal(late.ok, true);
+});
+
+test('a direct price that is not lower does not claim a savings', () => {
+  assert.equal(directSavings(100, 100), null);
+  assert.equal(directSavings(50, 80), null);
 });

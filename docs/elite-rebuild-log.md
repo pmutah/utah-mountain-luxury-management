@@ -148,3 +148,7 @@
 ## 2026-10-29 — guest trip sheet
 
 - The stay app can print a trip sheet with check-in at 4:00 PM and checkout at 11:00 AM. The paper copy leaves the door code and Wi-Fi on the phone. Printing does not change the reservation.
+
+## 2026-10-29 — direct savings on the quote
+
+- When the direct stay is below the Airbnb guest total, the booking page says how much. The comparison is before tax. Nothing is charged.
