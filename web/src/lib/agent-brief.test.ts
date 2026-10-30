@@ -6,8 +6,8 @@ test('the night brief names the work and leaves the guest off it', () => {
   const lines = agentBrief({
     asOf: '2026-11-01',
     stays: [
-      { id: 'same', propertyId: 'ranch', checkIn: '2026-10-28', checkOut: '2026-11-04', status: 'confirmed' },
-      { id: 'next', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-08' },
+      { id: 'same', propertyId: 'ranch', checkIn: '2026-10-28', checkOut: '2026-11-04', status: 'confirmed', source: 'Airbnb' },
+      { id: 'next', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-08', source: 'VRBO' },
       { id: 'later', propertyId: 'lindon', checkIn: '2026-11-01', checkOut: '2026-11-07' },
       { id: 'gone', propertyId: 'river', checkIn: '2026-11-01', checkOut: '2026-11-03', status: 'cancelled' },
     ],
@@ -19,6 +19,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.equal(text.includes('Guest'), false);
   assert.match(text, /Shadow day 1 of 7/);
   assert.match(text, /Hospitable write closed/);
+  assert.match(text, /Where they booked: 1 Airbnb, 1 VRBO/);
   assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
   assert.match(text, /Nothing sent/);
@@ -28,6 +29,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /Still open on our booking page: photos and card payment/);
   assert.match(text, /Door codes stay hidden/);
   assert.match(text, /printed trip sheet leaves the code/);
+  assert.match(text, /keeps the house notes/);
   assert.match(text, /2 shared jobs are open/);
   assert.match(text, /does not claim one/);
   assert.match(text, /does not change partner spend/);
@@ -48,5 +50,6 @@ test('seven shadow days still leave the write closed', () => {
   assert.match(text, /Shadow days 7 of 7/);
   assert.match(text, /Hospitable write closed/);
   assert.match(text, /No checkouts in the next two weeks/);
+  assert.match(text, /Nothing still on the books/);
   assert.match(text, /No shared jobs are open/);
 });

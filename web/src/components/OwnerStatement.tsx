@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { formatCurrency, type Expense, type Reservation } from '../lib/api';
 import { denverToday } from '../lib/market/dates';
-import { aheadLine, ownerAhead } from '../lib/owner-ahead';
+import { aheadChannelsLine, aheadLine, ownerAhead } from '../lib/owner-ahead';
 import { buildOwnerStatement } from '../lib/owner-statement';
 import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statement-file';
 import type { ReportPeriod } from '../lib/report';
@@ -106,6 +106,15 @@ export function OwnerStatement({
             </li>
           ))}
         </ul>
+        <p
+          className="mt-4 text-sm"
+          data-bot="owner-ahead-channels"
+          data-airbnb={ahead.channels.find((channel) => channel.name === 'Airbnb')?.stays ?? 0}
+          data-vrbo={ahead.channels.find((channel) => channel.name === 'VRBO')?.stays ?? 0}
+          data-other={ahead.channels.find((channel) => channel.name === 'Other')?.stays ?? 0}
+        >
+          {aheadChannelsLine(ahead)}
+        </p>
       </div>
       {statement.months.length > 0 && (
         <div className="uml-panel rounded-3xl p-6" data-bot="owner-months">

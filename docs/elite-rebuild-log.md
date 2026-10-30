@@ -184,3 +184,7 @@
 ## 2026-10-29 — house notes on the trip sheet and the work order
 
 - The guest trip sheet and the cleaner work order name the published house notes. A note that includes a door code or Wi-Fi is left off. Printing does not change a reservation.
+
+## 2026-10-29 — where the stays on the books were booked
+
+- Todd’s page and the nightly brief say how many Ranch and River stays still on the books came from Airbnb, VRBO, or somewhere else. Names and payouts stay off that line. It does not change a booking, and nothing is sent to Hospitable.

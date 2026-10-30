@@ -1,5 +1,6 @@
 import type { Reservation } from './api';
 import { addDays } from './market/dates';
+import { channelLabel, type ChannelName } from './report';
 
 export type OwnerAheadHouse = {
   id: 'ranch' | 'river';
@@ -10,9 +11,15 @@ export type OwnerAheadHouse = {
   nextArrival: string | null;
 };
 
+export type AheadChannel = {
+  name: ChannelName;
+  stays: number;
+};
+
 export type OwnerAhead = {
   asOf: string;
   houses: OwnerAheadHouse[];
+  channels: AheadChannel[];
 };
 
 const HOUSES = [
@@ -44,19 +51,25 @@ function isDate(value: string | undefined): value is string {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
+type AheadStay = Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut'> & { status?: string; source?: string };
+
+function stillOn(stay: AheadStay, asOf: string, houseId?: string): boolean {
+  return (
+    (houseId === undefined || stay.propertyId === houseId) &&
+    (stay.propertyId === 'ranch' || stay.propertyId === 'river') &&
+    stay.status !== 'cancelled' &&
+    stay.status !== 'blocked' &&
+    isDate(stay.checkIn) &&
+    isDate(stay.checkOut) &&
+    stay.checkOut > stay.checkIn &&
+    stay.checkOut > asOf
+  );
+}
+
 /** Ranch and River stays that still have a night left. Names and payouts are not copied. */
-export function ownerAhead(stays: readonly Reservation[], asOf: string): OwnerAhead {
+export function ownerAhead(stays: readonly AheadStay[], asOf: string): OwnerAhead {
   const houses = HOUSES.map((house) => {
-    const mine = stays.filter(
-      (stay) =>
-        stay.propertyId === house.id &&
-        stay.status !== 'cancelled' &&
-        stay.status !== 'blocked' &&
-        isDate(stay.checkIn) &&
-        isDate(stay.checkOut) &&
-        stay.checkOut > stay.checkIn &&
-        stay.checkOut > asOf,
-    );
+    const mine = stays.filter((stay) => stillOn(stay, asOf, house.id));
     const coming = mine.filter((stay) => stay.checkIn > asOf);
     const next = coming.map((stay) => stay.checkIn).sort()[0] ?? null;
     return {
@@ -68,7 +81,12 @@ export function ownerAhead(stays: readonly Reservation[], asOf: string): OwnerAh
       nextArrival: next ? longDate(next) : null,
     };
   });
-  return { asOf, houses };
+  const counted = stays.filter((stay) => stillOn(stay, asOf));
+  const channels: AheadChannel[] = (['Airbnb', 'VRBO', 'Other'] as const).map((name) => ({
+    name,
+    stays: counted.filter((stay) => channelLabel(stay.source ?? '') === name).length,
+  }));
+  return { asOf, houses, channels };
 }
 
 export function aheadLine(house: OwnerAheadHouse): string {
@@ -77,4 +95,13 @@ export function aheadLine(house: OwnerAheadHouse): string {
   const nights = house.nights === 1 ? '1 night left' : `${house.nights} nights left`;
   const next = house.nextArrival ? ` Next arrival ${house.nextArrival}.` : '';
   return `${house.name}: ${inHouse}, ${coming}, ${nights}.${next}`;
+}
+
+/** Where the stays still on the books were booked. Counts only. No payouts. */
+export function aheadChannelsLine(ahead: OwnerAhead): string {
+  const parts = ahead.channels
+    .filter((channel) => channel.stays > 0)
+    .map((channel) => `${channel.stays} ${channel.name === 'Other' ? 'other' : channel.name}`);
+  if (parts.length === 0) return 'Nothing still on the books.';
+  return `Where they booked: ${parts.join(', ')}.`;
 }

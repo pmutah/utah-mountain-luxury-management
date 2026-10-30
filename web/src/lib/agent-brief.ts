@@ -1,5 +1,6 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
+import { aheadChannelsLine, ownerAhead } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
 import { workOrderWhen } from './clean';
 import { listingOpportunities } from './listing';
@@ -35,7 +36,9 @@ function blankStay(stay: Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'ch
 /** A read-only night brief. It does not claim a job or name a guest. */
 export function agentBrief(input: {
   asOf: string;
-  stays: Array<Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number }>;
+  stays: Array<
+    Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number; source?: string }
+  >;
   shadowDays: number;
   openJobs: number;
   calendarReady: boolean;
@@ -52,6 +55,9 @@ export function agentBrief(input: {
     },
   ];
   if (input.calendarReady) lines.push(...shadowBrief(input.asOf, input.stays));
+  if (input.calendarReady) {
+    lines.push({ agent: 'co-host', text: aheadChannelsLine(ownerAhead(input.stays, input.asOf)) });
+  }
 
   const turns = input.calendarReady
     ? buildTurnovers(input.stays.map(blankStay), input.asOf).sort(
@@ -97,7 +103,7 @@ export function agentBrief(input: {
   });
   lines.push({
     agent: 'nora',
-    text: 'Door codes stay hidden until the house rules are read on the guest phone. A printed trip sheet leaves the code on the phone.',
+    text: 'Door codes stay hidden until the house rules are read on the guest phone. A printed trip sheet leaves the code on the phone and keeps the house notes.',
   });
   lines.push({
     agent: 'muse',
