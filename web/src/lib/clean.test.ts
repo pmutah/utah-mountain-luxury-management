@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Reservation } from './api.ts';
-import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderWhen } from './clean.ts';
+import { cleanJobs, cleanLabel, guestLeavingLine, jobDoneCount, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderWhen } from './clean.ts';
 
 function stay(partial: Partial<Reservation> & Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut'>): Reservation {
   return { guestName: 'Guest', payout: 0, source: 'Airbnb', ...partial };
@@ -67,4 +67,9 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.equal(/door code|wi-fi|password/i.test(guestLeavingLine()), false);
   assert.match(guestLeavingLine(), /start the dishwasher/);
   assert.match(workOrderWhen('ranch', true, 'es'), /11:00 AM/);
+  assert.match(workOrderNext('2026-11-04', 0, 'en'), /The next stay starts November 4, 2026/);
+  assert.match(workOrderNext('2026-11-04', 0, 'en'), /The door code opens November 3, 2026/);
+  assert.match(workOrderNext('2026-11-22', 15, 'es'), /noviembre/);
+  assert.match(workOrderNext(null, null, 'en'), /No next stay is on the calendar/);
+  assert.equal(/password|code\s*\d/i.test(workOrderNext('2026-11-04', 0, 'en')), false);
 });

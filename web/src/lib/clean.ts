@@ -2,6 +2,7 @@ import { PROPERTIES, type Reservation } from './api';
 import { houseRules } from './house-rules';
 import { houseStay, nearbyGroups } from './house-stay';
 import type { HouseId } from './luxury';
+import { addDays } from './market/dates';
 import { buildTurnovers, type Turnover } from './today';
 
 export type CleanStep = {
@@ -47,6 +48,30 @@ export function workOrderWhen(house: HouseId, sameDay: boolean, lang: CleanLang)
   return sameDay
     ? `Checkout at ${stay.checkOut}. The next guest arrives at ${stay.checkIn}.`
     : `Checkout at ${stay.checkOut}.`;
+}
+
+function longDate(iso: string, lang: CleanLang): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/** When the next stay starts, and when its door code opens. The code stays off the sentence. */
+export function workOrderNext(nextCheckIn: string | null, gapNights: number | null, lang: CleanLang): string {
+  if (!nextCheckIn || gapNights === null || !/^\d{4}-\d{2}-\d{2}$/.test(nextCheckIn)) {
+    return lang === 'es'
+      ? 'No hay otra estancia en el calendario. El código de la puerta no está en esta lista.'
+      : 'No next stay is on the calendar. The door code stays off this list.';
+  }
+  const arrive = longDate(nextCheckIn, lang);
+  const opens = longDate(addDays(nextCheckIn, -1), lang);
+  return lang === 'es'
+    ? `La siguiente estancia empieza el ${arrive}. El código de la puerta se abre el ${opens}. El código no está en esta lista.`
+    : `The next stay starts ${arrive}. The door code opens ${opens}. The code stays off this list.`;
 }
 
 /** Where to clean. The door code and Wi-Fi stay off the work order. */

@@ -340,3 +340,7 @@
 ## 2026-10-29 — the stay agreement stays unsigned
 
 - The booking page, the guest trip, the paper, and the nightly brief name what the stay agreement covers. Reading the house rules does not sign it. No agreement is created.
+
+## 2026-10-29 — the next stay on the work order
+
+- A turnover names the date the next stay starts and the date that door code opens. The code stays off the work order, the morning list, and the brief. Nothing is booked or sent.

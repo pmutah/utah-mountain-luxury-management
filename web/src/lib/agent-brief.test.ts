@@ -27,6 +27,8 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /Booking calendar from these bookings:.*Nov 23 starts at 4 nights/);
   assert.match(text, /weekend nights show 2 nights/);
   assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
+  assert.match(text, /The next stay starts November 4, 2026\. The door code opens November 3, 2026/);
+  assert.match(text, /No next stay is on the calendar/);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
   assert.match(text, /Nothing sent/);
   assert.equal(text.includes('$'), false);
