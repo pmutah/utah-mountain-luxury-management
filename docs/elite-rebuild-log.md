@@ -388,3 +388,7 @@
 ## 2026-10-30 — how many guests the next stay is for
 
 - The work order, the morning list, and the nightly brief say how many guests the next booking names. Names stay off. Nothing is booked or sent.
+
+## 2026-10-30 — which stays do not name a party size
+
+- Each stay on the guest list says how many guests the booking names. The work order says how many are checking out. The nightly brief names which stays beginning in the next 90 days do not say. Names stay off those lines. Nothing is sent.

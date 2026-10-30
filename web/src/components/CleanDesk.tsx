@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderCheckoutParty, workOrderWhen, type CleanLang } from '../lib/clean';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
 import { currentDayIso } from '../lib/months';
 
@@ -160,6 +160,9 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     </p>
                     <p className="mt-1 text-sm" data-bot="clean-window">
                       {workOrderWhen(job.house, job.priority, lang)}
+                    </p>
+                    <p className="mt-1 text-sm" data-bot="clean-checkout-party">
+                      {workOrderCheckoutParty(job.checkoutGuests, lang)}
                     </p>
                     <p className="mt-1 text-sm" data-bot="clean-next">
                       {workOrderNext(job.nextCheckIn, job.gapNights, lang)}

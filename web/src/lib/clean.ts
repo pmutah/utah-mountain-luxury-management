@@ -87,6 +87,19 @@ export function workOrderParty(count: number | null, lang: CleanLang): string {
   return `The next stay is for ${count === 1 ? '1 guest' : `${count} guests`}. Names stay off this list.`;
 }
 
+/** How many people are checking out. Names stay off the sentence. */
+export function workOrderCheckoutParty(count: number | null, lang: CleanLang): string {
+  if (count === null || !Number.isInteger(count) || count < 1) {
+    return lang === 'es'
+      ? 'Esta salida no dice cuántos huéspedes. Los nombres no están en esta lista.'
+      : 'This checkout does not say how many guests. Names stay off this list.';
+  }
+  if (lang === 'es') {
+    return `Esta salida fue de ${count} ${count === 1 ? 'huésped' : 'huéspedes'}. Los nombres no están en esta lista.`;
+  }
+  return `This checkout was ${count === 1 ? '1 guest' : `${count} guests`}. Names stay off this list.`;
+}
+
 /** Where to clean. The door code and Wi-Fi stay off the work order. */
 export function workOrderPlace(house: HouseId, lang: CleanLang): string {
   const stay = houseStay(house);

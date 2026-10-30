@@ -55,6 +55,8 @@ export type Turnover = {
   gapNights: number | null;
   /** Guest count from the next booking note. Null when the note does not say. Names are not stored. */
   nextGuests: number | null;
+  /** Guest count from the checkout booking note. Null when the note does not say. Names are not stored. */
+  checkoutGuests: number | null;
 };
 
 export function buildTurnovers(reservations: Reservation[], asOf: string, horizonDays = 14): Turnover[] {
@@ -75,6 +77,7 @@ export function buildTurnovers(reservations: Reservation[], asOf: string, horizo
         nextCheckIn: next?.checkIn ?? null,
         gapNights: next ? nightsBetween(stay.checkOut, next.checkIn) : null,
         nextGuests: next ? noteGuestCount(next.note) : null,
+        checkoutGuests: noteGuestCount(stay.note),
       };
     })
     .sort((a, b) => a.checkout.localeCompare(b.checkout) || a.house.localeCompare(b.house));

@@ -10,6 +10,7 @@ import { GuestStayCard } from './GuestStayCard';
 import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
 import { hostAccessPhrase } from '../lib/house-stay';
+import { hostPartyPhrase } from '../lib/note-party';
 import { houseMenu, hostAddonPhrase } from '../lib/upsells';
 import { loadBookedNights } from '../lib/booked-nights';
 import { denverToday } from '../lib/market/dates';
@@ -303,6 +304,9 @@ export function GuestsPanel({
                   {stay.confirmationCode ? ` · ${stay.confirmationCode}` : ''}
                 </p>
                 {stay.note && <p className="text-xs text-slate-400 mt-1">{stay.note}</p>}
+                <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-party" data-in={stay.checkIn}>
+                  {hostPartyPhrase(stay.note)}
+                </p>
                 {stay.propertyId === 'ranch' || stay.propertyId === 'lindon' || stay.propertyId === 'river' ? (
                   <>
                     <p className="text-xs text-slate-400 mt-1" data-bot="stay-host-addons" data-in={stay.checkIn}>
