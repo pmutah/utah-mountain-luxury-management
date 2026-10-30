@@ -384,3 +384,7 @@
 ## 2026-10-30 — children in the party
 
 - Children count toward the overnight guests. A party of only children stays closed. That count is on the quote link and would be in the request note. Nothing is sent.
+
+## 2026-10-30 — how many guests the next stay is for
+
+- The work order, the morning list, and the nightly brief say how many guests the next booking names. Names stay off. Nothing is booked or sent.

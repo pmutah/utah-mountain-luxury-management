@@ -7,7 +7,7 @@ import { agreementBrief } from './stay-agreement';
 import { nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals';
 import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
-import { guestLeavingLine, workOrderNext, workOrderWhen } from './clean';
+import { guestLeavingLine, workOrderNext, workOrderParty, workOrderWhen } from './clean';
 import { listingOpportunities } from './listing';
 import { addDays } from './market/dates';
 import type { YearPace } from './market/fill';
@@ -42,7 +42,10 @@ function blankStay(stay: Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'ch
 export function agentBrief(input: {
   asOf: string;
   stays: Array<
-    Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number; source?: string }
+    Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status' | 'note'> & {
+      payout?: number;
+      source?: string;
+    }
   >;
   shadowDays: number;
   openJobs: number;
@@ -87,12 +90,13 @@ export function agentBrief(input: {
     const when = shortDate(turn.checkout);
     const window = workOrderWhen(turn.house, turn.gapNights === 0, 'en');
     const next = workOrderNext(turn.nextCheckIn, turn.gapNights, 'en');
+    const party = turn.nextCheckIn ? ` ${workOrderParty(turn.nextGuests, 'en')}` : '';
     const text =
       turn.gapNights === 0
-        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}`
+        ? `Same-day clean at ${turn.houseName} on ${when}. ${window} ${next}${party}`
         : turn.gapNights === null
           ? `${turn.houseName} checkout ${when}. Nothing booked after it. ${window} ${next}`
-          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}`;
+          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival. ${window} ${next}${party}`;
     lines.push({ agent: 'co-host', text });
   }
   if (turns.length > shown.length) {

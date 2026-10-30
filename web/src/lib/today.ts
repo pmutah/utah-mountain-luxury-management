@@ -1,5 +1,6 @@
 import type { Reservation } from './api';
 import { addDays } from './market/dates';
+import { noteGuestCount } from './note-party';
 import type { HouseId } from './luxury';
 
 const HOUSES: HouseId[] = ['ranch', 'lindon', 'river'];
@@ -52,6 +53,8 @@ export type Turnover = {
   nextCheckIn: string | null;
   /** Nights empty between checkout and the next arrival. Zero is a same-day clean. */
   gapNights: number | null;
+  /** Guest count from the next booking note. Null when the note does not say. Names are not stored. */
+  nextGuests: number | null;
 };
 
 export function buildTurnovers(reservations: Reservation[], asOf: string, horizonDays = 14): Turnover[] {
@@ -71,6 +74,7 @@ export function buildTurnovers(reservations: Reservation[], asOf: string, horizo
         checkout: stay.checkOut,
         nextCheckIn: next?.checkIn ?? null,
         gapNights: next ? nightsBetween(stay.checkOut, next.checkIn) : null,
+        nextGuests: next ? noteGuestCount(next.note) : null,
       };
     })
     .sort((a, b) => a.checkout.localeCompare(b.checkout) || a.house.localeCompare(b.house));

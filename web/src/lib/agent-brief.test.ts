@@ -7,7 +7,14 @@ test('the night brief names the work and leaves the guest off it', () => {
     asOf: '2026-11-01',
     stays: [
       { id: 'same', propertyId: 'ranch', checkIn: '2026-10-28', checkOut: '2026-11-04', status: 'confirmed', source: 'Airbnb' },
-      { id: 'next', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-08', source: 'VRBO' },
+      {
+        id: 'next',
+        propertyId: 'ranch',
+        checkIn: '2026-11-04',
+        checkOut: '2026-11-08',
+        source: 'VRBO',
+        note: 'Ada Lovelace · 9 guests · 801-555-0100',
+      },
       { id: 'later', propertyId: 'lindon', checkIn: '2026-11-01', checkOut: '2026-11-07' },
       { id: 'gone', propertyId: 'river', checkIn: '2026-11-01', checkOut: '2026-11-03', status: 'cancelled' },
     ],
@@ -30,6 +37,9 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.equal(text.split('\n').find((line) => line.includes('Other houses from these bookings:'))?.includes('$') ?? false, false);
   assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
   assert.match(text, /The next stay starts November 4, 2026\. The door code opens November 3, 2026/);
+  assert.match(text, /The next stay is for 9 guests\. Names stay off this list\./);
+  assert.equal(text.includes('Ada'), false);
+  assert.equal(text.includes('801'), false);
   assert.match(text, /No next stay is on the calendar/);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
   assert.match(text, /Nothing sent/);

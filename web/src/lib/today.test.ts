@@ -30,7 +30,13 @@ test('a same-day turnover is a zero-night gap', () => {
   const turns = buildTurnovers(
     [
       stay({ id: 'out', propertyId: 'ranch', checkIn: '2026-11-01', checkOut: '2026-11-04' }),
-      stay({ id: 'in', propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-07' }),
+      stay({
+        id: 'in',
+        propertyId: 'ranch',
+        checkIn: '2026-11-04',
+        checkOut: '2026-11-07',
+        note: 'Ada Lovelace · 9 guests · 801-555-0100',
+      }),
       stay({ id: 'later', propertyId: 'lindon', checkIn: '2026-11-20', checkOut: '2026-11-22' }),
     ],
     '2026-11-01',
@@ -38,6 +44,9 @@ test('a same-day turnover is a zero-night gap', () => {
   assert.equal(turns.length, 2);
   assert.equal(turns[0]?.gapNights, 0);
   assert.equal(turns[0]?.house, 'ranch');
+  assert.equal(turns[0]?.nextGuests, 9);
+  assert.equal(JSON.stringify(turns).includes('Ada'), false);
+  assert.equal(JSON.stringify(turns).includes('801'), false);
   assert.equal(turns[1]?.checkout, '2026-11-07');
   assert.equal(turns[1]?.gapNights, null);
 });
