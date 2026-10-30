@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { ARRIVAL_SLOTS, arrivalNote } from '../lib/arrival';
 import { PROPERTIES } from '../lib/api';
 import { loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
@@ -56,6 +57,7 @@ export function DirectBook() {
   const [guests, setGuests] = useState(linked.guests ?? '');
   const [rulesRead, setRulesRead] = useState(false);
   const [addons, setAddons] = useState<UpsellId[]>(linked.addons ?? []);
+  const [arrival, setArrival] = useState<string | null>(linked.arrive ?? null);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [closed, setClosed] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
@@ -165,12 +167,15 @@ export function DirectBook() {
   });
   const selectedOffers = offers.filter((offer) => addons.includes(offer.id));
   const addonNote = quoteOfferNote(selectedOffers);
+  const earlyArrival = selectedOffers.some((offer) => offer.id === 'early');
+  const arrivalLine = arrivalNote(arrival, earlyArrival);
   const sharePath = `/book${stayLinkSearch({
     house,
     checkIn,
     checkOut,
     guests,
     addons: calendar === 'live' ? selectedOffers.map((offer) => offer.id) : addons,
+    arrive: earlyArrival || !arrival ? undefined : (ARRIVAL_SLOTS.find((slot) => slot === arrival) ?? undefined),
   })}`;
 
   useEffect(() => {
@@ -197,6 +202,7 @@ export function DirectBook() {
           note: [
             form.note,
             `Overnight guests ${guests}.`,
+            arrivalLine,
             `Preview quote ${formatWhole(quote.stayTotal)} before tax (${quote.nights.length} nights).`,
             addonNote,
             rulesNote(house),
@@ -577,8 +583,44 @@ export function DirectBook() {
                 {splitLine}
               </p>
             )}
+            <div className="mt-6" data-bot="stay-arrival">
+              <p className="uml-kicker">Arrival</p>
+              <p className="mt-2 text-sm text-[var(--uml-muted)]">
+                Check-in is 4:00 PM. A time is included in the request. Nothing is sent until you use the button.
+              </p>
+              {earlyArrival ? (
+                <p className="mt-2 text-sm" data-bot="stay-arrival-note" data-note="">
+                  Arrive at 1:00 PM is already on this request.
+                </p>
+              ) : (
+                <>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {ARRIVAL_SLOTS.map((slot) => (
+                      <button
+                        key={slot}
+                        type="button"
+                        className={`uml-nav ${arrival === slot ? 'ring-1 ring-[var(--uml-gold)]' : ''}`}
+                        data-bot="stay-arrival-slot"
+                        data-time={slot}
+                        aria-pressed={arrival === slot}
+                        onClick={() => setArrival((current) => (current === slot ? null : slot))}
+                      >
+                        {slot}
+                      </button>
+                    ))}
+                  </div>
+                  {arrivalLine && (
+                    <p className="mt-2 text-sm" data-bot="stay-arrival-note" data-note={arrivalLine}>
+                      {arrivalLine} Nothing is sent until you use the button.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
             <div className="mt-4" data-bot="stay-share">
-              <p className="text-xs text-[var(--uml-muted)]">This link reopens the quote and the add-ons that are checked. It does not send a request.</p>
+              <p className="text-xs text-[var(--uml-muted)]">
+                This link reopens the quote, the arrival time, and the add-ons that are checked. It does not send a request.
+              </p>
               <p className="mt-1 text-sm">{sharePath}</p>
               <button
                 type="button"

@@ -1,3 +1,4 @@
+import { isArrivalSlot, type ArrivalSlot } from './arrival';
 import type { HouseId } from './market/types';
 import type { UpsellId } from './upsells';
 
@@ -10,6 +11,7 @@ export type StayLink = {
   checkOut: string;
   guests: string;
   addons?: UpsellId[];
+  arrive?: ArrivalSlot;
 };
 
 function isHouse(value: string): value is HouseId {
@@ -39,6 +41,8 @@ export function readStayLink(search: string): Partial<StayLink> {
   if (/^\d{1,2}$/.test(guests)) link.guests = guests;
   const addons = readAddons(params.get('addons') ?? '');
   if (addons.length > 0) link.addons = addons;
+  const arrive = params.get('arrive') ?? '';
+  if (isArrivalSlot(arrive)) link.arrive = arrive;
   return link;
 }
 
@@ -60,5 +64,6 @@ export function stayLinkSearch(link: StayLink & { addons?: readonly UpsellId[] }
   if (/^\d{1,2}$/.test(link.guests)) params.set('guests', link.guests);
   const addons = readAddons((link.addons ?? []).join(','));
   if (addons.length > 0) params.set('addons', addons.join(','));
+  if (link.arrive && isArrivalSlot(link.arrive)) params.set('arrive', link.arrive);
   return `?${params.toString()}`;
 }

@@ -376,3 +376,7 @@
 ## 2026-10-30 — blocks leave the pace share
 
 - The 30, 60, and 90 night share leaves a calendar block out of the sellable nights. A stay still counts as booked. Nothing is sent.
+
+## 2026-10-30 — an arrival time on the quote
+
+- The booking page can name an arrival from 4:00 PM through after 9:00 PM. That time is on the quote link and would be in the request note. Arrive at 1:00 PM replaces it. Choosing a time does not send the request.
