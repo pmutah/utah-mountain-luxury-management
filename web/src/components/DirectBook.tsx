@@ -14,6 +14,7 @@ import { openArrivals } from '../lib/open-arrivals';
 import { alsoOpen } from '../lib/also-open';
 import { longestStay } from '../lib/longest-stay';
 import { shortestStay } from '../lib/shortest-stay';
+import { stayLengths } from '../lib/stay-lengths';
 import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
@@ -134,6 +135,10 @@ export function DirectBook() {
     if (!next || next.checkOut === checkOut || next.checkOut === extension?.checkOut) return null;
     return next;
   }, [calendar, house, checkIn, checkOut, taken, today, pace, guestCount, extension]);
+  const lengths = useMemo(() => {
+    if (calendar !== 'live') return null;
+    return stayLengths(house, checkIn, taken[house] ?? [], today, pace, guestCount ?? undefined);
+  }, [calendar, house, checkIn, taken, today, pace, guestCount]);
   const canRequest = directRequestReady({
     quoteOk: quote.ok,
     rulesRead,
@@ -379,7 +384,7 @@ export function DirectBook() {
               </button>
             </div>
             )}
-            {span && (
+            {span && !lengths && (
               <div className="mt-3" data-bot="stay-span">
                 <p className="text-sm">
                   This check-in is open through {span.through}, {span.nights === 1 ? '1 night' : `${span.nights} nights`}. Using
@@ -395,6 +400,29 @@ export function DirectBook() {
                 >
                   Use the full stretch
                 </button>
+              </div>
+            )}
+            {lengths && (
+              <div className="mt-3" data-bot="stay-lengths">
+                <p className="text-sm">
+                  This check-in is open through {lengths.through}. Choose a length. Choosing one does not send a request.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {lengths.choices.map((choice) => (
+                    <button
+                      key={choice.checkOut}
+                      type="button"
+                      className={`uml-nav ${checkOut === choice.checkOut ? 'ring-1 ring-[var(--uml-gold)]' : ''}`}
+                      data-bot="stay-length"
+                      data-nights={choice.nights}
+                      data-out={choice.checkOut}
+                      aria-pressed={checkOut === choice.checkOut}
+                      onClick={() => setCheckOut(choice.checkOut)}
+                    >
+                      {choice.nights === 1 ? '1 night' : `${choice.nights} nights`}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="stay-calendar">

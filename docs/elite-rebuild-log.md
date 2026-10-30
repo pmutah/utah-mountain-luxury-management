@@ -220,3 +220,7 @@
 ## 2026-10-29 — the full open stretch from a check-in
 
 - The booking page offers how far a check-in can run before the next taken night, up to 28 nights. Using that stretch fills the checkout and does not send a request.
+
+## 2026-10-29 — choose a length inside the open stretch
+
+- The booking page lists the lengths a check-in can quote, from the shortest stay to the open stretch. A length that fails the minimum is left off. Choosing one fills the checkout and does not send a request.
