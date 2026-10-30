@@ -1,3 +1,4 @@
+import { bookingStartSummary } from '../booking-starts';
 import { RIVER_FIRST_STAY } from '../brand';
 import { addonPhrase, lengthPhrase } from '../open-arrivals';
 import { promotionForNight, type YearPace } from './fill';
@@ -128,6 +129,10 @@ export function portfolioDigest(input: {
     const extras = PORTFOLIO.map((house) => addonPhrase(house, input.taken[house] ?? [], input.asOf, input.pace[house]));
     lines.push(`Booking page: ${quote.join('. ')}.`);
     lines.push(`Add-ons: ${extras.join('. ')}.`);
+    const starts = PORTFOLIO.map((house) =>
+      bookingStartSummary(house, input.taken[house] ?? [], input.asOf, input.pace[house]),
+    ).filter((line) => line.length > 0);
+    if (starts.length > 0) lines.push(`Booking calendar: ${starts.join(' ')}`);
   }
   lines.push('Nothing sent to Hospitable.');
   return lines.join('\n');

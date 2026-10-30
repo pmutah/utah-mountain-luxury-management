@@ -304,3 +304,7 @@
 ## 2026-10-29 — the shortest stay on each calendar night
 
 - Each open night on the booking calendar shows the shortest stay that can start that day when it is longer than one night. A Friday or Saturday by itself shows two nights until it is inside 7 days. A gap shorter than that minimum is marked too short. Nothing is booked.
+
+## 2026-10-29 — the market desk uses the booking calendar's start
+
+- The market desk and the unsent daily text name where the booking calendar asks for a longer start than the rate card. A Friday or Saturday shows 2 nights until it is inside 7 days. A night that cannot start a stay is named. Nothing is sent to Hospitable.

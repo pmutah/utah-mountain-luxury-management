@@ -77,6 +77,10 @@ test('the daily text names every house and leaves a paused house alone', () => {
   assert.match(text, /Nothing sent to Hospitable/);
   assert.match(text, /Booking page: River Nov 1 can quote 2, 3, 4, 7, 14, 28 nights/);
   assert.match(text, /Add-ons: .*River Nov 1 can request an early arrival/);
+  const calendarLine = text.split('\n').find((line) => line.startsWith('Booking calendar:'));
+  assert.match(calendarLine ?? '', /weekend nights show 2 nights/);
+  assert.match(calendarLine ?? '', /Nov 23 starts at 4 nights/);
+  assert.equal((calendarLine ?? '').includes('$'), false);
   const quiet = portfolioDigest({
     asOf: '2026-10-29',
     taken: { river: [], ranch: [], lindon: [] },
@@ -85,5 +89,6 @@ test('the daily text names every house and leaves a paused house alone', () => {
     calendarLive: false,
   });
   assert.equal(quiet.includes('Booking page:'), false);
+  assert.equal(quiet.includes('Booking calendar:'), false);
   assert.match(quiet, /Nothing sent to Hospitable/);
 });

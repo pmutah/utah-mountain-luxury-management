@@ -20,7 +20,9 @@ import { judgeTrial } from '../lib/market/whatif';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 import { listingOpportunities } from '../lib/listing';
+import { bookingStartSummary } from '../lib/booking-starts';
 import { directNight } from '../lib/quote';
+import { shortestStay } from '../lib/shortest-stay';
 import { addonPhrase, openArrivals } from '../lib/open-arrivals';
 import { stayLengths } from '../lib/stay-lengths';
 import { stayLinkSearch } from '../lib/stay-link';
@@ -207,6 +209,14 @@ export function MarketBoard() {
     return stayLengths(house, first.checkIn, taken[house] ?? [], today, pace);
   }, [calendar, openings, house, taken, today, pace]);
   const addons = calendar === 'live' ? addonPhrase(house, taken[house] ?? [], today, pace) : '';
+  const starts = useMemo(
+    () => (calendar === 'live' ? bookingStartSummary(house, taken[house] ?? [], today, pace) : ''),
+    [calendar, house, taken, today, pace],
+  );
+  const bookingStart =
+    trialNight && calendar === 'live' && trialNight.action !== 'closed' && trialNight.action !== 'booked'
+      ? shortestStay(house, trialNight.date, taken[house] ?? [], today, pace)
+      : undefined;
 
   function writeChoice(next: CompChoice) {
     const all = { ...compChoices, [house]: next };
@@ -412,6 +422,11 @@ export function MarketBoard() {
         <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6" data-bot="market-digest">
           {shadow.digest}
         </pre>
+        {starts && (
+          <p className="mt-3 text-sm" data-bot="market-starts">
+            {starts} This is the booking calendar. Nothing is sent.
+          </p>
+        )}
         {calendar === 'loading' && <p className="text-xs text-[var(--uml-muted)]">Checking which nights are already booked…</p>}
         {calendar === 'off' && (
           <p className="text-xs text-[var(--uml-muted)]">The calendar is not on this server yet, so booked nights are not masked.</p>
@@ -489,9 +504,13 @@ export function MarketBoard() {
               {verdict.note}
               {verdict.wouldRaise && trialNight.action !== 'raise' ? ' The shadow run is not raising this night.' : ''}
               {' '}Floor {formatWhole(trialNight.floorGuest)} · ceiling {formatWhole(trialNight.ourGuest * 2)} · most tonight {formatWhole(verdict.dailyCap)}.
-              {trialNight.action !== 'closed' && trialNight.minNights > 1
-                ? ` Our booking page asks for at least ${trialNight.minNights} nights.`
-                : ''}
+              {bookingStart && bookingStart.nights > 1
+                ? ` Our booking page asks for at least ${bookingStart.nights} nights.`
+                : bookingStart === null
+                  ? ' Our booking page cannot start a stay on this night.'
+                  : trialNight.action !== 'closed' && trialNight.minNights > 1
+                    ? ` Our booking page asks for at least ${trialNight.minNights} nights.`
+                    : ''}
               {trialNight.action === 'booked' ? ' Our booking page leaves this night booked.' : ''}
               {bookingNight ? (
                 <span data-bot="market-direct">
