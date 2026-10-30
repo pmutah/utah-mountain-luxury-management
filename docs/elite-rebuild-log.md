@@ -217,6 +217,10 @@
 
 - A calendar block, and a stay marked blocked, closes those nights on Todd’s page and on the nightly brief. The stay count still ignores a block. A block note stays off the page. Nothing is written.
 
+## 2026-10-29 — name the source when it is not Airbnb or VRBO
+
+- Todd’s page and the nightly brief keep the source name for a Ranch or River stay that is still on the books. A blank or very long source is called unlisted. Names and payouts stay off that line.
+
 ## 2026-10-29 — the full open stretch from a check-in
 
 - The booking page offers how far a check-in can run before the next taken night, up to 28 nights. Using that stretch fills the checkout and does not send a request.

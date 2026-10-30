@@ -29,7 +29,7 @@ test('ahead counts Ranch and River nights still left and leaves names off', () =
   assert.equal(river?.nights, 2);
   assert.equal(aheadLine(ranch!), 'Ranch: 1 stay in the house, 1 still to come, 4 nights left. Next arrival November 4, 2026.');
   assert.equal(aheadLine(river!), 'River: 0 stays in the house, 1 still to come, 2 nights left. Next arrival November 10, 2026.');
-  assert.equal(aheadChannelsLine(ahead), 'Where they booked: 1 Airbnb, 1 VRBO, 1 other.');
+  assert.equal(aheadChannelsLine(ahead), 'Where they booked: 1 Airbnb, 1 VRBO, 1 Direct.');
   assert.equal(ranch?.gaps[0]?.start, '2026-10-31');
   assert.equal(ranch?.gaps[0]?.nights, 4);
   assert.equal(ranch?.gaps[0]?.until, '2026-11-04');
@@ -59,4 +59,21 @@ test('ahead counts Ranch and River nights still left and leaves names off', () =
   assert.equal(text.includes('Secret Guest'), false);
   assert.equal(text.includes('99999'), false);
   assert.equal(text.includes('lindon'), false);
+  const named = ownerAhead(
+    [
+      stay({ propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-06', source: 'HomeAway' }),
+      stay({ propertyId: 'ranch', checkIn: '2026-12-01', checkOut: '2026-12-03', source: '   ' }),
+      stay({ propertyId: 'river', checkIn: '2026-11-10', checkOut: '2026-11-12', source: 'Direct' }),
+      stay({ propertyId: 'river', checkIn: '2026-12-10', checkOut: '2026-12-12', source: 'Direct' }),
+      stay({
+        propertyId: 'river',
+        checkIn: '2026-12-20',
+        checkOut: '2026-12-22',
+        source: 'This source name is far too long to show on the page',
+      }),
+    ],
+    '2026-10-29',
+  );
+  assert.equal(aheadChannelsLine(named), 'Where they booked: 1 VRBO, 2 Direct, 2 Unlisted.');
+  assert.equal(JSON.stringify(named).includes('far too long'), false);
 });

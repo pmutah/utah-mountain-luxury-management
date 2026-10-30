@@ -127,7 +127,9 @@ export function OwnerStatement({
           data-bot="owner-ahead-channels"
           data-airbnb={ahead.channels.find((channel) => channel.name === 'Airbnb')?.stays ?? 0}
           data-vrbo={ahead.channels.find((channel) => channel.name === 'VRBO')?.stays ?? 0}
-          data-other={ahead.channels.find((channel) => channel.name === 'Other')?.stays ?? 0}
+          data-other={ahead.channels
+            .filter((channel) => channel.name !== 'Airbnb' && channel.name !== 'VRBO')
+            .reduce((sum, channel) => sum + channel.stays, 0)}
         >
           {aheadChannelsLine(ahead)}
         </p>

@@ -1,6 +1,6 @@
 import type { Reservation } from './api';
 import { addDays } from './market/dates';
-import { channelLabel, type ChannelName } from './report';
+import { channelLabel } from './report';
 
 export type OwnerGap = {
   start: string;
@@ -21,7 +21,7 @@ export type OwnerAheadHouse = {
 };
 
 export type AheadChannel = {
-  name: ChannelName;
+  name: string;
   stays: number;
 };
 
@@ -117,6 +117,26 @@ function openGaps(
   return found;
 }
 
+function bookedAs(source: string | undefined): string {
+  const label = channelLabel(source ?? '');
+  if (label !== 'Other') return label;
+  const trimmed = (source ?? '').trim().replace(/\s+/g, ' ');
+  if (!trimmed || trimmed.length > 32) return 'Unlisted';
+  return trimmed;
+}
+
+function channelCounts(stays: readonly AheadStay[]): AheadChannel[] {
+  const counts = new Map<string, number>();
+  for (const stay of stays) {
+    const name = bookedAs(stay.source);
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const rank = (name: string) => (name === 'Airbnb' ? 0 : name === 'VRBO' ? 1 : 2);
+  return [...counts.entries()]
+    .map(([name, stays]) => ({ name, stays }))
+    .sort((a, b) => rank(a.name) - rank(b.name) || b.stays - a.stays || a.name.localeCompare(b.name));
+}
+
 function isDate(value: string | undefined): value is string {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
@@ -153,11 +173,7 @@ export function ownerAhead(stays: readonly AheadStay[], asOf: string, closed: re
     };
   });
   const counted = stays.filter((stay) => stillOn(stay, asOf));
-  const channels: AheadChannel[] = (['Airbnb', 'VRBO', 'Other'] as const).map((name) => ({
-    name,
-    stays: counted.filter((stay) => channelLabel(stay.source ?? '') === name).length,
-  }));
-  return { asOf, houses, channels };
+  return { asOf, houses, channels: channelCounts(counted) };
 }
 
 export function aheadLine(house: OwnerAheadHouse): string {
@@ -172,7 +188,7 @@ export function aheadLine(house: OwnerAheadHouse): string {
 export function aheadChannelsLine(ahead: OwnerAhead): string {
   const parts = ahead.channels
     .filter((channel) => channel.stays > 0)
-    .map((channel) => `${channel.stays} ${channel.name === 'Other' ? 'other' : channel.name}`);
+    .map((channel) => `${channel.stays} ${channel.name}`);
   if (parts.length === 0) return 'Nothing still on the books.';
   return `Where they booked: ${parts.join(', ')}.`;
 }
