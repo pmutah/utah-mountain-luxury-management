@@ -55,3 +55,12 @@ test('a Ranch weekday adds the house cleaning fee to the direct price', () => {
   assert.equal(quote.stayTotal, 783);
   assert.equal(quote.promotionNights, 1);
 });
+
+test('a lone Ranch weekend night waits until the last week', () => {
+  const early = quoteStay('ranch', '2026-11-06', '2026-11-07', [], { asOf: '2026-10-29' });
+  assert.equal(early.ok, false);
+  assert.match(early.reason ?? '', /both weekend nights/);
+
+  const late = quoteStay('ranch', '2026-11-06', '2026-11-07', [], { asOf: '2026-11-01' });
+  assert.equal(late.ok, true);
+});

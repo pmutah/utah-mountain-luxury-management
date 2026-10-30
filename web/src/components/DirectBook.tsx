@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PROPERTIES } from '../lib/api';
 import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
+import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
 import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
@@ -12,12 +13,6 @@ import { BrandMark } from './BrandMark';
 import { StayMonth } from './StayMonth';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
-
-const BLURB: Record<HouseId, string> = {
-  river: 'Vivian Park · sleeps 25 · 7 king suites · first stays November 1, 2026',
-  ranch: '270 East Center Street, Lindon',
-  lindon: '143 Harcliff Circle, Lindon',
-};
 
 function nextOpenFriday(today: string): string {
   let cursor = today < '2026-11-01' ? '2026-11-01' : today;
@@ -145,7 +140,8 @@ export function DirectBook() {
             >
               <p className="uml-kicker">{id}</p>
               <p className="font-display text-3xl">{PROPERTIES[id].name.replace('The ', '')}</p>
-              <p className="mt-1 text-xs text-[var(--uml-muted)]">{BLURB[id]}</p>
+              <p className="mt-1 text-xs text-[var(--uml-muted)]">{LISTING_TITLE[id]}</p>
+              {id === 'river' && <p className="mt-1 text-xs text-[var(--uml-muted)]">First stays November 1, 2026</p>}
             </button>
           ))}
         </div>

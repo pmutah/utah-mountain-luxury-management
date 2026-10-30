@@ -63,3 +63,7 @@
 ## 2026-10-29 — guest add-ons
 
 - The stay app can request an early arrival, a late checkout, a Ranch hot tub, or a River grocery drop. Early and late appear only when that night is open. The request stays on the phone. Nothing is charged, and the guest app stays off until it is turned on for that house.
+
+## 2026-10-29 — listing opportunities
+
+- Our booking page uses the playbook titles: sleep count and the best feature for each house. A Friday or Saturday by itself is refused until that night is inside 7 days. Market lists what is still open: one photo, and no card charge. Nothing posts to Airbnb, VRBO, or Hospitable.

@@ -1,4 +1,4 @@
-import { addDays } from './market/dates';
+import { addDays, isWeekendNight } from './market/dates';
 import { promotionForNight, type YearPace } from './market/fill';
 import { nightAsk } from './market/rates';
 import type { HouseId } from './market/types';
@@ -135,6 +135,19 @@ export function quoteStay(
   if (dates.length < minNights) {
     return { ...priced, ok: false, reason: `This stay needs at least ${minNights} nights.` };
   }
+  if (dates.length === 1 && isWeekendNight(dates[0]!) && leadDays(asOf, dates[0]!) > 7) {
+    return {
+      ...priced,
+      ok: false,
+      reason: 'A Friday or Saturday by itself needs to be inside 7 days. Otherwise book both weekend nights.',
+    };
+  }
 
   return { ...priced, ok: true, reason: null };
+}
+
+function leadDays(asOf: string, iso: string): number {
+  const [ay, am, ad] = asOf.split('-').map(Number);
+  const [by, bm, bd] = iso.split('-').map(Number);
+  return Math.round((Date.UTC(by!, bm! - 1, bd) - Date.UTC(ay!, am! - 1, ad)) / 86_400_000);
 }

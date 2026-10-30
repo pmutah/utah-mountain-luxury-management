@@ -11,6 +11,7 @@ import { runShadow, portfolioDigest } from '../lib/market/shadow';
 import { judgeTrial } from '../lib/market/whatif';
 import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
+import { listingOpportunities } from '../lib/listing';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
 
 const HOUSES: { id: HouseId; label: string }[] = [
@@ -381,6 +382,25 @@ export function MarketBoard() {
             </p>
           </form>
         )}
+      </div>
+
+      <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-opportunities">
+        <p className="uml-kicker">Opportunities</p>
+        <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
+          What our own booking page still needs. Nothing here posts to Airbnb, VRBO, or Hospitable.
+        </p>
+        <ul className="mt-4 space-y-3">
+          {listingOpportunities(house).map((item) => (
+            <li key={item.id} data-bot={`market-opportunity-${item.id}`}>
+              <p className="text-sm">
+                <span className="text-[#d4b56a]">{item.status === 'ready' ? 'On our page' : 'Open'}</span>
+                {' · '}
+                {item.title}
+              </p>
+              <p className="text-sm text-[var(--uml-muted)]">{item.detail}</p>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2" data-bot="market-comps">

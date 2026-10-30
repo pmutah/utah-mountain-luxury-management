@@ -11,6 +11,7 @@ Existing expenses, bookings, receipts, and construction records stay in Cloudfla
 | Market | 90-day rate band and percentile | sample | Gold line is our ask. Band is open comps. | 
 | Market | Next 30, 60, and 90 nights | sample | Our booked share uses the live calendar. The comp share is still the sample set. | 
 | Market | What-if nightly ask | sample | A typed ask is judged against the floor, the ceiling, and the 8% cap. It does not change the published rate. |
+| Market | Listing opportunities | sample | Titles are on our booking page. A lone weekend night waits until the last week. Photos and card payment stay open. Nothing posts to Airbnb or VRBO. |
 | Market | Shadow rate moves, 8% cap, holiday lock, floors | sample | Does not write Airbnb, VRBO, or Hospitable. |
 | Market | Daily shadow run | sample | One text covers River, Ranch, and Lindon. Booked, closed, and paused nights stay at the published rate. Promotions follow the fill rules. The text is shown and not sent. |
 | Market | Hospitable calendar push | planned | After 7 days of shadow mode and a write token. |
