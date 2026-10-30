@@ -91,3 +91,7 @@
 ## 2026-10-29 — agent night brief
 
 - Agents reads tonight’s brief from the calendar and the shadow clock. Checkouts are named by house. Guest names stay off the brief. It does not claim a job, send a text, or change a booking or an expense.
+
+## 2026-10-29 — owner month ledger
+
+- Todd’s year-to-date statement lists each month. The month lines use the same Ranch and River split as the total, and they add up to his share. Lindon, household, and construction stay off the page. Nothing on it can be edited.

@@ -68,6 +68,19 @@ export function OwnerStatement({
           </article>
         ))}
       </div>
+      {statement.months.length > 0 && (
+        <div className="uml-panel rounded-3xl p-6" data-bot="owner-months">
+          <p className="uml-kicker">Each month</p>
+          <ul className="mt-4 space-y-2 text-sm">
+            {statement.months.map((row) => (
+              <li key={row.month} className="flex items-baseline justify-between gap-4" data-bot="owner-month">
+                <span>{row.label}</span>
+                <span className="uml-num">{formatCurrency(row.todd)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
