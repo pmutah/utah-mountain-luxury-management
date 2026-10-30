@@ -92,3 +92,12 @@ export async function loadPaceStays(): Promise<PaceStay[] | null> {
     payout: Number(stay.payout) || 0,
   }));
 }
+
+/** How the booking page describes nights ahead. A calendar block is not a booked night. */
+export function calendarAheadLine(taken: readonly string[], closed: readonly string[]): string {
+  const blocks = new Set(closed);
+  const booked = taken.filter((night) => !blocks.has(night)).length;
+  const nights = booked === 1 ? '1 night ahead is' : `${booked} nights ahead are`;
+  const held = closed.length === 1 ? '1 calendar block stays' : `${closed.length} calendar blocks stay`;
+  return `${nights} already booked. ${held} closed. A block is not a booked night.`;
+}

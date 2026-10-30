@@ -400,3 +400,7 @@
 ## 2026-10-30 — the printed quote
 
 - The printed house guide includes the direct price, the party, and the arrival time. A refused stay does not print a price. A name stays off the paper. The paper does not charge a card or hold the dates.
+
+## 2026-10-30 — booked nights ahead leave blocks out
+
+- The booking page counts nights ahead as booked only when they are stays. A calendar block stays closed and is not part of that count. Nothing is sent.

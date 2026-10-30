@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ARRIVAL_SLOTS, arrivalNote } from '../lib/arrival';
 import { PROPERTIES } from '../lib/api';
-import { loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
+import { calendarAheadLine, loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { houseStay, partyFits, partyNote, accessLine, earlyLine, nearbyGroups } from '../lib/house-stay';
 import { placeHref, placeSite } from '../lib/place-link';
@@ -519,7 +519,7 @@ export function DirectBook() {
               {calendar === 'loading'
                 ? 'Checking the calendar…'
                 : calendar === 'live'
-                  ? `${taken[house]?.length ?? 0} nights ahead are already booked.`
+                  ? calendarAheadLine(taken[house] ?? [], closed[house] ?? [])
                   : 'Calendar check is not on this server yet. Confirm the dates before accepting.'}
             </p>
             {others.length > 0 && (
