@@ -11,6 +11,8 @@ const LABEL: Record<HouseId, string> = {
 
 export type NearbyPlace = { name: string; note: string };
 
+export type HouseNote = { title: string; body: string };
+
 export type HouseStay = {
   sleeps: number;
   checkIn: string;
@@ -18,6 +20,7 @@ export type HouseStay = {
   bedrooms: string | null;
   arrival: string;
   parking: string;
+  notes: HouseNote[];
   nearby: NearbyPlace[];
 };
 
@@ -29,6 +32,13 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps'>> = {
     bedrooms: 'Seven king suites, each in its own room, plus an expandable king.',
     arrival: 'Drive up Provo Canyon to Vivian Park. Stock up on groceries in Orem first. AWD or 4WD in winter.',
     parking: 'Park in the driveway and garage. Keep the canyon road clear for plows in winter.',
+    notes: [
+      { title: 'Septic', body: 'The house is on septic. Only toilet paper goes in the toilets. No wipes, even flushable ones.' },
+      {
+        title: 'The river',
+        body: 'The Provo River runs cold and fast, especially in spring. Watch kids near the bank and wear life jackets on the water.',
+      },
+    ],
     nearby: [
       { name: 'Sundance Mountain Resort', note: 'Your home mountain. Lessons and rentals at the base.' },
       { name: 'Provo River Parkway', note: 'Paved trail down the canyon for walking and biking.' },
@@ -42,6 +52,9 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps'>> = {
     bedrooms: null,
     arrival: 'The house is in Lindon, about 45 minutes south of the Salt Lake airport.',
     parking: 'Park in the driveway. Please do not block neighbors.',
+    notes: [
+      { title: 'Hot tub', body: 'Keep the cover on when not in use. No glass in or near the tub. Kids with an adult only.' },
+    ],
     nearby: [
       { name: 'Sundance Mountain Resort', note: 'The closest ski hill. Smaller crowds, great for families and first-timers.' },
       { name: 'Communal', note: 'The best dinner in Utah County. Seasonal, farm-to-table. Reserve ahead.' },
@@ -55,6 +68,7 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps'>> = {
     bedrooms: null,
     arrival: 'The house is in Lindon, about 15 minutes from BYU and 45 minutes from the Salt Lake airport.',
     parking: 'Park in the driveway.',
+    notes: [],
     nearby: [
       { name: 'BYU campus', note: 'Games at LaVell Edwards Stadium, museums, and the Creamery.' },
       { name: 'Sundance Mountain Resort', note: 'The closest ski hill. Smaller crowds, great for families and first-timers.' },

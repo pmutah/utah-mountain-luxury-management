@@ -189,7 +189,12 @@ export function DirectBook() {
         <div className="grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="uml-panel overflow-hidden rounded-[32px]">
             {photo && (
-              <img src={photo.src} alt={PROPERTIES[house].name} className="h-64 w-full object-cover" />
+              <>
+                <img src={photo.src} alt={PROPERTIES[house].name} className="h-64 w-full object-cover" />
+                <p className="px-6 pt-4 text-xs text-[var(--uml-muted)]" data-bot="stay-photo">
+                  {photo.caption}
+                </p>
+              </>
             )}
             <div className="space-y-3 px-6 pt-6" data-bot="stay-house-facts">
               <p className="uml-kicker">The house</p>
@@ -200,6 +205,15 @@ export function DirectBook() {
               {stay.bedrooms && <p className="text-sm">{stay.bedrooms}</p>}
               <p className="text-sm text-[var(--uml-muted)]">{stay.arrival}</p>
               <p className="text-sm text-[var(--uml-muted)]">{stay.parking}</p>
+              {stay.notes.length > 0 && (
+                <ul className="space-y-2 text-sm" data-bot="stay-notes">
+                  {stay.notes.map((note) => (
+                    <li key={note.title}>
+                      <span className="text-[var(--uml-gold)]">{note.title}.</span> {note.body}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <ul className="space-y-1 text-sm" data-bot="stay-nearby">
                 {stay.nearby.map((place) => (
                   <li key={place.name}>
@@ -209,7 +223,15 @@ export function DirectBook() {
               </ul>
             </div>
             <div className="space-y-4 p-6">
-              <p className="uml-kicker">{PROPERTIES[house].address}</p>
+              <a
+                className="uml-kicker"
+                data-bot="stay-map"
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(PROPERTIES[house].address)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {PROPERTIES[house].address}
+              </a>
               <StayMonth
                 house={house}
                 taken={taken[house] ?? []}

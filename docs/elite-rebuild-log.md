@@ -176,3 +176,7 @@
 ## 2026-10-29 — stays still on the books
 
 - Todd’s page counts Ranch and River stays that still have a night left: in the house, still to come, and nights left. Names and payouts stay off that count. It is not in the spreadsheet, and it does not change a booking.
+
+## 2026-10-29 — house notes on the booking page
+
+- The booking page shows the published notes a guest needs before they ask: the Ranch hot tub, and the River septic and the cold river. The photo caption says when the picture is still a rendering. The address opens a map. Door codes and Wi-Fi stay off the page. Nothing is charged.
