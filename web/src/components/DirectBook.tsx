@@ -17,6 +17,7 @@ import { shortestStay } from '../lib/shortest-stay';
 import { stayLengths } from '../lib/stay-lengths';
 import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
+import { quoteOfferNote, quoteOffers, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
 import { BrandMark } from './BrandMark';
 import { StayMonth } from './StayMonth';
@@ -51,6 +52,7 @@ export function DirectBook() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
   const [guests, setGuests] = useState(linked.guests ?? '');
   const [rulesRead, setRulesRead] = useState(false);
+  const [addons, setAddons] = useState<UpsellId[]>([]);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
   const [stays, setStays] = useState<PaceStay[] | null>(null);
@@ -148,6 +150,16 @@ export function DirectBook() {
   const photo = HOUSE_PHOTOS[house];
   const access = accessLine(checkIn);
   const early = calendar === 'live' ? earlyLine(checkIn, taken[house] ?? [], today) : null;
+  const offers = quoteOffers({
+    house,
+    checkIn,
+    checkOut,
+    asOf: today,
+    taken: taken[house] ?? [],
+    calendarLive: calendar === 'live',
+  });
+  const selectedOffers = offers.filter((offer) => addons.includes(offer.id));
+  const addonNote = quoteOfferNote(selectedOffers);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -168,6 +180,7 @@ export function DirectBook() {
             form.note,
             `Overnight guests ${guests}.`,
             `Preview quote ${formatWhole(quote.stayTotal)} before tax (${quote.nights.length} nights).`,
+            addonNote,
           ]
             .filter(Boolean)
             .join(' '),
@@ -514,6 +527,33 @@ export function DirectBook() {
                 {copied ? 'Copied' : 'Copy quote link'}
               </button>
             </div>
+
+            {offers.length > 0 && (
+              <div className="mt-6" data-bot="stay-addons" data-note={addonNote}>
+                <p className="uml-kicker">Add-ons</p>
+                <p className="mt-2 text-sm text-[var(--uml-muted)]">
+                  Checking one adds it to the request. It does not charge a card or send the request.
+                </p>
+                <ul className="mt-3 space-y-3">
+                  {offers.map((offer) => (
+                    <li key={offer.id}>
+                      <label className="flex items-start gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          data-bot={`stay-addon-${offer.id}`}
+                          checked={addons.includes(offer.id)}
+                          onChange={() => setAddons((current) => toggleUpsell(current, offer.id))}
+                        />
+                        <span>
+                          {offer.name}. {formatWhole(offer.price)}. {offer.detail}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="mt-6" data-bot="stay-rules">
               <p className="uml-kicker">House rules</p>

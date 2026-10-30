@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { guestOffers, groceryListForSave, houseMenu, toggleUpsell } from './upsells.ts';
+import { guestOffers, groceryListForSave, houseMenu, quoteOfferNote, quoteOffers, toggleUpsell } from './upsells.ts';
 
 test('Ranch before an open calendar offers early, late, and the hot tub', () => {
   const ids = guestOffers({
@@ -79,4 +79,45 @@ test('a request toggles on and off', () => {
   const once = toggleUpsell([], 'tub');
   assert.deepEqual(once, ['tub']);
   assert.deepEqual(toggleUpsell(once, 'tub'), []);
+});
+
+test('the booking page offers add-ons only when the nights are open', () => {
+  const open = quoteOffers({
+    house: 'river',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    asOf: '2026-10-29',
+    taken: [],
+    calendarLive: true,
+  }).map((offer) => offer.id);
+  assert.deepEqual(open, ['early', 'late', 'groceries']);
+  const held = quoteOffers({
+    house: 'river',
+    checkIn: '2026-12-13',
+    checkOut: '2026-12-15',
+    asOf: '2026-10-29',
+    taken: ['2026-12-12'],
+    calendarLive: true,
+  }).map((offer) => offer.id);
+  assert.equal(held.includes('early'), false);
+  assert.equal(held.includes('late'), true);
+  const quiet = quoteOffers({
+    house: 'ranch',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    asOf: '2026-10-29',
+    taken: [],
+    calendarLive: false,
+  }).map((offer) => offer.id);
+  assert.deepEqual(quiet, ['tub']);
+  const early = quoteOffers({
+    house: 'river',
+    checkIn: '2026-11-06',
+    checkOut: '2026-11-08',
+    asOf: '2026-10-29',
+    taken: [],
+    calendarLive: true,
+  }).filter((offer) => offer.id === 'early');
+  assert.equal(quoteOfferNote(early), 'Add-on request: Arrive at 1:00 PM. Nothing is charged yet.');
+  assert.equal(quoteOfferNote([]), '');
 });

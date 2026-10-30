@@ -1,3 +1,4 @@
+import { checkoutNightIsFree, nightBeforeIsFree } from './journey';
 import type { HouseId } from './market/types';
 
 export type UpsellId = 'early' | 'late' | 'tub' | 'groceries';
@@ -68,6 +69,32 @@ export function guestOffers(input: {
 
 export function toggleUpsell(current: readonly UpsellId[], id: UpsellId): UpsellId[] {
   return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+}
+
+/** Add-ons the booking page can offer for these dates. An unknown calendar hides early and late. */
+export function quoteOffers(input: {
+  house: HouseId;
+  checkIn: string;
+  checkOut: string;
+  asOf: string;
+  taken: readonly string[];
+  calendarLive: boolean;
+}): UpsellOffer[] {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(input.checkOut)) return [];
+  if (input.checkOut <= input.checkIn || input.asOf >= input.checkOut) return [];
+  const phase = input.asOf >= input.checkIn ? 'during' : 'before';
+  return guestOffers({
+    house: input.house,
+    phase,
+    nightBeforeFree: input.calendarLive ? nightBeforeIsFree(input.checkIn, input.taken) : null,
+    checkoutNightFree: input.calendarLive ? checkoutNightIsFree(input.checkOut, input.taken) : null,
+  });
+}
+
+/** The line that would ride along with a request. Checking a box does not send it. */
+export function quoteOfferNote(offers: readonly UpsellOffer[]): string {
+  if (offers.length === 0) return '';
+  return `Add-on request: ${offers.map((offer) => offer.name).join(', ')}. Nothing is charged yet.`;
 }
 
 const STORAGE_KEY = 'uml-upsell-requests';

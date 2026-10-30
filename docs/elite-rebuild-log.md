@@ -240,3 +240,7 @@
 ## 2026-10-29 — when the door code opens
 
 - The booking page says the door code and Wi-Fi open on the guest phone the day before check-in, after the house rules are read. An earlier arrival shows only when the night before is open, and it stays a request. The code stays off this page.
+
+## 2026-10-29 — add-on requests on the quote
+
+- The booking page can add an early arrival, a later checkout, the Ranch hot tub, or a River grocery drop to the request. Early and late show only when that night is open. Checking one does not charge a card or send the request.
