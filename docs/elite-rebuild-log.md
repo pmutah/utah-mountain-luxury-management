@@ -67,3 +67,7 @@
 ## 2026-10-29 — listing opportunities
 
 - Our booking page uses the playbook titles: sleep count and the best feature for each house. A Friday or Saturday by itself is refused until that night is inside 7 days. Market lists what is still open: one photo, and no card charge. Nothing posts to Airbnb, VRBO, or Hospitable.
+
+## 2026-10-29 — owner statement print
+
+- Todd's statement can be printed. The paper copy is Ranch and River after the 20% fee, then half. The rest of the dashboard stays off the page. Nothing on the statement can be edited.

@@ -34,7 +34,7 @@ export function OwnerStatement({
           Ranch and River, after the 20% management fee, then half. Lindon, household purchases, and construction bills are not on this page. Nothing here can be edited.
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2" data-bot="owner-controls">
         {PERIODS.map((item) => (
           <button
             key={item.id}
@@ -47,6 +47,9 @@ export function OwnerStatement({
             {item.label}
           </button>
         ))}
+        <button type="button" className="uml-nav" data-bot="owner-print" onClick={() => window.print()}>
+          Print
+        </button>
       </div>
       <div className="uml-panel rounded-[32px] px-6 py-8">
         <p className="uml-kicker">{statement.rangeLabel}</p>

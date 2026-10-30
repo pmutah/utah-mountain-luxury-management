@@ -119,3 +119,28 @@ body {
     radial-gradient(90% 70% at -10% 110%, rgba(46, 122, 118, 0.35), transparent 50%),
     linear-gradient(165deg, #102421 0%, #07110f 48%, #0a1618 100%);
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  [data-bot="owner-statement"],
+  [data-bot="owner-statement"] * {
+    visibility: visible;
+  }
+  [data-bot="owner-controls"],
+  [data-bot="owner-controls"] * {
+    visibility: hidden;
+  }
+  [data-bot="owner-statement"] {
+    position: absolute;
+    inset: 0;
+    color: #1c2b27;
+    background: white;
+  }
+  [data-bot="owner-statement"] .uml-panel {
+    background: white;
+    color: #1c2b27;
+    border: 1px solid #1c2b27;
+  }
+}
