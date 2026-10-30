@@ -12,8 +12,8 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 ### Hash routes
 
 - `#/overview` — portfolio. Download occupancy lists taken nights and leaves names off the file.
-- `#/market` — top 10 comps, a 90-day rate band, the same open arrivals as the booking page, and the lengths the first arrival can quote. Sample comps until live comps are connected. It does not change Airbnb or VRBO rates.
-- `#/agents` — nightly brief from the calendar and the shadow clock, including where Ranch and River stays still on the books were booked, keeping the source name when it is not Airbnb or VRBO, the next open stretch, the next open arrival, and the lengths that arrival can quote. A blocked night stays off the stretch and the arrival. Checkout lines name 11:00 AM. It does not claim jobs.
+- `#/market` — top 10 comps, a 90-day rate band, the same open arrivals as the booking page, the lengths the first arrival can quote, and the add-ons that arrival can request, with no prices. Sample comps until live comps are connected. It does not change Airbnb or VRBO rates.
+- `#/agents` — nightly brief from the calendar and the shadow clock, including where Ranch and River stays still on the books were booked, keeping the source name when it is not Airbnb or VRBO, the next open stretch, the next open arrival, the lengths that arrival can quote, and the add-ons that arrival can request. A blocked night stays off the stretch and the arrival. Checkout lines name 11:00 AM. It does not claim jobs.
 - `#/report` — P&L report
 - `#/owner` — Todd’s Ranch and River statement. Read only. Download saves that same statement. A count of stays still on the books says where they were booked, keeps the source name when it is not Airbnb or VRBO, and names the next open stretch. A blocked night stays off that stretch. Names stay off, and the count is not in the spreadsheet. Lindon and household bills are not on it.
 - `#/clean` — turnovers for the next two weeks, with the address, parking, and house notes on the work order. The door code stays off the paper.

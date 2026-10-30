@@ -244,3 +244,7 @@
 ## 2026-10-29 — add-on requests on the quote
 
 - The booking page can add an early arrival, a later checkout, the Ranch hot tub, or a River grocery drop to the request. Early and late show only when that night is open. Checking one does not charge a card or send the request.
+
+## 2026-10-29 — add-ons on the market desk and the brief
+
+- The market desk and the nightly brief name the add-ons the next open arrival can request. The lines have no prices. The desk does not send the request.

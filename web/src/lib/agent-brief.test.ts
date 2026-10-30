@@ -23,6 +23,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /Open stretch on the calendar: Ranch Nov 8 for \d+ nights\. River Nov 1 for 120 nights/);
   assert.match(text, /Next open arrival from these bookings: River Nov 1 for 2 nights\. Ranch Nov 8 for 1 night\. Lindon Nov 7 for 1 night\./);
   assert.match(text, /Length choices from these bookings: River Nov 1 can quote 2, 3, 4, 7, 14, 28 nights\. Ranch Nov 8 can quote 1, 2, 3, 4, 7, 14, 28 nights\. Lindon Nov 7 can quote /);
+  assert.match(text, /Add-ons from these bookings: River Nov 1 can request a later checkout\. Ranch Nov 8 can request a later checkout and the hot tub\. Lindon Nov 7 can request a later checkout\./);
   assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
   assert.match(text, /Nothing sent/);
@@ -57,6 +58,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(heldText, /Open stretch on the calendar: Ranch Nov 1 for 120 nights\. River Nov 3 for 118 nights/);
   assert.match(heldText, /Next open arrival from these bookings: River Nov 3 for 2 nights\. Ranch Nov 1 for 1 night\. Lindon Nov 1 for 1 night/);
   assert.match(heldText, /River Nov 3 can quote 2, 3, 4, 7, 14, 28 nights/);
+  assert.match(heldText, /River Nov 3 can request a later checkout and a grocery drop/);
   assert.match(heldText, /Nothing still on the books/);
   assert.equal(heldText.includes('$'), false);
 });
@@ -73,6 +75,10 @@ test('seven shadow days still leave the write closed', () => {
   assert.match(
     text,
     /Length choices from these bookings: River Nov 1 can quote 2, 3, 4, 7, 14, 28 nights\. Ranch Nov 1 can quote 1, 2, 3, 4, 7, 14, 28 nights\. Lindon Nov 1 can quote 1, 2, 3, 4, 7, 14, 28 nights/,
+  );
+  assert.match(
+    text,
+    /Add-ons from these bookings: River Nov 1 can request a later checkout\. Ranch Nov 1 can request a later checkout\. Lindon Nov 1 can request a later checkout\./,
   );
   assert.match(text, /No shared jobs are open/);
 });

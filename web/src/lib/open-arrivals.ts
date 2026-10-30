@@ -4,6 +4,7 @@ import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
 import { quoteStay } from './quote';
 import { stayLengths } from './stay-lengths';
+import { quoteOffers, type UpsellId } from './upsells';
 
 export type OpenArrival = {
   checkIn: string;
@@ -100,4 +101,40 @@ export function lengthPhrase(house: HouseId, taken: readonly string[], asOf: str
   const lengths = stayLengths(house, first.checkIn, taken, asOf, pace);
   const nights = lengths ? lengths.choices.map((choice) => choice.nights).join(', ') : String(first.nights);
   return `${name} ${when} can quote ${nights} nights`;
+}
+
+const SPOKEN: Record<UpsellId, string> = {
+  early: 'an early arrival',
+  late: 'a later checkout',
+  tub: 'the hot tub',
+  groceries: 'a grocery drop',
+};
+
+function spokenList(items: readonly string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+/** Add-ons the shortest open arrival can request. No price. */
+export function addonPhrase(house: HouseId, taken: readonly string[], asOf: string, pace: YearPace): string {
+  const name = HOUSE_NAME[house];
+  const first = openArrivals(house, taken, asOf, pace, 1)[0];
+  if (!first) return `${name} has no add-on to request in the next six months`;
+  const [year, month, day] = first.checkIn.split('-').map(Number);
+  const when = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+  const offers = quoteOffers({
+    house,
+    checkIn: first.checkIn,
+    checkOut: first.checkOut,
+    asOf,
+    taken,
+    calendarLive: true,
+  }).map((offer) => SPOKEN[offer.id]);
+  if (offers.length === 0) return `${name} ${when} has no add-on for that stay`;
+  return `${name} ${when} can request ${spokenList(offers)}`;
 }

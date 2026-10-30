@@ -21,7 +21,7 @@ import type { HouseId, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
 import { listingOpportunities } from '../lib/listing';
 import { directNight } from '../lib/quote';
-import { openArrivals } from '../lib/open-arrivals';
+import { addonPhrase, openArrivals } from '../lib/open-arrivals';
 import { stayLengths } from '../lib/stay-lengths';
 import { stayLinkSearch } from '../lib/stay-link';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
@@ -206,6 +206,7 @@ export function MarketBoard() {
     if (calendar !== 'live' || !first) return null;
     return stayLengths(house, first.checkIn, taken[house] ?? [], today, pace);
   }, [calendar, openings, house, taken, today, pace]);
+  const addons = calendar === 'live' ? addonPhrase(house, taken[house] ?? [], today, pace) : '';
 
   function writeChoice(next: CompChoice) {
     const all = { ...compChoices, [house]: next };
@@ -380,6 +381,11 @@ export function MarketBoard() {
                   ))}
                 </ul>
               </div>
+            )}
+            {addons && (
+              <p className="mt-4 text-sm text-[var(--uml-muted)]" data-bot="market-addons">
+                {addons}. These stay requests. This desk does not send them.
+              </p>
             )}
           </div>
         )}
