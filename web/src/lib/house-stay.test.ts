@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { houseStay, partyFits, accessLine, earlyLine } from './house-stay.ts';
+import { houseStay, partyFits, accessLine, earlyLine, nearbyGroups } from './house-stay.ts';
 
 test('the booking page uses the published house and refuses a party that does not fit', () => {
   const river = houseStay('river');
@@ -21,6 +21,10 @@ test('the booking page uses the published house and refuses a party that does no
   assert.equal(ranch.notes[0]?.title, 'Hot tub');
   const lindon = houseStay('lindon');
   assert.equal(river.nearby.length, 18);
+  assert.deepEqual(
+    nearbyGroups(river.nearby).map((group) => group.kind),
+    ['ski', 'food', 'outdoors', 'family', 'essentials'],
+  );
   assert.equal(river.nearby[0]?.url, 'https://www.sundanceresort.com');
   assert.equal(ranch.nearby.length, 19);
   assert.equal(lindon.nearby.length, 19);

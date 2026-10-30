@@ -12,5 +12,6 @@ test('the printed house guide leaves the door code off the paper', () => {
   assert.match(guide.close, /does not hold the dates/);
   assert.match(text, /The door code stays off this paper/);
   assert.equal(/password/i.test(text), false);
-  assert.equal(bookingGuide('ranch', '2026-11-04', '2026-11-05').nearby.length, 19);
+  assert.equal(guide.nearby[0], 'Ski');
+  assert.equal(bookingGuide('ranch', '2026-11-04', '2026-11-05').nearby.includes('Before you go'), true);
 });

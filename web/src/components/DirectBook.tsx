@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PROPERTIES } from '../lib/api';
 import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
-import { houseStay, partyFits, accessLine, earlyLine } from '../lib/house-stay';
+import { houseStay, partyFits, accessLine, earlyLine, nearbyGroups } from '../lib/house-stay';
 import { placeHref, placeSite } from '../lib/place-link';
 import { directRequestReady, houseRules } from '../lib/house-rules';
 import { LISTING_TITLE } from '../lib/listing';
@@ -291,17 +291,24 @@ export function DirectBook() {
                   ))}
                 </ul>
               )}
-              <ul className="space-y-1 text-sm" data-bot="stay-nearby">
-                {stay.nearby.map((place) => (
-                  <li key={place.name}>
-                    <a href={placeHref(place)} target="_blank" rel="noreferrer">
-                      {place.name}
-                    </a>
-                    {place.area ? `, ${place.area}` : ''}. {place.note}
-                    {placeSite(place.url) ? ` ${placeSite(place.url)}` : ''}
-                  </li>
+              <div className="space-y-3 text-sm" data-bot="stay-nearby">
+                {nearbyGroups(stay.nearby).map((group) => (
+                  <div key={group.kind} data-bot={`stay-nearby-${group.kind}`}>
+                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--uml-muted)]">{group.label}</p>
+                    <ul className="mt-1 space-y-1">
+                      {group.places.map((place) => (
+                        <li key={place.name}>
+                          <a href={placeHref(place)} target="_blank" rel="noreferrer">
+                            {place.name}
+                          </a>
+                          {place.area ? `, ${place.area}` : ''}. {place.note}
+                          {placeSite(place.url) ? ` ${placeSite(place.url)}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
             <div className="space-y-4 p-6">
               <a

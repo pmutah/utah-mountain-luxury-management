@@ -1,6 +1,5 @@
 import { PROPERTIES } from './api';
-import { accessLine } from './house-stay';
-import { houseStay } from './house-stay';
+import { accessLine, houseStay, nearbyGroups } from './house-stay';
 import { houseRules } from './house-rules';
 import type { HouseId } from './market/types';
 import { placeSite } from './place-link';
@@ -33,11 +32,14 @@ export function bookingGuide(house: HouseId, checkIn: string, checkOut: string):
     facts,
     rules: houseRules(house).map((rule) => rule.text),
     checkout: [...stay.checkout],
-    nearby: stay.nearby.map((place) => {
-      const site = placeSite(place.url);
-      const where = place.area ? `, ${place.area}` : '';
-      return `${place.name}${where}. ${place.note}${site ? ` ${site}` : ''}`;
-    }),
+    nearby: nearbyGroups(stay.nearby).flatMap((group) => [
+      group.label,
+      ...group.places.map((place) => {
+        const site = placeSite(place.url);
+        const where = place.area ? `, ${place.area}` : '';
+        return `${place.name}${where}. ${place.note}${site ? ` ${site}` : ''}`;
+      }),
+    ]),
     close: 'This paper does not hold the dates or charge a card. The door code stays off this paper.',
   };
 }

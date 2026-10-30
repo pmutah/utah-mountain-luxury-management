@@ -284,3 +284,7 @@
 ## 2026-10-29 — the daily text names the next quote
 
 - The unsent daily text names the lengths and add-ons the next open arrival can take when the calendar is live. It still ends with nothing sent to Hospitable.
+
+## 2026-10-29 — nearby places grouped on the quote
+
+- The booking page groups nearby places into ski, food, outdoors, family, and before you go. The same order is on the printed house guide.
