@@ -13,7 +13,7 @@ This is a private operations dashboard for short-term rentals (Ranch House, Lind
 
 - `#/overview` — portfolio
 - `#/market` — top 10 comps and a 90-day rate band. Sample data until live comps are connected. It does not change Airbnb or VRBO rates.
-- `#/agents` — Co-host, Build, Nora, Muse, and Amanda, plus the shared job list. It does not claim jobs.
+- `#/agents` — nightly brief from the calendar and the shadow clock, plus Co-host, Build, Nora, Muse, and Amanda. It does not claim jobs.
 - `#/report` — P&L report
 - `#/owner` — Todd’s Ranch and River statement. Read only. Lindon and household bills are not on it.
 - `#/clean` — turnovers for the next two weeks, with a checklist that stays on this browser.

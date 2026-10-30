@@ -87,3 +87,7 @@
 ## 2026-10-29 — booking page rules
 
 - Our booking page lists each night’s direct price and the house rules. The request button stays off until those rules are read. Reading them does not sign the stay agreement, charge a card, or hold the dates.
+
+## 2026-10-29 — agent night brief
+
+- Agents reads tonight’s brief from the calendar and the shadow clock. Checkouts are named by house. Guest names stay off the brief. It does not claim a job, send a text, or change a booking or an expense.

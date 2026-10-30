@@ -1,0 +1,96 @@
+import type { Reservation } from './api';
+import { listingOpportunities } from './listing';
+import { SHADOW_DAYS_REQUIRED } from './market/shadow-log';
+import { buildTurnovers } from './today';
+
+export type BriefAgent = 'amanda' | 'co-host' | 'nora' | 'muse' | 'build';
+
+export type BriefLine = {
+  agent: BriefAgent;
+  text: string;
+};
+
+function shortDate(iso: string) {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(Date.UTC(year!, month! - 1, day)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function blankStay(stay: Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'>): Reservation {
+  return { ...stay, guestName: '', payout: 0, source: '' };
+}
+
+/** A read-only night brief. It does not claim a job or name a guest. */
+export function agentBrief(input: {
+  asOf: string;
+  stays: Array<Pick<Reservation, 'id' | 'propertyId' | 'checkIn' | 'checkOut' | 'status'>>;
+  shadowDays: number;
+  openJobs: number;
+  calendarReady: boolean;
+}): BriefLine[] {
+  const days = Math.max(0, Math.min(SHADOW_DAYS_REQUIRED, Math.floor(input.shadowDays)));
+  const lines: BriefLine[] = [
+    {
+      agent: 'amanda',
+      text:
+        days >= SHADOW_DAYS_REQUIRED
+          ? `Shadow days ${days} of ${SHADOW_DAYS_REQUIRED} are on this browser. Hospitable write closed.`
+          : `Shadow day ${days} of ${SHADOW_DAYS_REQUIRED}. Hospitable write closed.`,
+    },
+  ];
+
+  const turns = input.calendarReady
+    ? buildTurnovers(input.stays.map(blankStay), input.asOf).sort(
+        (a, b) => Number(b.gapNights === 0) - Number(a.gapNights === 0) || a.checkout.localeCompare(b.checkout),
+      )
+    : [];
+  if (!input.calendarReady) {
+    lines.push({ agent: 'co-host', text: 'Checking the calendar…' });
+  } else if (turns.length === 0) {
+    lines.push({ agent: 'co-host', text: 'No checkouts in the next two weeks.' });
+  }
+  const shown = turns.slice(0, 4);
+  for (const turn of shown) {
+    const when = shortDate(turn.checkout);
+    const text =
+      turn.gapNights === 0
+        ? `Same-day clean at ${turn.houseName} on ${when}.`
+        : turn.gapNights === null
+          ? `${turn.houseName} checkout ${when}. Nothing booked after it.`
+          : `${turn.houseName} checkout ${when}. ${turn.gapNights} ${turn.gapNights === 1 ? 'night' : 'nights'} before the next arrival.`;
+    lines.push({ agent: 'co-host', text });
+  }
+  if (turns.length > shown.length) {
+    lines.push({ agent: 'co-host', text: `${turns.length - shown.length} more checkouts in the next two weeks.` });
+  }
+
+  const openListings = listingOpportunities('river').filter((item) => item.status === 'open');
+  const openLabel = openListings
+    .map((item) => (item.id === 'photos' ? 'photos' : item.id === 'payment' ? 'card payment' : item.title))
+    .join(' and ');
+  lines.push({
+    agent: 'co-host',
+    text: openLabel
+      ? `Still open on our booking page: ${openLabel}.`
+      : 'Our booking page has no open listing items.',
+  });
+  lines.push({
+    agent: 'nora',
+    text: 'Door codes stay hidden until the house rules are read on the guest phone.',
+  });
+  lines.push({
+    agent: 'muse',
+    text:
+      input.openJobs === 0
+        ? 'No shared jobs are open. This page does not claim one.'
+        : `${input.openJobs} shared ${input.openJobs === 1 ? 'job is' : 'jobs are'} open. This page does not claim one.`,
+  });
+  lines.push({
+    agent: 'build',
+    text: 'River build costs stay in the build chat. This brief does not change partner spend.',
+  });
+  return lines;
+}

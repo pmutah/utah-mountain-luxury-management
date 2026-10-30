@@ -256,7 +256,10 @@ function Dashboard() {
           </main>
         ) : activeTab === 'agents' ? (
           <main>
-            <AgentsHub />
+            <AgentsHub
+              reservations={history?.reservations?.length ? history.reservations : (data?.reservations ?? [])}
+              calendar={data || history?.reservations?.length ? 'live' : loading ? 'loading' : 'off'}
+            />
           </main>
         ) : loading && !data ? (
           <LoadingSkeleton />
