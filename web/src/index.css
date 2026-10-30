@@ -175,7 +175,9 @@ body {
     border: 1px solid #1c2b27;
   }
   [data-bot="stay-sheet"],
-  [data-bot="stay-sheet"] * {
+  [data-bot="stay-sheet"] *,
+  [data-bot="stay-guide-print"],
+  [data-bot="stay-guide-print"] * {
     visibility: visible;
   }
   .stay-sheet-source {

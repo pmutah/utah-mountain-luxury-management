@@ -20,6 +20,7 @@ import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
 import { quoteOfferNote, quoteOffers, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
+import { bookingGuide } from '../lib/booking-guide';
 import { BrandMark } from './BrandMark';
 import { StayMonth } from './StayMonth';
 
@@ -141,6 +142,7 @@ export function DirectBook() {
     partyOk: party.ok,
   });
   const photo = HOUSE_PHOTOS[house];
+  const guide = bookingGuide(house, checkIn, checkOut);
   const access = accessLine(checkIn);
   const early = calendar === 'live' ? earlyLine(checkIn, taken[house] ?? [], today) : null;
   const offers = quoteOffers({
@@ -249,7 +251,12 @@ export function DirectBook() {
               </>
             )}
             <div className="space-y-3 px-6 pt-6" data-bot="stay-house-facts">
-              <p className="uml-kicker">The house</p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="uml-kicker">The house</p>
+                <button type="button" className="uml-nav" data-bot="stay-print" data-print-hide onClick={() => window.print()}>
+                  Print the house guide
+                </button>
+              </div>
               <p className="font-display text-3xl">Sleeps {stay.sleeps}</p>
               <p className="text-sm text-[var(--uml-muted)]">
                 Check-in {stay.checkIn} · Check-out {stay.checkOut}
@@ -632,6 +639,29 @@ export function DirectBook() {
             )}
           </section>
         </div>
+      </div>
+      <div className="stay-sheet-source" data-bot="stay-guide-print">
+        <p>House guide</p>
+        <h2>{guide.name}</h2>
+        {guide.facts.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        <ul>
+          {guide.rules.map((rule) => (
+            <li key={rule}>{rule}</li>
+          ))}
+        </ul>
+        <ul>
+          {guide.checkout.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ul>
+        <ul>
+          {guide.nearby.map((place) => (
+            <li key={place}>{place}</li>
+          ))}
+        </ul>
+        <p>{guide.close}</p>
       </div>
     </div>
   );
