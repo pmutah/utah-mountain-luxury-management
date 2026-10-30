@@ -336,3 +336,7 @@
 ## 2026-10-29 — door codes that open tomorrow
 
 - Overview and the nightly brief say how many door codes open tomorrow, by house. Names and the codes stay off. Nothing is sent.
+
+## 2026-10-29 — the stay agreement stays unsigned
+
+- The booking page, the guest trip, the paper, and the nightly brief name what the stay agreement covers. Reading the house rules does not sign it. No agreement is created.

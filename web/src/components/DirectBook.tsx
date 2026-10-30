@@ -5,6 +5,7 @@ import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { houseStay, partyFits, accessLine, earlyLine, nearbyGroups } from '../lib/house-stay';
 import { placeHref, placeSite } from '../lib/place-link';
 import { directRequestReady, houseRules, rulesNote } from '../lib/house-rules';
+import { agreementLine, agreementNote } from '../lib/stay-agreement';
 import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
 import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
@@ -190,6 +191,7 @@ export function DirectBook() {
             `Preview quote ${formatWhole(quote.stayTotal)} before tax (${quote.nights.length} nights).`,
             addonNote,
             rulesNote(house),
+            agreementNote(house),
           ]
             .filter(Boolean)
             .join(' '),
@@ -599,6 +601,9 @@ export function DirectBook() {
               </label>
               <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="stay-rules-note" data-note={rulesNote(house)}>
                 A request includes these rules in the note. Nothing is sent until you use the button.
+              </p>
+              <p className="mt-2 text-sm" data-bot="stay-agreement">
+                {agreementLine(house, 'page')}
               </p>
             </div>
 

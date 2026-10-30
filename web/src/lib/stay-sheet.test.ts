@@ -14,6 +14,7 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
     arrival: 'The house sits at Vivian Park.',
     parking: 'Park in the drive.',
     rules: 'No parties.',
+    houseId: 'river',
     notes: [
       { title: 'Septic', body: 'Only toilet paper goes in the toilets.' },
       { title: 'Door code', body: '1234' },
@@ -33,6 +34,8 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
   assert.equal(sheet.parking, 'Park in the drive.');
   assert.equal(sheet.rules, 'No parties.');
+  assert.match(sheet.agreement, /the river/);
+  assert.match(sheet.agreement, /This paper does not sign it/);
   const secret = tripSheet({
     house: 'River House',
     checkIn: '2026-11-06',

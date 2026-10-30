@@ -1,9 +1,10 @@
 import { addDays } from './market/dates';
+import { agreementLine } from './stay-agreement';
 
 export type JourneyState = 'done' | 'now' | 'later';
 
 export type JourneyStep = {
-  id: 'group' | 'code' | 'early' | 'arrive' | 'leave';
+  id: 'group' | 'agree' | 'code' | 'early' | 'arrive' | 'leave';
   title: string;
   detail: string;
   state: JourneyState;
@@ -39,9 +40,16 @@ export function arrivalJourney(input: {
   phase: 'before' | 'during' | 'after';
   /** Null when the calendar was not checked. */
   nightBeforeFree: boolean | null;
+  house?: string;
 }): JourneyStep[] {
   const codeOpen = input.asOf >= input.opensOn;
   const steps: JourneyStep[] = [
+    {
+      id: 'agree',
+      title: 'Stay agreement',
+      detail: agreementLine(input.house ?? '', 'phone'),
+      state: 'later',
+    },
     {
       id: 'group',
       title: 'Your group',

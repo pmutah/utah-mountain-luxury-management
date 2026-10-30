@@ -1,5 +1,6 @@
 import { placeHref, placeSite } from './place-link';
 import type { PlaceKind } from './house-stay';
+import { agreementLine } from './stay-agreement';
 
 function longDate(iso: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
@@ -24,6 +25,7 @@ export type TripSheet = {
   arrival: string;
   parking: string;
   rules: string;
+  agreement: string;
   notes: TripNote[];
   nearby: TripPlace[];
   emergency: string;
@@ -85,6 +87,7 @@ export function tripSheet(input: {
   arrival?: string;
   parking?: string;
   rules?: string;
+  houseId?: string;
   notes?: readonly { title?: string; body?: string }[];
   nearby?: readonly { name?: string; note?: string; area?: string; url?: string; kind?: string }[];
   emergency?: string;
@@ -101,6 +104,7 @@ export function tripSheet(input: {
     nearby: publicNearby(input.nearby),
     emergency: publicText(input.emergency),
     rules: publicText(input.rules),
+    agreement: agreementLine(input.houseId ?? '', 'paper'),
     checkout: publicCheckout(input.checkout),
   };
 }

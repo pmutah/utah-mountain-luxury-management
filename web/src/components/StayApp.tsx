@@ -252,6 +252,7 @@ export function StayApp({ token }: { token: string }) {
     checkOutTime: guide.checkOutTime,
     phase: access.phase,
     nightBeforeFree,
+    house: data.propertyId,
   });
   const sheet = tripSheet({
     house,
@@ -263,6 +264,7 @@ export function StayApp({ token }: { token: string }) {
     arrival: guide.arrival,
     parking: guide.parking,
     rules: guide.houseRules,
+    houseId: data.propertyId,
     notes: guide.sections,
     nearby: guide.places,
     emergency: guide.emergency,
@@ -388,6 +390,9 @@ export function StayApp({ token }: { token: string }) {
                   {sheet.rules}
                 </p>
               )}
+              <p className="mt-2 text-sm" data-bot="stay-sheet-agreement">
+                {sheet.agreement}
+              </p>
               {sheet.checkout.length > 0 && (
                 <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-checkout">
                   {sheet.checkout.map((step) => (
@@ -428,6 +433,7 @@ export function StayApp({ token }: { token: string }) {
               {sheet.arrival && <p data-bot="stay-sheet-print-arrival">{sheet.arrival}</p>}
               {sheet.parking && <p data-bot="stay-sheet-print-parking">{sheet.parking}</p>}
               {sheet.rules && <p data-bot="stay-sheet-print-rules">{sheet.rules}</p>}
+              <p data-bot="stay-sheet-print-agreement">{sheet.agreement}</p>
               {sheet.checkout.length > 0 && (
                 <ul data-bot="stay-sheet-print-checkout">
                   {sheet.checkout.map((step) => (
