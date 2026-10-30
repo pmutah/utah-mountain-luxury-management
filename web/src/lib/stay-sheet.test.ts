@@ -9,6 +9,7 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
     checkOut: '2026-11-08',
     checkInTime: '4:00 PM',
     checkOutTime: '11:00 AM',
+    address: 'Vivian Park, Provo Canyon, Utah 84604',
     arrival: 'The house sits at Vivian Park.',
     parking: 'Park in the drive.',
     rules: 'No parties.',
@@ -16,6 +17,7 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   });
   assert.equal(sheet.house, 'River House');
   assert.equal(sheet.when, 'Check-in 4:00 PM on November 6, 2026. Checkout 11:00 AM on November 8, 2026.');
+  assert.equal(sheet.address, 'Vivian Park, Provo Canyon, Utah 84604');
   assert.match(sheet.privateNote, /not on this paper/);
   assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
   assert.deepEqual(sheet.checkout, ['Strip the beds']);

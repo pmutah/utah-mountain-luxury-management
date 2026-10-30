@@ -235,6 +235,7 @@ export function StayApp({ token }: { token: string }) {
     checkOut: data.checkOut,
     checkInTime: guide.checkInTime,
     checkOutTime: guide.checkOutTime,
+    address: guide.address,
     arrival: guide.arrival,
     parking: guide.parking,
     rules: guide.houseRules,
@@ -325,6 +326,11 @@ export function StayApp({ token }: { token: string }) {
               <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-sheet-when">
                 {sheet.when}
               </p>
+              {sheet.address && (
+                <p className="mt-2 text-sm" data-bot="stay-sheet-address">
+                  {sheet.address}
+                </p>
+              )}
               <p className="mt-2 text-sm text-white/60" data-bot="stay-sheet-private">
                 {sheet.privateNote}
               </p>
@@ -342,6 +348,7 @@ export function StayApp({ token }: { token: string }) {
               <p className="text-xs uppercase tracking-widest">Trip sheet</p>
               <h2 className="text-3xl">{sheet.house}</h2>
               <p>{sheet.when}</p>
+              {sheet.address && <p data-bot="stay-sheet-print-address">{sheet.address}</p>}
               <p>{sheet.privateNote}</p>
               {sheet.arrival && <p>{sheet.arrival}</p>}
               {sheet.parking && <p>{sheet.parking}</p>}

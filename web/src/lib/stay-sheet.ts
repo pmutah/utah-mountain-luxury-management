@@ -12,6 +12,7 @@ function longDate(iso: string): string {
 export type TripSheet = {
   house: string;
   when: string;
+  address: string;
   privateNote: string;
   arrival: string;
   parking: string;
@@ -26,6 +27,7 @@ export function tripSheet(input: {
   checkOut: string;
   checkInTime: string;
   checkOutTime: string;
+  address?: string;
   arrival?: string;
   parking?: string;
   rules?: string;
@@ -34,6 +36,7 @@ export function tripSheet(input: {
   return {
     house: input.house,
     when: `Check-in ${input.checkInTime} on ${longDate(input.checkIn)}. Checkout ${input.checkOutTime} on ${longDate(input.checkOut)}.`,
+    address: input.address?.trim() ?? '',
     privateNote: 'Door code and Wi-Fi stay on the phone. They are not on this paper.',
     arrival: input.arrival?.trim() ?? '',
     parking: input.parking?.trim() ?? '',

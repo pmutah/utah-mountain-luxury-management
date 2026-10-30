@@ -168,3 +168,7 @@
 ## 2026-10-29 — direct charge on the market desk
 
 - The what-if line uses the same direct night as the booking page. A booked night stays booked. A closed night is not quoted. Nothing is sent to Hospitable.
+
+## 2026-10-29 — address on the guest trip sheet
+
+- The trip sheet names the house address with the check-in and checkout times. The door code and Wi-Fi stay on the phone. Printing does not change the reservation.
