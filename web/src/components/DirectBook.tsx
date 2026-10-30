@@ -12,6 +12,7 @@ import type { HouseId } from '../lib/market/types';
 import { quoteStay, directSavings } from '../lib/quote';
 import { openArrivals } from '../lib/open-arrivals';
 import { alsoOpen } from '../lib/also-open';
+import { shortestStay } from '../lib/shortest-stay';
 import { readStayLink, stayLinkSearch } from '../lib/stay-link';
 import { splitStayLine } from '../lib/stay-split';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
@@ -120,6 +121,12 @@ export function DirectBook() {
       stays ? (grossPace(id, stays, today).stillNeeded > 0 ? 'short' : 'met') : 'unknown';
     return alsoOpen(house, checkIn, checkOut, taken, today, paceFor, guestCount ?? undefined);
   }, [calendar, house, checkIn, checkOut, taken, today, stays, guestCount]);
+  const extension = useMemo(() => {
+    if (calendar !== 'live' || quote.ok) return null;
+    const next = shortestStay(house, checkIn, taken[house] ?? [], today, pace, guestCount ?? undefined);
+    if (!next || next.checkOut === checkOut) return null;
+    return next;
+  }, [calendar, quote.ok, house, checkIn, checkOut, taken, today, pace, guestCount]);
   const canRequest = directRequestReady({
     quoteOk: quote.ok,
     rulesRead,
@@ -344,6 +351,23 @@ export function DirectBook() {
               </div>
             ) : (
               <p className="mt-3 font-display text-3xl">{quote.reason}</p>
+            )}
+            {extension && (
+              <div className="mt-3" data-bot="stay-extend">
+                <p className="text-sm">
+                  This check-in can start a {extension.nights === 1 ? '1-night' : `${extension.nights}-night`} stay, through{' '}
+                  {extension.through}. Using it does not send a request.
+                </p>
+                <button
+                  type="button"
+                  className="uml-gold-btn mt-2 rounded-full px-4 py-2 text-sm"
+                  data-bot="stay-extend-use"
+                  data-out={extension.checkOut}
+                  onClick={() => setCheckOut(extension.checkOut)}
+                >
+                  Use this stay
+                </button>
+              </div>
             )}
             <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="stay-calendar">
               {calendar === 'loading'

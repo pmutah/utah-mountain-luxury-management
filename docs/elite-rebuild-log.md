@@ -193,6 +193,10 @@
 
 - The booking page lists the other houses that will quote the dates already chosen. A party that does not fit is left off. Choosing a house does not send a request.
 
+## 2026-10-29 — shortest stay from a check-in
+
+- When the dates are too short, the booking page offers the shortest stay that check-in can start. A booked or closed check-in is not offered. Using it does not send a request.
+
 ## 2026-10-29 — house notes on the trip sheet and the work order
 
 - The guest trip sheet and the cleaner work order name the published house notes. A note that includes a door code or Wi-Fi is left off. Printing does not change a reservation.
