@@ -338,7 +338,11 @@ export function StayApp({ token }: { token: string }) {
                 <ul className="mt-2 space-y-1 text-sm" data-bot="stay-sheet-nearby">
                   {sheet.nearby.map((place) => (
                     <li key={`${place.name}-${place.note}`}>
-                      {place.name}. {place.note}
+                      <a href={place.href} target="_blank" rel="noreferrer">
+                        {place.name}
+                      </a>
+                      {place.area ? `, ${place.area}` : ''}. {place.note}
+                      {place.site ? ` ${place.site}` : ''}
                     </li>
                   ))}
                 </ul>
@@ -386,7 +390,9 @@ export function StayApp({ token }: { token: string }) {
                 <ul data-bot="stay-sheet-print-nearby">
                   {sheet.nearby.map((place) => (
                     <li key={`${place.name}-${place.note}`}>
-                      {place.name}. {place.note}
+                      {place.name}
+                      {place.area ? `, ${place.area}` : ''}. {place.note}
+                      {place.site ? ` ${place.site}` : ''}
                     </li>
                   ))}
                 </ul>

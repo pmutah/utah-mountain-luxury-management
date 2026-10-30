@@ -21,7 +21,7 @@ test('the booking page uses the published house and refuses a party that does no
   assert.equal(ranch.notes[0]?.title, 'Hot tub');
   const lindon = houseStay('lindon');
   assert.equal(river.nearby.length, 18);
-  assert.equal(river.nearby[0]?.name, 'Sundance Mountain Resort');
+  assert.equal(river.nearby[0]?.url, 'https://www.sundanceresort.com');
   assert.equal(ranch.nearby.length, 19);
   assert.equal(lindon.nearby.length, 19);
   assert.equal(lindon.nearby.some((place) => place.name === 'BYU campus'), true);

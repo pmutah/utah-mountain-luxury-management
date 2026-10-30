@@ -268,3 +268,7 @@
 ## 2026-10-29 — the published nearby list on the quote
 
 - The booking page lists the same nearby places as the published guest guide. River has the canyon list. Ranch and Lindon have the valley list. A door code stays off the page.
+
+## 2026-10-29 — a website or a map for each place
+
+- A nearby place with a published website opens that site. The other places open a map. The trip sheet names the website. A door-code or Wi-Fi link stays off.

@@ -1,3 +1,5 @@
+import { placeHref, placeSite } from './place-link';
+
 function longDate(iso: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
   const [year, month, day] = iso.split('-').map(Number);
@@ -11,7 +13,7 @@ function longDate(iso: string): string {
 
 export type TripNote = { title: string; body: string };
 
-export type TripPlace = { name: string; note: string };
+export type TripPlace = { name: string; note: string; area: string; href: string; site: string | null };
 
 export type TripSheet = {
   house: string;
@@ -45,10 +47,22 @@ function publicNotes(notes: readonly { title?: string; body?: string }[] | undef
     .filter((note) => note.title.length > 0 && note.body.length > 0 && !SECRET.test(`${note.title} ${note.body}`));
 }
 
-function publicNearby(places: readonly { name?: string; note?: string }[] | undefined): TripPlace[] {
+function publicNearby(places: readonly { name?: string; note?: string; area?: string; url?: string }[] | undefined): TripPlace[] {
   return (places ?? [])
-    .map((place) => ({ name: place.name?.trim() ?? '', note: place.note?.trim() ?? '' }))
-    .filter((place) => place.name.length > 0 && !SECRET.test(`${place.name} ${place.note}`));
+    .map((place) => ({
+      name: place.name?.trim() ?? '',
+      note: place.note?.trim() ?? '',
+      area: place.area?.trim() ?? '',
+      url: place.url?.trim() ?? '',
+    }))
+    .filter((place) => place.name.length > 0 && !SECRET.test(`${place.name} ${place.note} ${place.area} ${place.url}`))
+    .map((place) => ({
+      name: place.name,
+      note: place.note,
+      area: place.area,
+      href: placeHref(place),
+      site: placeSite(place.url),
+    }));
 }
 
 /** Paper copy of a stay. Door codes and Wi-Fi are not fields on this sheet. */
@@ -63,7 +77,7 @@ export function tripSheet(input: {
   parking?: string;
   rules?: string;
   notes?: readonly { title?: string; body?: string }[];
-  nearby?: readonly { name?: string; note?: string }[];
+  nearby?: readonly { name?: string; note?: string; area?: string; url?: string }[];
   emergency?: string;
   checkout?: readonly string[];
 }): TripSheet {

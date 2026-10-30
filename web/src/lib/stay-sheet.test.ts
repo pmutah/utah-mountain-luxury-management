@@ -21,7 +21,7 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
     emergency: 'For a fire, medical emergency, or anyone in danger, call 911 first, then call us.',
     checkout: ['Strip the beds', ' ', 'Door code 9999'],
     nearby: [
-      { name: 'Sundance Mountain Resort', note: 'Your home mountain.' },
+      { name: 'Sundance Mountain Resort', note: 'Your home mountain.', area: 'About 10 minutes up the canyon', url: 'https://www.sundanceresort.com' },
       { name: 'Wi-Fi', note: 'password hidden' },
     ],
   });
@@ -31,7 +31,9 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   assert.match(sheet.privateNote, /not on this paper/);
   assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
   assert.deepEqual(sheet.notes, [{ title: 'Septic', body: 'Only toilet paper goes in the toilets.' }]);
-  assert.deepEqual(sheet.nearby, [{ name: 'Sundance Mountain Resort', note: 'Your home mountain.' }]);
+  assert.equal(sheet.nearby[0]?.name, 'Sundance Mountain Resort');
+  assert.equal(sheet.nearby[0]?.site, 'sundanceresort.com');
+  assert.match(sheet.nearby[0]?.href ?? '', /^https:\/\/www\.sundanceresort\.com/);
   assert.equal(/password/i.test(JSON.stringify(sheet.nearby)), false);
   assert.match(sheet.emergency, /call 911 first/);
   assert.equal(

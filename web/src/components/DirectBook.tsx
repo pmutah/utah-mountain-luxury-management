@@ -3,6 +3,7 @@ import { PROPERTIES } from '../lib/api';
 import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { houseStay, partyFits, accessLine, earlyLine } from '../lib/house-stay';
+import { placeHref, placeSite } from '../lib/place-link';
 import { directRequestReady, houseRules } from '../lib/house-rules';
 import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
@@ -286,8 +287,11 @@ export function DirectBook() {
               <ul className="space-y-1 text-sm" data-bot="stay-nearby">
                 {stay.nearby.map((place) => (
                   <li key={place.name}>
-                    {place.name}
+                    <a href={placeHref(place)} target="_blank" rel="noreferrer">
+                      {place.name}
+                    </a>
                     {place.area ? `, ${place.area}` : ''}. {place.note}
+                    {placeSite(place.url) ? ` ${placeSite(place.url)}` : ''}
                   </li>
                 ))}
               </ul>
