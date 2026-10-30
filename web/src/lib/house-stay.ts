@@ -1,3 +1,5 @@
+import { addDays } from './market/dates';
+import { nightBeforeIsFree } from './journey';
 import type { HouseId } from './market/types';
 
 /** Published sleep counts from the listing titles and the guest guide. */
@@ -103,4 +105,28 @@ export function partyFits(house: HouseId, guests: number): { ok: boolean; reason
   const sleeps = SLEEPS[house];
   if (guests > sleeps) return { ok: false, reason: `${LABEL[house]} sleeps ${sleeps}.` };
   return { ok: true, reason: null };
+}
+
+function longDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/** When the guest phone shows the door code. This page never includes the code. */
+export function accessLine(checkIn: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn)) return null;
+  const opensOn = addDays(checkIn, -1);
+  return `The door code and Wi-Fi open on the guest phone on ${longDate(opensOn)}, the day before check-in, after the house rules are read.`;
+}
+
+/** An earlier arrival is only a request, and only when the night before is open. */
+export function earlyLine(checkIn: string, taken: readonly string[], asOf: string): string | null {
+  if (!accessLine(checkIn) || asOf >= checkIn) return null;
+  if (!nightBeforeIsFree(checkIn, taken)) return null;
+  return 'The night before is open. Arriving early is a request. The door code still opens the day before.';
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { houseStay, partyFits } from './house-stay.ts';
+import { houseStay, partyFits, accessLine, earlyLine } from './house-stay.ts';
 
 test('the booking page uses the published house and refuses a party that does not fit', () => {
   const river = houseStay('river');
@@ -23,7 +23,13 @@ test('the booking page uses the published house and refuses a party that does no
   assert.equal(lindon.nearby.some((place) => place.name === 'BYU campus'), true);
   assert.equal(lindon.notes.length, 0);
   const published = JSON.stringify({ river, ranch, lindon });
-  assert.equal(/door code|wi-fi|password/i.test(published), false);
+  const withoutAccess = published.replaceAll(accessLine('2026-11-06') ?? '', '');
+  assert.equal(/door code|wi-fi|password/i.test(withoutAccess), false);
+  assert.equal(accessLine('2026-11-06'), 'The door code and Wi-Fi open on the guest phone on November 5, 2026, the day before check-in, after the house rules are read.');
+  assert.equal(accessLine('bad'), null);
+  assert.match(earlyLine('2026-11-06', [], '2026-10-29') ?? '', /Arriving early is a request/);
+  assert.equal(earlyLine('2026-11-06', ['2026-11-05'], '2026-10-29'), null);
+  assert.equal(earlyLine('2026-11-06', [], '2026-11-06'), null);
 
   assert.equal(partyFits('river', 25).ok, true);
   assert.equal(partyFits('river', 26).ok, false);

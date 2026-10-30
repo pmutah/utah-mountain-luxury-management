@@ -236,3 +236,7 @@
 ## 2026-10-29 — checkout steps before the stay
 
 - The booking page lists the published checkout steps. The trip sheet shows the same kind of list, and a step that names a door code or Wi-Fi is left off. Printing does not change a reservation.
+
+## 2026-10-29 — when the door code opens
+
+- The booking page says the door code and Wi-Fi open on the guest phone the day before check-in, after the house rules are read. An earlier arrival shows only when the night before is open, and it stays a request. The code stays off this page.

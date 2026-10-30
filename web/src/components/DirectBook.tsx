@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PROPERTIES } from '../lib/api';
 import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
-import { houseStay, partyFits } from '../lib/house-stay';
+import { houseStay, partyFits, accessLine, earlyLine } from '../lib/house-stay';
 import { directRequestReady, houseRules } from '../lib/house-rules';
 import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
@@ -146,6 +146,8 @@ export function DirectBook() {
     partyOk: party.ok,
   });
   const photo = HOUSE_PHOTOS[house];
+  const access = accessLine(checkIn);
+  const early = calendar === 'live' ? earlyLine(checkIn, taken[house] ?? [], today) : null;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -239,6 +241,16 @@ export function DirectBook() {
               <p className="text-sm" data-bot="stay-emergency">
                 {stay.emergency}
               </p>
+              {access && (
+                <p className="text-sm" data-bot="stay-access">
+                  {access}
+                </p>
+              )}
+              {early && (
+                <p className="text-sm" data-bot="stay-early">
+                  {early}
+                </p>
+              )}
               <ul className="space-y-1 text-sm" data-bot="stay-leaving">
                 {stay.checkout.map((step) => (
                   <li key={step}>{step}</li>
