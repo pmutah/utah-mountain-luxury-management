@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PROPERTIES } from '../lib/api';
 import { loadBookedNights, loadPaceStays } from '../lib/booked-nights';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
+import { directRequestReady, houseRules } from '../lib/house-rules';
 import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
 import { addDays, denverToday, weekdayIndex } from '../lib/market/dates';
@@ -23,6 +24,10 @@ function nextOpenFriday(today: string): string {
   return today;
 }
 
+function nightLabel(iso: string) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 const EMPTY_TAKEN: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [] };
 
 export function DirectBook() {
@@ -34,6 +39,7 @@ export function DirectBook() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
+  const [rulesRead, setRulesRead] = useState(false);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
   const [stays, setStays] = useState<PaceStay[] | null>(null);
@@ -78,11 +84,16 @@ export function DirectBook() {
     () => quoteStay(house, checkIn, checkOut, taken[house] ?? [], { asOf: today, pace }),
     [house, checkIn, checkOut, taken, today, pace],
   );
+  const canRequest = directRequestReady({
+    quoteOk: quote.ok,
+    rulesRead,
+    calendarLoading: calendar === 'loading',
+  });
   const photo = HOUSE_PHOTOS[house];
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!quote.ok) return;
+    if (!canRequest) return;
     setBusy(true);
     setError(null);
     try {
@@ -135,7 +146,10 @@ export function DirectBook() {
               type="button"
               data-bot={`stay-house-${id}`}
               aria-pressed={house === id}
-              onClick={() => setHouse(id)}
+              onClick={() => {
+                setHouse(id);
+                setRulesRead(false);
+              }}
               className={`uml-panel rounded-3xl px-5 py-4 text-left ${house === id ? 'ring-1 ring-[var(--uml-gold)]' : ''}`}
             >
               <p className="uml-kicker">{id}</p>
@@ -203,6 +217,14 @@ export function DirectBook() {
                   {quote.nights.length} nights
                   {quote.nights[0]?.season ? ` · ${quote.nights[0].season}` : ''}
                 </p>
+                <ul className="space-y-1 text-sm" data-bot="stay-quote-nights">
+                  {quote.nights.map((night) => (
+                    <li key={night.date}>
+                      {nightLabel(night.date)} · {formatWhole(night.direct)}
+                      {night.promotionPercent === 20 ? ' · 20% fill' : ''}
+                    </li>
+                  ))}
+                </ul>
                 <p className="text-xs text-[var(--uml-muted)]">
                   The Airbnb guest total for these nights is {formatWhole(quote.channelTotal)}. This page has no platform fee.
                   {quote.promotionNights > 0
@@ -221,6 +243,25 @@ export function DirectBook() {
                   ? `${taken[house]?.length ?? 0} nights ahead are already booked.`
                   : 'Calendar check is not on this server yet. Confirm the dates before accepting.'}
             </p>
+
+            <div className="mt-6" data-bot="stay-rules">
+              <p className="uml-kicker">House rules</p>
+              <ul className="mt-3 space-y-2 text-sm text-[var(--uml-muted)]">
+                {houseRules(house).map((rule) => (
+                  <li key={rule.id}>{rule.text}</li>
+                ))}
+              </ul>
+              <label className="mt-4 flex items-start gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  data-bot="stay-rules-check"
+                  checked={rulesRead}
+                  onChange={(event) => setRulesRead(event.target.checked)}
+                />
+                I have read the house rules. This request does not sign the stay agreement.
+              </label>
+            </div>
 
             {sent ? (
               <p className="mt-8 font-display text-3xl">We have the request. Someone will write back.</p>
@@ -261,7 +302,7 @@ export function DirectBook() {
                 <button
                   type="submit"
                   data-bot="stay-request"
-                  disabled={busy || !quote.ok || calendar === 'loading'}
+                  disabled={busy || !canRequest}
                   className="rounded-full bg-[var(--uml-gold)] px-5 py-3 text-xs uppercase tracking-[0.16em] text-[var(--uml-gold-ink)] disabled:opacity-40"
                 >
                   {busy ? 'Sending' : 'Request these dates'}

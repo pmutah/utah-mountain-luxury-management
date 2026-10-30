@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { directRequestReady, houseRules } from './house-rules.ts';
+
+test('each house publishes its own rules and the request waits for them', () => {
+  assert.equal(houseRules('river').some((rule) => rule.text.includes('septic')), true);
+  assert.equal(houseRules('ranch').some((rule) => rule.text.includes('hot tub')), true);
+  assert.equal(houseRules('lindon').some((rule) => rule.text.includes('No parties')), true);
+  assert.equal(directRequestReady({ quoteOk: true, rulesRead: false, calendarLoading: false }), false);
+  assert.equal(directRequestReady({ quoteOk: true, rulesRead: true, calendarLoading: true }), false);
+  assert.equal(directRequestReady({ quoteOk: false, rulesRead: true, calendarLoading: false }), false);
+  assert.equal(directRequestReady({ quoteOk: true, rulesRead: true, calendarLoading: false }), true);
+});
