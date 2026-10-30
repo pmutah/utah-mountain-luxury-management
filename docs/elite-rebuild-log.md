@@ -392,3 +392,7 @@
 ## 2026-10-30 — which stays do not name a party size
 
 - Each stay on the guest list says how many guests the booking names. The work order says how many are checking out. The nightly brief names which stays beginning in the next 90 days do not say. Names stay off those lines. Nothing is sent.
+
+## 2026-10-30 — Ranch and River stays on Todd’s page
+
+- Todd’s page lists Ranch and River stays that begin in the next 90 days, with the night count and whether the booking says how many guests. Names and prices stay off. Lindon is not on the list. The spreadsheet is unchanged.

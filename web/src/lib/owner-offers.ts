@@ -7,12 +7,18 @@ import type { YearPace } from './market/fill';
 import { addonPhrase, lengthPhrase } from './open-arrivals';
 import type { ClosedSpan } from './owner-ahead';
 import { grossPace, type PaceStay } from './revenue-goals';
+import { noteGuestCount } from './note-party';
 import { buildTurnovers } from './today';
 
 const HOUSES = ['ranch', 'river'] as const;
 
 export type OwnerOfferLine = {
   id: (typeof HOUSES)[number];
+  text: string;
+};
+
+export type OwnerArrivalLine = {
+  id: string;
   text: string;
 };
 
@@ -109,6 +115,46 @@ export function ownerTurnLines(
     return {
       id: house,
       text: `${name} checkout ${shortWhen(turn.checkout)}. ${workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}`,
+    };
+  });
+}
+
+function nightsBetween(checkIn: string, checkOut: string): number {
+  const start = Date.parse(`${checkIn}T00:00:00Z`);
+  const end = Date.parse(`${checkOut}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
+  return Math.round((end - start) / 86400000);
+}
+
+/** Ranch and River stays that begin in the next 90 days. No names, no prices, and no Lindon. */
+export function ownerArrivalLines(
+  stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status' | 'note'>>,
+  asOf: string,
+): OwnerArrivalLine[] {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) {
+    return [{ id: 'none', text: 'No Ranch or River stay begins in the next 90 days.' }];
+  }
+  const until = addDays(asOf, 90);
+  const rows = stays
+    .filter((stay) => stay.propertyId === 'ranch' || stay.propertyId === 'river')
+    .filter((stay) => stay.status !== 'cancelled' && stay.status !== 'blocked')
+    .filter((stay) => /^\d{4}-\d{2}-\d{2}$/.test(stay.checkIn) && /^\d{4}-\d{2}-\d{2}$/.test(stay.checkOut))
+    .filter((stay) => stay.checkIn >= asOf && stay.checkIn < until && stay.checkOut > stay.checkIn)
+    .sort((a, b) => a.checkIn.localeCompare(b.checkIn) || a.propertyId.localeCompare(b.propertyId));
+  if (rows.length === 0) return [{ id: 'none', text: 'No Ranch or River stay begins in the next 90 days.' }];
+  return rows.map((stay) => {
+    const nights = nightsBetween(stay.checkIn, stay.checkOut);
+    const count = noteGuestCount(stay.note);
+    const party =
+      count === null
+        ? 'The booking does not say how many guests.'
+        : count === 1
+          ? 'The booking says 1 guest.'
+          : `The booking says ${count} guests.`;
+    const house = stay.propertyId === 'ranch' ? 'Ranch' : 'River';
+    return {
+      id: `${stay.propertyId}-${stay.checkIn}-${stay.checkOut}`,
+      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}`,
     };
   });
 }
