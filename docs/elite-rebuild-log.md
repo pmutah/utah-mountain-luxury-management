@@ -308,3 +308,7 @@
 ## 2026-10-29 — the market desk uses the booking calendar's start
 
 - The market desk and the unsent daily text name where the booking calendar asks for a longer start than the rate card. A Friday or Saturday shows 2 nights until it is inside 7 days. A night that cannot start a stay is named. Nothing is sent to Hospitable.
+
+## 2026-10-29 — the brief and Todd’s page name the longer start
+
+- The nightly brief and Todd’s Ranch and River page name where the booking calendar asks for a longer start than the rate card. There is no price. Lindon stays off Todd’s page. The spreadsheet is unchanged. Nothing is sent.

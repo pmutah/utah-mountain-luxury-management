@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ownerOfferLines } from './owner-offers.ts';
+import { ownerOfferLines, ownerStartLines } from './owner-offers.ts';
 
 test('Todd sees Ranch and River quote choices with no price', () => {
   const lines = ownerOfferLines([], '2026-10-29', []);
@@ -12,4 +12,9 @@ test('Todd sees Ranch and River quote choices with no price', () => {
   const held = ownerOfferLines([], '2026-10-29', [{ propertyId: 'river', start: '2026-11-01', end: '2026-11-03' }]);
   assert.match(held[1]?.text ?? '', /River Nov 3 can quote 2, 3, 4, 7, 14, 28 nights/);
   assert.equal(held[1]?.text.includes('early arrival'), false);
+  const starts = ownerStartLines([], '2026-10-29', []);
+  assert.equal(starts.map((line) => line.id).join(','), 'ranch,river');
+  assert.match(starts[0]?.text ?? '', /weekend nights show 2 nights/);
+  assert.match(starts[1]?.text ?? '', /Nov 23 starts at 4 nights/);
+  assert.equal(starts.some((line) => line.text.includes('Lindon') || line.text.includes('$')), false);
 });

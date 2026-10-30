@@ -24,6 +24,8 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /Next open arrival from these bookings: River Nov 1 for 2 nights\. Ranch Nov 8 for 1 night\. Lindon Nov 7 for 1 night\./);
   assert.match(text, /Length choices from these bookings: River Nov 1 can quote 2, 3, 4, 7, 14, 28 nights\. Ranch Nov 8 can quote 1, 2, 3, 4, 7, 14, 28 nights\. Lindon Nov 7 can quote /);
   assert.match(text, /Add-ons from these bookings: River Nov 1 can request a later checkout\. Ranch Nov 8 can request a later checkout and the hot tub\. Lindon Nov 7 can request a later checkout\./);
+  assert.match(text, /Booking calendar from these bookings:.*Nov 23 starts at 4 nights/);
+  assert.match(text, /weekend nights show 2 nights/);
   assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
   assert.match(text, /Nothing sent/);
