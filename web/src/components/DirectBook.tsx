@@ -362,6 +362,7 @@ export function DirectBook() {
               <StayMonth
                 house={house}
                 taken={taken[house] ?? []}
+                blocked={closed[house] ?? []}
                 checkIn={checkIn}
                 checkOut={checkOut}
                 pace={pace}

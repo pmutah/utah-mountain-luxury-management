@@ -19,6 +19,8 @@ export type StayDay = {
   /** Shortest stay that can start this night. Empty when this night cannot start one. */
   startNights: number | null;
   booked: boolean;
+  /** A calendar block. This is not a stay. */
+  held: boolean;
   closed: boolean;
   past: boolean;
   isCheckIn: boolean;
@@ -48,15 +50,19 @@ export function monthDays(
   stay: StayPick,
   today: string,
   pace: YearPace = 'unknown',
+  blocked: readonly string[] = [],
 ): StayDay[] {
   const first = `${yearMonth}-01`;
   const gridStart = addDays(first, -weekdayIndex(first));
   const booked = new Set(taken);
+  const blocks = new Set(blocked);
   const days: StayDay[] = [];
   for (let i = 0; i < 42; i += 1) {
     const iso = addDays(gridStart, i);
     const ask = nightAsk(house, iso);
     const priced = directNight(house, iso, taken, today, pace);
+    const held = booked.has(iso) && blocks.has(iso);
+    const stayNight = booked.has(iso) && !held;
     const canStart = iso >= today && !ask.closed && !booked.has(iso);
     const start = canStart ? shortestStay(house, iso, taken, today, pace) : null;
     days.push({
@@ -66,7 +72,8 @@ export function monthDays(
       direct: priced.direct,
       minNights: ask.minNights,
       startNights: start?.nights ?? null,
-      booked: booked.has(iso),
+      booked: stayNight,
+      held,
       closed: ask.closed,
       past: iso < today,
       isCheckIn: iso === stay.checkIn,

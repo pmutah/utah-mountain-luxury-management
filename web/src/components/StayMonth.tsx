@@ -10,6 +10,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function StayMonth({
   house,
   taken,
+  blocked = [],
   checkIn,
   checkOut,
   pace = 'unknown',
@@ -17,6 +18,7 @@ export function StayMonth({
 }: {
   house: HouseId;
   taken: readonly string[];
+  blocked?: readonly string[];
   checkIn: string;
   checkOut: string;
   pace?: YearPace;
@@ -25,12 +27,12 @@ export function StayMonth({
   const today = denverToday();
   const [month, setMonth] = useState(checkIn.slice(0, 7) || today.slice(0, 7));
   const stay = { checkIn, checkOut };
-  const days = monthDays(month, house, taken, stay, today, pace);
+  const days = monthDays(month, house, taken, stay, today, pace, blocked);
   const earliest = today.slice(0, 7);
   const latest = shiftMonth(earliest, 17);
   const minimum = arrivalMinimum(house, checkIn);
   const marked = days.some((day) => day.inMonth && (day.startNights ?? 0) > 1);
-  const tooShort = days.some((day) => day.inMonth && !day.past && !day.closed && !day.booked && day.startNights == null);
+  const tooShort = days.some((day) => day.inMonth && !day.past && !day.closed && !day.booked && !day.held && day.startNights == null);
 
   return (
     <div data-bot="stay-month">
@@ -63,8 +65,8 @@ export function StayMonth({
       <div className="mt-1 grid grid-cols-7 gap-1">
         {days.map((day) => {
           const choosingCheckout = Boolean(checkIn) && !checkOut;
-          const cannotStart = day.startNights == null && !day.booked && !day.closed && !day.past;
-          const disabled = !day.inMonth || day.past || day.closed || (day.booked && !choosingCheckout) || (cannotStart && !choosingCheckout);
+          const cannotStart = day.startNights == null && !day.booked && !day.held && !day.closed && !day.past;
+          const disabled = !day.inMonth || day.past || day.closed || ((day.booked || day.held) && !choosingCheckout) || (cannotStart && !choosingCheckout);
           const selected = day.isCheckIn || day.isCheckOut || day.inStay;
           return (
             <button
@@ -74,10 +76,10 @@ export function StayMonth({
               data-date={day.iso}
               disabled={disabled}
               aria-pressed={selected}
-              aria-label={`${day.iso}${day.booked ? ', booked' : day.closed && !day.past ? ', closed' : ''}${
+              aria-label={`${day.iso}${day.booked ? ', booked' : day.held || (day.closed && !day.past) ? ', closed' : ''}${
                 day.startNights && day.startNights > 1
                   ? `, at least ${day.startNights} nights`
-                  : day.startNights == null && day.inMonth && !day.past && !day.closed && !day.booked
+                  : day.startNights == null && day.inMonth && !day.past && !day.closed && !day.booked && !day.held
                     ? ', too short to start a stay'
                     : ''
               }`}
@@ -91,7 +93,7 @@ export function StayMonth({
               <span className="block text-sm">{Number(day.iso.slice(8))}</span>
               {day.inMonth && day.booked ? (
                 <span className="block text-[9px] uppercase tracking-wide">Booked</span>
-              ) : day.inMonth && day.closed && !day.past ? (
+              ) : day.inMonth && (day.held || day.closed) && !day.past ? (
                 <span className="block text-[9px] uppercase tracking-wide">Closed</span>
               ) : day.inMonth && !day.closed && !day.past ? (
                 <span className="block text-[9px] tabular-nums">
@@ -107,6 +109,7 @@ export function StayMonth({
         {checkOut ? 'Gold nights are the stay. Prices are the direct nightly rate.' : 'Choose the check-out morning. Prices are the direct nightly rate.'}
         {marked ? ' A night marked with nights is the shortest stay that can start that day.' : ''}
         {tooShort ? ' A night marked too short cannot start a stay. It can still be a checkout morning.' : ''}
+        {' '}Booked is a stay. Closed is a block or a night the house is not open.
         {minimum ? ` This arrival needs at least ${minimum} nights.` : ''}
       </p>
     </div>

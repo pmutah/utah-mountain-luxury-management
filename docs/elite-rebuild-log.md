@@ -364,3 +364,7 @@
 ## 2026-10-30 — a calendar block is closed
 
 - A night blocked on the calendar is described as closed. A night with a stay is still described as booked. The calendar is not changed, and nothing is sent.
+
+## 2026-10-30 — closed and booked on the month
+
+- The booking calendar marks a block as Closed and a stay as Booked. A block can still be a checkout morning. The calendar is not changed.

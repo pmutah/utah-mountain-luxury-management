@@ -42,6 +42,13 @@ test('the month marks booked nights and the nights inside the stay', () => {
   assert.equal(eighth?.isCheckOut, true);
   assert.equal(eighth?.inStay, false);
   assert.equal(twentieth?.booked, true);
+  assert.equal(twentieth?.held, false);
+  const block = monthDays('2026-11', 'lindon', ['2026-11-04'], { checkIn: '', checkOut: '' }, '2026-10-29', 'unknown', ['2026-11-04']).find(
+    (day) => day.iso === '2026-11-04',
+  );
+  assert.equal(block?.booked, false);
+  assert.equal(block?.held, true);
+  assert.equal(block?.closed, false);
   assert.equal(sixth?.minNights, 2);
   assert.equal(sixth?.startNights, 2);
   assert.equal(twentieth?.startNights, null);
