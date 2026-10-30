@@ -3,6 +3,7 @@ import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '..
 import { loadBookedNights } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/journey';
 import { denverToday } from '../lib/market/dates';
+import { checkoutDoneCount, checkoutSteps, loadCheckoutChecks, saveCheckoutChecks } from '../lib/stay-checkout';
 import { codesReady, loadRuleAck, saveRuleAck } from '../lib/stay-rules';
 import { guestOffers, loadUpsellRequests, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
 import { AppIcon } from './AppIcon';
@@ -95,6 +96,7 @@ export function StayApp({ token }: { token: string }) {
   const [previewNights, setPreviewNights] = useState<string[] | null>(null);
   const [requested, setRequested] = useState<UpsellId[]>(() => loadUpsellRequests(token));
   const [rulesRead, setRulesRead] = useState(() => loadRuleAck(token));
+  const [checkoutOn, setCheckoutOn] = useState<boolean[]>(() => loadCheckoutChecks(token));
 
   useEffect(() => {
     api
@@ -206,6 +208,8 @@ export function StayApp({ token }: { token: string }) {
         ? checkoutNightIsFree(data.checkOut, previewNights)
         : null;
   const showCodes = codesReady({ unlocked: access.unlocked, acknowledged: rulesRead });
+  const leaving = checkoutSteps(guide.checkout);
+  const leavingDone = checkoutDoneCount(leaving, checkoutOn);
   const offers = guestOffers({
     house: data.propertyId,
     phase: access.phase,
@@ -406,9 +410,35 @@ export function StayApp({ token }: { token: string }) {
 
             <Card>
               <Kicker>Before you leave</Kicker>
-              <div className="mt-3">
-                <Lines text={guide.checkout} />
-              </div>
+              {leaving.length === 0 ? (
+                <p className="mt-3 text-sm text-[#d7cfc3]">Checkout notes will show here when the house has them.</p>
+              ) : (
+                <>
+                  <p className="mt-2 text-sm text-white/60">
+                    {leavingDone} of {leaving.length}. Checks stay on this phone. They do not change the reservation.
+                  </p>
+                  <ul className="mt-4 space-y-3" data-bot="stay-checkout">
+                    {leaving.map((step, index) => (
+                      <li key={`${index}-${step}`}>
+                        <label className="flex items-start gap-3 text-sm leading-relaxed text-[#d7cfc3]">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            data-bot="stay-checkout-step"
+                            checked={checkoutOn[index] === true}
+                            onChange={() => {
+                              const next = leaving.map((_, item) => (item === index ? checkoutOn[item] !== true : checkoutOn[item] === true));
+                              setCheckoutOn(next);
+                              saveCheckoutChecks(token, next);
+                            }}
+                          />
+                          {step}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </Card>
           </>
         )}

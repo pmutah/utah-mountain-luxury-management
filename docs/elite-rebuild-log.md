@@ -95,3 +95,7 @@
 ## 2026-10-29 — owner month ledger
 
 - Todd’s year-to-date statement lists each month. The month lines use the same Ranch and River split as the total, and they add up to his share. Lindon, household, and construction stay off the page. Nothing on it can be edited.
+
+## 2026-10-29 — guest checkout list
+
+- The stay page turns the checkout note into steps the guest can check off. The checks stay on that phone. They do not change the reservation.
