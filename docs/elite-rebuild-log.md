@@ -212,3 +212,7 @@
 ## 2026-10-29 — the open stretch before the next stay
 
 - Todd’s page and the nightly brief name the next open stretch on Ranch and River. River nights before November 1 are left out. Names and payouts stay off that line. It does not change a booking.
+
+## 2026-10-29 — blocked nights stay off the open stretch
+
+- A calendar block, and a stay marked blocked, closes those nights on Todd’s page and on the nightly brief. The stay count still ignores a block. A block note stays off the page. Nothing is written.

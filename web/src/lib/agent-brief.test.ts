@@ -20,7 +20,7 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /Shadow day 1 of 7/);
   assert.match(text, /Hospitable write closed/);
   assert.match(text, /Where they booked: 1 Airbnb, 1 VRBO/);
-  assert.match(text, /Open stretch from these bookings: Ranch Nov 8 for \d+ nights\. River Nov 1 for 120 nights/);
+  assert.match(text, /Open stretch on the calendar: Ranch Nov 8 for \d+ nights\. River Nov 1 for 120 nights/);
   assert.match(text, /Next open arrival from these bookings: River Nov 1 for 2 nights\. Ranch Nov 8 for 1 night\. Lindon Nov 7 for 1 night\./);
   assert.match(text, /Same-day clean at Ranch on Nov 4\. Checkout at 11:00 AM\. The next guest arrives at 4:00 PM\./);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
@@ -44,6 +44,19 @@ test('the night brief names the work and leaves the guest off it', () => {
     fixes: [{ id: 'job', house: 'Lindon', checkout: '2026-11-07', note: 'Hot tub cover is loose.' }],
   });
   assert.match(withFix.map((line) => line.text).join('\n'), /Lindon checkout Nov 7: Hot tub cover is loose/);
+  const held = agentBrief({
+    asOf: '2026-11-01',
+    stays: [],
+    shadowDays: 1,
+    openJobs: 0,
+    calendarReady: true,
+    closed: [{ propertyId: 'river', start: '2026-11-01', end: '2026-11-03' }],
+  });
+  const heldText = held.map((line) => line.text).join('\n');
+  assert.match(heldText, /Open stretch on the calendar: Ranch Nov 1 for 120 nights\. River Nov 3 for 118 nights/);
+  assert.match(heldText, /Next open arrival from these bookings: River Nov 3 for 2 nights\. Ranch Nov 1 for 1 night\. Lindon Nov 1 for 1 night/);
+  assert.match(heldText, /Nothing still on the books/);
+  assert.equal(heldText.includes('$'), false);
 });
 
 test('seven shadow days still leave the write closed', () => {
@@ -53,7 +66,7 @@ test('seven shadow days still leave the write closed', () => {
   assert.match(text, /Hospitable write closed/);
   assert.match(text, /No checkouts in the next two weeks/);
   assert.match(text, /Nothing still on the books/);
-  assert.match(text, /Open stretch from these bookings: Ranch Nov 1 for 120 nights\. River Nov 1 for 120 nights/);
+  assert.match(text, /Open stretch on the calendar: Ranch Nov 1 for 120 nights\. River Nov 1 for 120 nights/);
   assert.match(text, /Next open arrival from these bookings: River Nov 1 for 2 nights\. Ranch Nov 1 for 1 night\. Lindon Nov 1 for 1 night\./);
   assert.match(text, /No shared jobs are open/);
 });

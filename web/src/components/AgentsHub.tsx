@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, type Reservation, type SharedWorkItem } from '../lib/api';
 import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
+import { loadDateBlocks } from '../lib/booked-nights';
 import { loadCleanFixes } from '../lib/clean-notes';
 import { denverToday } from '../lib/market/dates';
 import { loadShadowLog, shadowClock } from '../lib/market/shadow-log';
+import type { ClosedSpan } from '../lib/owner-ahead';
 
 const AGENT_NAME = {
   amanda: 'Amanda',
@@ -25,6 +27,7 @@ export function AgentsHub({
   const [done, setDone] = useState<SharedWorkItem[]>([]);
   const [workState, setWorkState] = useState<'loading' | 'live' | 'off'>('loading');
   const [fixes] = useState(loadCleanFixes);
+  const [closed, setClosed] = useState<ClosedSpan[]>([]);
   const today = denverToday();
   const brief = useMemo(
     () =>
@@ -35,9 +38,24 @@ export function AgentsHub({
         openJobs: workState === 'live' ? open.length : 0,
         calendarReady: calendar !== 'loading',
         fixes,
+        closed,
       }),
-    [today, reservations, workState, open.length, calendar, fixes],
+    [today, reservations, workState, open.length, calendar, fixes, closed],
   );
+
+  useEffect(() => {
+    let cancel = false;
+    loadDateBlocks()
+      .then((blocks) => {
+        if (!cancel && blocks) setClosed(blocks);
+      })
+      .catch(() => {
+        if (!cancel) setClosed([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancel = false;
@@ -66,7 +84,7 @@ export function AgentsHub({
           Five agents already run. Tonight’s brief is read from the calendar and the shadow run. It does not claim a job, send a text, or change the books.
         </p>
       </div>
-      <div className="uml-panel rounded-3xl p-6" data-bot="agent-brief">
+      <div className="uml-panel rounded-3xl p-6" data-bot="agent-brief" data-blocks={closed.length}>
         <p className="uml-kicker">Tonight</p>
         <ul className="mt-4 space-y-3 text-sm">
           {brief.map((line, index) => (

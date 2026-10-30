@@ -3,6 +3,19 @@ import { addDays, denverToday } from './market/dates';
 import type { HouseId } from './market/types';
 import type { PaceStay } from './revenue-goals';
 
+export type DateBlock = { propertyId: string; start: string; end: string };
+
+/** Start and end only. A block note stays on the server response. */
+export async function loadDateBlocks(): Promise<DateBlock[] | null> {
+  const res = await fetch('/api/calendar/blocks').catch(() => null);
+  const type = res?.headers.get('content-type') ?? '';
+  if (!res?.ok || !type.includes('application/json')) return null;
+  const body = (await res.json()) as { blocks?: Array<{ propertyId?: string; start?: string; end?: string }> };
+  return (body.blocks ?? [])
+    .filter((block) => block.propertyId && block.start && block.end)
+    .map((block) => ({ propertyId: block.propertyId ?? '', start: block.start ?? '', end: block.end ?? '' }));
+}
+
 /** Dates only. Guest names from the reservations feed are dropped before they reach the page. */
 export async function loadBookedNights(): Promise<Record<HouseId, string[]> | null> {
   const from = denverToday();

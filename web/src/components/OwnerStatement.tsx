@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatCurrency, type Expense, type Reservation } from '../lib/api';
+import { loadDateBlocks } from '../lib/booked-nights';
 import { denverToday } from '../lib/market/dates';
-import { aheadChannelsLine, aheadLine, gapLine, ownerAhead } from '../lib/owner-ahead';
+import { aheadChannelsLine, aheadLine, gapLine, ownerAhead, type ClosedSpan } from '../lib/owner-ahead';
 import { buildOwnerStatement } from '../lib/owner-statement';
 import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statement-file';
 import type { ReportPeriod } from '../lib/report';
@@ -23,11 +24,26 @@ export function OwnerStatement({
   extraCleaningFees: Record<string, number>;
 }) {
   const [period, setPeriod] = useState<ReportPeriod>('ytd');
+  const [closed, setClosed] = useState<ClosedSpan[]>([]);
   const statement = useMemo(
     () => buildOwnerStatement(month, period, reservations, expenses, extraCleaningFees),
     [month, period, reservations, expenses, extraCleaningFees],
   );
-  const ahead = useMemo(() => ownerAhead(reservations, denverToday()), [reservations]);
+  const ahead = useMemo(() => ownerAhead(reservations, denverToday(), closed), [reservations, closed]);
+
+  useEffect(() => {
+    let cancel = false;
+    loadDateBlocks()
+      .then((blocks) => {
+        if (!cancel && blocks) setClosed(blocks);
+      })
+      .catch(() => {
+        if (!cancel) setClosed([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   return (
     <section className="space-y-6" data-bot="owner-statement">
@@ -115,7 +131,10 @@ export function OwnerStatement({
         >
           {aheadChannelsLine(ahead)}
         </p>
-        <ul className="mt-4 space-y-2 text-sm" data-bot="owner-gaps">
+        <p className="mt-4 text-sm text-[var(--uml-muted)]" data-bot="owner-gaps-note">
+          Blocked nights stay off this stretch.
+        </p>
+        <ul className="mt-2 space-y-2 text-sm" data-bot="owner-gaps" data-blocks={closed.length}>
           {ahead.houses.flatMap((house) =>
             house.gaps.map((gap) => (
               <li key={`${house.id}-${gap.start}`} data-bot={`owner-gap-${house.id}`} data-start={gap.start} data-nights={gap.nights}>

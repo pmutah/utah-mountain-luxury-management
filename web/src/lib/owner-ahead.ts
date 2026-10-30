@@ -67,16 +67,31 @@ function shortDate(iso: string): string {
   });
 }
 
-function openGaps(houseId: 'ranch' | 'river', stays: readonly AheadStay[], asOf: string): OwnerGap[] {
+export type ClosedSpan = { propertyId: string; start: string; end: string };
+
+function openGaps(
+  houseId: 'ranch' | 'river',
+  stays: readonly AheadStay[],
+  asOf: string,
+  closed: readonly ClosedSpan[],
+): OwnerGap[] {
   const horizon = addDays(asOf, HORIZON_NIGHTS);
   const taken = new Set<string>();
-  for (const stay of stays) {
-    if (!stillOn(stay, asOf, houseId)) continue;
-    let night = stay.checkIn > asOf ? stay.checkIn : asOf;
-    while (night < stay.checkOut && night < horizon) {
+  const mark = (start: string, end: string) => {
+    let night = start > asOf ? start : asOf;
+    while (night < end && night < horizon) {
       taken.add(night);
       night = addDays(night, 1);
     }
+  };
+  for (const stay of stays) {
+    if (stay.propertyId !== houseId || stay.status === 'cancelled') continue;
+    if (!isDate(stay.checkIn) || !isDate(stay.checkOut) || stay.checkOut <= stay.checkIn || stay.checkOut <= asOf) continue;
+    mark(stay.checkIn, stay.checkOut);
+  }
+  for (const block of closed) {
+    if (block.propertyId !== houseId || !isDate(block.start) || !isDate(block.end) || block.end <= block.start) continue;
+    mark(block.start, block.end);
   }
   const found: OwnerGap[] = [];
   let cursor = houseId === 'river' && asOf < '2026-11-01' ? '2026-11-01' : asOf;
@@ -122,7 +137,7 @@ function stillOn(stay: AheadStay, asOf: string, houseId?: string): boolean {
 }
 
 /** Ranch and River stays that still have a night left. Names and payouts are not copied. */
-export function ownerAhead(stays: readonly AheadStay[], asOf: string): OwnerAhead {
+export function ownerAhead(stays: readonly AheadStay[], asOf: string, closed: readonly ClosedSpan[] = []): OwnerAhead {
   const houses = HOUSES.map((house) => {
     const mine = stays.filter((stay) => stillOn(stay, asOf, house.id));
     const coming = mine.filter((stay) => stay.checkIn > asOf);
@@ -134,7 +149,7 @@ export function ownerAhead(stays: readonly AheadStay[], asOf: string): OwnerAhea
       coming: coming.length,
       nights: mine.reduce((sum, stay) => sum + nightsLeft(stay.checkIn, stay.checkOut, asOf), 0),
       nextArrival: next ? longDate(next) : null,
-      gaps: openGaps(house.id, stays, asOf),
+      gaps: openGaps(house.id, stays, asOf, closed),
     };
   });
   const counted = stays.filter((stay) => stillOn(stay, asOf));
@@ -175,5 +190,5 @@ export function gapBrief(ahead: OwnerAhead): string {
     const nights = gap.nights === 1 ? '1 night' : `${gap.nights} nights`;
     return `${house.name} ${shortDate(gap.start)} for ${nights}`;
   });
-  return `Open stretch from these bookings: ${parts.join('. ')}.`;
+  return `Open stretch on the calendar: ${parts.join('. ')}.`;
 }

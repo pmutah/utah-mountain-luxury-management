@@ -1,7 +1,7 @@
 import type { Reservation } from './api';
 import { occupiedByHouse } from './availability';
 import { nextOpenPhrase } from './open-arrivals';
-import { aheadChannelsLine, gapBrief, ownerAhead } from './owner-ahead';
+import { aheadChannelsLine, gapBrief, ownerAhead, type ClosedSpan } from './owner-ahead';
 import type { CleanFix } from './clean-notes';
 import { workOrderWhen } from './clean';
 import { listingOpportunities } from './listing';
@@ -44,6 +44,7 @@ export function agentBrief(input: {
   openJobs: number;
   calendarReady: boolean;
   fixes?: readonly CleanFix[];
+  closed?: readonly ClosedSpan[];
 }): BriefLine[] {
   const days = Math.max(0, Math.min(SHADOW_DAYS_REQUIRED, Math.floor(input.shadowDays)));
   const lines: BriefLine[] = [
@@ -55,11 +56,12 @@ export function agentBrief(input: {
           : `Shadow day ${days} of ${SHADOW_DAYS_REQUIRED}. Hospitable write closed.`,
     },
   ];
-  if (input.calendarReady) lines.push(...shadowBrief(input.asOf, input.stays));
+  if (input.calendarReady) lines.push(...shadowBrief(input.asOf, input.stays, input.closed ?? []));
   if (input.calendarReady) {
-    lines.push({ agent: 'co-host', text: aheadChannelsLine(ownerAhead(input.stays, input.asOf)) });
-    lines.push({ agent: 'co-host', text: gapBrief(ownerAhead(input.stays, input.asOf)) });
-    lines.push({ agent: 'co-host', text: nextOpenBrief(input.asOf, input.stays) });
+    const ahead = ownerAhead(input.stays, input.asOf, input.closed ?? []);
+    lines.push({ agent: 'co-host', text: aheadChannelsLine(ahead) });
+    lines.push({ agent: 'co-host', text: gapBrief(ahead) });
+    lines.push({ agent: 'co-host', text: nextOpenBrief(input.asOf, input.stays, input.closed ?? []) });
   }
 
   const turns = input.calendarReady
@@ -125,11 +127,26 @@ export function agentBrief(input: {
 const SHADOW_HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 const SHADOW_LABEL: Record<HouseId, string> = { river: 'River', ranch: 'Ranch', lindon: 'Lindon' };
 
+function withClosed(
+  stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number }>,
+  closed: readonly ClosedSpan[],
+) {
+  return [
+    ...stays,
+    ...closed.map((block) => ({
+      propertyId: block.propertyId,
+      checkIn: block.start,
+      checkOut: block.end,
+    })),
+  ];
+}
+
 function nextOpenBrief(
   asOf: string,
   stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number }>,
+  closed: readonly ClosedSpan[],
 ): string {
-  const taken = occupiedByHouse(stays, asOf, addDays(asOf, 180));
+  const taken = occupiedByHouse(withClosed(stays, closed), asOf, addDays(asOf, 180));
   const paceStays: PaceStay[] = stays.map((stay) => ({
     propertyId: stay.propertyId,
     checkIn: stay.checkIn,
@@ -147,8 +164,9 @@ function nextOpenBrief(
 function shadowBrief(
   asOf: string,
   stays: Array<Pick<Reservation, 'propertyId' | 'checkIn' | 'checkOut' | 'status'> & { payout?: number }>,
+  closed: readonly ClosedSpan[],
 ): BriefLine[] {
-  const taken = occupiedByHouse(stays, asOf, addDays(asOf, 90));
+  const taken = occupiedByHouse(withClosed(stays, closed), asOf, addDays(asOf, 90));
   const paceStays: PaceStay[] = stays.map((stay) => ({
     propertyId: stay.propertyId,
     checkIn: stay.checkIn,
