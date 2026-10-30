@@ -15,6 +15,17 @@ test('a booked night cannot start a stay, and a clear range can end on a booked 
 
   const across = pickStay(started, '2026-12-14', taken, 'river', '2026-10-29');
   assert.equal(across.checkOut, '');
+
+  const tooShort = ['2026-11-20'];
+  const cannotStart = pickStay({ checkIn: '', checkOut: '' }, '2026-11-19', tooShort, 'river', '2026-10-29');
+  assert.equal(cannotStart.checkIn, '');
+  const before = pickStay({ checkIn: '', checkOut: '' }, '2026-11-18', tooShort, 'river', '2026-10-29');
+  const leaveOnBookedMorning = pickStay(before, '2026-11-20', tooShort, 'river', '2026-10-29');
+  assert.deepEqual(leaveOnBookedMorning, { checkIn: '2026-11-18', checkOut: '2026-11-20' });
+  const later = pickStay({ checkIn: '', checkOut: '' }, '2026-11-21', tooShort, 'river', '2026-10-29');
+  const keepLater = pickStay(later, '2026-11-19', tooShort, 'river', '2026-10-29');
+  assert.equal(keepLater.checkIn, '2026-11-21');
+  assert.equal(keepLater.checkOut, '');
 });
 
 test('the month marks booked nights and the nights inside the stay', () => {

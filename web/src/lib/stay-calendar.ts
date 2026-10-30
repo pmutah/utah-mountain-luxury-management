@@ -97,7 +97,7 @@ export function pickStay(
   today: string,
 ): StayPick {
   const ask = nightAsk(house, iso);
-  const blockedStart = iso < today || ask.closed || taken.includes(iso);
+  const blockedStart = iso < today || ask.closed || taken.includes(iso) || shortestStay(house, iso, taken, today, 'unknown') === null;
   const choosingCheckout = Boolean(stay.checkIn) && !stay.checkOut;
 
   if (!choosingCheckout) {

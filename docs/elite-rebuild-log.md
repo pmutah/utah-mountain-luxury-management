@@ -312,3 +312,7 @@
 ## 2026-10-29 — the brief and Todd’s page name the longer start
 
 - The nightly brief and Todd’s Ranch and River page name where the booking calendar asks for a longer start than the rate card. There is no price. Lindon stays off Todd’s page. The spreadsheet is unchanged. Nothing is sent.
+
+## 2026-10-29 — a too-short night cannot start a stay
+
+- A night marked too short cannot be chosen as check-in. It can still be the checkout morning. Nothing is booked.

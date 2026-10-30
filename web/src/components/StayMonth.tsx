@@ -63,7 +63,8 @@ export function StayMonth({
       <div className="mt-1 grid grid-cols-7 gap-1">
         {days.map((day) => {
           const choosingCheckout = Boolean(checkIn) && !checkOut;
-          const disabled = !day.inMonth || day.past || day.closed || (day.booked && !choosingCheckout);
+          const cannotStart = day.startNights == null && !day.booked && !day.closed && !day.past;
+          const disabled = !day.inMonth || day.past || day.closed || (day.booked && !choosingCheckout) || (cannotStart && !choosingCheckout);
           const selected = day.isCheckIn || day.isCheckOut || day.inStay;
           return (
             <button
@@ -105,7 +106,7 @@ export function StayMonth({
       <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="stay-minimum">
         {checkOut ? 'Gold nights are the stay. Prices are the direct nightly rate.' : 'Choose the check-out morning. Prices are the direct nightly rate.'}
         {marked ? ' A night marked with nights is the shortest stay that can start that day.' : ''}
-        {tooShort ? ' A night marked too short cannot start a stay.' : ''}
+        {tooShort ? ' A night marked too short cannot start a stay. It can still be a checkout morning.' : ''}
         {minimum ? ` This arrival needs at least ${minimum} nights.` : ''}
       </p>
     </div>
