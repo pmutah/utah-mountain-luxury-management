@@ -17,8 +17,13 @@ const stay = {
 test('the trip starts with the group form and keeps the door code on its date', () => {
   const steps = arrivalJourney(stay);
   const agree = steps.find((step) => step.id === 'agree');
-  assert.equal(agree?.state, 'later');
+  assert.equal(agree?.state, 'now');
   assert.match(agree?.detail ?? '', /does not sign it/);
+  const read = arrivalJourney({ ...stay, house: 'ranch', agreementRead: true });
+  const readAgree = read.find((step) => step.id === 'agree');
+  assert.equal(readAgree?.state, 'done');
+  assert.match(readAgree?.detail ?? '', /This phone does not sign it/);
+  assert.equal(readAgree?.detail.includes('$'), false);
   assert.equal(steps.find((step) => step.id === 'group')?.state, 'now');
   const code = steps.find((step) => step.id === 'code');
   assert.equal(code?.state, 'later');
@@ -69,6 +74,7 @@ test('after checkout the trip is finished and the code step is done', () => {
     preferencesDone: true,
     nightBeforeFree: true,
   });
+  assert.equal(steps.find((step) => step.id === 'agree')?.state, 'later');
   assert.equal(steps.find((step) => step.id === 'group')?.state, 'done');
   assert.equal(steps.find((step) => step.id === 'code')?.state, 'done');
   assert.equal(steps.find((step) => step.id === 'leave')?.state, 'done');

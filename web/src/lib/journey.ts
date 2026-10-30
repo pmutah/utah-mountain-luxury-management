@@ -64,6 +64,8 @@ export function arrivalJourney(input: {
   /** A saved leave time. A phone or other typed value is ignored. */
   departure?: string | null;
   house?: string;
+  /** True when every agreement topic was opened on this phone. That does not sign it. */
+  agreementRead?: boolean;
 }): JourneyStep[] {
   const codeOpen = input.asOf >= input.opensOn;
   const steps: JourneyStep[] = [
@@ -71,7 +73,7 @@ export function arrivalJourney(input: {
       id: 'agree',
       title: 'Stay agreement',
       detail: agreementLine(input.house ?? '', 'phone'),
-      state: 'later',
+      state: input.agreementRead ? 'done' : input.phase === 'after' ? 'later' : 'now',
     },
     {
       id: 'group',

@@ -6,6 +6,7 @@ import { loadBookedNights } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/journey';
 import { denverToday } from '../lib/market/dates';
 import { checkoutDoneCount, checkoutSteps, loadCheckoutChecks, saveCheckoutChecks } from '../lib/stay-checkout';
+import { agreementReadComplete, agreementTopics, loadAgreementRead, markAgreementTopic } from '../lib/stay-agreement';
 import { codesReady, loadRuleAck, saveRuleAck } from '../lib/stay-rules';
 import { tripSheet, type TripPlace } from '../lib/stay-sheet';
 import { nearbyGroups } from '../lib/house-stay';
@@ -124,6 +125,7 @@ export function StayApp({ token }: { token: string }) {
   const [requested, setRequested] = useState<UpsellId[]>(() => loadUpsellRequests(token));
   const [groceryList, setGroceryList] = useState(() => loadGroceryList(token));
   const [rulesRead, setRulesRead] = useState(() => loadRuleAck(token));
+  const [agreementRead, setAgreementRead] = useState<string[]>(() => loadAgreementRead(token));
   const [checkoutOn, setCheckoutOn] = useState<boolean[]>(() => loadCheckoutChecks(token));
   const [arrivalWindow, setArrivalWindow] = useState('');
   const [departureWindow, setDepartureWindow] = useState('');
@@ -281,6 +283,7 @@ export function StayApp({ token }: { token: string }) {
     checkoutNightFree,
     departure: departureWindow,
     house: data.propertyId,
+    agreementRead: agreementReadComplete(data.propertyId, agreementRead),
   });
   const sheet = tripSheet({
     house,
@@ -368,6 +371,29 @@ export function StayApp({ token }: { token: string }) {
                     </p>
                     <p className="mt-1 text-lg">{step.title}</p>
                     <p className="text-sm leading-relaxed text-[#d7cfc3]">{step.detail}</p>
+                    {step.id === 'agree' && step.state !== 'later' && (
+                      <ul className="mt-3 space-y-3">
+                        {agreementTopics(data.propertyId).map((topic) => {
+                          const opened = agreementRead.includes(topic.id);
+                          return (
+                            <li key={topic.id}>
+                              <p className="text-sm text-[#f6f1e8]">{topic.title}</p>
+                              <p className="text-sm leading-relaxed text-[#d7cfc3]">{topic.detail}</p>
+                              <button
+                                type="button"
+                                className="mt-2 rounded-full border border-[#d4b56a]/50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
+                                data-bot="stay-agreement-topic"
+                                data-topic={topic.id}
+                                aria-pressed={opened}
+                                onClick={() => setAgreementRead(markAgreementTopic(token, topic.id))}
+                              >
+                                {opened ? 'Read on this phone' : 'Mark as read on this phone'}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                     {step.id === 'early' && (
                       <button
                         type="button"

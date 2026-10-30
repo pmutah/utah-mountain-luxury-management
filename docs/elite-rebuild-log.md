@@ -457,6 +457,10 @@
 
 - The unsent daily text names the checkouts in the next two weeks and whether a 2:00 PM leave or a 1:00 PM arrival is open. Names stay off that line. Nothing is sent.
 
+## 2026-10-30 — read the stay agreement on the phone
+
+- Before checkout, the trip lists each agreement topic. Marking one read stays on that phone. It does not sign the agreement, and nothing is sent.
+
 ## 2026-10-30 — ledger write guard
 
 - An empty read of the saved expenses cannot replace the ledger. A write that would drop a row other than turnover cleaning is refused. This is on the branch and is not deployed.
