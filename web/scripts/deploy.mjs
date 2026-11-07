@@ -28,11 +28,21 @@ const args = process.argv.slice(2);
 const argOf = (prefix) => args.find((a) => a.startsWith(prefix))?.slice(prefix.length);
 
 function run(command, commandArgs, options = {}) {
-  return execFileSync(command, commandArgs, { cwd: web, stdio: 'inherit', shell: false, ...options });
+  return execFileSync(command, commandArgs, {
+    cwd: web,
+    stdio: 'inherit',
+    // On Windows `npx` and `npm` are `.cmd` shims, which `spawnSync` cannot exec without a shell.
+    shell: process.platform === 'win32',
+    ...options,
+  });
 }
 
 function capture(command, commandArgs) {
-  return execFileSync(command, commandArgs, { cwd: web, encoding: 'utf8' }).trim();
+  return execFileSync(command, commandArgs, {
+    cwd: web,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+  }).trim();
 }
 
 const branch = argOf('--branch=') ?? capture('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
@@ -76,7 +86,7 @@ const out = execFileSync(
     '--commit-dirty=true',
     ...(isProduction ? [] : [`--branch=${branch}`]),
   ],
-  { cwd: web, encoding: 'utf8' },
+  { cwd: web, encoding: 'utf8', shell: process.platform === 'win32' },
 );
 process.stdout.write(out);
 
