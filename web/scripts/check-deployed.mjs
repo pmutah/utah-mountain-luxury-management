@@ -17,8 +17,17 @@
  *   node scripts/check-deployed.mjs --base=https://example.pages.dev
  */
 
+/**
+ * Which site to check.
+ *
+ * The default is the production domain, which is right for a production deploy and wrong for every
+ * other branch: Cloudflare publishes a non-production branch to `<branch>.<project>.pages.dev`, so the
+ * deploy pipeline deployed the branch and then failed its own check by probing production, which was
+ * still the old build. `UML_CHECK_BASE` lets the pipeline point at what it actually just deployed.
+ */
 const BASE =
   (process.argv.find((a) => a.startsWith('--base=')) ?? '').replace('--base=', '') ||
+  process.env.UML_CHECK_BASE ||
   'https://wilhite-portfolio.pages.dev';
 
 const problems = [];

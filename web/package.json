@@ -13,7 +13,8 @@
     "live:routes": "node scripts/list-live-routes.mjs",
     "test": "tsx --test \"src/lib/**/*.test.ts\" \"functions/**/*.test.ts\"",
     "preview": "vite preview",
-    "deploy": "npm run check:guards && npm run check:functions && npm test && npm run build && wrangler pages deploy dist --project-name=wilhite-portfolio --commit-dirty=true && npm run check:deployed"
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:skip-checks": "node scripts/deploy.mjs --skip-checks"
   },
   "dependencies": {
     "lucide-react": "^1.16.0",
