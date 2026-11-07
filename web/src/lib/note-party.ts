@@ -33,13 +33,16 @@ export function noteGuestCount(note: string | undefined): number | null {
   return count >= 1 && count <= 30 ? count : null;
 }
 
-/** Children named beside an adult count. A note that already says "N guests" does not split them out. */
+/** Children named on a booking note. They count only when they fit inside a guest total. */
 export function noteChildCount(note: string | undefined): number | null {
-  if (!note || /\b\d{1,2}\s+guests?\b/i.test(note)) return null;
+  if (!note) return null;
   const match = note.match(/\b(\d{1,2})\s+child(?:ren)?\b/i);
   if (!match) return null;
   const count = Number(match[1]);
-  return count >= 0 && count <= 30 ? count : null;
+  if (!Number.isInteger(count) || count < 0 || count > 30) return null;
+  const guests = note.match(/\b(\d{1,2})\s+guests?\b/i);
+  if (guests && count > Number(guests[1])) return null;
+  return count;
 }
 
 function childClause(children: number | null): string {
@@ -59,6 +62,7 @@ export function hostPartyPhrase(note: string | undefined): string {
     return 'This stay does not say how many guests.';
   }
   const base = count === 1 ? 'This stay is for 1 guest' : `This stay is for ${count} guests`;
+  if (children !== null && children === count) return 'This stay names only children. A stay needs an adult.';
   return `${base}${childClause(children)}.`;
 }
 

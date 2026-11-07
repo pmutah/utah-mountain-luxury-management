@@ -133,6 +133,7 @@ function defaults(id: GuideHouseId): HouseGuide {
       arrival: 'Drive up Provo Canyon to Vivian Park. Stock up on groceries in Orem first. AWD or 4WD in winter.',
       houseRules:
         'Whole-house rental only. Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.',
+      checkout: `${shared.checkout}\nOnly toilet paper goes in the toilets. No wipes, even flushable ones.`,
       sections: [
         { title: 'Bedrooms', body: 'Seven king suites, each in its own room, plus an expandable king.' },
         { title: 'Septic', body: 'The house is on septic. Only toilet paper goes in the toilets. No wipes, even flushable ones.' },
@@ -149,6 +150,7 @@ function defaults(id: GuideHouseId): HouseGuide {
       parking: 'Park in the driveway. Please do not block neighbors.',
       arrival: 'The house is in Lindon, about 45 minutes south of the Salt Lake airport.',
       houseRules: 'Quiet hours 10 PM to 8 AM. No parties. Stay within the booked guest count. No smoking indoors.',
+      checkout: `${shared.checkout}\nPut the hot tub cover back on.`,
       sections: [
         { title: 'Hot tub', body: 'Keep the cover on when not in use. No glass in or near the tub. Kids with an adult only.' },
       ],

@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { api, type Reservation, type SharedWorkItem } from '../lib/api';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
-import { loadDateBlocks } from '../lib/booked-nights';
-import { loadCleanFixes } from '../lib/clean-notes';
+import { GuideDesk } from './GuideDesk';
+import { loadDateBlocks, loadQuoteCalendar } from '../lib/booked-nights';
+import { loadCleanFixes, loadHouseFixes } from '../lib/clean-notes';
+import { loadCompChoices } from '../lib/market/comps';
 import { denverToday } from '../lib/market/dates';
-import { loadShadowLog, shadowClock } from '../lib/market/shadow-log';
+import type { RateWeekCalendar } from '../lib/rate-week';
+import { loadShadowLog, saveShadowLog, shadowClock } from '../lib/market/shadow-log';
+import { loadShadowCalendar, shadowDayDigest, withToday } from '../lib/shadow-day-record';
 import type { ClosedSpan } from '../lib/owner-ahead';
 
 const AGENT_NAME = {
@@ -20,43 +24,125 @@ const AGENT_NAME = {
 export function AgentsHub({
   reservations,
   calendar,
+  booksPaused = false,
 }: {
   reservations: Reservation[];
   calendar: 'loading' | 'live' | 'off';
+  booksPaused?: boolean;
 }) {
   const [open, setOpen] = useState<SharedWorkItem[]>([]);
   const [done, setDone] = useState<SharedWorkItem[]>([]);
   const [workState, setWorkState] = useState<'loading' | 'live' | 'off'>('loading');
+  const [compChoices] = useState(loadCompChoices);
   const [fixes] = useState(loadCleanFixes);
+  const [houseFixes] = useState(loadHouseFixes);
   const [closed, setClosed] = useState<ClosedSpan[]>([]);
+  const [blocksReady, setBlocksReady] = useState<boolean | null>(null);
+  const [rateCalendar, setRateCalendar] = useState<RateWeekCalendar | null>(null);
   const preferenceTimes = usePreferenceTimes();
   const arrivalWindows = preferenceTimes?.arrival ?? null;
   const departureWindows = preferenceTimes?.departure ?? null;
   const today = denverToday();
+  /**
+   * Save today as a shadow day from this page too.
+   *
+   * The brief was reporting "Shadow day N of 7" while only the market page ever saved one, so a host
+   * who read the brief every day still never finished the week and the rate push stayed closed with
+   * no explanation of what to do. Opening the brief is the daily habit, so it has to count.
+   */
+  const [shadowSaved, setShadowSaved] = useState<number | null>(null);
+  useEffect(() => {
+    if (calendar !== 'live' || booksPaused || blocksReady !== true) return;
+    let cancel = false;
+    // The reservations come from this page's own props, not another fetch: a second read of the same
+    // key on one page load is what exhausted the daily KV limit.
+    void loadShadowCalendar()
+      .then((inputs) => {
+        if (cancel || !inputs) return;
+        const record = shadowDayDigest({
+          asOf: today,
+          calendarLive: true,
+          taken: inputs.taken,
+          closed: inputs.closed,
+          paused: { river: false, ranch: false, lindon: false },
+          stays: reservations,
+          paceLive: reservations.length > 0,
+          preferenceTimes,
+          compChoices,
+        });
+        if (record.state !== 'ready') return;
+        const next = withToday(loadShadowLog(), today, record.digest);
+        saveShadowLog(next);
+        setShadowSaved(shadowClock(next, today).days);
+        void api.saveShadowDay({ date: today, digest: record.digest }).catch(() => {
+          // The local log still counts on this tab; the server clock is the durable copy.
+        });
+      })
+      .catch(() => {
+        // A brief that cannot record a shadow day is still a useful brief.
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [calendar, booksPaused, blocksReady, today, preferenceTimes, compChoices, reservations]);
   const brief = useMemo(
     () =>
       agentBrief({
         asOf: today,
         stays: reservations,
-        shadowDays: shadowClock(loadShadowLog(), today).days,
+        shadowDays: shadowSaved ?? shadowClock(loadShadowLog(), today).days,
         openJobs: workState === 'live' ? open.length : 0,
-        calendarReady: calendar !== 'loading',
+        calendarReady: calendar === 'live' && !booksPaused,
+        booksPaused,
         fixes,
+        houseFixes,
         closed,
+        blocksReady,
         arrivalWindows,
         departureWindows,
+        hiddenComps: {
+          river: compChoices.river.excluded,
+          ranch: compChoices.ranch.excluded,
+          lindon: compChoices.lindon.excluded,
+        },
+        pinnedComps: {
+          river: compChoices.river.pinned,
+          ranch: compChoices.ranch.pinned,
+          lindon: compChoices.lindon.pinned,
+        },
+        rateCalendar,
       }),
-    [today, reservations, workState, open.length, calendar, fixes, closed, arrivalWindows, departureWindows],
+    [today, reservations, workState, open.length, calendar, booksPaused, fixes, houseFixes, closed, blocksReady, arrivalWindows, departureWindows, compChoices, rateCalendar],
   );
+
+  useEffect(() => {
+    let cancel = false;
+    loadQuoteCalendar()
+      .then((rows) => {
+        if (!cancel) setRateCalendar(rows ? { taken: rows.nights, closed: rows.closed } : null);
+      })
+      .catch(() => {
+        if (!cancel) setRateCalendar(null);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancel = false;
     loadDateBlocks()
       .then((blocks) => {
-        if (!cancel && blocks) setClosed(blocks);
+        if (cancel) return;
+        if (!blocks) {
+          setBlocksReady(false);
+          return;
+        }
+        setClosed(blocks);
+        setBlocksReady(true);
       })
       .catch(() => {
-        if (!cancel) setClosed([]);
+        if (!cancel) setBlocksReady(false);
       });
     return () => {
       cancel = true;
@@ -87,7 +173,7 @@ export function AgentsHub({
         <p className="uml-kicker">Agents</p>
         <h2 className="font-display text-5xl">Who is working</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
-          Five agents already run. Tonight’s brief is read from the calendar, the preference cards, and the shadow run. It does not claim a job, send a text, or change the books.
+          Five agents already run. Tonightâ€™s brief is read from the calendar, the preference cards, and the shadow run. It does not claim a job, send a text, or change the books.
         </p>
       </div>
       <div className="uml-panel rounded-3xl p-6" data-bot="agent-brief" data-blocks={closed.length}>
@@ -100,6 +186,19 @@ export function AgentsHub({
           ))}
         </ul>
       </div>
+      <GuideDesk
+        host
+        hidden={{
+          river: compChoices.river.excluded,
+          ranch: compChoices.ranch.excluded,
+          lindon: compChoices.lindon.excluded,
+        }}
+        pinned={{
+          river: compChoices.river.pinned,
+          ranch: compChoices.ranch.pinned,
+          lindon: compChoices.lindon.pinned,
+        }}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         {AGENT_ROSTER.map((agent) => (
           <article key={agent.id} className="uml-panel rounded-3xl p-6" data-bot={`agent-${agent.id}`}>
@@ -121,7 +220,7 @@ export function AgentsHub({
       </div>
       <div className="uml-panel rounded-3xl p-6" data-bot="agent-work">
         <p className="uml-kicker">Shared desk</p>
-        {workState === 'loading' && <p className="mt-3 text-sm text-[var(--uml-muted)]">Loading the job list…</p>}
+        {workState === 'loading' && <p className="mt-3 text-sm text-[var(--uml-muted)]">Loading the job listâ€¦</p>}
         {workState === 'off' && (
           <p className="mt-3 text-sm text-[var(--uml-muted)]">The job list is not available from this server.</p>
         )}
@@ -148,3 +247,4 @@ export function AgentsHub({
     </section>
   );
 }
+

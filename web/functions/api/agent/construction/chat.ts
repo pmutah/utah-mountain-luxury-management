@@ -1,8 +1,11 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
 import { runConstructionAgentChat } from '../../../_lib/agent/construction/run-agent';
 import type { ConstructionEnv } from '../../../_lib/construction/types';
 
+/** The Construction chat writes partner spend and phases through its tools, so it fails closed too. */
 export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const apiKey = env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return corsJson(request, { error: 'GEMINI_API_KEY not configured' }, 503);

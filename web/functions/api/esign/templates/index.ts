@@ -1,6 +1,10 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
 import { FORM_CATEGORY_LABELS, type FormTemplate } from '../../../_lib/esign/types';
 import { listFormTemplates } from '../../../_lib/esign/form-library';
+import type { SettingsEnv } from '../../../_lib/kv';
+
+type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string };
 
 function publicTemplate(template: FormTemplate) {
   return {
@@ -19,7 +23,8 @@ function publicTemplate(template: FormTemplate) {
   };
 }
 
-export const onRequestGet: PagesFunction = async ({ request }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const templates = listFormTemplates().map(publicTemplate);
   return corsJson(request, {
     templates,

@@ -7,8 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "check:guards": "node scripts/check-route-guards.cjs",
+    "check:functions": "tsc -p tsconfig.functions.json",
+    "check:deployed": "node scripts/check-deployed.mjs",
+    "live:routes": "node scripts/list-live-routes.mjs",
+    "test": "tsx --test \"src/lib/**/*.test.ts\" \"functions/**/*.test.ts\"",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name=wilhite-portfolio --commit-dirty=true"
+    "deploy": "npm run check:guards && npm run check:functions && npm test && npm run build && wrangler pages deploy dist --project-name=wilhite-portfolio --commit-dirty=true && npm run check:deployed"
   },
   "dependencies": {
     "lucide-react": "^1.16.0",
@@ -17,6 +22,7 @@
     "react-dom": "^19.2.6"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.1.8",
     "@types/node": "^24.12.3",
@@ -28,6 +34,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
     "tailwindcss": "^4.1.8",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",

@@ -1,8 +1,15 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { runAgentChat } from '../../_lib/agent/run-agent';
 import type { AgentEnv } from '../../_lib/agent/types';
 
+/**
+ * The Co-host chat takes actions through tools: it can log an expense, create a stay, and block a
+ * calendar. The middleware only closes this when a password is set, so the route itself fails
+ * closed the same way the ledger does.
+ */
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const apiKey = env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return corsJson(request, { error: 'GEMINI_API_KEY not configured' }, 503);

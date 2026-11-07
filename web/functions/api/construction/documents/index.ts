@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
 import {
   loadConstructionDocuments,
@@ -16,6 +17,7 @@ import {
 } from '../../../_lib/construction/construction-limits';
 import { decodeBase64Receipt } from '../../../_lib/gcs';
 import { storageConfigured } from '../../../_lib/gcs';
+import { storageReadPaused } from '../../../_lib/kv-json';
 import type { ConstructionDocType, ConstructionEnv } from '../../../_lib/construction/types';
 
 const VALID_TYPES: ConstructionDocType[] = [
@@ -29,9 +31,23 @@ const VALID_TYPES: ConstructionDocType[] = [
 ];
 
 export const onRequestGet: PagesFunction<ConstructionEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const url = new URL(request.url);
   const typeFilter = url.searchParams.get('type');
-  let documents = await loadConstructionDocuments(env);
+  let documents;
+  try {
+    documents = await loadConstructionDocuments(env);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(request, {
+        documents: null,
+        storageReads: 'paused',
+        error: 'Saved construction documents could not be read. Nothing was written over them.',
+      });
+    }
+    const message = err instanceof Error ? err.message : 'Documents failed';
+    return corsJson(request, { error: message }, 500);
+  }
   if (typeFilter) {
     if (typeFilter === 'photo') {
       documents = documents.filter((d) => d.contentType?.startsWith('image/'));
@@ -43,11 +59,13 @@ export const onRequestGet: PagesFunction<ConstructionEnv> = async ({ request, en
   }
   return corsJson(request, {
     documents,
+    storageReads: 'ok',
     limits: { maxMb: CONSTRUCTION_MAX_MB, firebaseConfigured: storageConfigured(env) },
   });
 };
 
 export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   try {
     return await handleConstructionDocumentPost(request, env);
   } catch (e) {

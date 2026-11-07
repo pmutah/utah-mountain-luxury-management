@@ -94,8 +94,21 @@ export function amenityGaps(house: HouseId, comps: readonly { id: string }[]): A
     .sort((a, b) => Number(a.ours) - Number(b.ours) || b.listed - a.listed || a.label.localeCompare(b.label));
 }
 
-export function amenityGapsForChoice(house: HouseId, excluded: readonly string[] = []): AmenityRow[] {
-  return amenityGaps(house, chooseComps(house, { pinned: [], excluded: [...excluded] }));
+export function amenityGapsForChoice(
+  house: HouseId,
+  excluded: readonly string[] = [],
+  pinned: readonly string[] = [],
+): AmenityRow[] {
+  return amenityGaps(house, chooseComps(house, { pinned: [...pinned], excluded: [...excluded] }));
+}
+
+/** Sample gaps for the host desk. No price, and these are not live listings. */
+export function amenityDeskLine(house: HouseId, excluded: readonly string[] = [], pinned: readonly string[] = []): string {
+  const text = amenityGapsForChoice(house, excluded, pinned)
+    .map((row) => row.line)
+    .join(' ');
+  if (!text || text.includes('$') || /live listing/i.test(text)) return '';
+  return text;
 }
 
 function amenityLine(ours: boolean, label: string, listed: number, compared: number): string {

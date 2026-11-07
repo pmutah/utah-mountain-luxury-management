@@ -1,11 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, type ConciergeChatMessage } from '../lib/api';
+import { api, PROPERTIES, type ConciergeChatMessage } from '../lib/api';
+import { loadQuoteCalendar } from '../lib/booked-nights';
+import { conciergeIntro } from '../lib/concierge-place';
+import { conciergeGuideAnswer, type DeskCalendar } from '../lib/guide-desk';
+import { houseStay } from '../lib/house-stay';
+import { denverHour } from '../lib/stay-rhythm';
+import type { HouseId } from '../lib/market/types';
 
-export function GuestConcierge({ token, preview }: { token: string; preview: boolean }) {
+export function GuestConcierge({
+  token,
+  preview,
+  house,
+  checkIn,
+  checkOut,
+  guests,
+  children,
+}: {
+  token: string;
+  preview: boolean;
+  house: string;
+  checkIn?: string;
+  checkOut?: string;
+  guests?: number;
+  children?: number;
+}) {
   const [messages, setMessages] = useState<ConciergeChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [calendar, setCalendar] = useState<DeskCalendar | null>(null);
+  const [calendarPending, setCalendarPending] = useState(true);
   const scroller = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,6 +43,24 @@ export function GuestConcierge({ token, preview }: { token: string; preview: boo
   }, [token, preview]);
 
   useEffect(() => {
+    let cancel = false;
+    loadQuoteCalendar()
+      .then((rows) => {
+        if (cancel) return;
+        setCalendar(rows ? { taken: rows.nights, closed: rows.closed } : null);
+        setCalendarPending(false);
+      })
+      .catch(() => {
+        if (cancel) return;
+        setCalendar(null);
+        setCalendarPending(false);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const node = scroller.current;
     if (node) node.scrollTop = node.scrollHeight;
   }, [messages, sending]);
@@ -26,6 +68,30 @@ export function GuestConcierge({ token, preview }: { token: string; preview: boo
   async function send() {
     const text = draft.trim();
     if (!text || sending) return;
+    const local =
+      house === 'river' || house === 'ranch' || house === 'lindon'
+        ? conciergeGuideAnswer(
+            text,
+            house as HouseId,
+            undefined,
+            calendar,
+            checkIn && checkOut ? { checkIn, checkOut } : undefined,
+            denverHour(),
+            calendarPending,
+            typeof guests === 'number' ? { guests, children } : undefined,
+          )
+        : null;
+    if (local) {
+      setDraft('');
+      setError(null);
+      const at = new Date().toISOString();
+      setMessages((current) => [
+        ...current,
+        { id: `local-guest-${at}`, from: 'guest', text, at },
+        { id: `local-nora-${at}`, from: 'nora', text: local, at },
+      ]);
+      return;
+    }
     setDraft('');
     setError(null);
     setSending(true);
@@ -52,7 +118,11 @@ export function GuestConcierge({ token, preview }: { token: string; preview: boo
     <div className="rounded-[28px] border border-[#d4b56a]/40 bg-[#d4b56a]/10 p-5" data-bot="stay-concierge">
       <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d4b56a]">Your concierge</p>
       <p className="mt-2 text-2xl text-[#f6f1e8]">Nora</p>
-      <p className="mt-1 text-sm text-[#d7cfc3]">Ask about the house, dinner, the canyon, or anything you need during your stay.</p>
+      <p className="mt-1 text-sm text-[#d7cfc3]" data-bot="stay-concierge-intro">
+        {house === 'river' || house === 'ranch' || house === 'lindon'
+          ? conciergeIntro(PROPERTIES[house].address, houseStay(house).arrival)
+          : 'Ask about the house, dinner, or anything you need during your stay.'}
+      </p>
       <div ref={scroller} className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
         {messages.map((message) => (
           <div key={message.id} className={message.from === 'guest' ? 'flex justify-end' : 'flex justify-start'}>
@@ -91,7 +161,9 @@ export function GuestConcierge({ token, preview }: { token: string; preview: boo
           Send
         </button>
       </form>
-      <p className="mt-3 text-xs text-white/45">If she can’t help, she texts Brandon. His reply shows at the top of your stay.</p>
+      <p className="mt-3 text-xs text-white/45" data-bot="stay-concierge-note">
+        A house-guide question stays on this phone. Nora does not text Brandon for that. Anything else still goes to Nora.
+      </p>
     </div>
   );
 }

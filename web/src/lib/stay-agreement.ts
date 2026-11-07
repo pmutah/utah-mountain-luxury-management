@@ -1,9 +1,9 @@
 import type { HouseId } from './market/types';
 
 function topics(house: string): string {
-  if (house === 'river') return 'occupancy, damage, the river, and a release';
-  if (house === 'ranch') return 'occupancy, damage, the hot tub, and a release';
-  return 'occupancy, damage, and a release';
+  if (house === 'river') return 'occupancy, damage, the river, the house as-is, belongings, safety, a short stay rather than a lease, and a release';
+  if (house === 'ranch') return 'occupancy, damage, the hot tub, the house as-is, belongings, safety, a short stay rather than a lease, and a release';
+  return 'occupancy, damage, the house as-is, belongings, safety, a short stay rather than a lease, and a release';
 }
 
 /** What the stay agreement covers. Reading the rules does not sign it. */
@@ -24,17 +24,20 @@ export function agreementNote(house: HouseId): string {
 
 /** The nightly brief covers every house. Nothing here signs the agreement. */
 export function agreementBrief(): string {
-  return 'The stay agreement covers occupancy, damage, the hot tub, the river, and a release. Reading the house rules does not sign it. Nothing here signs it.';
+  return 'The stay agreement covers occupancy, damage, the hot tub, the river, the house as-is, belongings, safety, a short stay rather than a lease, and a release. Reading the house rules does not sign it. Nothing here signs it.';
 }
 
 export type AgreementTopic = {
-  id: 'occupancy' | 'damage' | 'place' | 'release';
+  id: 'occupancy' | 'damage' | 'place' | 'asis' | 'belongings' | 'safety' | 'license' | 'release';
   title: string;
   detail: string;
 };
 
-/** Topics a guest can read on the phone. Reading them does not sign the agreement or send anything. */
-export function agreementTopics(house: HouseId | string): AgreementTopic[] {
+/** Topics a guest can read. Reading them does not sign the agreement or send anything. */
+export function agreementTopics(
+  house: HouseId | string,
+  where: 'page' | 'phone' | 'paper' = 'phone',
+): AgreementTopic[] {
   const topics: AgreementTopic[] = [
     {
       id: 'occupancy',
@@ -61,11 +64,68 @@ export function agreementTopics(house: HouseId | string): AgreementTopic[] {
     });
   }
   topics.push({
+    id: 'asis',
+    title: 'As-is',
+    detail:
+      'The house is provided as-is. A broken amenity does not cancel the stay unless the host agrees in writing. The host may end the stay without a refund for a serious rules violation. This phone does not sign that. Nothing is sent.',
+  });
+  topics.push({
+    id: 'belongings',
+    title: 'Belongings',
+    detail:
+      'The host does not insure belongings, vehicles, or cash. Travel insurance and medical coverage stay with the guest. This phone does not sign that. Nothing is sent.',
+  });
+  topics.push({
+    id: 'safety',
+    title: 'Safety',
+    detail:
+      'No lifeguard is on duty. Children need a responsible adult around water, stairs, decks, and the street. No fireworks. This phone does not sign that. Nothing is sent.',
+  });
+  topics.push({
+    id: 'license',
+    title: 'Short stay',
+    detail:
+      'This is a short stay, not a residential lease. The stay ends at checkout. This phone does not sign that. Nothing is sent.',
+  });
+  topics.push({
     id: 'release',
     title: 'Release',
     detail: 'A release is part of the stay agreement. This phone does not sign it. Nothing is sent.',
   });
-  return topics;
+  if (where === 'phone') return topics;
+  const surface = where === 'paper' ? 'This paper' : 'This page';
+  return topics.map((topic) => ({ ...topic, detail: topic.detail.replaceAll('This phone', surface) }));
+}
+
+/** A visitor question stays on the occupancy topic. It does not invent a day-guest rule. */
+export function visitorQuestion(query: string): boolean {
+  const q = query.toLowerCase();
+  if (/\b(pet|pets|dog|dogs|cat|cats)\b/.test(q)) return false;
+  return /\b(visitor|visitors|day guest|day guests|extra guest|extra guests)\b/.test(q);
+}
+
+/** The published occupancy line for that surface. */
+export function visitorLine(where: 'page' | 'phone'): string {
+  const detail = agreementTopics('lindon', where).find((topic) => topic.id === 'occupancy')?.detail ?? '';
+  if (!detail || detail.includes('$') || /door\s*code|wi-?fi|password/i.test(detail)) return '';
+  return detail;
+}
+
+/** One stay-agreement topic, already written for a page. Same on every house. */
+export function agreementTopicLine(id: 'asis' | 'belongings' | 'safety' | 'license'): string {
+  const detail = agreementTopics('lindon', 'page').find((topic) => topic.id === id)?.detail ?? '';
+  if (detail.includes('$') || /door\s*code|wi-?fi|password/i.test(detail)) return '';
+  return detail;
+}
+
+/** The confirmation preview names as-is, belongings, and that this is not a lease. It does not sign or send. */
+export function confirmationAgreement(): string {
+  const text = [agreementTopicLine('asis'), agreementTopicLine('belongings'), agreementTopicLine('license')]
+    .filter((line) => line.length > 0)
+    .join(' ')
+    .replaceAll('This page', 'This message');
+  if (text.includes('$') || /door\s*code|wi-?fi|password/i.test(text)) return '';
+  return text;
 }
 
 export function agreementReadComplete(house: HouseId | string, readIds: readonly string[]): boolean {

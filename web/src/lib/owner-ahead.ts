@@ -1,5 +1,6 @@
 import type { Reservation } from './api';
 import { addDays } from './market/dates';
+import { bookableNights } from './market/bookable';
 import { channelLabel } from './report';
 
 export type OwnerGap = {
@@ -8,6 +9,8 @@ export type OwnerGap = {
   until: string;
   startLabel: string;
   untilLabel: string;
+  /** False when no stay can cover the stretch. The line must not call it open. */
+  bookable: boolean;
 };
 
 export type OwnerAheadHouse = {
@@ -106,12 +109,21 @@ function openGaps(
       nights += 1;
       cursor = addDays(cursor, 1);
     }
+    const until = cursor;
+    const dates: string[] = [];
+    let night = start;
+    while (night < until) {
+      dates.push(night);
+      night = addDays(night, 1);
+    }
+    const bookable = bookableNights(houseId, dates, [...taken], asOf, 'unknown');
     found.push({
       start,
       nights,
-      until: cursor,
+      until,
       startLabel: longDate(start),
-      untilLabel: longDate(cursor),
+      untilLabel: longDate(until),
+      bookable: dates.some((date) => bookable.has(date)),
     });
   }
   return found;
@@ -195,6 +207,9 @@ export function aheadChannelsLine(ahead: OwnerAhead): string {
 
 export function gapLine(name: string, gap: OwnerGap): string {
   const nights = gap.nights === 1 ? '1 night' : `${gap.nights} nights`;
+  if (!gap.bookable) {
+    return `${name} ${gap.startLabel} for ${nights} cannot be booked. The published rate stays. This does not say the house is open.`;
+  }
   return `${name} is open ${gap.startLabel} for ${nights}, until ${gap.untilLabel}.`;
 }
 
@@ -204,6 +219,7 @@ export function gapBrief(ahead: OwnerAhead): string {
     const gap = house.gaps[0];
     if (!gap) return `${house.name} has no open stretch in the next 120 nights`;
     const nights = gap.nights === 1 ? '1 night' : `${gap.nights} nights`;
+    if (!gap.bookable) return `${house.name} ${shortDate(gap.start)} for ${nights} cannot be booked`;
     return `${house.name} ${shortDate(gap.start)} for ${nights}`;
   });
   return `Open stretch on the calendar: ${parts.join('. ')}.`;

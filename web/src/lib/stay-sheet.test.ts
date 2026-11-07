@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { nearbyGroups } from './house-stay.ts';
-import { tripSheet } from './stay-sheet.ts';
+import { houseCheckout, houseStay, STAY_EMERGENCY } from './house-stay.ts';
+import { bothHousePaperNote, bothHousePapers, quotePaperTimes, tripNearbyNote, tripPaperNote, tripSheet } from './stay-sheet.ts';
 
 test('a trip sheet names the arrival and leaves the door code off the paper', () => {
   const sheet = tripSheet({
@@ -29,13 +30,21 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   });
   assert.equal(sheet.house, 'River House');
   assert.equal(sheet.when, 'Check-in 4:00 PM on November 6, 2026. Checkout 11:00 AM on November 8, 2026.');
+  assert.equal(sheet.event, 'This stay covers BYU at Utah. Nothing extra is added for that.');
+  assert.equal(sheet.event.includes('$'), false);
   assert.equal(sheet.address, 'Vivian Park, Provo Canyon, Utah 84604');
+  assert.match(sheet.photo, /Listing rendering/);
+  assert.equal(sheet.photo.includes('$'), false);
   assert.match(sheet.privateNote, /not on this paper/);
   assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
   assert.equal(sheet.parking, 'Park in the drive.');
   assert.equal(sheet.rules, 'No parties.');
   assert.match(sheet.agreement, /the river/);
   assert.match(sheet.agreement, /This paper does not sign it/);
+  assert.match(sheet.agreement, /Occupancy\. The stay is for the guests/);
+  assert.match(sheet.agreement, /The river and the septic/);
+  assert.equal(sheet.agreement.includes('This phone'), false);
+  assert.equal(sheet.agreement.includes('$'), false);
   const secret = tripSheet({
     house: 'River House',
     checkIn: '2026-11-06',
@@ -160,4 +169,83 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
     guestArrival: '801-555-0100',
   });
   assert.equal(junk.guestArrival, '');
+});
+
+test('the published river guide can be paper without a code or a price', () => {
+  const guide = houseStay('river');
+  const sheet = tripSheet({
+    house: 'The River House',
+    houseId: 'river',
+    checkIn: '2026-11-13',
+    checkOut: '2026-11-15',
+    checkInTime: guide.checkIn,
+    checkOutTime: guide.checkOut,
+    address: 'Vivian Park, Provo Canyon, Utah 84604',
+    arrival: guide.arrival,
+    parking: guide.parking,
+    notes: guide.notes,
+    nearby: guide.nearby,
+    emergency: STAY_EMERGENCY,
+    checkout: houseCheckout('river'),
+  });
+  const note = tripPaperNote();
+  const text = `${note}\n${JSON.stringify(sheet)}`;
+  assert.match(sheet.when, /November 13, 2026/);
+  assert.match(sheet.event, /BYU vs Baylor/);
+  assert.match(note, /not a booking/);
+  assert.match(note, /Nothing is sent/);
+  assert.equal(text.includes('$'), false);
+  assert.equal(/code\s*\d/i.test(text), false);
+  assert.equal(/\bthe house is open\b/i.test(text), false);
+  const nearby = tripNearbyNote();
+  assert.match(nearby, /no price/);
+  assert.match(nearby, /not a booking/);
+  assert.equal(nearby.includes('$'), false);
+  assert.equal(nearbyGroups(sheet.nearby).some((group) => group.kind === 'ski'), true);
+  assert.equal(sheet.nearby.some((place) => place.name === 'Sundance Mountain Resort'), true);
+});
+
+test('a chosen arrival and an 11:00 AM leave go on the paper without booking the stay', () => {
+  const named = quotePaperTimes('5:00 PM', '11:00 AM', false);
+  assert.match(named, /Arrival around 5:00 PM/);
+  assert.match(named, /Leave at 11:00 AM/);
+  assert.match(named, /not booked/);
+  assert.match(named, /Nothing is sent/);
+  assert.equal(named.includes('$'), false);
+  assert.equal(quotePaperTimes('5:00 PM', '2:00 PM', false).includes('2:00 PM'), false);
+  assert.equal(quotePaperTimes(null, null, false), '');
+  assert.match(quotePaperTimes('After 9:00 PM', null, false), /Quiet hours still apply/);
+});
+
+test('a two-house paper names each house and leaves the door-code timing off', () => {
+  const papers = bothHousePapers({ checkIn: '2026-11-06', checkOut: '2026-11-08', early: true, late: true });
+  assert.deepEqual(
+    papers.map((paper) => paper.id),
+    ['river', 'ranch'],
+  );
+  const river = papers[0]!;
+  const ranch = papers[1]!;
+  assert.match(river.photo, /Listing rendering/);
+  assert.equal(ranch.photo, 'Listing photo');
+  assert.match(river.address, /Vivian Park/);
+  assert.match(ranch.address, /Lindon/);
+  assert.match(river.when, /November 6, 2026/);
+  assert.match(river.when, /November 8, 2026/);
+  assert.match(river.event, /BYU/);
+  assert.equal(river.checkout.some((step) => /toilet paper/i.test(step)), true);
+  assert.equal(ranch.checkout.some((step) => /hot tub cover/i.test(step)), true);
+  assert.match(river.earlyRule, /both houses/);
+  assert.match(river.checkoutRule, /2:00 PM is a request for both houses/);
+  const closed = bothHousePapers({ checkIn: '2026-12-16', checkOut: '2026-12-18', early: true, late: false });
+  assert.match(closed[0]!.checkoutRule, /not open for both houses/);
+  assert.match(closed[0]!.earlyRule, /1:00 PM is a request for both houses/);
+  const note = bothHousePaperNote();
+  const text = `${note}\n${JSON.stringify(papers)}\n${JSON.stringify(closed)}`;
+  assert.match(note, /both houses/);
+  assert.match(note, /not booked/);
+  assert.match(note, /Nothing is sent/);
+  assert.match(note, /door code stays off this paper/);
+  assert.equal(text.includes('$'), false);
+  assert.equal(/still opens the day before/i.test(text), false);
+  assert.equal(/code\s*\d/i.test(text), false);
 });

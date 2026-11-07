@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { phoneStayIcs, stayIcs } from './stay-ics.ts';
+
+test('a stay calendar file names the house and does not hold the dates', () => {
+  const file = stayIcs('river', '2026-11-13', '2026-11-15');
+  assert.equal(file?.filename, 'river-2026-11-13.ics');
+  const text = file?.text ?? '';
+  assert.match(text, /SUMMARY:The River House is not booked/);
+  assert.match(text, /STATUS:TENTATIVE/);
+  assert.match(text, /DTSTART;TZID=America\/Denver:20261113T160000/);
+  assert.match(text, /DTEND;TZID=America\/Denver:20261115T110000/);
+  assert.match(text, /Vivian Park\\, Provo Canyon\\, Utah 84604/);
+  assert.match(text, /This does not hold the dates/);
+  assert.match(text, /This does not say the house is open/);
+  assert.match(text, /Winter driving/);
+  assert.match(text, /These steps are from the published guide/);
+  assert.match(text, /Nothing is sent/);
+  assert.match(text, /Before leaving: Start the dishwasher/);
+  assert.match(text, /Only toilet paper goes in the toilets/);
+  const ranch = stayIcs('ranch', '2026-11-13', '2026-11-15')?.text ?? '';
+  assert.match(ranch, /cover on when not in use/);
+  assert.match(ranch, /Put the hot tub cover back on/);
+  assert.equal(ranch.includes('$'), false);
+  assert.equal(text.includes('$'), false);
+  assert.equal(/door\s*code|password|wi-?fi/i.test(text), false);
+  assert.equal(stayIcs('river', '2026-11-15', '2026-11-13'), null);
+});
+
+test('the stay phone calendar file is this stay and does not change the reservation', () => {
+  const file = phoneStayIcs('ranch', '2026-12-01', '2026-12-04');
+  assert.equal(file?.filename, 'ranch-2026-12-01-stay.ics');
+  const text = file?.text ?? '';
+  assert.match(text, /SUMMARY:The Ranch House/);
+  assert.equal(text.includes('is not booked'), false);
+  assert.match(text, /DTSTART;TZID=America\/Denver:20261201T160000/);
+  assert.match(text, /DTEND;TZID=America\/Denver:20261204T110000/);
+  assert.match(text, /270 East Center Street\\, Lindon\\, Utah 84042/);
+  assert.match(text, /Before leaving: Start the dishwasher/);
+  assert.match(text, /Put the hot tub cover back on/);
+  assert.match(text, /does not change the reservation/);
+  assert.match(text, /Nothing is sent/);
+  assert.equal(text.includes('$'), false);
+  assert.equal(/door\s*code|password|wi-?fi/i.test(text), false);
+  assert.equal(/\bis open\b/i.test(text), false);
+  const river = phoneStayIcs('river', '2026-11-06', '2026-11-08')?.text ?? '';
+  assert.match(river, /Only toilet paper goes in the toilets/);
+  assert.match(river, /Winter driving/);
+  assert.equal(phoneStayIcs('ranch', '2026-12-04', '2026-12-01'), null);
+});

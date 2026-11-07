@@ -1,15 +1,23 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { loadConstructionProject, saveConstructionProject } from '../../_lib/construction/construction-store';
+import { readOrRefuse } from '../../_lib/read-guard';
 import type { ConstructionEnv } from '../../_lib/construction/types';
 
 export const onRequestGet: PagesFunction<ConstructionEnv> = async ({ request, env }) => {
-  const project = await loadConstructionProject(env);
-  return corsJson(request, project);
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+  const read = await readOrRefuse(request, () => loadConstructionProject(env), 'The construction project');
+  if (!read.ok) return read.response;
+  return corsJson(request, read.value);
 };
 
 export const onRequestPut: PagesFunction<ConstructionEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const body = (await request.json()) as Record<string, unknown>;
-  const current = await loadConstructionProject(env);
+  // The save spreads the current project, so a default here would blank every field the caller omitted.
+  const read = await readOrRefuse(request, () => loadConstructionProject(env), 'The construction project');
+  if (!read.ok) return read.response;
+  const current = read.value;
   const project = await saveConstructionProject(env, {
     ...current,
     name: body.name !== undefined ? String(body.name) : current.name,

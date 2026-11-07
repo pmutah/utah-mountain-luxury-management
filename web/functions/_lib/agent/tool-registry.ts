@@ -35,7 +35,8 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
   },
   {
     name: 'manage_reservations',
-    description: 'List, get, create, update status, or block dates for reservations.',
+    description:
+      'List, get, create, update status, or block dates for reservations. A create is refused when those nights are already on that house\'s calendar or blocked, and nothing is written.',
     parameters: {
       type: 'object',
       properties: {
@@ -83,13 +84,22 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
   },
   {
     name: 'manage_operations',
-    description: 'Cleaning tasks, guest messages, cleaner notifications.',
+    description:
+      'Cleaning tasks, guest messages, cleaner notifications, and the direct booking desk: list the saved requests, and accept or decline one. Accepting a request needs a host payout, which the request line names.',
     parameters: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['create_cleaning_task', 'list_tasks', 'draft_guest_message', 'notify_cleaner'],
+          enum: [
+            'create_cleaning_task',
+            'list_tasks',
+            'draft_guest_message',
+            'notify_cleaner',
+            'list_requests',
+            'accept_request',
+            'decline_request',
+          ],
         },
         propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river'] },
         reservationId: { type: 'string' },
@@ -98,6 +108,17 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
         checkIn: { type: 'string' },
         lockCode: { type: 'string' },
         notes: { type: 'string' },
+        /** The request to accept or decline. */
+        requestId: { type: 'string' },
+        /** The host payout to record when accepting. Copy it from the request line. */
+        payout: { type: 'number' },
+        /** Required to accept: true. Without it the agent is told what would happen and nothing runs. */
+        confirm: { type: 'boolean' },
+        /** One of the decline reasons, when declining. */
+        reason: {
+          type: 'string',
+          enum: ['dates-taken', 'too-many-guests', 'minimum-stay', 'maintenance', 'owner-stay', 'other'],
+        },
       },
       required: ['action'],
     },

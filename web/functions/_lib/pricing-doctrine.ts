@@ -376,7 +376,6 @@ function quoteNight(
   propertyId: PropertyId,
   median: number,
   target: number,
-  floor: number,
 ): NightQuote {
   const leadDays = daysBetween(today, iso);
   const event = eventOn(iso);
@@ -746,7 +745,7 @@ export async function suggestRateAdjustment(
   const config = await loadListingConfig(env);
   const target = config[propertyId]?.targetMinNightly ?? 0;
   const open = eachNight(from, to).filter((iso) => !taken.has(iso));
-  const nights = open.map((iso) => quoteNight(iso, today, propertyId, hostNetMedian, target, floor));
+  const nights = open.map((iso) => quoteNight(iso, today, propertyId, hostNetMedian, target));
   const pace = grossGoalSnapshot(propertyId, stays, today, blocks);
   const booked = nightsInRange(
     [

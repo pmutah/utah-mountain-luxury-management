@@ -2,6 +2,7 @@ import { addDays, isWeekendNight } from './market/dates';
 import { nightAsk } from './market/rates';
 import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
+import { partyFits } from './house-stay';
 import { quoteStay } from './quote';
 import { stayLengths } from './stay-lengths';
 import { quoteOffers, type UpsellId } from './upsells';
@@ -37,22 +38,34 @@ export function openArrivals(
   asOf: string,
   pace: YearPace,
   limit = 3,
+  closed: readonly string[] = [],
+  guests?: number,
+  children?: number,
+  from?: string,
 ): OpenArrival[] {
+  if (guests !== undefined && !partyFits(house, guests, children).ok) return [];
   const found: OpenArrival[] = [];
   const horizon = addDays(asOf, 180);
-  let cursor = asOf;
+  const blocked = new Set(closed);
+  let cursor = from && /^\d{4}-\d{2}-\d{2}$/.test(from) && from > asOf ? from : asOf;
   while (cursor < horizon && found.length < limit) {
     const ask = nightAsk(house, cursor);
-    if (ask.closed || taken.includes(cursor)) {
+    if (ask.closed || taken.includes(cursor) || blocked.has(cursor)) {
       cursor = addDays(cursor, 1);
       continue;
     }
     let nights = Math.max(1, ask.minNights);
     if (nights === 1 && isWeekendNight(cursor) && leadDays(asOf, cursor) > 7) nights = 2;
-    let quote = quoteStay(house, cursor, addDays(cursor, nights), taken, { asOf, pace });
+    const options = {
+      asOf,
+      pace,
+      closed,
+      ...(guests !== undefined ? { guests, ...(children !== undefined ? { children } : {}) } : {}),
+    };
+    let quote = quoteStay(house, cursor, addDays(cursor, nights), taken, options);
     if (!quote.ok && quote.minNights > nights && quote.reason?.includes('at least')) {
       nights = quote.minNights;
-      quote = quoteStay(house, cursor, addDays(cursor, nights), taken, { asOf, pace });
+      quote = quoteStay(house, cursor, addDays(cursor, nights), taken, options);
     }
     if (!quote.ok) {
       cursor = addDays(cursor, 1);
@@ -88,9 +101,15 @@ export function nextOpenPhrase(house: HouseId, taken: readonly string[], asOf: s
 }
 
 /** Lengths the booking page can quote from the next open arrival. No price. */
-export function lengthPhrase(house: HouseId, taken: readonly string[], asOf: string, pace: YearPace): string {
+export function lengthPhrase(
+  house: HouseId,
+  taken: readonly string[],
+  asOf: string,
+  pace: YearPace,
+  closed: readonly string[] = [],
+): string {
   const name = HOUSE_NAME[house];
-  const first = openArrivals(house, taken, asOf, pace, 1)[0];
+  const first = openArrivals(house, taken, asOf, pace, 1, closed)[0];
   if (!first) return `${name} has no length to quote in the next six months`;
   const [year, month, day] = first.checkIn.split('-').map(Number);
   const when = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
@@ -98,7 +117,7 @@ export function lengthPhrase(house: HouseId, taken: readonly string[], asOf: str
     day: 'numeric',
     timeZone: 'UTC',
   });
-  const lengths = stayLengths(house, first.checkIn, taken, asOf, pace);
+  const lengths = stayLengths(house, first.checkIn, taken, asOf, pace, undefined, closed);
   const nights = lengths ? lengths.choices.map((choice) => choice.nights).join(', ') : String(first.nights);
   return `${name} ${when} can quote ${nights} nights`;
 }
@@ -117,9 +136,15 @@ function spokenList(items: readonly string[]): string {
 }
 
 /** Add-ons the shortest open arrival can request. No price. */
-export function addonPhrase(house: HouseId, taken: readonly string[], asOf: string, pace: YearPace): string {
+export function addonPhrase(
+  house: HouseId,
+  taken: readonly string[],
+  asOf: string,
+  pace: YearPace,
+  closed: readonly string[] = [],
+): string {
   const name = HOUSE_NAME[house];
-  const first = openArrivals(house, taken, asOf, pace, 1)[0];
+  const first = openArrivals(house, taken, asOf, pace, 1, closed)[0];
   if (!first) return `${name} has no add-on to request in the next six months`;
   const [year, month, day] = first.checkIn.split('-').map(Number);
   const when = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
@@ -133,8 +158,23 @@ export function addonPhrase(house: HouseId, taken: readonly string[], asOf: stri
     checkOut: first.checkOut,
     asOf,
     taken,
+    closed,
     calendarLive: true,
   }).map((offer) => SPOKEN[offer.id]);
   if (offers.length === 0) return `${name} ${when} has no add-on for that stay`;
   return `${name} ${when} can request ${spokenList(offers)}`;
+}
+
+/** The arrival list stays off when this house cannot take the party. No price. */
+export function arrivalListHold(partyOk: boolean): string {
+  if (partyOk) return '';
+  const line = 'Arrivals stay off this list until the party fits this house. Nothing is sent.';
+  if (line.includes('$') || /\bis open\b/.test(line)) return '';
+  return line;
+}
+
+/** An arrival chip. A party that cannot stay leaves the price off. */
+export function arrivalChipText(label: string, price: string, showPrice: boolean): string {
+  if (!showPrice || price.includes('NaN')) return label;
+  return `${label} · ${price}`;
 }

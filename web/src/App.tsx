@@ -34,6 +34,15 @@ const HouseSite = lazy(() =>
 const OwnerStatement = lazy(() =>
   import('./components/OwnerStatement').then((m) => ({ default: m.OwnerStatement })),
 );
+const OwnerPortal = lazy(() =>
+  import('./components/OwnerPortal').then((m) => ({ default: m.OwnerPortal })),
+);
+const CleanLink = lazy(() =>
+  import('./components/CleanLink').then((m) => ({ default: m.CleanLink })),
+);
+const RequestStatus = lazy(() =>
+  import('./components/RequestStatus').then((m) => ({ default: m.RequestStatus })),
+);
 const CleanDesk = lazy(() =>
   import('./components/CleanDesk').then((m) => ({ default: m.CleanDesk })),
 );
@@ -54,9 +63,23 @@ import { StayApp } from './components/StayApp';
 import { StayHostThread } from './components/StayHostThread';
 import { CommandPalette } from './components/CommandPalette';
 import { OwnerLetterButton } from './components/OwnerLetterButton';
+import { HomePausedDesk } from './components/HomePausedDesk';
+import { HousePausedDesk } from './components/HousePausedDesk';
+import { ReportPausedNav } from './components/ReportPausedNav';
+import { OwnerRules } from './components/OwnerRules';
+import { CleanHouseCards } from './components/CleanHouseCards';
 import { RiverLaunch } from './components/RiverLaunch';
 import { useToast } from './hooks/useToast';
+import { letterPausedLine, ownerStatementPausedLine } from './lib/report-paused';
 import { currentYearMonth } from './lib/months';
+
+function BooksUnread() {
+  return (
+    <p className="text-sm text-[var(--uml-muted)]" data-bot="books-unread">
+      Saved bookings could not be read. This page is not using a stand-in list. Nothing was written over them.
+    </p>
+  );
+}
 
 function Dashboard() {
   const initial = parseDashboardHash(window.location.hash);
@@ -71,6 +94,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [extraCleaningFees, setExtraCleaningFees] = useState<Record<string, number>>({});
+  const booksPaused = data?.storageReads === 'paused' || history?.storageReads === 'paused';
   const { toasts, show: showToast } = useToast();
 
   const load = useCallback(async () => {
@@ -220,6 +244,15 @@ function Dashboard() {
           </div>
         )}
 
+        {data?.storageReads === 'paused' && (
+          <div
+            className="mb-4 rounded-2xl border border-amber-700/50 bg-amber-950/40 px-4 py-3 text-sm text-amber-100"
+            data-bot="storage-paused"
+          >
+            Saved expenses and bookings could not be read. Storage reads are paused for the rest of the day.
+            Nothing was written over them.
+          </div>
+        )}
         <Suspense fallback={<LoadingSkeleton />}>
         {activeTab === 'ours' ? (
           <main>
@@ -230,7 +263,10 @@ function Dashboard() {
           </main>
         ) : activeTab === 'river' && riverView === 'launch' ? (
           <main>
-            <RiverLaunch reservations={data?.reservations ?? []} />
+            <RiverLaunch
+              reservations={booksPaused ? [] : (data?.reservations ?? [])}
+              bookingsUnreadable={booksPaused}
+            />
           </main>
         ) : activeTab === 'river' && riverView === 'build' ? (
           <main>
@@ -248,8 +284,13 @@ function Dashboard() {
               <button type="button" data-bot="report-documents" className="uml-nav" aria-current="page">
                 Documents
               </button>
-              {data && <OwnerLetterButton data={data} onToast={showToast} />}
+              {data && !booksPaused && <OwnerLetterButton data={data} onToast={showToast} />}
             </div>
+            {booksPaused && (
+              <p className="text-sm text-[var(--uml-muted)]" data-bot="report-letter-paused">
+                {letterPausedLine()}
+              </p>
+            )}
             <DocumentsVault onToast={showToast} />
           </main>
         ) : activeTab === 'market' ? (
@@ -259,8 +300,11 @@ function Dashboard() {
         ) : activeTab === 'agents' ? (
           <main>
             <AgentsHub
-              reservations={history?.reservations?.length ? history.reservations : (data?.reservations ?? [])}
-              calendar={data || history?.reservations?.length ? 'live' : loading ? 'loading' : 'off'}
+              reservations={
+                booksPaused ? [] : history?.reservations?.length ? history.reservations : (data?.reservations ?? [])
+              }
+              calendar={booksPaused ? 'off' : data || history?.reservations?.length ? 'live' : loading ? 'loading' : 'off'}
+              booksPaused={booksPaused}
             />
           </main>
         ) : loading && !data ? (
@@ -268,7 +312,16 @@ function Dashboard() {
         ) : data ? (
           <main className={loading ? 'opacity-60' : ''}>
             {activeTab === 'guests' && <GuestsPanel onToast={showToast} />}
-            {activeTab === 'portfolio' && (
+            {booksPaused &&
+              (activeTab === 'portfolio' ||
+                activeTab === 'report' ||
+                activeTab === 'owner' ||
+                activeTab === 'clean' ||
+                activeTab === 'ranch' ||
+                activeTab === 'lindon' ||
+                (activeTab === 'river' && riverView === 'rental')) && <BooksUnread />}
+            {activeTab === 'portfolio' && booksPaused && <HomePausedDesk />}
+            {activeTab === 'portfolio' && !booksPaused && (
               <PortfolioOverview
                 data={data}
                 history={history}
@@ -279,7 +332,8 @@ function Dashboard() {
                 onOpenBuild={() => go('river', 'pnl', 'build')}
               />
             )}
-            {activeTab === 'report' && (
+            {activeTab === 'report' && booksPaused && <ReportPausedNav onDocuments={() => go('report', 'documents')} />}
+            {activeTab === 'report' && !booksPaused && (
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2 items-center">
                   <button type="button" data-bot="report-pnl" className="uml-nav" aria-current="page">
@@ -304,7 +358,13 @@ function Dashboard() {
                 />
               </div>
             )}
-            {activeTab === 'owner' && (
+            {activeTab === 'owner' && <OwnerRules />}
+            {activeTab === 'owner' && booksPaused && (
+              <p className="uml-panel mb-6 rounded-3xl p-6 text-sm" data-bot="owner-statement-paused">
+                {ownerStatementPausedLine()}
+              </p>
+            )}
+            {activeTab === 'owner' && !booksPaused && (
               <OwnerStatement
                 month={currentMonth}
                 reservations={data.reservations}
@@ -312,14 +372,20 @@ function Dashboard() {
                 extraCleaningFees={extraCleaningFees}
               />
             )}
-            {activeTab === 'clean' && (
+            {activeTab === 'clean' && booksPaused && <CleanHouseCards />}
+            {activeTab === 'clean' && !booksPaused && (
               <CleanDesk
                 reservations={history?.reservations?.length ? history.reservations : data.reservations}
               />
             )}
-            {(activeTab === 'ranch' ||
-              activeTab === 'lindon' ||
-              (activeTab === 'river' && riverView === 'rental')) && (
+            {booksPaused &&
+              (activeTab === 'ranch' || activeTab === 'lindon' || (activeTab === 'river' && riverView === 'rental')) && (
+                <HousePausedDesk house={activeTab === 'lindon' ? 'lindon' : activeTab === 'ranch' ? 'ranch' : 'river'} />
+              )}
+            {!booksPaused &&
+              (activeTab === 'ranch' ||
+                activeTab === 'lindon' ||
+                (activeTab === 'river' && riverView === 'rental')) && (
               <PropertyDetail
                 tab={activeTab}
                 data={data}
@@ -400,6 +466,31 @@ export default function App() {
   const esignMatch = window.location.pathname.match(/^\/esign\/([^/]+)/);
   if (esignMatch?.[1]) {
     return <EsignCeremony token={esignMatch[1]} />;
+  }
+  const ownerMatch = window.location.pathname.match(/^\/owner\/([a-f0-9]{32})\/?$/);
+  if (ownerMatch?.[1]) {
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <OwnerPortal token={ownerMatch[1]} />
+      </Suspense>
+    );
+  }
+  // The guest's own view of a direct request. The token is the credential, so there is no gate.
+  const requestMatch = window.location.pathname.match(/^\/request\/([a-f0-9]{32})\/?$/);
+  if (requestMatch?.[1]) {
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <RequestStatus token={requestMatch[1]} />
+      </Suspense>
+    );
+  }
+  const cleanMatch = window.location.pathname.match(/^\/clean\/([a-f0-9]{32})\/?$/);
+  if (cleanMatch?.[1]) {
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <CleanLink token={cleanMatch[1]} />
+      </Suspense>
+    );
   }
   if (window.location.pathname === '/houses' || window.location.pathname.startsWith('/houses/')) {
     return (

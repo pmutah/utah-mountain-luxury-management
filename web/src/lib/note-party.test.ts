@@ -15,6 +15,11 @@ test('a booking note yields a guest count and leaves the name out', () => {
   assert.equal(noteChildCount('18 adults · 2 children'), 2);
   assert.equal(noteChildCount('1 adult · 1 child'), 1);
   assert.equal(noteChildCount('Ada Lovelace · 9 guests'), null);
+  assert.equal(noteChildCount('9 guests · 2 children'), 2);
+  assert.equal(noteChildCount('4 guests · 8 children'), null);
+  assert.equal(hostPartyPhrase('9 guests · 2 children'), 'This stay is for 9 guests, including 2 children.');
+  assert.equal(hostPartyPhrase('4 guests · 4 children'), 'This stay names only children. A stay needs an adult.');
+  assert.equal(hostPartyPhrase('4 guests · 8 children'), 'This stay is for 4 guests.');
   assert.equal(hostPartyPhrase('Ada Lovelace · 18 adults · 2 children'), 'This stay is for 20 guests, including 2 children.');
   assert.equal(hostPartyPhrase('Ada Lovelace · 18 adults · 2 children').includes('Ada'), false);
   assert.match(childBrief(

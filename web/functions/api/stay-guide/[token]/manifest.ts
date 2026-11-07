@@ -1,10 +1,13 @@
 import { PROPERTIES } from '../../../_lib/data';
 import { findSurveyByToken } from '../../../_lib/survey-store';
+import { readOrRefuse } from '../../../_lib/read-guard';
 import type { AgentEnv } from '../../../_lib/agent/types';
 
-export const onRequestGet: PagesFunction<AgentEnv> = async ({ env, params }) => {
+export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
   const token = String(params.token ?? '');
-  const survey = await findSurveyByToken(env, token);
+  const read = await readOrRefuse(request, () => findSurveyByToken(env, token), 'This stay');
+  if (!read.ok) return read.response;
+  const survey = read.value;
   if (!survey) return new Response('Not found', { status: 404 });
   const house = PROPERTIES[survey.propertyId]?.name.replace(/^The /, '') ?? 'Your stay';
   const start = `/stay/${encodeURIComponent(token)}`;

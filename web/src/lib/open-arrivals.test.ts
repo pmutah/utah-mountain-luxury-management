@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { openArrivals, nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals.ts';
+import { arrivalChipText, arrivalListHold, openArrivals, nextOpenPhrase, lengthPhrase, addonPhrase } from './open-arrivals.ts';
 import { quoteStay } from './quote.ts';
 import { stayLengths } from './stay-lengths.ts';
 
@@ -18,6 +18,7 @@ test('the next open arrival is a stay the booking page will quote', () => {
   assert.equal(openings.every((item) => item.checkIn >= '2026-11-01'), true);
   assert.equal(nextOpenPhrase('river', [], '2026-10-29', 'short'), 'River Nov 1 for 2 nights');
   assert.equal(lengthPhrase('river', [], '2026-10-29', 'short'), 'River Nov 1 can quote 2, 3, 4, 7, 14, 28 nights');
+  assert.equal(lengthPhrase('river', [], '2026-10-29', 'short', ['2026-11-04']), 'River Nov 1 can quote 2, 3 nights');
   assert.equal(
     addonPhrase('river', [], '2026-10-29', 'short'),
     'River Nov 1 can request an early arrival, a later checkout, and a grocery drop',
@@ -39,4 +40,25 @@ test('a booked stay is skipped and a Ranch weekday can be one night', () => {
   const ranch = openArrivals('ranch', [], '2026-10-29', 'unknown');
   assert.equal(ranch[0]?.checkIn, '2026-10-29');
   assert.equal(ranch[0]?.nights, 1);
+  const blocked = openArrivals('river', [], '2026-10-29', 'unknown', 3, ['2026-11-02']);
+  assert.equal(blocked.some((item) => item.checkIn <= '2026-11-02' && item.checkOut > '2026-11-02'), false);
+  assert.notEqual(blocked[0]?.checkIn, '2026-11-01');
+});
+
+test('a party that does not fit the house gets no arrival list', () => {
+  assert.equal(openArrivals('ranch', [], '2026-10-29', 'short', 3, [], 30).length, 0);
+  assert.equal(openArrivals('ranch', [], '2026-10-29', 'short', 3, [], 4, 4).length, 0);
+  assert.equal(openArrivals('ranch', [], '2026-10-29', 'short', 3, [], 4).length > 0, true);
+  const hold = arrivalListHold(false);
+  assert.match(hold, /until the party fits this house/);
+  assert.match(hold, /Nothing is sent/);
+  assert.equal(hold.includes('$'), false);
+  assert.equal(/\bis open\b/.test(hold), false);
+  assert.equal(arrivalListHold(true), '');
+});
+
+test('an arrival chip leaves the price off when the party cannot stay', () => {
+  assert.equal(arrivalChipText('November 16, 2026 · 2 nights', '$1', false), 'November 16, 2026 · 2 nights');
+  assert.equal(arrivalChipText('November 16, 2026 · 2 nights', '$1', false).includes('$'), false);
+  assert.equal(arrivalChipText('November 16, 2026 · 2 nights', '$1', true), 'November 16, 2026 · 2 nights · $1');
 });

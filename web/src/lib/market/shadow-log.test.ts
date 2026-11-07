@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   SHADOW_LOG_KEY,
+  SHADOW_UNREAD,
   hospitablePushAllowed,
   loadShadowLog,
   recordShadowDay,
@@ -52,6 +53,16 @@ test('a future day does not count and a sendable digest is dropped', () => {
   assert.deepEqual(shadowClock(kept, '2026-10-29').dates, []);
   const next = recordShadowDay(kept, '2026-10-29', DIGEST);
   assert.deepEqual(shadowClock(next, '2026-10-29').dates, ['2026-10-29']);
+});
+
+test('a day without the calendar does not count and drops that date', () => {
+  const prior = recordShadowDay([], '2026-10-29', DIGEST);
+  const unread = `${SHADOW_UNREAD}\nNothing sent to Hospitable.`;
+  const next = recordShadowDay(prior, '2026-10-30', unread);
+  assert.deepEqual(next.map((day) => day.date), ['2026-10-29']);
+  const dropped = recordShadowDay(recordShadowDay(prior, '2026-10-30', DIGEST), '2026-10-30', unread);
+  assert.deepEqual(dropped.map((day) => day.date), ['2026-10-29']);
+  assert.equal(shadowClock(dropped, '2026-10-30').dates.includes('2026-10-30'), false);
 });
 
 test('a saved log round-trips and drops a broken row', () => {

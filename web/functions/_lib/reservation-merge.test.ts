@@ -18,8 +18,20 @@ function memoryEnv(): SettingsEnv & { dump: () => Map<string, string> } {
       data.set(key, value);
     },
   };
-  return { SETTINGS: SETTINGS as unknown as SettingsEnv['SETTINGS'], dump: () => data };
+  /*
+   * A password and a matching cookie, because the route under test is host-only and now fails closed
+   * when none is set. This test used to call it anonymously and expect 200; that expectation was the
+   * bug the auth hardening fixed, not a property worth keeping.
+   */
+  return {
+    SETTINGS: SETTINGS as unknown as SettingsEnv['SETTINGS'],
+    DASHBOARD_PASSWORD: 'test-password',
+    dump: () => data,
+  } as SettingsEnv & { dump: () => Map<string, string> };
 }
+
+/** The cookie a signed-in host presents. */
+const HOST_COOKIE = `wpm_auth=${btoa('wpm:test-password').replace(/=+$/, '')}`;
 
 function stay(
   partial: Pick<ReservationRecord, 'guestName' | 'propertyId' | 'checkIn' | 'checkOut' | 'payout' | 'source'> &
@@ -186,14 +198,14 @@ async function testPatchSourcePersistsOnGet() {
   const env = memoryEnv();
   const req = new Request('https://wilhite-portfolio.pages.dev/api/reservations/l18', {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Cookie: HOST_COOKIE },
     body: JSON.stringify({ source: 'HomeAway', note: 'source synced VRBO from Hospitable HA-TKYBPB' }),
   });
   const res = await onRequestPatch({
     request: req,
     env,
     params: { id: 'l18' },
-  } as Parameters<typeof onRequestPatch>[0]);
+  } as unknown as Parameters<typeof onRequestPatch>[0]);
   assert.equal(res.status, 200);
   const patched = (await res.json()) as ReservationRecord;
   assert.equal(patched.source, 'HomeAway');

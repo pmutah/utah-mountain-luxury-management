@@ -91,3 +91,20 @@ test('Ranch and River each month add up to that month', () => {
   assert.equal(Math.round((row.ranch + row.river) * 100), Math.round(row.todd * 100));
   assert.deepEqual(footOwnerHouses(0.03, 0.014, 0.014), { ranch: 0.01, river: 0.02 });
 });
+
+test('a statement figure is never a float artefact', () => {
+  // A real December read 1908.3439999999998 before this was rounded, which is not money a person
+  // should be shown. Every figure on the statement is cents.
+  const statement = buildOwnerStatement('2026-12', 'month', [], []);
+  const figures = [statement.todd, statement.fee, ...statement.houses.flatMap((h) => [h.revenue, h.costs, h.todd])];
+  for (const value of figures) {
+    assert.equal(Number.isFinite(value), true);
+    assert.equal(Math.round(value * 100) / 100, value, `${value} is not a whole number of cents`);
+  }
+});
+
+test('the house shares still add up to the total after rounding', () => {
+  const statement = buildOwnerStatement('2026-12', 'month', [], []);
+  const sum = statement.houses.reduce((total, house) => total + house.todd, 0);
+  assert.equal(Math.round(sum * 100) / 100, statement.todd);
+});

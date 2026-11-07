@@ -28,6 +28,19 @@ jobs:
         working-directory: .
         run: npm ci --workspace web || npm install --workspace web
 
+      - name: Typecheck the app and the Functions
+        # `npm run build` only covers `src`. A broken import or duplicate declaration under
+        # `functions/` reaches production unless this runs, which is how it went unnoticed before.
+        run: |
+          npx tsc -b
+          npm run check:functions
+
+      - name: Check every route guard
+        run: npm run check:guards
+
+      - name: Test
+        run: npm test
+
       - name: Build web
         run: npm run build
 

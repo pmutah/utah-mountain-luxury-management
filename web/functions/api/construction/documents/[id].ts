@@ -1,4 +1,6 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
+import { readOrRefuse } from '../../../_lib/read-guard';
 import {
   getConstructionDocument,
   deleteConstructionDocumentRecord,
@@ -18,13 +20,16 @@ const VALID_TYPES: ConstructionDocType[] = [
 ];
 
 export const onRequestGet: PagesFunction<ConstructionEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
-  const doc = await getConstructionDocument(env, id);
-  if (!doc) return corsJson(request, { error: 'Not found' }, 404);
-  return corsJson(request, doc);
+  const read = await readOrRefuse(request, () => getConstructionDocument(env, id), 'Construction documents');
+  if (!read.ok) return read.response;
+  if (!read.value) return corsJson(request, { error: 'Not found' }, 404);
+  return corsJson(request, read.value);
 };
 
 export const onRequestPatch: PagesFunction<ConstructionEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
   const body = (await request.json()) as {
     type?: string;
@@ -41,14 +46,18 @@ export const onRequestPatch: PagesFunction<ConstructionEnv> = async ({ request, 
   if (body.title !== undefined) patch.title = body.title;
   if (body.vendor !== undefined) patch.vendor = body.vendor;
 
-  const updated = await updateConstructionDocument(env, id, patch);
-  if (!updated) return corsJson(request, { error: 'Not found' }, 404);
-  return corsJson(request, updated);
+  const read = await readOrRefuse(request, () => updateConstructionDocument(env, id, patch), 'Construction documents');
+  if (!read.ok) return read.response;
+  if (!read.value) return corsJson(request, { error: 'Not found' }, 404);
+  return corsJson(request, read.value);
 };
 
 export const onRequestDelete: PagesFunction<ConstructionEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
-  const doc = await deleteConstructionDocumentRecord(env, id);
+  const read = await readOrRefuse(request, () => deleteConstructionDocumentRecord(env, id), 'Construction documents');
+  if (!read.ok) return read.response;
+  const doc = read.value;
   if (!doc) return corsJson(request, { error: 'Not found' }, 404);
   if (doc.storagePath) await deleteConstructionFile(env, doc.storagePath).catch(() => {});
   return corsJson(request, { ok: true });

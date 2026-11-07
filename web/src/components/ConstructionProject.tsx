@@ -9,6 +9,11 @@ import {
   type Expense,
 } from '../lib/api';
 import { ConstructionPartnerLedger } from './ConstructionPartnerLedger';
+import {
+  constructionDocsUnreadLine,
+  constructionListUnreadable,
+  constructionProjectUnreadLine,
+} from '../lib/construction-read';
 import { CONSTRUCTION_MAX_BYTES, CONSTRUCTION_MAX_MB } from '../lib/construction-limits';
 import {
   getDocumentInvoiceAmount,
@@ -69,6 +74,9 @@ export function ConstructionProjectView({
 }) {
   const [project, setProject] = useState<Project | null>(null);
   const [documents, setDocuments] = useState<ConstructionDocument[]>([]);
+  const [docsUnreadable, setDocsUnreadable] = useState(false);
+  const [projectUnreadable, setProjectUnreadable] = useState(false);
+  const [expensesUnreadable, setExpensesUnreadable] = useState(false);
   const [recommendations, setRecommendations] = useState<ConstructionRecommendation[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,17 +93,62 @@ export function ConstructionProjectView({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [p, docs, recs, exp] = await Promise.all([
-        api.getConstructionProject(),
-        api.getConstructionDocuments(),
-        api.getConstructionRecommendations(),
-        api.getExpenses().catch(() => ({ expenses: [] as Expense[] })),
+      const [projectResult, docsResult, recsResult, expResult] = await Promise.all([
+        api.getConstructionProject().then(
+          (p) => ({ ok: true as const, p }),
+          (e: unknown) => ({ ok: false as const, e }),
+        ),
+        api.getConstructionDocuments().then(
+          (d) => ({ ok: true as const, d }),
+          (e: unknown) => ({ ok: false as const, e }),
+        ),
+        api.getConstructionRecommendations().then(
+          (r) => ({ ok: true as const, r }),
+          () => ({ ok: false as const }),
+        ),
+        api.getExpenses().then(
+          (x) => ({ ok: true as const, x }),
+          (e: unknown) => ({ ok: false as const, e }),
+        ),
       ]);
-      setProject(p);
-      setDocuments(docs.documents);
-      setFirebaseStorage(docs.limits?.firebaseConfigured ?? null);
-      setRecommendations(recs.recommendations);
-      setExpenses(exp.expenses);
+      if (projectResult.ok) {
+        setProjectUnreadable(false);
+        setProject(projectResult.p);
+      } else {
+        const message = projectResult.e instanceof Error ? projectResult.e.message : 'Failed to load construction project';
+        if (constructionListUnreadable(message)) {
+          setProjectUnreadable(true);
+          setProject(null);
+        } else {
+          onError(message);
+        }
+      }
+      if (docsResult.ok && docsResult.d.storageReads !== 'paused' && Array.isArray(docsResult.d.documents)) {
+        setDocsUnreadable(false);
+        setDocuments(docsResult.d.documents);
+        setFirebaseStorage(docsResult.d.limits?.firebaseConfigured ?? null);
+      } else {
+        const message = docsResult.ok ? '' : docsResult.e instanceof Error ? docsResult.e.message : 'Failed to load construction documents';
+        if (docsResult.ok || constructionListUnreadable(message)) {
+          setDocsUnreadable(true);
+          setDocuments([]);
+        } else {
+          onError(message);
+        }
+      }
+      setRecommendations(recsResult.ok ? recsResult.r.recommendations : []);
+      if (expResult.ok) {
+        setExpensesUnreadable(false);
+        setExpenses(expResult.x.expenses);
+      } else {
+        const message = expResult.e instanceof Error ? expResult.e.message : 'Failed to load expenses';
+        if (constructionListUnreadable(message)) {
+          setExpensesUnreadable(true);
+          setExpenses([]);
+        } else {
+          onError(message);
+        }
+      }
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Failed to load construction project');
     } finally {
@@ -113,6 +166,7 @@ export function ConstructionProjectView({
   const filteredDocuments = documents.filter((d) => matchesFilter(d, docFilter));
 
   const onUpload = async (files: FileList | null) => {
+    if (docsUnreadable) return;
     if (!files?.length) return;
     const list = Array.from(files);
     setUploading(true);
@@ -183,8 +237,30 @@ export function ConstructionProjectView({
     }
   };
 
-  if (loading && !project) {
+  if (loading && !project && !projectUnreadable) {
     return <p className="text-slate-500 text-sm animate-pulse">Loading construction project…</p>;
+  }
+
+  if (!project && projectUnreadable) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-amber-100" data-bot="construction-project-unread">
+          {constructionProjectUnreadLine()}
+        </p>
+        {docsUnreadable && (
+          <p className="text-sm text-slate-300" data-bot="construction-docs-unread">
+            {constructionDocsUnreadLine()}
+          </p>
+        )}
+        <ConstructionPartnerLedger
+          expenses={[]}
+          unreadable={expensesUnreadable}
+          onRefresh={() => void load()}
+          onError={onError}
+          onToast={onToast}
+        />
+      </div>
+    );
   }
 
   if (!project) return null;
@@ -211,7 +287,13 @@ export function ConstructionProjectView({
           </div>
           <div className="bg-slate-950/50 rounded-2xl p-4 border border-slate-800">
             <p className="text-[10px] font-bold text-slate-500 uppercase">Invoiced to date</p>
-            <p className="text-2xl font-black text-amber-400 mt-1">{formatCurrency(invoiced)}</p>
+            {docsUnreadable ? (
+              <p className="text-sm text-slate-300 mt-2" data-bot="construction-docs-unread">
+                {constructionDocsUnreadLine()}
+              </p>
+            ) : (
+              <p className="text-2xl font-black text-amber-400 mt-1">{formatCurrency(invoiced)}</p>
+            )}
             {invoiceAttentionCount > 0 && (
               <p className="text-[10px] text-amber-500/90 mt-1 font-bold">
                 {invoiceAttentionCount} invoice{invoiceAttentionCount > 1 ? 's' : ''} need type or
@@ -220,7 +302,7 @@ export function ConstructionProjectView({
             )}
           </div>
         </div>
-        {project.budgetTarget > 0 && (
+        {project.budgetTarget > 0 && !docsUnreadable && (
           <div className="mt-4 h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-amber-500 transition-all"
@@ -232,6 +314,7 @@ export function ConstructionProjectView({
 
       <ConstructionPartnerLedger
         expenses={expenses}
+        unreadable={expensesUnreadable}
         onRefresh={() => void load()}
         onError={onError}
         onToast={onToast}
@@ -266,7 +349,7 @@ export function ConstructionProjectView({
       <section className="bg-slate-900 rounded-[40px] border border-slate-800 p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <h3 className="text-sm font-black uppercase tracking-widest text-white">Documents</h3>
-          <div className="flex flex-wrap gap-2">
+          {!docsUnreadable && <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={uploading}
@@ -284,7 +367,7 @@ export function ConstructionProjectView({
               <Upload className="w-4 h-4" />
               Upload
             </button>
-          </div>
+          </div>}
           <input
             ref={inputRef}
             type="file"
@@ -303,7 +386,7 @@ export function ConstructionProjectView({
           />
         </div>
 
-        <div
+        {!docsUnreadable && <div
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
@@ -346,9 +429,9 @@ export function ConstructionProjectView({
               </button>
             </>
           )}
-        </div>
+        </div>}
 
-        <div className="flex flex-wrap gap-2 mb-4">
+        {!docsUnreadable && <div className="flex flex-wrap gap-2 mb-4">
           {FILTER_CHIPS.map((chip) => (
             <button
               key={chip.id}
@@ -363,9 +446,13 @@ export function ConstructionProjectView({
               {chip.label}
             </button>
           ))}
-        </div>
+        </div>}
 
-        {documents.length === 0 ? (
+        {docsUnreadable ? (
+          <p className="text-sm text-slate-300" data-bot="construction-docs-unread">
+            {constructionDocsUnreadLine()}
+          </p>
+        ) : documents.length === 0 ? (
           <div className="text-center py-10 px-4">
             <FileText className="w-12 h-12 mx-auto text-slate-700 mb-3" />
             <p className="text-sm font-bold text-slate-400">

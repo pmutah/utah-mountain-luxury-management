@@ -1,8 +1,11 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { updateReservation, updateReservationStatus, getAllReservations } from '../../_lib/reservations-store';
+import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv, ReservationRecord, ReservationStatus } from '../../_lib/agent/types';
 
 export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
   const body = (await request.json()) as {
     status?: ReservationStatus;
@@ -35,24 +38,33 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
   }
 
   if (body.status) {
-    const updated = await updateReservationStatus(env, id, body.status, patch);
-    if (!updated) return corsJson(request, { error: 'Not found' }, 404);
-    return corsJson(request, updated);
+    const read = await readOrRefuse(
+      request,
+      () => updateReservationStatus(env, id, body.status!, patch),
+      'Saved bookings',
+    );
+    if (!read.ok) return read.response;
+    if (!read.value) return corsJson(request, { error: 'Not found' }, 404);
+    return corsJson(request, read.value);
   }
 
   if (Object.keys(patch).length === 0) {
     return corsJson(request, { error: 'Nothing to update' }, 400);
   }
 
-  const updated = await updateReservation(env, id, patch);
+  const read = await readOrRefuse(request, () => updateReservation(env, id, patch), 'Saved bookings');
+  if (!read.ok) return read.response;
+  const updated = read.value;
   if (!updated) return corsJson(request, { error: 'Not found' }, 404);
   return corsJson(request, updated);
 };
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
-  const all = await getAllReservations(env);
-  const r = all.find((x) => x.id === id);
+  const read = await readOrRefuse(request, () => getAllReservations(env), 'Saved bookings');
+  if (!read.ok) return read.response;
+  const r = read.value.find((x) => x.id === id);
   if (!r) return corsJson(request, { error: 'Not found' }, 404);
   return corsJson(request, r);
 };

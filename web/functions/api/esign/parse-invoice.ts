@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import {
   applyParsedInvoice,
@@ -14,6 +15,7 @@ interface Env extends SettingsEnv {
 const DEFAULT_GMAIL_QUERY = 'invoice OR "pay application" OR "pay app" newer_than:180d';
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const body = (await request.json()) as {
     type?: 'text' | 'image' | 'gmail' | 'gmail-search';
     text?: string;

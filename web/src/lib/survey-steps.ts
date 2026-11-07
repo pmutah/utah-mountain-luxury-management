@@ -14,8 +14,6 @@ export type VipStepId =
   | 'snacks'
   | 'drinks'
   | 'allergies'
-  | 'movie'
-  | 'popcorn'
   | 'else';
 
 /** River preference steps. Arrival is asked before the house is set, and sending stays on the last step. */
@@ -24,6 +22,6 @@ export function vipStepIds(activities: readonly string[] | undefined): VipStepId
   if (activities?.includes('Fishing')) next.push('fishing');
   if (activities?.includes('Mountain / trail biking')) next.push('bikes');
   if (activities?.includes('Skiing')) next.push('skiing');
-  next.push('amenities', 'food', 'snacks', 'drinks', 'allergies', 'movie', 'popcorn', 'else');
+  next.push('amenities', 'food', 'snacks', 'drinks', 'allergies', 'else');
   return next;
 }

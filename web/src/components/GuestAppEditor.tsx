@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, type GuidePlace, type HouseGuide } from '../lib/api';
+import { guestEditorLockLine } from '../lib/guest-list';
+import { enableHold, guideReadiness, switchLine } from '../lib/guest-app-ready';
 
 type HouseId = 'ranch' | 'lindon' | 'river';
 
@@ -23,14 +25,20 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-export function GuestAppEditor({ onToast }: { onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void }) {
+export function GuestAppEditor({
+  onToast,
+  locked = false,
+}: {
+  onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
+  locked?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [house, setHouse] = useState<HouseId>('river');
   const [guides, setGuides] = useState<Record<HouseId, HouseGuide> | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!open || guides) return;
+    if (locked || !open || guides) return;
     api
       .getGuestGuides()
       .then((data) => setGuides(data.guides))
@@ -63,6 +71,15 @@ export function GuestAppEditor({ onToast }: { onToast: (msg: string, kind?: 'suc
     if (!guide) return;
     const label = HOUSES.find((h) => h.id === house)?.label;
     const enabled = !guide.enabled;
+    // Turning a house on asks the same readiness check the route runs, so the switch cannot send a
+    // guest to a nearly blank page.
+    if (enabled) {
+      const hold = enableHold(guide);
+      if (hold) {
+        onToast(hold, 'error');
+        return;
+      }
+    }
     setSaving(true);
     try {
       const result = await api.saveGuestGuide(house, { enabled });
@@ -99,19 +116,29 @@ export function GuestAppEditor({ onToast }: { onToast: (msg: string, kind?: 'suc
 
   return (
     <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guest-app-editor">
-      <button type="button" className="flex w-full items-center justify-between text-left" onClick={() => setOpen(!open)}>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between text-left"
+        data-bot="guest-app-edit"
+        aria-disabled={locked}
+        onClick={() => {
+          if (!locked) setOpen(!open);
+        }}
+      >
         <span>
           <span className="block text-white font-black">Guest app</span>
-          <span className="block text-xs text-slate-500">
-            Codes, Wi-Fi, house guide, and area picks guests see at their stay link.
+          <span className="block text-xs text-slate-500" data-bot="guest-app-lock">
+            {locked
+              ? guestEditorLockLine()
+              : 'Codes, Wi-Fi, house guide, and area picks guests see at their stay link.'}
           </span>
         </span>
-        <span className="text-xs font-black uppercase text-cyan-400">{open ? 'Close' : 'Edit'}</span>
+        <span className="text-xs font-black uppercase text-cyan-400">{open && !locked ? 'Close' : 'Edit'}</span>
       </button>
 
-      {open && !guide && <p className="mt-4 text-sm text-slate-500">Loading…</p>}
+      {open && !locked && !guide && <p className="mt-4 text-sm text-slate-500">Loading…</p>}
 
-      {open && guide && (
+      {open && !locked && guide && (
         <div className="mt-5 space-y-5">
           <div className="flex gap-2">
             {HOUSES.map((item) => (
@@ -143,6 +170,13 @@ export function GuestAppEditor({ onToast }: { onToast: (msg: string, kind?: 'suc
                 {guide.enabled
                   ? 'Guests open the full stay app from their link.'
                   : 'Guests only see the preference form. Use Preview app on a stay to keep building.'}
+              </p>
+              <p
+                className={`mt-1 text-xs ${guideReadiness(guide).ready ? 'text-slate-400' : 'text-amber-400'}`}
+                data-bot="guest-app-ready"
+                data-ready={guideReadiness(guide).ready ? 'yes' : 'no'}
+              >
+                {switchLine(guide, guide.enabled)}
               </p>
             </div>
             <button

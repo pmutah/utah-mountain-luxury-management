@@ -1,7 +1,9 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { exchangeGmailCode } from '../../../_lib/gmail-store';
 import type { AgentEnv } from '../../../_lib/agent/types';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const origin = url.origin;

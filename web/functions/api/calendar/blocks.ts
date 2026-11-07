@@ -1,13 +1,29 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { loadCalendarBlocks, addCalendarBlock, deleteCalendarBlock } from '../../_lib/calendar-store';
+import { storageReadPaused } from '../../_lib/kv-json';
 import type { AgentEnv } from '../../_lib/agent/types';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
-  const blocks = await loadCalendarBlocks(env);
-  return corsJson(request, { blocks });
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+  try {
+    const blocks = await loadCalendarBlocks(env);
+    return corsJson(request, { blocks, storageReads: 'ok' });
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(request, {
+        blocks: null,
+        storageReads: 'paused',
+        error: 'Calendar blocks could not be read. Nothing was written over them.',
+      });
+    }
+    const message = err instanceof Error ? err.message : 'Calendar blocks failed';
+    return corsJson(request, { error: message }, 500);
+  }
 };
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const body = (await request.json()) as {
     propertyId: 'ranch' | 'lindon' | 'river';
     start: string;
@@ -29,6 +45,7 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
 };
 
 export const onRequestDelete: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const url = new URL(request.url);
   const id = url.searchParams.get('id');
   if (!id) return corsJson(request, { error: 'id query param required' }, 400);

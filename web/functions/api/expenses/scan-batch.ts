@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { parseExpensesFromDocument } from '../../_lib/gemini';
 import type { SettingsEnv } from '../../_lib/kv';
@@ -7,6 +8,7 @@ interface ScanBatchEnv extends SettingsEnv {
 }
 
 export const onRequestPost: PagesFunction<ScanBatchEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const apiKey = env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return corsJson(request, { error: 'GEMINI_API_KEY not configured on server' }, 503);

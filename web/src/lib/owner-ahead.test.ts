@@ -76,4 +76,23 @@ test('ahead counts Ranch and River nights still left and leaves names off', () =
   );
   assert.equal(aheadChannelsLine(named), 'Where they booked: 1 VRBO, 2 Direct, 2 Unlisted.');
   assert.equal(JSON.stringify(named).includes('far too long'), false);
+  const hole = ownerAhead(
+    [
+      stay({ propertyId: 'river', checkIn: '2026-11-02', checkOut: '2026-11-03' }),
+      stay({ propertyId: 'river', checkIn: '2026-11-04', checkOut: '2026-11-06' }),
+    ],
+    '2026-10-30',
+  );
+  const riverGaps = hole.houses[1]?.gaps ?? [];
+  const firstHole = riverGaps.find((gap) => gap.start === '2026-11-01');
+  const secondHole = riverGaps.find((gap) => gap.start === '2026-11-03');
+  assert.equal(firstHole?.nights, 1);
+  assert.equal(firstHole?.bookable, false);
+  assert.equal(secondHole?.nights, 1);
+  assert.equal(secondHole?.bookable, false);
+  assert.match(gapLine('River', secondHole!), /cannot be booked/);
+  assert.match(gapLine('River', secondHole!), /does not say the house is open/);
+  assert.equal(gapLine('River', secondHole!).includes('$'), false);
+  assert.match(gapBrief(hole), /River Nov 1 for 1 night cannot be booked/);
+  assert.equal(gapBrief(hole).includes('$'), false);
 });

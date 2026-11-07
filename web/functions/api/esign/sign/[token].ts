@@ -6,12 +6,24 @@ import {
   isSessionOpen,
 } from '../../../_lib/esign/esign-store';
 import { FOLDER_LABELS } from '../../../_lib/esign/types';
+import { readOrRefuse, withPausedGuard } from '../../../_lib/read-guard';
 import type { FirebaseStorageEnv } from '../../../_lib/gcs';
 import type { SettingsEnv } from '../../../_lib/kv';
 
 type Env = SettingsEnv & FirebaseStorageEnv;
 
-export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) =>
+  withPausedGuard(
+    request,
+    () => signSessionView(request, env, params),
+    'This signing link',
+  );
+
+async function signSessionView(
+  request: Request,
+  env: Env,
+  params: { token?: unknown },
+): Promise<Response> {
   const token = String(params.token ?? '');
   const session = await findSessionByToken(env, token);
   if (!session) return corsJson(request, { error: 'This signing link is not valid.' }, 404);
@@ -32,7 +44,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   const token = String(params.token ?? '');
-  const session = await findSessionByToken(env, token);
+  const found = await readOrRefuse(request, () => findSessionByToken(env, token), 'This signing link');
+  if (!found.ok) return found.response;
+  const session = found.value;
   if (!session) return corsJson(request, { error: 'This signing link is not valid.' }, 404);
   if (session.completedAt) return corsJson(request, { error: 'This document is already signed.' }, 409);
   if (!isSessionOpen(session)) {

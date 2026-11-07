@@ -15,7 +15,7 @@ export function isHouseId(id: string): id is HouseId {
 }
 
 /** Nights a guest cannot book. Cancelled stays are free. Check-out day is free. */
-export function occupiedNights(stays: StaySpan[], house: HouseId, from: string, until: string): string[] {
+export function occupiedNights(stays: readonly StaySpan[], house: HouseId, from: string, until: string): string[] {
   const taken = new Set<string>();
   for (const stay of stays) {
     if (stay.propertyId !== house || stay.status === 'cancelled') continue;
@@ -31,7 +31,7 @@ export function occupiedNights(stays: StaySpan[], house: HouseId, from: string, 
 }
 
 export function occupiedByHouse(
-  stays: StaySpan[],
+  stays: readonly StaySpan[],
   from: string,
   until: string,
 ): Record<HouseId, string[]> {
@@ -43,3 +43,32 @@ export function occupiedByHouse(
 }
 
 export { HOUSES };
+
+/**
+ * Houses a request must keep free. A second house is included only when it is a different house.
+ *
+ * A first house that is not one of the three makes the whole request invalid: it does not fall back
+ * to the second house. Before this, `('denver', 'ranch')` returned `['ranch']`, so a request naming a
+ * house we do not rent could pass a check that only looked at the Ranch.
+ */
+export function housesForRequest(propertyId: string, alsoPropertyId = ''): HouseId[] {
+  if (!isHouseId(propertyId)) return [];
+  const houses: HouseId[] = [propertyId];
+  const also = alsoPropertyId.trim();
+  if (isHouseId(also) && also !== propertyId) houses.push(also);
+  return houses;
+}
+
+/** The first requested house that already has one of these nights. Null when every house is free. */
+export function blockedRequestHouse(
+  stays: readonly StaySpan[],
+  houses: readonly HouseId[],
+  checkIn: string,
+  checkOut: string,
+): HouseId | null {
+  if (!checkIn || !checkOut || checkOut <= checkIn) return null;
+  for (const house of houses) {
+    if (occupiedNights(stays, house, checkIn, checkOut).length > 0) return house;
+  }
+  return null;
+}

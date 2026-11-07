@@ -1,11 +1,16 @@
+import { hostDenied, hostOnly } from '../../../../_lib/auth';
 import { corsJson } from '../../../../_lib/data';
 import { getVaultDocument } from '../../../../_lib/esign/esign-store';
+import { readOrRefuse } from '../../../../_lib/read-guard';
 import { startSigningSession } from '../../../../_lib/esign/send-session';
 import type { SettingsEnv } from '../../../../_lib/kv';
 
 export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = String(params.id ?? '');
-  const doc = await getVaultDocument(env, id);
+  const found = await readOrRefuse(request, () => getVaultDocument(env, id), 'The document vault');
+  if (!found.ok) return found.response;
+  const doc = found.value;
   if (!doc) return corsJson(request, { error: 'Not found' }, 404);
   if (!doc.storagePath) return corsJson(request, { error: 'Document file is missing.' }, 422);
   if (doc.status === 'completed') {

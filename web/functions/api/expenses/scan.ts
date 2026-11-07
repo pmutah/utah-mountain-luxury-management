@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { parseExpenseFromImage, parseExpenseFromText } from '../../_lib/gemini';
 import {
@@ -11,6 +12,7 @@ interface ScanEnv extends SettingsEnv {
 }
 
 export const onRequestPost: PagesFunction<ScanEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const apiKey = env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return corsJson(request, { error: 'GEMINI_API_KEY not configured on server' }, 503);

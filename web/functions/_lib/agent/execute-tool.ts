@@ -3,6 +3,9 @@ import { mergeAllExpenses, saveCustomExpenses, loadCustomExpenses, newExpenseId 
 import { parsePaidBy, summarizePartnerContributions, tracksPartnerContributions } from '../paid-by';
 import { parseConstructionStage } from '../construction/types';
 import { loadExtraCleaningFees } from '../kv';
+import { kvGet, storageReadPaused } from '../kv-json';
+import { authCookieHeader } from '../auth';
+import { occupiedNights } from '../../../src/lib/availability';
 import {
   getAllReservations,
   filterReservations,
@@ -40,6 +43,13 @@ import {
 import { buildYieldPlan, suggestRateAdjustment } from '../pricing-doctrine';
 import { annotateYieldPlan, applySharedWork, type WorkOwner } from '../agent-work';
 import type { AgentEnv, PropertyId, ToolStep } from './types';
+import { bookingInbox } from '../../../src/lib/booking-inbox';
+import { suggestedPayoutLine, suggestedPayouts } from '../../../src/lib/payout-suggest';
+import { isDeclineReason } from '../../../src/lib/booking-decline';
+import { denverToday } from '../../../src/lib/market/dates';
+import type { StaySpan } from '../../../src/lib/availability';
+import { onRequestPost as acceptRoute } from '../../api/book/accept';
+import { onRequestPost as declineRoute } from '../../api/book/decline';
 
 export async function executeAgentTool(
   env: AgentEnv,
@@ -103,7 +113,24 @@ async function handleFinances(
   action: string,
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const fees = await loadExtraCleaningFees(env);
+  /*
+   * The cleaning fees are read up front, and a store at its read limit now raises instead of quietly
+   * returning defaults. An unhandled throw here would end the whole chat turn, so it becomes a result
+   * the agent can read and report.
+   */
+  let fees;
+  try {
+    fees = await loadExtraCleaningFees(env);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return {
+        error:
+          'Saved fees and expenses could not be read just now, so no figure is reported. Nothing was written over them. Try again shortly.',
+        refused: true,
+      };
+    }
+    throw err;
+  }
   const allExpenses = await mergeAllExpenses(env);
   const reservations = await getAllReservations(env);
 
@@ -225,11 +252,46 @@ async function handleReservations(
   }
 
   if (action === 'create') {
+    /*
+     * A create from the agent used to save a confirmed stay with no clash check at all, so it could
+     * double-book a house that the human accept path would refuse. The calendar is the authority, so
+     * overlapping nights on that house are refused here too.
+     */
+    const propertyId = args.propertyId as PropertyId;
+    const checkIn = String(args.checkIn ?? '');
+    const checkOut = String(args.checkOut ?? '');
+    const blocks = await loadCalendarBlocks(env).catch(() => []);
+    const clash = occupiedNights(
+      [
+        ...all.map((stay) => ({
+          propertyId: stay.propertyId,
+          checkIn: stay.checkIn,
+          checkOut: stay.checkOut,
+          status: stay.status,
+        })),
+        ...blocks.map((block) => ({
+          propertyId: block.propertyId,
+          checkIn: block.start,
+          checkOut: block.end,
+          status: 'blocked',
+        })),
+      ],
+      propertyId,
+      checkIn,
+      checkOut,
+    );
+    if (clash.length > 0) {
+      return {
+        error: `Those nights are already on the calendar at that house: ${clash.slice(0, 5).join(', ')}. Nothing was booked.`,
+        refused: true,
+        nights: clash,
+      };
+    }
     const item = await createReservation(env, {
       guestName: String(args.guestName ?? 'Guest'),
-      propertyId: args.propertyId as PropertyId,
-      checkIn: String(args.checkIn),
-      checkOut: String(args.checkOut),
+      propertyId,
+      checkIn,
+      checkOut,
       payout: Number(args.payout ?? 0),
       source: String(args.source ?? 'Direct'),
       note: args.note ? String(args.note) : undefined,
@@ -330,12 +392,185 @@ async function handleCalendar(
   return { error: `Unknown action: ${action}` };
 }
 
+/**
+ * Run a real desk route on the agent's behalf and hand back its answer as a tool result.
+ *
+ * The alternative — reimplementing accept and decline inside the tool — would let the agent's rules
+ * drift from the desk's, and a host would see two different answers to the same request. This way
+ * every refusal a person gets, the agent gets too.
+ *
+ * The desk routes are host-only, so the call carries the host cookie the agent is acting as. Without
+ * it every accept would be refused 401, and the tool would look present and do nothing. The cookie is
+ * built from the deployment's own password, never from the caller, so the agent gets exactly the
+ * host's authority and no more. When no password is set there is no cookie, the route refuses, and
+ * that refusal is reported rather than hidden.
+ */
+async function deskCall(
+  route: (context: never) => Response | Promise<Response>,
+  env: AgentEnv,
+  body: Record<string, unknown>,
+  what: 'accept' | 'decline',
+): Promise<Record<string, unknown>> {
+  const password = typeof (env as { DASHBOARD_PASSWORD?: string }).DASHBOARD_PASSWORD === 'string'
+    ? (env as { DASHBOARD_PASSWORD?: string }).DASHBOARD_PASSWORD
+    : '';
+  const cookie = password ? authCookieHeader(password, 'Strict').split(';')[0]! : '';
+  const res = await route({
+    request: new Request(`https://internal/api/book/${what}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
+      body: JSON.stringify(body),
+    }),
+    env,
+    params: {},
+  } as never);
+  const payload = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!res.ok) {
+    return {
+      refused: true,
+      status: res.status,
+      error: String(payload?.error ?? `The ${what} was refused.`),
+    };
+  }
+  // The route's answer is already free of prices on the guest side; the desk side carries them.
+  return { ok: true, ...(payload ?? {}) };
+}
+
 async function handleOperations(
   env: AgentEnv,
   action: string,
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const config = await loadPropertyConfig(env);
+
+  /*
+   * The direct booking desk. The Co-host could create a stay directly but could not see or answer a
+   * saved request, which is the job a person actually does here. These three actions reuse the same
+   * inbox, accept, and decline code the desk runs on, so the agent cannot do anything a host could
+   * not, and every refusal the desk gives applies to it too.
+   */
+  if (action === 'list_requests') {
+    const requests = await kvGet<Array<Record<string, unknown>>>(env, 'booking-requests', []);
+    const stays = await getAllReservations(env);
+    const blocks = await loadCalendarBlocks(env);
+    const spans: StaySpan[] = [
+      ...stays.map((stay) => ({
+        propertyId: stay.propertyId,
+        checkIn: stay.checkIn,
+        checkOut: stay.checkOut,
+        status: stay.status,
+      })),
+      ...blocks.map((block) => ({
+        propertyId: block.propertyId,
+        checkIn: block.start,
+        checkOut: block.end,
+        status: 'blocked',
+      })),
+    ];
+    const taken: Partial<Record<'ranch' | 'lindon' | 'river', readonly string[]>> = {};
+    for (const house of ['river', 'ranch', 'lindon'] as const) {
+      taken[house] = occupiedNights(spans, house, denverToday(), '2099-12-31');
+    }
+    const rows = bookingInbox(requests as never, taken, denverToday());
+    const accepted = new Set(
+      stays.map((stay) => (stay.note ?? '').match(/Direct request (\S+)\./)?.[1]).filter((id): id is string => Boolean(id)),
+    );
+    return {
+      requests: rows.map((row) => {
+        const saved = requests.find((item) => item.id === row.id);
+        const payouts = saved
+          ? suggestedPayouts({
+              propertyId: saved.propertyId as string,
+              ...(typeof saved.alsoPropertyId === 'string' ? { alsoPropertyId: saved.alsoPropertyId } : {}),
+              checkIn: String(saved.checkIn ?? ''),
+              checkOut: String(saved.checkOut ?? ''),
+              ...(typeof saved.guests === 'number' ? { guests: saved.guests } : {}),
+              ...(typeof saved.children === 'number' ? { children: saved.children } : {}),
+            })
+          : [];
+        return {
+          id: row.id,
+          line: row.line,
+          taken: row.taken,
+          accepted: accepted.has(row.id),
+          /** What to accept it for. Empty when the stay cannot be priced. */
+          payout: payouts.reduce((sum, entry) => sum + entry.hostNet, 0) || null,
+          payoutLine: suggestedPayoutLine(payouts),
+        };
+      }),
+    };
+  }
+
+  if (action === 'accept_request') {
+    /*
+     * A payout is required here and is never invented. The request line names one; an agent that has
+     * not read it gets a refusal telling it to list the requests first, rather than a booking at zero.
+     *
+     * Accepting is also the one action here that writes a booking AND emails the guest a confirmation.
+     * The desk route sends that mail itself, so a mistake reaches a real person before anyone sees it.
+     * The agent therefore has to confirm, the same way a cancellation does: one call to see what would
+     * happen, a second to do it.
+     *
+     * The real desk route does the work, so every refusal it gives a person applies to the agent too:
+     * a clashing night, a second accept, a bad payout. The agent cannot do more than a host.
+     */
+    const requestId = String(args.requestId ?? '').trim();
+    const payout = Number(args.payout);
+    if (!requestId) return { error: 'Name the request to accept: requestId.' };
+    if (!Number.isFinite(payout) || payout <= 0) {
+      return {
+        error:
+          'A host payout above zero is required. Call list_requests first and copy the payout from the request line. Nothing was booked.',
+        refused: true,
+      };
+    }
+    if (args.confirm !== true) {
+      return {
+        pendingApproval: true,
+        message:
+          'Accepting books the stay and emails the guest a confirmation. Nothing has been done yet. Call again with confirm:true to accept.',
+        requestId,
+        payout,
+      };
+    }
+    return deskCall(acceptRoute, env, { id: requestId, payout }, 'accept');
+  }
+
+  if (action === 'decline_request') {
+    /*
+     * Declining also emails the guest and lets the hold go, so the dates can be taken by someone else
+     * before anyone notices. It gets the same confirm gate as accepting: one call to see what would
+     * happen, a second to do it.
+     */
+    const requestId = String(args.requestId ?? '').trim();
+    const reason = String(args.reason ?? '').trim();
+    if (!requestId) return { error: 'Name the request to decline: requestId.' };
+    if (!isDeclineReason(reason)) {
+      return {
+        error:
+          'Name a reason: dates-taken, too-many-guests, minimum-stay, maintenance, owner-stay, or other.',
+        refused: true,
+      };
+    }
+    if (args.confirm !== true) {
+      return {
+        pendingApproval: true,
+        message:
+          'Declining emails the guest that the dates are not available and lets the hold go, so another guest can take those nights. Nothing has been done yet. Call again with confirm:true to decline.',
+        requestId,
+        reason,
+      };
+    }
+    return deskCall(
+      declineRoute,
+      env,
+      { id: requestId, reason, ...(args.notes ? { note: String(args.notes) } : {}) },
+      'decline',
+    );
+  }
 
   if (action === 'list_tasks') {
     const tasks = await loadOpsTasks(env);

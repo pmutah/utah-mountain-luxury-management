@@ -27,6 +27,7 @@ export function OwnerStatement({
 }) {
   const [period, setPeriod] = useState<ReportPeriod>('ytd');
   const [closed, setClosed] = useState<ClosedSpan[]>([]);
+  const [blocksReady, setBlocksReady] = useState<boolean | null>(null);
   const preferenceTimes = usePreferenceTimes();
   const statement = useMemo(
     () => buildOwnerStatement(month, period, reservations, expenses, extraCleaningFees),
@@ -48,10 +49,16 @@ export function OwnerStatement({
     let cancel = false;
     loadDateBlocks()
       .then((blocks) => {
-        if (!cancel && blocks) setClosed(blocks);
+        if (cancel) return;
+        if (!blocks) {
+          setBlocksReady(false);
+          return;
+        }
+        setClosed(blocks);
+        setBlocksReady(true);
       })
       .catch(() => {
-        if (!cancel) setClosed([]);
+        if (!cancel) setBlocksReady(false);
       });
     return () => {
       cancel = true;
@@ -146,6 +153,12 @@ export function OwnerStatement({
         >
           {aheadChannelsLine(ahead)}
         </p>
+        {blocksReady === false ? (
+          <p className="mt-4 text-sm" data-bot="owner-blocks-unread">
+            Calendar blocks could not be read. This page will not call those nights open. Nothing was written over them.
+          </p>
+        ) : blocksReady ? (
+        <>
         <p className="mt-4 text-sm text-[var(--uml-muted)]" data-bot="owner-gaps-note">
           Blocked nights stay off this stretch.
         </p>
@@ -202,6 +215,8 @@ export function OwnerStatement({
             </li>
           ))}
         </ul>
+        </>
+        ) : null}
       </div>
       {statement.months.length > 0 && (
         <div className="uml-panel rounded-3xl p-6" data-bot="owner-months">

@@ -1,18 +1,30 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '../lib/api';
 import { guestArrivalLine } from '../lib/arrival';
+import { preferenceCardLines, preferenceCardNote, preferencePartyCount } from '../lib/preference-choices';
 import { guestDepartureLine } from '../lib/departure';
-import { loadBookedNights } from '../lib/booked-nights';
-import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree } from '../lib/journey';
-import { denverToday } from '../lib/market/dates';
+import { loadQuoteCalendar } from '../lib/booked-nights';
+import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree, rightNow, stayCalendarHold, stayCountdown } from '../lib/journey';
+import { addDays, denverToday } from '../lib/market/dates';
+import { nightAsk } from '../lib/market/rates';
+import type { HouseId } from '../lib/market/types';
 import { checkoutDoneCount, checkoutSteps, loadCheckoutChecks, saveCheckoutChecks } from '../lib/stay-checkout';
 import { agreementReadComplete, agreementTopics, loadAgreementRead, markAgreementTopic } from '../lib/stay-agreement';
+import { guestRuleLines } from '../lib/house-rules';
 import { codesReady, loadRuleAck, saveRuleAck } from '../lib/stay-rules';
+import { stayMessageNote, stayMessageSchedule } from '../lib/guest-timeline';
+import { phoneStayIcs } from '../lib/stay-ics';
+import { stayPhotoCaption } from '../lib/house-photos';
 import { tripSheet, type TripPlace } from '../lib/stay-sheet';
-import { nearbyGroups } from '../lib/house-stay';
+import { houseStay, keptGuideLine, mergeHouseCheckout, nearbyGroups, stayAreaPlaces, stayHouseNotes, STAY_EMERGENCY } from '../lib/house-stay';
 import { guestOffers, loadGroceryList, loadUpsellRequests, saveGroceryList, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
+import { ArriveReady } from './ArriveReady';
+import { HouseDays } from './HouseDays';
+import { houseDayPaper } from '../lib/house-day';
+import { denverHour, quietNowLine } from '../lib/stay-rhythm';
 import { AppIcon } from './AppIcon';
 import { GuestConcierge } from './GuestConcierge';
+import { StayGuideSearch } from './StayGuideSearch';
 import { GuestPreferenceForm } from './GuestPreferenceForm';
 
 type Tab = 'stay' | 'house' | 'area' | 'help';
@@ -121,14 +133,22 @@ export function StayApp({ token }: { token: string }) {
   const [tab, setTab] = useState<Tab>('stay');
   const [thread, setThread] = useState<StayThreadMessage[]>([]);
   const [kind, setKind] = useState<GuidePlace['kind'] | 'all'>('all');
-  const [previewNights, setPreviewNights] = useState<string[] | null>(null);
+  const [chosenDay, setChosenDay] = useState<{ title: string; lines: string[] } | null>(null);
+  const [quoteNights, setQuoteNights] = useState<{ taken: string[]; closed: string[] } | null>(null);
+  const [nightsStatus, setNightsStatus] = useState<'loading' | 'ready' | 'unread'>('loading');
   const [requested, setRequested] = useState<UpsellId[]>(() => loadUpsellRequests(token));
   const [groceryList, setGroceryList] = useState(() => loadGroceryList(token));
   const [rulesRead, setRulesRead] = useState(() => loadRuleAck(token));
+  const [readyFor, setReadyFor] = useState<string | null>(null);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [agreementRead, setAgreementRead] = useState<string[]>(() => loadAgreementRead(token));
   const [checkoutOn, setCheckoutOn] = useState<boolean[]>(() => loadCheckoutChecks(token));
   const [arrivalWindow, setArrivalWindow] = useState('');
   const [departureWindow, setDepartureWindow] = useState('');
+  const [preferenceLines, setPreferenceLines] = useState<string[] | null>(null);
+  const [partyGuests, setPartyGuests] = useState<number | undefined>(undefined);
+  const [partyChildren, setPartyChildren] = useState<number | undefined>(undefined);
+  const accessReady = readyFor === token;
 
   useEffect(() => {
     let cancel = false;
@@ -140,11 +160,18 @@ export function StayApp({ token }: { token: string }) {
         const leave = pref.answers?.earlyLate ?? '';
         setArrivalWindow(guestArrivalLine(raw) ? raw : '');
         setDepartureWindow(guestDepartureLine(leave) ? leave : '');
+        setPreferenceLines(preferenceCardLines(pref.propertyId, pref.answers));
+        const party = preferencePartyCount(pref.answers ?? undefined);
+        if (party) {
+          setPartyGuests(party.guests);
+          setPartyChildren(party.children);
+        }
       })
       .catch(() => {
         if (!cancel) {
           setArrivalWindow('');
           setDepartureWindow('');
+          setPreferenceLines([]);
         }
       });
     return () => {
@@ -153,14 +180,40 @@ export function StayApp({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => {
+    setRulesRead(loadRuleAck(token));
+    setAgreementRead(loadAgreementRead(token));
+  }, [token]);
+
+  useEffect(() => {
+    if (!data || loadedFor !== token || accessReady) return;
+    const opened = agreementReadComplete(data.propertyId, agreementRead);
+    const ready = codesReady({
+      unlocked: data.access.unlocked,
+      acknowledged: rulesRead,
+      agreementRead: opened,
+    });
+    if (ready) setReadyFor(token);
+  }, [data, loadedFor, token, accessReady, agreementRead, rulesRead]);
+
+  useEffect(() => {
+    let cancel = false;
     api
-      .getStayGuide(token, preview)
+      .getStayGuide(token, preview, accessReady)
       .then((result) => {
+        if (cancel) return;
         if (result.guestName === undefined) setOff(true);
-        else setData(result);
+        else {
+          setData(result);
+          setLoadedFor(token);
+        }
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'This link is not valid.'));
-  }, [token, preview]);
+      .catch((err: unknown) => {
+        if (!cancel) setError(err instanceof Error ? err.message : 'This link is not valid.');
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [token, preview, accessReady]);
 
   useEffect(() => {
     if (!data) return;
@@ -190,26 +243,47 @@ export function StayApp({ token }: { token: string }) {
   }, [token, preview, data]);
 
   useEffect(() => {
-    if (!data || !preview) return;
-    if (typeof data.nightBeforeFree === 'boolean' && typeof data.checkoutNightFree === 'boolean') return;
+    if (!data) return;
+    const house = data.propertyId;
+    if (house !== 'ranch' && house !== 'lindon' && house !== 'river') {
+      setNightsStatus('unread');
+      return;
+    }
+    if (typeof data.nightBeforeFree === 'boolean' && typeof data.checkoutNightFree === 'boolean') {
+      setNightsStatus('ready');
+      return;
+    }
     let cancel = false;
-    loadBookedNights()
-      .then((nights) => {
-        if (cancel || !nights) return;
-        setPreviewNights(nights[data.propertyId] ?? []);
+    loadQuoteCalendar()
+      .then((calendar) => {
+        if (cancel) return;
+        if (!calendar) {
+          setNightsStatus('unread');
+          return;
+        }
+        setQuoteNights({
+          taken: calendar.nights[house] ?? [],
+          closed: calendar.closed[house] ?? [],
+        });
+        setNightsStatus('ready');
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancel) setNightsStatus('unread');
+      });
     return () => {
       cancel = true;
     };
-  }, [data, preview]);
+  }, [data]);
 
   const hostReply = [...thread].reverse().find((message) => message.from === 'host') ?? null;
 
-  const kinds = useMemo(
-    () => PLACE_KINDS.filter((item) => item.id === 'all' || data?.guide.places.some((place) => place.kind === item.id)),
-    [data],
-  );
+  const kinds = useMemo(() => {
+    const list =
+      data && (data.propertyId === 'ranch' || data.propertyId === 'lindon' || data.propertyId === 'river')
+        ? stayAreaPlaces(data.propertyId, data.guide.places)
+        : [];
+    return PLACE_KINDS.filter((item) => item.id === 'all' || list.some((place) => place.kind === item.id));
+  }, [data]);
 
   if (off && preview) {
     return (
@@ -247,22 +321,41 @@ export function StayApp({ token }: { token: string }) {
   const { guide, access } = data;
   const first = data.guestName.split(' ')[0] || data.guestName;
   const house = data.propertyName.replace(/^The /, '');
-  const places = guide.places.filter((place) => kind === 'all' || place.kind === kind);
+  const places = stayAreaPlaces(data.propertyId, guide.places).filter((place) => kind === 'all' || place.kind === kind);
   const phone = guide.contactPhone.replace(/[^\d+]/g, '');
-  const nightBeforeFree =
-    typeof data.nightBeforeFree === 'boolean'
-      ? data.nightBeforeFree
-      : previewNights
-        ? nightBeforeIsFree(data.checkIn, previewNights)
-        : null;
-  const checkoutNightFree =
-    typeof data.checkoutNightFree === 'boolean'
-      ? data.checkoutNightFree
-      : previewNights
-        ? checkoutNightIsFree(data.checkOut, previewNights)
-        : null;
-  const showCodes = codesReady({ unlocked: access.unlocked, acknowledged: rulesRead });
-  const leaving = checkoutSteps(guide.checkout);
+  const houseId: HouseId | null =
+    data.propertyId === 'ranch' || data.propertyId === 'lindon' || data.propertyId === 'river' ? data.propertyId : null;
+  const shownRules = houseId
+    ? guestRuleLines(houseId, guide.houseRules)
+    : guide.houseRules.trim() && !guide.houseRules.includes('$') && !/door\s*code|wi-?fi|password/i.test(guide.houseRules)
+      ? [guide.houseRules.trim()]
+      : [];
+  const publishedStay = houseId ? houseStay(houseId) : null;
+  const shownArrival = keptGuideLine(guide.arrival, publishedStay?.arrival ?? '');
+  const shownParking = keptGuideLine(guide.parking, publishedStay?.parking ?? '');
+  const shownEmergency = keptGuideLine(guide.emergency, STAY_EMERGENCY);
+  const fromCalendar =
+    houseId && quoteNights
+      ? {
+          early:
+            !nightAsk(houseId, addDays(data.checkIn, -1)).closed &&
+            nightBeforeIsFree(data.checkIn, quoteNights.taken, quoteNights.closed),
+          late:
+            !nightAsk(houseId, data.checkOut).closed &&
+            checkoutNightIsFree(data.checkOut, quoteNights.taken, quoteNights.closed),
+        }
+      : null;
+  const guideNights =
+    typeof data.nightBeforeFree === 'boolean' && typeof data.checkoutNightFree === 'boolean';
+  const nightBeforeFree = typeof data.nightBeforeFree === 'boolean' ? data.nightBeforeFree : fromCalendar ? fromCalendar.early : null;
+  const checkoutNightFree = typeof data.checkoutNightFree === 'boolean' ? data.checkoutNightFree : fromCalendar ? fromCalendar.late : null;
+  const agreementOpened = agreementReadComplete(data.propertyId, agreementRead);
+  const showCodes = codesReady({
+    unlocked: access.unlocked,
+    acknowledged: rulesRead,
+    agreementRead: agreementOpened,
+  });
+  const leaving = mergeHouseCheckout(data.propertyId, checkoutSteps(guide.checkout));
   const leavingDone = checkoutDoneCount(leaving, checkoutOn);
   const offers = guestOffers({
     house: data.propertyId,
@@ -292,24 +385,25 @@ export function StayApp({ token }: { token: string }) {
     checkInTime: guide.checkInTime,
     checkOutTime: guide.checkOutTime,
     address: guide.address,
-    arrival: guide.arrival,
+    arrival: shownArrival,
     guestArrival: arrivalWindow,
     guestDeparture: departureWindow,
     laterLeaveOpen: checkoutNightFree === null ? undefined : checkoutNightFree,
     nightBeforeFree,
-    parking: guide.parking,
-    rules: guide.houseRules,
+    parking: shownParking,
+    rules: shownRules.join(' '),
     houseId: data.propertyId,
-    notes: guide.sections,
-    nearby: guide.places,
-    emergency: guide.emergency,
+    notes: stayHouseNotes(data.propertyId, guide.sections),
+    nearby: stayAreaPlaces(data.propertyId, guide.places),
+    emergency: shownEmergency,
     checkout: leaving,
   });
 
+  const photoCaption = stayPhotoCaption(data.propertyId);
   return (
     <div className="guest-survey min-h-screen pb-24 text-[#f6f1e8]" data-bot="stay-app">
       <header className="relative h-64 overflow-hidden">
-        <img src={`/houses/${data.propertyId}.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={`/houses/${data.propertyId}.jpg`} alt={photoCaption || house} className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-[#07110f]" />
         <div className="relative mx-auto flex h-full max-w-md flex-col justify-end px-5 pb-5">
           <Kicker>Utah Mountain Luxury</Kicker>
@@ -317,6 +411,11 @@ export function StayApp({ token }: { token: string }) {
           <p className="mt-1 text-sm text-white/70">
             {house} · {longDate(data.checkIn)} – {longDate(data.checkOut)}
           </p>
+          {photoCaption ? (
+            <p className="mt-1 text-xs text-white/70" data-bot="stay-photo-caption">
+              {photoCaption}
+            </p>
+          ) : null}
         </div>
       </header>
 
@@ -333,7 +432,7 @@ export function StayApp({ token }: { token: string }) {
               ? `Owner preview. The ${house} guest app is off, so guests only see the preference form. Turn it on in Guests → Guest app.`
               : showCodes
                 ? `Owner preview. Codes are showing early. The guest sees them on ${longDate(access.opensOn)}.`
-                : `Owner preview. The door code stays hidden until the house rules are read on this phone. The guest sees the code on ${longDate(access.opensOn)}.`}
+                : `Owner preview. The door code stays hidden until the house rules are read and each stay-agreement topic is opened on this phone. The guest sees the code on ${longDate(access.opensOn)}.`}
           </p>
         )}
 
@@ -347,6 +446,23 @@ export function StayApp({ token }: { token: string }) {
                   <p className="mt-1 text-sm text-white/60">Rooms, groceries, celebrations. We set the house around it.</p>
                 </Card>
               </a>
+            )}
+            {preferenceLines && (
+              <Card>
+                <Kicker>Preference card</Kicker>
+                <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-preference-card-note">
+                  {preferenceCardNote(preferenceLines.length)}
+                </p>
+                {preferenceLines.length > 0 && (
+                  <ul className="mt-3 space-y-2 text-sm" data-bot="stay-preference-card">
+                    {preferenceLines.map((line) => (
+                      <li key={line} data-bot="stay-preference-line">
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
             )}
 
             <button
@@ -363,6 +479,24 @@ export function StayApp({ token }: { token: string }) {
             </button>
             <Card>
               <Kicker>Your trip</Kicker>
+              <p className="mt-3 text-sm leading-relaxed text-[#f6f1e8]" data-bot="stay-now">
+                {rightNow(steps)}
+              </p>
+              {stayCountdown(denverToday(), data.checkIn, data.checkOut, 'phone') ? (
+                <p className="mt-3 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-countdown">
+                  {stayCountdown(denverToday(), data.checkIn, data.checkOut, 'phone')}
+                </p>
+              ) : null}
+              {stayCalendarHold(data.storageReads === 'paused', quoteNights !== null || guideNights, nightsStatus === 'loading' && !guideNights) ? (
+                <p className="mt-3 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-calendar-hold">
+                  {stayCalendarHold(data.storageReads === 'paused', quoteNights !== null || guideNights, nightsStatus === 'loading' && !guideNights)}
+                </p>
+              ) : null}
+              <p className="mt-3 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-phone-quiet">
+                {quietNowLine(data.propertyId, denverHour(), 'phone')}
+              </p>
+              <ArriveReady house={data.propertyId} where="phone" />
+              <HouseDays house={data.propertyId} where="phone" onChoose={setChosenDay} />
               <ol className="mt-4 space-y-4" data-bot="stay-journey">
                 {steps.map((step) => (
                   <li key={step.id} data-bot={`stay-step-${step.id}`}>
@@ -409,10 +543,29 @@ export function StayApp({ token }: { token: string }) {
               </ol>
             </Card>
             <Card>
+              <Kicker>Notes</Kicker>
+              <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-phone-messages-note">
+                {stayMessageNote()}
+              </p>
+              <ul className="mt-4 space-y-3" data-bot="stay-phone-messages">
+                {stayMessageSchedule(data.propertyId, { checkIn: data.checkIn, checkOut: data.checkOut }).map((row) => (
+                  <li key={row.id} data-bot="stay-phone-message" data-message={row.id}>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">{row.when}</p>
+                    <p className="mt-1 text-sm text-[#f6f1e8]">{row.subject}</p>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+            <Card>
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d4b56a]">Trip sheet</p>
               <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-sheet-when">
                 {sheet.when}
               </p>
+              {sheet.event && (
+                <p className="mt-2 text-sm" data-bot="stay-sheet-event">
+                  {sheet.event}
+                </p>
+              )}
               {sheet.guestArrival && (
                 <p className="mt-2 text-sm" data-bot="stay-sheet-named-arrival">
                   {sheet.guestArrival}
@@ -433,9 +586,16 @@ export function StayApp({ token }: { token: string }) {
                   {sheet.checkoutRule}
                 </p>
               )}
+              {sheet.photo ? (
+                <p className="mt-2 text-sm" data-bot="stay-sheet-photo">
+                  {sheet.photo}
+                </p>
+              ) : null}
               {sheet.address && (
                 <p className="mt-2 text-sm" data-bot="stay-sheet-address">
-                  {sheet.address}
+                  <a href={mapsLink(sheet.address)} data-bot="stay-sheet-map" target="_blank" rel="noreferrer">
+                    {sheet.address}
+                  </a>
                 </p>
               )}
               {sheet.nearby.length > 0 && <PlaceGroups places={sheet.nearby} bot="stay-sheet-nearby" />}
@@ -495,10 +655,15 @@ export function StayApp({ token }: { token: string }) {
               <p className="text-xs uppercase tracking-widest">Trip sheet</p>
               <h2 className="text-3xl">{sheet.house}</h2>
               <p>{sheet.when}</p>
+              {chosenDay && houseDayPaper(chosenDay, 'phone').map((line) => (
+                <p key={line} data-bot="stay-sheet-print-day">{line}</p>
+              ))}
+              {sheet.event && <p data-bot="stay-sheet-print-event">{sheet.event}</p>}
               {sheet.guestArrival && <p data-bot="stay-sheet-print-arrival-time">{sheet.guestArrival}</p>}
               {sheet.guestDeparture && <p data-bot="stay-sheet-print-departure-time">{sheet.guestDeparture}</p>}
               {sheet.earlyRule && <p data-bot="stay-sheet-print-early-rule">{sheet.earlyRule}</p>}
               {sheet.checkoutRule && <p data-bot="stay-sheet-print-checkout-rule">{sheet.checkoutRule}</p>}
+              {sheet.photo ? <p data-bot="stay-sheet-print-photo">{sheet.photo}</p> : null}
               {sheet.address && <p data-bot="stay-sheet-print-address">{sheet.address}</p>}
               {sheet.nearby.length > 0 && <PlaceGroups places={sheet.nearby} bot="stay-sheet-print-nearby" />}
               <p>{sheet.privateNote}</p>
@@ -598,11 +763,19 @@ export function StayApp({ token }: { token: string }) {
               ) : (
                 <div className="mt-3 space-y-3" data-bot="stay-rules-gate">
                   <p className="text-sm leading-relaxed text-[#d7cfc3]">
-                    {access.unlocked
-                      ? 'The door code is ready after you read the house rules.'
-                      : `Your door code and Wi-Fi appear here on ${longDate(access.opensOn)}, the day before check-in, after you read the house rules.`}
+                    {access.unlocked && rulesRead && !agreementOpened
+                      ? 'The door code and Wi-Fi stay off this phone until each stay-agreement topic is opened. Opening a topic does not sign the agreement.'
+                      : access.unlocked
+                        ? 'The door code is ready after you read the house rules and open each stay-agreement topic. Opening a topic does not sign the agreement.'
+                        : `Your door code and Wi-Fi appear here on ${longDate(access.opensOn)}, the day before check-in, after you read the house rules and open each stay-agreement topic. Opening a topic does not sign the agreement.`}
                   </p>
-                  <p className="text-sm leading-relaxed text-[#f6f1e8]">{guide.houseRules}</p>
+                  <ul className="space-y-2 text-sm leading-relaxed text-[#f6f1e8]" data-bot="stay-rules-lines">
+                    {shownRules.map((line) => (
+                      <li key={line} data-bot="stay-rule-line">
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
                   <p className="text-xs text-white/50">
                     This stays on this phone. It does not sign the stay agreement, and it does not change the reservation.
                   </p>
@@ -634,6 +807,28 @@ export function StayApp({ token }: { token: string }) {
                   <p className="text-sm text-white/55">{longDate(data.checkOut)}</p>
                 </div>
               </div>
+              {phoneStayIcs(data.propertyId, data.checkIn, data.checkOut) && (
+                <button
+                  type="button"
+                  className="mt-4 text-sm text-[#d4b56a] underline"
+                  data-bot="stay-phone-calendar"
+                  data-prep={phoneStayIcs(data.propertyId, data.checkIn, data.checkOut)?.text.includes('These steps are from the published guide') ? 'yes' : 'no'}
+                  data-leave={phoneStayIcs(data.propertyId, data.checkIn, data.checkOut)?.text.includes('Before leaving:') ? 'yes' : 'no'}
+                  onClick={() => {
+                    const file = phoneStayIcs(data.propertyId, data.checkIn, data.checkOut);
+                    if (!file) return;
+                    const blob = new Blob([file.text], { type: 'text/calendar' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = file.filename;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Add these dates to a calendar. This file is the stay on this phone. It does not change the reservation. Nothing is sent.
+                </button>
+              )}
               <a
                 href={mapsLink(guide.address)}
                 target="_blank"
@@ -642,8 +837,16 @@ export function StayApp({ token }: { token: string }) {
               >
                 Directions to {guide.address}
               </a>
-              {guide.arrival && <p className="mt-4 text-sm leading-relaxed text-[#d7cfc3]">{guide.arrival}</p>}
-              {guide.parking && <p className="mt-2 text-sm leading-relaxed text-white/60">{guide.parking}</p>}
+              {shownArrival && (
+                <p className="mt-4 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-arrival">
+                  {shownArrival}
+                </p>
+              )}
+              {shownParking && (
+                <p className="mt-2 text-sm leading-relaxed text-white/60" data-bot="stay-parking">
+                  {shownParking}
+                </p>
+              )}
             </Card>
 
             <Card>
@@ -687,6 +890,7 @@ export function StayApp({ token }: { token: string }) {
               <Kicker>{house}</Kicker>
               <p className="guest-display mt-2 text-3xl">{guide.headline}</p>
             </Card>
+            <StayGuideSearch house={data.propertyId} checkIn={data.checkIn} checkOut={data.checkOut} />
             {guide.videos.length > 0 && (
               <Card>
                 <Kicker>How-to videos</Kicker>
@@ -706,9 +910,11 @@ export function StayApp({ token }: { token: string }) {
                 </div>
               </Card>
             )}
-            {guide.sections.map((section) => (
+            {stayHouseNotes(data.propertyId, guide.sections).map((section) => (
               <Card key={section.title}>
-                <p className="text-lg">{section.title}</p>
+                <p className="text-lg" data-bot="stay-house-note">
+                  {section.title}
+                </p>
                 <div className="mt-2 text-sm">
                   <Lines text={section.body} />
                 </div>
@@ -716,7 +922,11 @@ export function StayApp({ token }: { token: string }) {
             ))}
             <Card>
               <Kicker>House rules</Kicker>
-              <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]">{guide.houseRules}</p>
+              <ul className="mt-2 space-y-2 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-house-rules">
+                {shownRules.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
             </Card>
           </>
         )}
@@ -762,7 +972,15 @@ export function StayApp({ token }: { token: string }) {
 
         {tab === 'help' && (
           <>
-            <GuestConcierge token={token} preview={preview} />
+            <GuestConcierge
+              token={token}
+              preview={preview}
+              house={data.propertyId}
+              checkIn={data.checkIn}
+              checkOut={data.checkOut}
+              guests={partyGuests ?? data.partyGuests}
+              children={partyChildren ?? data.partyChildren}
+            />
             <Card>
               <Kicker>Reach us</Kicker>
               <div className="mt-4 grid grid-cols-2 gap-3">
@@ -779,7 +997,9 @@ export function StayApp({ token }: { token: string }) {
             </Card>
             <Card>
               <Kicker>Emergency</Kicker>
-              <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]">{guide.emergency}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]" data-bot="stay-emergency">
+                {shownEmergency}
+              </p>
             </Card>
             <Card>
               <Kicker>Keep this on your phone</Kicker>

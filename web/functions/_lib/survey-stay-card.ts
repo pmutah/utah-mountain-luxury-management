@@ -67,10 +67,6 @@ function vipArrivalChecklist(a: GuestPreferenceAnswers): string[] {
       : drinksAlcohol === 'yes' || drinksAlcohol === 'y'
         ? line('Alcoholic toast', a.alcoholPrefs || a.favoriteAlcohol)
         : line(a.alcoholPrefs || a.favoriteAlcohol, a.naDrinkPrefs || a.favoriteNaDrink);
-  const theater = line(
-    a.favoriteMovie ? `Movie / genre: ${a.favoriteMovie}` : undefined,
-    a.popcornStyle ? `Popcorn: ${a.popcornStyle}` : undefined,
-  );
   return [
     ...RIVER_VIP_ARRIVAL_DEFAULTS.map((item) =>
       item === 'Scent / clean' && a.scentNotes
@@ -79,7 +75,6 @@ function vipArrivalChecklist(a: GuestPreferenceAnswers): string[] {
     ),
     fridge ? `Fridge stock — ${fridge}` : 'Fridge stock — waiting on guest survey',
     toast ? `Toast beverage — ${toast}` : 'Toast beverage — waiting on guest survey',
-    theater ? `Theater / popcorn — ${theater}` : 'Theater / popcorn — waiting on guest survey',
   ];
 }
 
@@ -154,9 +149,9 @@ export function buildStayCard(input: {
   ];
   pushSection(sections, 'activities', 'Activities', activityLines, 'ops');
 
-  const amenities = a.amenities ?? a.topAmenities ?? [];
+  const amenities = (a.amenities ?? a.topAmenities ?? []).filter((item) => !/theater|movie/i.test(item));
   const lean = amenities.filter((item) =>
-    /hot tub|sauna|garage|theater|movie|kitchen|kids|quiet/i.test(item),
+    /hot tub|sauna|garage|kitchen|kids|quiet/i.test(item),
   );
   pushSection(
     sections,
@@ -188,17 +183,6 @@ export function buildStayCard(input: {
           ? line('Alcoholic toast', a.alcoholPrefs || a.favoriteAlcohol)
           : line(a.alcoholPrefs || a.favoriteAlcohol, a.naDrinkPrefs || a.favoriteNaDrink);
     pushSection(sections, 'toast', 'Toast beverage', [toast], 'ops');
-
-    pushSection(
-      sections,
-      'theater',
-      'Theater / popcorn',
-      [
-        a.favoriteMovie ? `Movie / genre: ${a.favoriteMovie}` : null,
-        a.popcornStyle ? `Popcorn: ${a.popcornStyle}` : null,
-      ],
-      'ops',
-    );
   }
 
   pushSection(sections, 'allergies', 'Allergies / dietary', [a.allergies], 'alert');

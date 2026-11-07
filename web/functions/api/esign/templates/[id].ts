@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
 import { storeEsignBytes } from '../../../_lib/esign/esign-file-store';
 import { addVaultDocument, newEsignDocId } from '../../../_lib/esign/esign-store';
@@ -11,6 +12,7 @@ import type { SettingsEnv } from '../../../_lib/kv';
 type Env = SettingsEnv & FirebaseStorageEnv;
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const template = getFormTemplate(String(params.id ?? ''));
   if (!template) return corsJson(request, { error: 'Unknown form.' }, 404);
 

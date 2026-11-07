@@ -1,23 +1,31 @@
-import { occupiedByHouse, type StaySpan } from './availability';
-import { addDays, denverToday } from './market/dates';
+import type { StaySpan } from './availability';
+import { bothHouseMonthNights } from './compound';
+import { isRealDay } from './market/dates';
+import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
 import { noteChildCount, noteGuestCount } from './note-party';
 import type { PaceStay } from './revenue-goals';
 
 export type DateBlock = { propertyId: string; start: string; end: string };
 
+/** A paused or missing block list is not “no blocks.” An empty array is a real empty list. */
+export function blocksIfRead(body: unknown): DateBlock[] | null {
+  if (!body || typeof body !== 'object' || readPaused(body)) return null;
+  const row = body as { blocks?: unknown };
+  if (!Array.isArray(row.blocks)) return null;
+  return row.blocks
+    .filter((block): block is { propertyId?: string; start?: string; end?: string } => Boolean(block) && typeof block === 'object')
+    .filter((block) => block.propertyId && block.start && block.end)
+    .map((block) => ({ propertyId: block.propertyId ?? '', start: block.start ?? '', end: block.end ?? '' }));
+}
+
 /** Start and end only. A block note stays on the server response. */
 export async function loadDateBlocks(): Promise<DateBlock[] | null> {
   const res = await fetch('/api/calendar/blocks').catch(() => null);
   const type = res?.headers.get('content-type') ?? '';
   if (!res?.ok || !type.includes('application/json')) return null;
-  const body = (await res.json()) as { blocks?: Array<{ propertyId?: string; start?: string; end?: string }> };
-  return (body.blocks ?? [])
-    .filter((block) => block.propertyId && block.start && block.end)
-    .map((block) => ({ propertyId: block.propertyId ?? '', start: block.start ?? '', end: block.end ?? '' }));
+  return blocksIfRead(await res.json());
 }
-
-const EMPTY_NIGHTS: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [] };
 
 function asNights(value: unknown): Record<HouseId, string[]> | null {
   if (!value || typeof value !== 'object') return null;
@@ -26,43 +34,115 @@ function asNights(value: unknown): Record<HouseId, string[]> | null {
   return nights;
 }
 
-/** Booked nights, plus calendar blocks kept apart. Guest names are not included. */
-export async function loadQuoteCalendar(): Promise<{
+export type QuoteTurn = { house: HouseId; checkOut: string };
+
+export type QuoteCalendar = {
   nights: Record<HouseId, string[]>;
   closed: Record<HouseId, string[]>;
-} | null> {
-  const from = denverToday();
-  const until = addDays(from, 540);
+  /** Nights another guest is finishing a request for. Never counted as booked. */
+  held: Record<HouseId, string[]>;
+  /**
+   * Guest prices the host approved. Null when the sheet could not be read, so the page falls back to
+   * the published card rather than showing a stand-in as approved.
+   */
+  approved: Record<HouseId, Array<{ date: string; guest: number }>> | null;
+  pace: Record<HouseId, YearPace>;
+  turns: QuoteTurn[] | null;
+};
+
+const NO_APPROVED: Record<HouseId, Array<{ date: string; guest: number }>> = { ranch: [], lindon: [], river: [] };
+
+/**
+ * Approved nights from the calendar. A field that is absent is an older payload with no approvals.
+ * A field that is null means the sheet could not be read, which is not the same as none approved.
+ */
+function asApproved(value: unknown): Record<HouseId, Array<{ date: string; guest: number }>> | null {
+  if (value === undefined) return NO_APPROVED;
+  if (value === null) return null;
+  if (typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  const out: Record<HouseId, Array<{ date: string; guest: number }>> = { ranch: [], lindon: [], river: [] };
+  for (const house of ['ranch', 'lindon', 'river'] as const) {
+    const list = row[house];
+    if (list === undefined) continue;
+    if (!Array.isArray(list)) return null;
+    for (const entry of list) {
+      if (!entry || typeof entry !== 'object') continue;
+      const date = (entry as { date?: unknown }).date;
+      const guest = (entry as { guest?: unknown }).guest;
+      if (typeof date !== 'string' || typeof guest !== 'number') continue;
+      if (!isRealDay(date) || !Number.isFinite(guest) || guest <= 0) continue;
+      out[house].push({ date, guest: Math.round(guest) });
+    }
+  }
+  return out;
+}
+
+const UNKNOWN_PACE: Record<HouseId, YearPace> = { ranch: 'unknown', lindon: 'unknown', river: 'unknown' };
+
+function asPace(value: unknown): Record<HouseId, YearPace> {
+  if (!value || typeof value !== 'object') return UNKNOWN_PACE;
+  const row = value as Record<string, unknown>;
+  const pace = { ...UNKNOWN_PACE };
+  for (const house of ['ranch', 'lindon', 'river'] as const) {
+    const word = row[house];
+    if (word === 'short' || word === 'met' || word === 'unknown') pace[house] = word;
+  }
+  return pace;
+}
+
+function asTurns(value: unknown): QuoteTurn[] | null {
+  if (!Array.isArray(value)) return null;
+  const turns: QuoteTurn[] = [];
+  for (const row of value) {
+    if (!row || typeof row !== 'object') continue;
+    const house = (row as { house?: unknown }).house;
+    const checkOut = (row as { checkOut?: unknown }).checkOut;
+    if ((house !== 'ranch' && house !== 'lindon' && house !== 'river') || typeof checkOut !== 'string') continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(checkOut)) continue;
+    turns.push({ house, checkOut });
+  }
+  return turns;
+}
+
+function readPaused(body: unknown): boolean {
+  return Boolean(body && typeof body === 'object' && (body as { storageReads?: string }).storageReads === 'paused');
+}
+
+/** A paused read is not an empty calendar. Missing nights are not a calendar either. */
+export function quoteCalendarFromAvailability(body: unknown): QuoteCalendar | null {
+  if (!body || typeof body !== 'object' || readPaused(body)) return null;
+  const row = body as { nights?: unknown; closed?: unknown; held?: unknown };
+  const nights = asNights(row.nights);
+  const closed = asNights(row.closed);
+  if (!nights || !closed) return null;
+  // A hold list that was omitted is no holds. A hold list that is present but broken is not a calendar.
+  const held = row.held === undefined || row.held === null ? { ranch: [], lindon: [], river: [] } : asNights(row.held);
+  if (!held) return null;
+  return {
+    nights,
+    closed,
+    held,
+    approved: asApproved((body as { approved?: unknown }).approved),
+    pace: asPace((body as { pace?: unknown }).pace),
+    turns: asTurns((body as { turns?: unknown }).turns),
+  };
+}
+
+/** Reservations from a paused read are not a calendar and are not a pace list. */
+export function reservationsIfRead(body: unknown): StaySpan[] | null {
+  if (!body || typeof body !== 'object' || readPaused(body)) return null;
+  const row = body as { reservations?: unknown };
+  if (!Array.isArray(row.reservations)) return null;
+  return row.reservations as StaySpan[];
+}
+
+/** Booked nights and a pace word. A failed read is not an empty calendar. Guest names are not requested. */
+export async function loadQuoteCalendar(): Promise<QuoteCalendar | null> {
   const live = await fetch('/api/book/availability').catch(() => null);
   const type = live?.headers.get('content-type') ?? '';
-  if (live?.ok && type.includes('application/json')) {
-    const body = (await live.json()) as { nights?: Record<HouseId, string[]>; closed?: Record<HouseId, string[]> };
-    const nights = asNights(body.nights);
-    if (nights) return { nights, closed: asNights(body.closed) ?? EMPTY_NIGHTS };
-  }
-  if (!import.meta.env.DEV) return null;
-  const staysRes = await fetch('/api/reservations').catch(() => null);
-  if (!staysRes?.ok) return null;
-  const staysBody = (await staysRes.json()) as { reservations?: StaySpan[] };
-  const blocksRes = await fetch('/api/calendar/blocks').catch(() => null);
-  const blocksBody = blocksRes?.ok
-    ? ((await blocksRes.json()) as { blocks?: { propertyId: string; start: string; end: string }[] })
-    : { blocks: [] };
-  const blocks = (blocksBody.blocks ?? []).map((block) => ({
-    propertyId: block.propertyId,
-    checkIn: block.start,
-    checkOut: block.end,
-  }));
-  const spans: StaySpan[] = [
-    ...(staysBody.reservations ?? []).map((stay) => ({
-      propertyId: stay.propertyId,
-      checkIn: stay.checkIn,
-      checkOut: stay.checkOut,
-      status: stay.status,
-    })),
-    ...blocks,
-  ];
-  return { nights: occupiedByHouse(spans, from, until), closed: occupiedByHouse(blocks, from, until) };
+  if (!live?.ok || !type.includes('application/json')) return null;
+  return quoteCalendarFromAvailability(await live.json());
 }
 
 /** Dates only. Guest names from the reservations feed are dropped before they reach the page. */
@@ -77,6 +157,7 @@ export async function loadPaceStays(): Promise<PaceStay[] | null> {
   const type = res?.headers.get('content-type') ?? '';
   if (!res?.ok || !type.includes('application/json')) return null;
   const body = (await res.json()) as {
+    storageReads?: string;
     reservations?: Array<{
       id?: string;
       propertyId?: string;
@@ -87,7 +168,8 @@ export async function loadPaceStays(): Promise<PaceStay[] | null> {
       note?: string;
     }>;
   };
-  return (body.reservations ?? []).map((stay) => ({
+  if (body.storageReads === 'paused' || !Array.isArray(body.reservations)) return null;
+  return body.reservations.map((stay) => ({
     id: typeof stay.id === 'string' && stay.id ? stay.id : undefined,
     propertyId: stay.propertyId ?? '',
     checkIn: stay.checkIn ?? '',
@@ -106,4 +188,14 @@ export function calendarAheadLine(taken: readonly string[], closed: readonly str
   const nights = booked === 1 ? '1 night ahead is' : `${booked} nights ahead are`;
   const held = closed.length === 1 ? '1 calendar block stays' : `${closed.length} calendar blocks stay`;
   return `${nights} already booked. ${held} closed. A block is not a booked night.`;
+}
+
+/** How far ahead is taken on the River House and the Ranch House. Lindon stays off this count. */
+export function bothHouseCalendarAheadLine(
+  taken: Partial<Record<HouseId, readonly string[]>>,
+  closed: Partial<Record<HouseId, readonly string[]>> = {},
+): string {
+  const nights = bothHouseMonthNights(taken, closed);
+  const line = calendarAheadLine(nights.taken, nights.closed);
+  return line.replace('already booked.', 'already booked at the River House or the Ranch House.');
 }

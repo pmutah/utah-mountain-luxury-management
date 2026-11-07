@@ -1,5 +1,6 @@
 import { isArrivalSlot, type ArrivalSlot } from './arrival';
 import { isDepartureSlot, type DepartureSlot } from './departure';
+import { quoteGateLine } from './house-rules';
 import type { HouseId } from './market/types';
 import type { UpsellId } from './upsells';
 
@@ -15,6 +16,8 @@ export type StayLink = {
   addons?: UpsellId[];
   arrive?: ArrivalSlot;
   leave?: DepartureSlot;
+  /** The stay is a party or an event. The request stays off. */
+  event?: boolean;
 };
 
 function isHouse(value: string): value is HouseId {
@@ -58,6 +61,7 @@ export function readStayLink(search: string): Partial<StayLink> {
       else delete link.addons;
     }
   }
+  if (params.get('event') === '1') link.event = true;
   return link;
 }
 
@@ -82,5 +86,22 @@ export function stayLinkSearch(link: StayLink & { addons?: readonly UpsellId[] }
   if (addons.length > 0) params.set('addons', addons.join(','));
   if (link.arrive && isArrivalSlot(link.arrive)) params.set('arrive', link.arrive);
   if (link.leave && isDepartureSlot(link.leave)) params.set('leave', link.leave);
+  if (link.event) params.set('event', '1');
   return `?${params.toString()}`;
+}
+
+/** The share caption. A blocked stay names the reason. Nothing is sent. */
+export function quoteShareLine(canQuote: boolean, reason?: string): string {
+  const ready =
+    'This link reopens the quote, the arrival time, the departure time, how many guests are children, and the add-ons that are checked. It does not send a request.';
+  const held =
+    'This link reopens these dates. This stay is not quoted. Arrival and departure times stay off this link. It does not send a request.';
+  const line = canQuote ? ready : quoteGateLine(reason, 'This link reopens these dates. Arrival and departure times stay off this link.', held);
+  if (line.includes('$') || /\bis open\b/.test(line)) return 'It does not send a request.';
+  return line;
+}
+
+/** The copy button. A refused stay is not called a quote. */
+export function quoteShareButton(canQuote: boolean): string {
+  return canQuote ? 'Copy quote link' : 'Copy this link';
 }

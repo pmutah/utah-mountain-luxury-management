@@ -41,4 +41,15 @@ test('a staff card keeps a named arrival and drops a window that is not one we o
     answers: { earlyLate: '801-555-0100' },
   });
   assert.equal(badLeave.sections.some((section) => section.id === 'departure'), false);
+  const movie = buildStayCard({
+    guestName: 'Preview',
+    propertyName: 'River House',
+    checkIn: '2026-12-01',
+    checkOut: '2026-12-04',
+    propertyId: 'river',
+    answers: { favoriteMovie: 'A western', popcornStyle: 'Butter', amenities: ['Movies / theater', 'Hot tub'] },
+  });
+  const text = JSON.stringify(movie.sections);
+  assert.equal(/theater|popcorn|movie/i.test(text), false);
+  assert.match(text, /Hot tub/);
 });

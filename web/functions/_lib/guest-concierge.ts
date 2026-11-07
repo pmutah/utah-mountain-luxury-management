@@ -2,13 +2,14 @@ import { corsJson, PROPERTIES } from './data';
 import { findSurveyByToken } from './survey-store';
 import { getAllReservations } from './reservations-store';
 import { accessWindow, GUIDE_HOUSE_IDS, loadGuides, type GuideHouseId, type HouseGuide } from './guest-guide';
-import { isAuthenticated } from './auth';
-import { isMuseAuthorized } from './muse/auth';
+import { hostOnly } from './auth';
 import { kvGet, kvPut } from './kv-json';
 import { sendTwilioSms } from './twilio-sms';
 import { SURVEY_PHONE } from './survey-copy';
 import type { AgentEnv } from './agent/types';
 import type { SettingsEnv } from './kv';
+import { conciergePlaceBrief } from '../../src/lib/concierge-place';
+import { conciergeAccessLine } from '../../src/lib/stay-rules';
 
 export const CONCIERGE_NAME = 'Nora';
 export const CONCIERGE_VOICE = 'eve';
@@ -53,7 +54,9 @@ export async function resolveConciergeStay(
   const houseId = survey.propertyId as GuideHouseId;
   const guide = (await loadGuides(env))[houseId];
   const wantsPreview = new URL(request.url).searchParams.get('preview') === '1';
-  const preview = wantsPreview && (isMuseAuthorized(request, env) || isAuthenticated(request, env));
+  // A preview shows the door code early, so it needs a real host. `isAuthenticated` returns true
+  // when DASHBOARD_PASSWORD is unset, which would have let anyone read the codes with ?preview=1.
+  const preview = wantsPreview && hostOnly(request, env);
   if (!guide.enabled && !preview) {
     return { response: corsJson(request, { error: 'The guest app is off for this house.' }, 403) };
   }
@@ -108,11 +111,8 @@ export async function markConciergeSession(env: SettingsEnv, token: string) {
 export function conciergeInstructions(stay: ConciergeStay): string {
   const { guide } = stay;
   const first = stay.guestName.split(' ')[0] || stay.guestName;
-  const codes = stay.unlocked
-    ? guide.doorCode || guide.wifiPassword
-      ? `Door code: ${guide.doorCode || 'not entered yet'}. Door notes: ${guide.doorNotes || 'none'}. Wi-Fi network: ${guide.wifiName || 'not entered yet'}. Wi-Fi password: ${guide.wifiPassword || 'not entered yet'}.`
-      : 'No door code or Wi-Fi has been saved yet. If they ask, text Brandon. Do not invent a code.'
-    : `Door code and Wi-Fi are not available yet. They appear in the app on ${stay.opensOn}. If they ask sooner, say that date. Do not invent a code.`;
+  const codes = conciergeAccessLine(stay.opensOn);
+  const place = conciergePlaceBrief(guide.address, guide.arrival);
   const sections = guide.sections.map((section) => `${section.title}: ${section.body}`).join('\n');
   const places = guide.places.map((place) => `${place.name}${place.area ? ` (${place.area})` : ''}: ${place.note}`).join('\n');
   return `You are ${CONCIERGE_NAME}, the guest concierge at ${stay.propertyName} for Utah Mountain Luxury. You are writing with ${first}, who is staying ${stay.checkIn} to ${stay.checkOut}.
@@ -121,11 +121,11 @@ Write like a person at the house. Warm, brief, specific. Plain sentences, no mar
 
 You know this house, and you know Salt Lake County, Utah County, Heber, Midway, and Park City. Answer almost any practical question in that region: food, coffee, groceries, gas, gear, trails, ski conditions, events, kids, doctors, pharmacies, and drive times.
 
-This house is in Provo Canyon. Heber and Midway are up the canyon, about 25 minutes. Park City is over the mountain or around through Heber, about 45 to 60 minutes. Provo and Orem are down the canyon, about 20 to 30 minutes. Salt Lake is about an hour. A Provo restaurant is not in Heber. If they say Hebrew, they mean Heber.
+${place.where}
 
-Use Google Search before you name a business, a trail, hours, weather, or road conditions. Area picks are only a starting point when they ask something general, such as where to eat tonight, with no town and no particular food. If they name a town, a dish, or the best of something, answer that exact request with a real place in that town. Say why it fits and how long the drive is from this house, including whether it is up-canyon or down-canyon. Never swap in a house pick from a different town. Do not invent a place. Offer a second option only if they ask.
+Use Google Search before you name a business, a trail, hours, weather, or road conditions. Area picks are only a starting point when they ask something general, such as where to eat tonight, with no town and no particular food. If they name a town, a dish, or the best of something, answer that exact request with a real place in that town. ${place.drive} Never swap in a house pick from a different town. Do not invent a place. Offer a second option only if they ask.
 
-When they ask about any place outside this house, name the real place. That includes restaurants, ski resorts, trails, stores, trailheads, hospitals, and anything else they would go to. Say how long the drive is from this house and which way: up the canyon, down the canyon, or over toward Park City. If they ask about more than one place, name each one. Do not paste a web address. Driving directions are added for every place you name.
+When they ask about any place outside this house, name the real place. That includes restaurants, ski resorts, trails, stores, trailheads, hospitals, and anything else they would go to. ${place.drive} If they ask about more than one place, name each one. Do not paste a web address. Driving directions are added for every place you name.
 ${controlNotes(stay)}
 Answer the question yourself whenever you can. Call message_host only when they need a person: something is broken, they want a delivery or a setup, or they ask for Brandon. Do not text Brandon for restaurants, directions, weather, or anything in these notes.
 
@@ -585,7 +585,9 @@ function attachDirections(
   const grounded = placesFromGrounding(json).filter((place) => mentionsPlace(stripped, place.title));
   const chosen = (grounded.length ? grounded : placesFromGrounding(json).slice(0, 1)).slice(0, 8);
   const names = chosen.length ? chosen.map((place) => place.title) : placeNames(stripped, stay, question);
-  const links = (chosen.length ? chosen : names.map((title) => ({ title }))).slice(0, 8);
+  const links: Array<{ title: string; placeId?: string }> = (
+    chosen.length ? chosen : names.map((title) => ({ title }))
+  ).slice(0, 8);
   if (!links.length) {
     const fallback = destinationFromQuestion(question);
     if (!fallback) return stripped;

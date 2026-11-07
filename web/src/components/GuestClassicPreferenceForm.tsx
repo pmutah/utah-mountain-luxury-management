@@ -2,30 +2,8 @@ import type { Dispatch, FormEvent, ReactNode, SetStateAction } from 'react';
 import type { GuestPreferenceAnswers } from '../lib/api';
 import { arrivalSelectOptions, guestArrivalLine } from '../lib/arrival';
 import { DEPARTURE_SLOTS, guestDepartureLine } from '../lib/departure';
-
-const WHY_OPTIONS = [
-  'Family / reunion',
-  'Recreation / getaway',
-  'Skiing or snowboarding',
-  'Mountain biking',
-  'The river',
-  'Hiking',
-  'A celebration',
-  'Work retreat',
-];
-
-const AMENITY_OPTIONS = [
-  'River',
-  'Hot tub',
-  'Sauna',
-  'Fire pit',
-  'Cooking together',
-  'King-bed quiet',
-  'Kids and bunks',
-  'Great room',
-  'Work from lodge',
-  'Near Sundance',
-];
+import { houseStay } from '../lib/house-stay';
+import { preferenceAmenities, preferenceEvenings, preferencePetLine, preferenceWhy } from '../lib/preference-choices';
 
 const COFFEE_OPTIONS = [
   'Drip',
@@ -58,6 +36,7 @@ const inputClass =
 
 export function GuestClassicPreferenceForm({
   meta,
+  house,
   answers,
   setAnswers,
   saving,
@@ -65,6 +44,7 @@ export function GuestClassicPreferenceForm({
   onSubmit,
 }: {
   meta: { guestName: string; propertyName: string; checkIn: string; checkOut: string };
+  house?: string | null;
   answers: GuestPreferenceAnswers;
   setAnswers: Dispatch<SetStateAction<GuestPreferenceAnswers>>;
   saving: boolean;
@@ -119,9 +99,9 @@ export function GuestClassicPreferenceForm({
             <Field label="Celebrating anything?">
               <input className={inputClass} placeholder="Birthday, reunion, none" value={answers.celebration ?? ''} onChange={(e) => set('celebration', e.target.value)} />
             </Field>
-            <Field label="Dogs? Count and weight">
-              <input className={inputClass} placeholder="Dogs only, max 2, under 50 lb" value={answers.dogs ?? ''} onChange={(e) => set('dogs', e.target.value)} />
-            </Field>
+            <p className="text-sm text-stone-600" data-bot="stay-classic-pets">
+              {preferencePetLine()}
+            </p>
             <Field label="Stairs or accessibility notes">
               <textarea className={`${inputClass} min-h-[80px]`} value={answers.accessibility ?? ''} onChange={(e) => set('accessibility', e.target.value)} />
             </Field>
@@ -186,7 +166,7 @@ export function GuestClassicPreferenceForm({
           <section className="space-y-4">
             <h2 className="text-lg font-serif">Why you are coming</h2>
             <div className="flex flex-wrap gap-2">
-              {WHY_OPTIONS.map((opt) => (
+              {preferenceWhy(house).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -210,15 +190,14 @@ export function GuestClassicPreferenceForm({
             <Field label="Evenings">
               <select className={inputClass} value={answers.evenings ?? ''} onChange={(e) => set('evenings', e.target.value)}>
                 <option value="">Choose</option>
-                <option>Fire pit and hot tub</option>
-                <option>Great room and fireplace</option>
-                <option>Cook and linger</option>
-                <option>Early to bed</option>
+                {preferenceEvenings(house).map((opt) => (
+                  <option key={opt}>{opt}</option>
+                ))}
               </select>
             </Field>
             <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">Top 3 that matter this stay</p>
             <div className="flex flex-wrap gap-2">
-              {AMENITY_OPTIONS.map((opt) => (
+              {preferenceAmenities(house).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -235,17 +214,21 @@ export function GuestClassicPreferenceForm({
 
           <section className="space-y-4">
             <h2 className="text-lg font-serif">Sleeping</h2>
-            <Field label="Master King Suite">
-              <input className={inputClass} placeholder="Names, or you assign" value={answers.masterSuite ?? ''} onChange={(e) => set('masterSuite', e.target.value)} />
-            </Field>
-            <Field label="Guest King Suite">
-              <input className={inputClass} value={answers.guestSuite ?? ''} onChange={(e) => set('guestSuite', e.target.value)} />
-            </Field>
+            {(house === 'river' || house === 'ranch' || house === 'lindon') && houseStay(house).bedrooms ? (
+              <>
+                <Field label="Master King Suite">
+                  <input className={inputClass} placeholder="Names, or you assign" value={answers.masterSuite ?? ''} onChange={(e) => set('masterSuite', e.target.value)} />
+                </Field>
+                <Field label="Guest King Suite">
+                  <input className={inputClass} value={answers.guestSuite ?? ''} onChange={(e) => set('guestSuite', e.target.value)} />
+                </Field>
+              </>
+            ) : null}
             <Field label="Extra pillows — soft or firmer">
               <input className={inputClass} value={answers.extraPillows ?? ''} onChange={(e) => set('extraPillows', e.target.value)} />
             </Field>
             <Field label="Kids sleep">
-              <input className={inputClass} placeholder="Bunks, loft, with parents" value={answers.kidsSleep ?? ''} onChange={(e) => set('kidsSleep', e.target.value)} />
+              <input className={inputClass} placeholder="With the group, or we will assign" value={answers.kidsSleep ?? ''} onChange={(e) => set('kidsSleep', e.target.value)} />
             </Field>
           </section>
 

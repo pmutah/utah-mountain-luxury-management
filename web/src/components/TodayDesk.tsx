@@ -1,17 +1,20 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { loadBookedNights } from '../lib/booked-nights';
-import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderEarly, workOrderLaterLeave, workOrderNext, workOrderParty, workOrderPrep, workOrderRules, workOrderWhen } from '../lib/clean';
+import { loadBookedNights, loadQuoteCalendar } from '../lib/booked-nights';
+import { workOrderArrival, workOrderCheckoutParty, workOrderDeparture, workOrderEarly, workOrderEvent, workOrderLaterLeave, workOrderNext, workOrderParty, workOrderPrep, workOrderRules, workOrderWhen } from '../lib/clean';
 import { earlyStayOpen } from '../lib/house-stay';
 import { checkoutNightIsFree } from '../lib/journey';
 import type { HouseId } from '../lib/market/types';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
+import { HouseSettings } from './HouseSettings';
 import { codesOpenTomorrow } from '../lib/house-stay';
 import { formatWhole } from '../lib/luxury';
 import { currentDayIso } from '../lib/months';
 import { occupancyCalendar, occupancyFilename } from '../lib/occupancy-calendar';
 import { grossPace, type GoalHouse } from '../lib/revenue-goals';
 import { buildTodayDesk, buildTurnovers, type StayMove } from '../lib/today';
+import { jobLeaveAt2, turnHours } from '../lib/turn-clock';
+import { turnLoad } from '../lib/turn-load';
 
 const HOUSES: { id: GoalHouse; label: string }[] = [
   { id: 'ranch', label: 'Ranch' },
@@ -57,7 +60,7 @@ function MoveList({ title, moves, empty }: { title: string; moves: StayMove[]; e
             <li key={move.id} className="text-sm">
               <p>
                 <span className="text-[#d4b56a]">{shortDate(move.date)}</span>
-                {` · ${move.houseName} · ${move.guest}`}
+                {` Â· ${move.houseName} Â· ${move.guest}`}
               </p>
               <p className="text-[var(--uml-muted)]">{move.nights} nights</p>
             </li>
@@ -74,6 +77,7 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
   const turns = buildTurnovers(reservations, asOf);
   const preferenceTimes = usePreferenceTimes();
   const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
+  const [closed, setClosed] = useState<Partial<Record<HouseId, string[]>> | null>(null);
   useEffect(() => {
     let cancel = false;
     loadBookedNights()
@@ -81,6 +85,13 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
         if (!cancel) setTaken(nights);
       })
       .catch(() => undefined);
+    loadQuoteCalendar()
+      .then((rows) => {
+        if (!cancel) setClosed(rows ? rows.closed : null);
+      })
+      .catch(() => {
+        if (!cancel) setClosed(null);
+      });
     return () => {
       cancel = true;
     };
@@ -104,7 +115,7 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                   {formatWhole(pace.booked)}
                 </p>
                 <p className="text-xs text-[var(--uml-muted)]">
-                  of {formatWhole(pace.target)} · {desk.openNext30[house.id]} open nights ahead
+                  of {formatWhole(pace.target)} Â· {desk.openNext30[house.id]} open nights ahead
                 </p>
               </div>
             </div>
@@ -117,7 +128,7 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
       </div>
       <div className="mt-6" data-bot="today-calendar">
         <p className="text-sm text-[var(--uml-muted)]">
-          Taken nights only. Names stay off this file. Downloading does not change a booking.
+          Taken nights, and a calendar block when that list has been read. Names stay off this file. Downloading does not change a booking.
         </p>
         <button
           type="button"
@@ -134,6 +145,7 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                     status: stay.status,
                   })),
                   asOf,
+                  closed ?? undefined,
                 ),
               ],
               { type: 'text/calendar' },
@@ -157,12 +169,29 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
         {turns.length === 0 ? (
           <p className="mt-2 text-sm text-[var(--uml-muted)]">No turnovers in the next two weeks.</p>
         ) : (
+          <>
+          {turnLoad(
+            turns.map((turn) => ({
+              house: turn.house,
+              houseName: turn.houseName,
+              checkout: turn.checkout,
+              clock: {
+                sameDay: turn.gapNights === 0,
+                leaveAt2: jobLeaveAt2(preferenceTimes?.departure[turn.checkoutStayId], turn.leaveAt2),
+                arriveAt1: turn.arriveAt1,
+              },
+            })),
+          ).map((row) => (
+            <p key={row.date} className="mt-2 text-sm" data-bot="today-load" data-date={row.date}>
+              {row.line}
+            </p>
+          ))}
           <ul className="mt-2 space-y-3">
             {turns.map((turn) => (
               <li key={turn.id} className="text-sm" data-bot="today-turnover" data-house={turn.house}>
                 <p>
                   <span className="text-[#d4b56a]">{shortDate(turn.checkout)}</span>
-                  {` · ${turn.houseName} · `}
+                  {` Â· ${turn.houseName} Â· `}
                   {turn.gapNights === null
                     ? 'nothing booked after'
                     : turn.gapNights === 0
@@ -171,6 +200,15 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                 </p>
                 <p className="text-[var(--uml-muted)]" data-bot="today-turnover-when">
                   {workOrderWhen(turn.house, turn.gapNights === 0, 'en')}
+                </p>
+                <p data-bot="today-turnover-hours">
+                  {
+                    turnHours({
+                      sameDay: turn.gapNights === 0,
+                      leaveAt2: jobLeaveAt2(preferenceTimes?.departure[turn.checkoutStayId], turn.leaveAt2),
+                      arriveAt1: turn.arriveAt1,
+                    }).text
+                  }
                 </p>
                 <p data-bot="today-turnover-checkout">{workOrderCheckoutParty(turn.checkoutGuests, 'en', turn.checkoutChildren)}</p>
                 {preferenceTimes && (
@@ -184,6 +222,9 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
                   </p>
                 )}
                 <p data-bot="today-turnover-next">{workOrderNext(turn.nextCheckIn, turn.gapNights, 'en')}</p>
+                {workOrderEvent(turn.nextCheckIn, turn.nextCheckOut, 'en') && (
+                  <p data-bot="today-turnover-event">{workOrderEvent(turn.nextCheckIn, turn.nextCheckOut, 'en')}</p>
+                )}
                 {turn.nextCheckIn && <p data-bot="today-turnover-party">{workOrderParty(turn.nextGuests, 'en', turn.nextChildren)}</p>}
                 {taken && turn.nextCheckIn && (
                   <p data-bot="today-turnover-early">
@@ -204,8 +245,26 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
               </li>
             ))}
           </ul>
+          </>
         )}
       </div>
     </section>
   );
 }
+
+/**
+ * The today desk plus the house settings it depends on.
+ *
+ * The settings sit below the desk because the desk's check-in and cleaner wording is built from them:
+ * a host reading a turnover and finding the rules wrong should be able to fix them there. Exported for
+ * use in the overview, which is the page the desk is already on.
+ */
+export function TodayDeskWithSettings(props: Parameters<typeof TodayDesk>[0]) {
+  return (
+    <div className="space-y-6">
+      <TodayDesk {...props} />
+      <HouseSettings />
+    </div>
+  );
+}
+

@@ -1,0 +1,47 @@
+name: Check
+
+# The deploy workflow only runs on `main`, so a branch like `elite-rebuild` had no checks at all:
+# no typecheck, no guard check, no tests, no build. A failing test sat unnoticed in the tree because
+# nothing ran it, and that is the whole reason this workflow exists. It deploys nothing — it only
+# answers whether the tree is sound.
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Typecheck, guards, tests, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root & web dependencies
+        working-directory: .
+        run: npm ci --workspace web || npm install --workspace web
+
+      - name: Typecheck the app and the Functions
+        # `npm run build` covers only `src`. A broken import or duplicate declaration under
+        # `functions/` reaches production unless this runs.
+        run: |
+          npx tsc -b
+          npm run check:functions
+
+      - name: Check every route guard
+        run: npm run check:guards
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

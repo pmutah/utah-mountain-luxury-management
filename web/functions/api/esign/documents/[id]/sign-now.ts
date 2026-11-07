@@ -1,5 +1,7 @@
+import { hostDenied, hostOnly } from '../../../../_lib/auth';
 import { corsJson } from '../../../../_lib/data';
 import { completeEsignPackage, markSessionCompleted } from '../../../../_lib/esign/complete-esign';
+import { readOrRefuse } from '../../../../_lib/read-guard';
 import {
   getVaultDocument,
   newSessionId,
@@ -14,8 +16,11 @@ import type { SettingsEnv } from '../../../../_lib/kv';
 type Env = SettingsEnv & FirebaseStorageEnv;
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = String(params.id ?? '');
-  const doc = await getVaultDocument(env, id);
+  const found = await readOrRefuse(request, () => getVaultDocument(env, id), 'The document vault');
+  if (!found.ok) return found.response;
+  const doc = found.value;
   if (!doc) return corsJson(request, { error: 'Not found' }, 404);
   if (doc.status === 'completed') {
     return corsJson(request, { error: 'This document is already signed.' }, 409);

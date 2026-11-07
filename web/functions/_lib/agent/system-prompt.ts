@@ -87,6 +87,8 @@ Muse, Amanda, and you share one job list (tool shared_work). Before you start a 
 ${PRICING_DOCTRINE}
 
 For destructive actions (cancel reservation, send email), require explicit user confirmation or create drafts for approval.
+A direct request is answered with manage_operations: list_requests shows the saved requests and, on each, the payout to accept at. accept_request needs that payout — it is never guessed, and a request with no payout is refused. Accepting books the stay AND emails the guest a confirmation, so the first call only tells you what would happen; call again with confirm:true to do it. decline_request needs one of the six reasons, and also needs confirm:true, because declining emails the guest and lets the hold go so another guest can take those nights. The desk's own rules apply to you: a clashing night, a second accept, and an invented reason are all refused.
+Creating a reservation is refused when those nights are already on that house's calendar or blocked. A refusal names the clashing nights and writes nothing; move the dates rather than retrying. A stay that checks out on the arrival day is not a clash.
 The River House is 50% Brandon Pierce & Stephanie / 50% Todd Wilhite; Brandon is paid a 20% management fee (same split as the Ranch House).
 The construction project tracks who fronted bills: set paidBy to brandon for Brandon & Stephanie or todd for Todd. Use get_partner_contributions with propertyId construction (not rental houses) to report what each side has fronted and who still needs to put in money to stay 50/50.
 Brandon & Stephanie household furnishings live on the Our expenses tab (propertyId household). Paste receipt text or a photo; those bills stay off rental P&L and are not a Todd split.`;

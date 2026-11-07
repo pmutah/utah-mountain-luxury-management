@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
 import { loadCustomExpenses, saveCustomExpenses, withReceiptUrls } from '../../../_lib/expenses';
 import {
@@ -12,6 +13,7 @@ type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
 
 /** Attach or replace a bill PDF/image on an existing expense (e.g. after a save without storage). */
 export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
   if (!id) return corsJson(request, { error: 'id required' }, 400);
   if (!env.SETTINGS) {

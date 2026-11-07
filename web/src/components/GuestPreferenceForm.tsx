@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, type GuestPreferenceAnswers } from '../lib/api';
+import type { HouseId } from '../lib/market/types';
 import { AppIcon } from './AppIcon';
 import { GuestClassicPreferenceForm } from './GuestClassicPreferenceForm';
 import { GuestVipSurvey } from './GuestVipSurvey';
@@ -19,11 +20,16 @@ export function GuestPreferenceForm({ token }: { token: string }) {
   const [answers, setAnswers] = useState<GuestPreferenceAnswers>({});
   const [saving, setSaving] = useState(false);
   const [guideOn, setGuideOn] = useState(false);
+  const [guideHouse, setGuideHouse] = useState<HouseId | null>(null);
 
   useEffect(() => {
     void api
       .getStayGuide(token)
-      .then((result) => setGuideOn(result.enabled))
+      .then((result) => {
+        setGuideOn(result.enabled);
+        const propertyId = 'propertyId' in result ? result.propertyId : null;
+        if (propertyId === 'river' || propertyId === 'ranch' || propertyId === 'lindon') setGuideHouse(propertyId);
+      })
       .catch(() => setGuideOn(false));
   }, [token]);
 
@@ -80,7 +86,11 @@ export function GuestPreferenceForm({ token }: { token: string }) {
 
   if (!meta) return null;
 
-  const vip = meta.variant === 'vip' || meta.propertyId === 'river';
+  const house =
+    meta.propertyId === 'river' || meta.propertyId === 'ranch' || meta.propertyId === 'lindon'
+      ? meta.propertyId
+      : guideHouse;
+  const vip = meta.variant === 'vip' || house === 'river';
 
   if (vip) {
     return (
@@ -132,6 +142,7 @@ export function GuestPreferenceForm({ token }: { token: string }) {
   return (
     <GuestClassicPreferenceForm
       meta={meta}
+      house={house}
       answers={answers}
       setAnswers={setAnswers}
       saving={saving}

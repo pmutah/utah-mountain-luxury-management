@@ -7,6 +7,7 @@ import { checkoutNightIsFree } from './journey';
 import { bookingStartSummary } from './booking-starts';
 import { workOrderNext } from './clean';
 import { addDays } from './market/dates';
+import { stayEventLine } from './market/events';
 import type { YearPace } from './market/fill';
 import { addonPhrase, lengthPhrase } from './open-arrivals';
 import type { ClosedSpan } from './owner-ahead';
@@ -177,9 +178,16 @@ export function ownerArrivalLines(
     const nights = nightsBetween(stay.checkIn, stay.checkOut);
     const count = noteGuestCount(stay.note);
     const children = noteChildCount(stay.note);
-    const kidBit = children !== null && children >= 1 ? (children === 1 ? ', including 1 child' : `, including ${children} children`) : '';
-    const party =
-      count === null
+    const onlyChildren = count !== null && children !== null && children === count;
+    const kidBit =
+      !onlyChildren && children !== null && children >= 1
+        ? children === 1
+          ? ', including 1 child'
+          : `, including ${children} children`
+        : '';
+    const party = onlyChildren
+      ? 'The booking names only children. A stay needs an adult.'
+      : count === null
         ? children !== null && children >= 1
           ? `The booking names ${children === 1 ? '1 child' : `${children} children`} and does not say how many guests.`
           : 'The booking does not say how many guests.'
@@ -191,9 +199,10 @@ export function ownerArrivalLines(
     const houseId = stay.propertyId === 'river' ? 'river' : 'ranch';
     const early = ` ${hostEarlyPhrase(earlyStayOpen(stay.checkIn, held[houseId], asOf))}`;
     const prep = stayPrepPhrase(houseId, stay.checkIn, asOf);
+    const event = stayEventLine(stay.checkIn, stay.checkOut);
     return {
       id: `${stay.propertyId}-${stay.checkIn}-${stay.checkOut}`,
-      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}${arrival}${early}${prep ? ` ${prep}` : ''}`,
+      text: `${house} ${shortWhen(stay.checkIn)} for ${nights} ${nights === 1 ? 'night' : 'nights'}. ${party}${arrival}${early}${prep ? ` ${prep}` : ''}${event ? ` ${event}` : ''}`,
     };
   });
 }

@@ -1,4 +1,5 @@
 import { isHouseId, type StaySpan } from './availability';
+import { addDays } from './market/dates';
 import type { HouseId } from './market/types';
 
 const LABEL: Record<HouseId, string> = {
@@ -16,10 +17,68 @@ function dateStamp(iso: string): string {
   return iso.replace(/-/g, '');
 }
 
+const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
+
+function covered(stays: readonly StaySpan[], house: HouseId, iso: string): boolean {
+  return stays.some(
+    (stay) =>
+      stay.propertyId === house &&
+      stay.status !== 'cancelled' &&
+      stay.checkIn <= iso &&
+      iso < stay.checkOut,
+  );
+}
+
+/** Consecutive closed nights become one unavailable block. A night already on a stay is left once. */
+function blockSpans(
+  stays: readonly StaySpan[],
+  closed: Partial<Record<HouseId, readonly string[]>> | undefined,
+  asOf: string,
+): StaySpan[] {
+  if (!closed) return [];
+  const spans: StaySpan[] = [];
+  for (const house of HOUSES) {
+    const nights = [...new Set(closed[house] ?? [])]
+      .filter((iso) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && !covered(stays, house, iso))
+      .sort();
+    let start = '';
+    let prev = '';
+    const flush = () => {
+      if (!start || !prev) return;
+      const checkOut = addDays(prev, 1);
+      if (checkOut > asOf) {
+        spans.push({
+          propertyId: house,
+          checkIn: start < asOf ? asOf : start,
+          checkOut,
+          status: 'blocked',
+        });
+      }
+      start = '';
+      prev = '';
+    };
+    for (const iso of nights) {
+      if (prev && addDays(prev, 1) === iso) {
+        prev = iso;
+        continue;
+      }
+      flush();
+      start = iso;
+      prev = iso;
+    }
+    flush();
+  }
+  return spans;
+}
+
 /** Taken nights for a calendar app. Names and payouts are not fields on this file. */
-export function occupancyCalendar(stays: readonly StaySpan[], asOf: string): string {
+export function occupancyCalendar(
+  stays: readonly StaySpan[],
+  asOf: string,
+  closed?: Partial<Record<HouseId, readonly string[]>>,
+): string {
   const seen = new Map<string, number>();
-  const events = stays
+  const events = [...stays, ...blockSpans(stays, closed, asOf)]
     .filter(
       (stay) =>
         isHouseId(stay.propertyId) &&

@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../../../_lib/auth';
 import { corsJson } from '../../../../_lib/data';
 import { uint8ToBase64 } from '../../../../_lib/construction/construction-binary';
 import { ingestConstructionDocument } from '../../../../_lib/construction/construction-ingest';
@@ -10,6 +11,7 @@ import {
 import type { ConstructionEnv } from '../../../../_lib/construction/types';
 
 export const onRequestPost: PagesFunction<ConstructionEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const apiKey = env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return corsJson(request, { error: 'GEMINI_API_KEY not configured' }, 503);

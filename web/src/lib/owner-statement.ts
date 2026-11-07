@@ -70,15 +70,15 @@ export function buildOwnerStatement(
   extraCleaningFees: Record<string, number> = {},
 ): OwnerStatement {
   const report = buildPortfolioReport(endMonth, period, reservations, expenses, extraCleaningFees, 'all', 'todd');
-  const houses: OwnerHouseLine[] = report.properties.flatMap((row) => {
+  const rawHouses: OwnerHouseLine[] = report.properties.flatMap((row) => {
     if (row.propertyId !== 'ranch' && row.propertyId !== 'river') return [];
     return [
       {
         id: row.propertyId,
         name: row.name,
-        revenue: row.revenue,
-        costs: row.mortgage + row.cleaning + row.operating,
-        todd: row.dist?.todd ?? 0,
+        revenue: cents(row.revenue),
+        costs: cents(row.mortgage + row.cleaning + row.operating),
+        todd: cents(row.dist?.todd ?? 0),
         stays: row.stayCount,
       },
     ];
@@ -87,15 +87,17 @@ export function buildOwnerStatement(
     report.period === 'month'
       ? formatMonthLabel(report.endMonth)
       : `${formatMonthLabel(report.startMonth)} – ${formatMonthLabel(report.endMonth)}`;
+  const houses = rawHouses.map((house) => ({ ...house, todd: cents(house.todd) }));
   return {
     rangeLabel: range,
-    todd: report.totals.dist?.todd ?? 0,
-    fee: report.totals.dist?.mgtFee ?? 0,
+    // Rounded to cents so a float artefact like 1908.3439999999998 never reaches a statement.
+    todd: cents(report.totals.dist?.todd ?? 0),
+    fee: cents(report.totals.dist?.mgtFee ?? 0),
     houses,
     months: footOwnerColumns(
       houses.find((house) => house.id === 'ranch')?.todd ?? 0,
       footOwnerMonths(
-        report.totals.dist?.todd ?? 0,
+        cents(report.totals.dist?.todd ?? 0),
         report.monthly.map((point) => ({
           month: point.month,
           label: formatMonthLabel(point.month),

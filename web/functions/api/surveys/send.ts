@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson, PROPERTIES } from '../../_lib/data';
 import { updateReservation } from '../../_lib/reservations-store';
 import { upsertSurveyForStay, markSurveySent } from '../../_lib/survey-store';
@@ -19,6 +20,7 @@ function isSurveyChannel(value: unknown): value is SurveyChannel {
 }
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const body = (await request.json()) as {
     reservationId?: string;
     confirmationCode?: string;
@@ -70,7 +72,7 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     const sent = await gmailSend(
       env,
       email,
-      surveyEmailSubject(stay.guestName, propertyName, guideOn),
+      surveyEmailSubject(propertyName, guideOn),
       surveyEmailBody({
         guestName: stay.guestName,
         propertyName,

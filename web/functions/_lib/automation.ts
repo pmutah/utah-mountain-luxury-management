@@ -1,4 +1,4 @@
-import { PROPERTIES, calculateMetrics, portfolioAvgOccupancy } from './data';
+import { calculateMetrics, portfolioAvgOccupancy, propertyName } from './data';
 import { mergeAllExpenses, withReceiptUrls } from './expenses';
 import { gmailSend } from './gmail-store';
 import { kvGet, kvPut } from './kv-json';
@@ -95,7 +95,7 @@ export async function runAutomation(env: SettingsEnv, origin: string) {
       const arriveOn = addDays(today, 3);
       for (const stay of reservations.filter((item) => active(item) && item.checkIn === arriveOn)) {
         const existing = await findSurveyByReservation(env, stay.id);
-        const propertyName = PROPERTIES[stay.propertyId]?.name ?? stay.propertyId;
+        const houseName = propertyName(stay.propertyId);
         if (!existing?.sentAt && (stay.guestEmail || stay.guestPhone)) {
           const survey = await upsertSurveyForStay(env, {
             id: stay.id,
@@ -112,10 +112,10 @@ export async function runAutomation(env: SettingsEnv, origin: string) {
             const sent = await gmailSend(
               env,
               stay.guestEmail,
-              surveyEmailSubject(stay.guestName, propertyName, guideOn),
+              surveyEmailSubject(houseName, guideOn),
               surveyEmailBody({
                 guestName: stay.guestName,
-                propertyName,
+                propertyName: houseName,
                 checkIn: stay.checkIn,
                 checkOut: stay.checkOut,
                 link,
@@ -131,7 +131,7 @@ export async function runAutomation(env: SettingsEnv, origin: string) {
             const sent = await sendTwilioSms(
               env,
               stay.guestPhone,
-              surveySmsBody({ guestName: stay.guestName, propertyName, link, guideOn }),
+              surveySmsBody({ guestName: stay.guestName, propertyName: houseName, link, guideOn }),
             );
             if (!sent.error) {
               await markSurveySent(env, survey.token, 'sms');
@@ -143,19 +143,19 @@ export async function runAutomation(env: SettingsEnv, origin: string) {
           const sent = await sendTwilioSms(
             env,
             settings.cleanerPhone,
-            `Prep ${propertyName} for ${stay.guestName}, arriving ${stay.checkIn}.`,
+            `Prep ${houseName} for ${stay.guestName}, arriving ${stay.checkIn}.`,
           );
           notes.push(sent.error ?? `Cleaner texted for ${stay.guestName}.`);
         }
       }
       for (const stay of reservations.filter((item) => active(item) && item.checkOut === today)) {
         if (!stay.guestEmail || thanked.includes(stay.id)) continue;
-        const propertyName = PROPERTIES[stay.propertyId]?.name ?? stay.propertyId;
+        const houseName = propertyName(stay.propertyId);
         const sent = await gmailSend(
           env,
           stay.guestEmail,
-          `Thank you for staying at ${propertyName}`,
-          `Dear ${stay.guestName},\n\nThank you for staying at ${propertyName}. When you want the house again, tell us the dates: ${origin}/book\n\nWith care,\nUtah Mountain Luxury`,
+          `Thank you for staying at ${houseName}`,
+          `Dear ${stay.guestName},\n\nThank you for staying at ${houseName}. When you want the house again, tell us the dates: ${origin}/book\n\nWith care,\nUtah Mountain Luxury`,
         );
         if (!sent.error) {
           thanked.push(stay.id);

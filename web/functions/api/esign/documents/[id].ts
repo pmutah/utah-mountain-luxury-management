@@ -1,5 +1,7 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
 import { deleteEsignStoredFile } from '../../../_lib/esign/esign-file-store';
+import { readOrRefuse } from '../../../_lib/read-guard';
 import {
   deleteVaultDocument,
   getEsignSession,
@@ -14,12 +16,15 @@ import type { SettingsEnv } from '../../../_lib/kv';
 type Env = SettingsEnv & FirebaseStorageEnv;
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
-  const doc = await getVaultDocument(env, String(params.id ?? ''));
-  if (!doc) return corsJson(request, { error: 'Not found' }, 404);
-  return corsJson(request, doc);
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+  const read = await readOrRefuse(request, () => getVaultDocument(env, String(params.id ?? '')), 'The document vault');
+  if (!read.ok) return read.response;
+  if (!read.value) return corsJson(request, { error: 'Not found' }, 404);
+  return corsJson(request, read.value);
 };
 
 export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = String(params.id ?? '');
   const body = (await request.json()) as {
     title?: string;
@@ -47,7 +52,9 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
     patch.cancelledAt = new Date().toISOString();
   }
 
-  const updated = await updateVaultDocument(env, id, patch);
+  const read = await readOrRefuse(request, () => updateVaultDocument(env, id, patch), 'The document vault');
+  if (!read.ok) return read.response;
+  const updated = read.value;
   if (!updated) return corsJson(request, { error: 'Not found' }, 404);
   if (patch.status === 'cancelled' && updated.sessionId) {
     const session = await getEsignSession(env, updated.sessionId);
@@ -62,7 +69,10 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
 };
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
-  const doc = await deleteVaultDocument(env, String(params.id ?? ''));
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+  const read = await readOrRefuse(request, () => deleteVaultDocument(env, String(params.id ?? '')), 'The document vault');
+  if (!read.ok) return read.response;
+  const doc = read.value;
   if (!doc) return corsJson(request, { error: 'Not found' }, 404);
   await deleteEsignStoredFile(env, doc.storagePath).catch(() => {});
   await deleteEsignStoredFile(env, doc.signedStoragePath ?? null).catch(() => {});

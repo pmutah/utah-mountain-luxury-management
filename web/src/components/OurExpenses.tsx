@@ -12,6 +12,7 @@ import {
   looksLikeReceiptText,
   parseHouseholdText,
 } from '../lib/household-text';
+import { archiveCountLine } from '../lib/expense-archive-line';
 import { currentYearMonth } from '../lib/months';
 import { todayInUtah } from '../lib/paid-date';
 import { fileFromClipboard, isChatPasteTarget, prepareReceiptFile } from '../lib/receipt-image';
@@ -31,12 +32,27 @@ export function OurExpenses({
   onError: (msg: string) => void;
 }) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('Furnishings');
   const [receiptText, setReceiptText] = useState('');
   const [saving, setSaving] = useState(false);
+  /** Removed expenses that can be put back. Not a total: the line says so. */
+  const [archived, setArchived] = useState<Array<{
+    id: string;
+    removedAt: string;
+    reason?: string;
+    description: string;
+    amount: number;
+    propertyId: string | null;
+    date: string | null;
+    hasReceipt: boolean;
+  }> | null>(null);
+  const [archiveLine, setArchiveLine] = useState<string | null>(null);
+  const [archiveNotice, setArchiveNotice] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [receipt, setReceipt] = useState<{
     base64: string;
@@ -56,15 +72,37 @@ export function OurExpenses({
     setLoading(true);
     try {
       const data = await api.getExpenses();
+      setLoadError(null);
       setExpenses(
         data.custom
           .filter((e) => e.propertyId === HOUSEHOLD_PROPERTY_ID)
           .sort((a, b) => (b.createdAt ?? b.month).localeCompare(a.createdAt ?? a.month)),
       );
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'Could not load expenses');
+      const message = e instanceof Error ? e.message : 'Could not load expenses';
+      setExpenses([]);
+      setLoadError(message);
+      onError(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /** What can be restored. A paused read is not an empty archive, so it says so. */
+  const loadArchive = async () => {
+    try {
+      const data = await api.getExpenseArchive();
+      if (data.storageReads === 'paused' || data.archived === null) {
+        setArchived(null);
+        setArchiveLine('The removed expenses could not be read. This is not an empty list.');
+        return;
+      }
+      setArchived(data.archived);
+      // The line is taken from the rows just read, so it can never disagree with the list beside it.
+      setArchiveLine(archiveCountLine(data.archived.length));
+    } catch {
+      setArchived(null);
+      setArchiveLine('The removed expenses could not be read. This is not an empty list.');
     }
   };
 
@@ -72,6 +110,7 @@ export function OurExpenses({
     // Fetch the household ledger when this tab mounts.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot load
     void load();
+    void loadArchive();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -298,6 +337,10 @@ export function OurExpenses({
   }, []);
 
   const save = async () => {
+    if (loadError) {
+      onError(loadError);
+      return;
+    }
     const what = description.trim();
     const value = Number(amount);
     if (!what) {
@@ -319,8 +362,43 @@ export function OurExpenses({
   };
 
   const deleteExpense = async (id: string) => {
-    await api.deleteExpense(id);
+    // A delete is archived on the server, so this can be undone from the panel below.
+    const result = await api.deleteExpense(id);
+    if (result.archived) setArchiveNotice(`Removed. It can be restored from “Removed expenses” below.`);
     await load();
+  };
+
+  /** Put one removed expense back exactly as it was. */
+  const restoreExpense = async (id: string) => {
+    setRestoring(id);
+    try {
+      await api.restoreExpense(id);
+      setArchiveNotice('That expense is back on the books.');
+      await loadArchive();
+      await load();
+    } catch (err) {
+      setArchiveNotice(err instanceof Error ? err.message : 'That expense could not be restored.');
+    } finally {
+      setRestoring(null);
+    }
+  };
+
+  /**
+   * Drop an archived row and its files for good. This is the only path that deletes a receipt now,
+   * so it asks first: a restore is one click, deleting the files is not.
+   */
+  const purgeExpense = async (id: string, label: string) => {
+    if (!window.confirm(`Delete “${label}” and its receipt for good? This cannot be undone.`)) return;
+    setRestoring(id);
+    try {
+      const result = await api.purgeExpense(id);
+      setArchiveNotice(result.line);
+      await loadArchive();
+    } catch (err) {
+      setArchiveNotice(err instanceof Error ? err.message : 'That expense could not be purged.');
+    } finally {
+      setRestoring(null);
+    }
   };
 
   return (
@@ -333,12 +411,23 @@ export function OurExpenses({
             rental P&amp;L.
           </p>
         </div>
-        <div className="bg-rose-950/40 px-4 py-3 rounded-2xl border border-rose-800/50 min-w-[10rem]">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">We have put in</p>
-          <p className="text-2xl font-black text-rose-300 mt-0.5">{formatCurrency(total)}</p>
-          <p className="text-[10px] text-slate-500 font-bold">
-            {expenses.length} {expenses.length === 1 ? 'purchase' : 'purchases'}
-          </p>
+        <div className="bg-rose-950/40 px-4 py-3 rounded-2xl border border-rose-800/50 min-w-[10rem] max-w-sm">
+          {loadError ? (
+            <>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Saved purchases</p>
+              <p className="text-sm font-bold text-rose-100 mt-1" data-bot="our-expenses-paused">
+                {loadError}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">We have put in</p>
+              <p className="text-2xl font-black text-rose-300 mt-0.5">{formatCurrency(total)}</p>
+              <p className="text-[10px] text-slate-500 font-bold">
+                {expenses.length} {expenses.length === 1 ? 'purchase' : 'purchases'}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -583,6 +672,10 @@ export function OurExpenses({
         </h3>
         {loading ? (
           <p className="text-xs text-slate-600 font-bold">Loading…</p>
+        ) : loadError ? (
+          <p className="text-sm text-rose-100 font-bold" data-bot="our-expenses-unreadable">
+            {loadError}
+          </p>
         ) : expenses.length === 0 ? (
           <p className="text-xs text-slate-600 font-bold">
             Nothing logged yet. Paste text, add a photo, or type the first purchase above.
@@ -614,6 +707,74 @@ export function OurExpenses({
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      {/*
+        A delete is reversible. The archive is not a second ledger: an entry here is not in any
+        total, report, or statement while it sits, and the line says so.
+      */}
+      <section className="space-y-2 rounded-xl border border-slate-800 p-4" data-bot="expense-archive">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-black text-white">Removed expenses</h3>
+            {archiveLine && (
+              <p className="mt-1 text-xs text-slate-400" data-bot="expense-archive-line">
+                {archiveLine}
+              </p>
+            )}
+          </div>
+          {archiveNotice && (
+            <p className="text-xs text-emerald-200" data-bot="expense-archive-notice">
+              {archiveNotice}
+            </p>
+          )}
+        </div>
+        {archived === null ? (
+          <p className="text-xs text-rose-100" data-bot="expense-archive-unreadable">
+            The removed expenses could not be read just now. This is not an empty list.
+          </p>
+        ) : archived.length === 0 ? (
+          <p className="text-xs text-slate-500">Nothing has been removed, so there is nothing to restore.</p>
+        ) : (
+          <ul className="space-y-1">
+            {archived.map((row) => (
+              <li
+                key={row.id}
+                data-bot="expense-archive-row"
+                data-id={row.id}
+                className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-1 text-xs"
+              >
+                <span className="text-slate-300">
+                  {row.description || row.id}
+                  <span className="text-slate-500">
+                    {' · '}
+                    {row.date ?? 'no date'}
+                    {row.hasReceipt ? ' · receipt on file' : ''}
+                    {row.reason ? ` · removed: ${row.reason}` : ''}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  disabled={restoring === row.id}
+                  onClick={() => void restoreExpense(row.id)}
+                  data-bot="expense-archive-restore"
+                  className="rounded-full border border-slate-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-200 disabled:opacity-50"
+                >
+                  {restoring === row.id ? 'Restoring…' : 'Restore'}
+                </button>
+                <button
+                  type="button"
+                  disabled={restoring === row.id}
+                  onClick={() => void purgeExpense(row.id, row.description || row.id)}
+                  data-bot="expense-archive-purge"
+                  className="rounded-full border border-rose-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-rose-200 disabled:opacity-50"
+                >
+                  Delete for good
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>

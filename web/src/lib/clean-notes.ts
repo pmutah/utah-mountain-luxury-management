@@ -43,3 +43,57 @@ export function saveCleanFixes(fixes: readonly CleanFix[]) {
     // The note still shows for this visit.
   }
 }
+
+export type HouseFix = {
+  house: 'river' | 'ranch' | 'lindon';
+  note: string;
+};
+
+const HOUSES = ['river', 'ranch', 'lindon'] as const;
+const HOUSE_KEY = 'uml-clean-house-notes';
+const SECRET = /door\s*code|wi-?fi|password|\$|\b\d{4}\b/i;
+
+function isHouse(value: string): value is HouseFix['house'] {
+  return (HOUSES as readonly string[]).includes(value);
+}
+
+/** A note for the house when no stay is on the list. A door code or a price is refused. */
+export function upsertHouseFix(
+  current: readonly HouseFix[],
+  house: string,
+  note: string,
+): { notes: HouseFix[]; refused: boolean } {
+  if (!isHouse(house)) return { notes: [...current], refused: false };
+  const text = note.trim().slice(0, 160);
+  const rest = current.filter((row) => row.house !== house);
+  if (!text) return { notes: rest, refused: false };
+  if (SECRET.test(text)) return { notes: [...current], refused: true };
+  return { notes: [...rest, { house, note: text }], refused: false };
+}
+
+function isHouseFix(value: unknown): value is HouseFix {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as HouseFix;
+  return isHouse(row.house) && Boolean(row.note?.trim()) && !SECRET.test(row.note);
+}
+
+export function loadHouseFixes(): HouseFix[] {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(HOUSE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isHouseFix);
+  } catch {
+    return [];
+  }
+}
+
+export function saveHouseFixes(notes: readonly HouseFix[]) {
+  try {
+    localStorage.setItem(HOUSE_KEY, JSON.stringify(notes.filter(isHouseFix)));
+  } catch {
+    // The note still shows for this visit.
+  }
+}

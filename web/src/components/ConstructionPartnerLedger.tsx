@@ -10,6 +10,7 @@ import { CONSTRUCTION_STAGES } from '../lib/construction-stages';
 import { currentYearMonth } from '../lib/months';
 import { PAID_BY_LABELS, summarizePartnerContributions } from '../lib/paid-by';
 import { paidDateFromExpense, todayInUtah } from '../lib/paid-date';
+import { partnerSpendUnreadLine } from '../lib/construction-read';
 import { ExpenseRow } from './ExpenseRow';
 
 async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
@@ -27,11 +28,13 @@ type PhaseFilter = 'all' | string;
 
 export function ConstructionPartnerLedger({
   expenses,
+  unreadable = false,
   onRefresh,
   onError,
   onToast,
 }: {
   expenses: Expense[];
+  unreadable?: boolean;
   onRefresh: () => void;
   onError: (msg: string) => void;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
@@ -88,6 +91,7 @@ export function ConstructionPartnerLedger({
   };
 
   const save = async () => {
+    if (unreadable) return;
     const what = description.trim();
     const value = Number(amount);
     if (!what) {
@@ -140,6 +144,12 @@ export function ConstructionPartnerLedger({
       <h3 className="text-sm font-black uppercase tracking-widest text-white mb-1">
         Partner spend
       </h3>
+      {unreadable ? (
+        <p className="text-sm text-amber-100" data-bot="partner-spend-unread">
+          {partnerSpendUnreadLine()}
+        </p>
+      ) : (
+      <>
       <p className="text-xs text-slate-500 mb-6">
         Track what Todd paid versus what Brandon &amp; Stephanie paid. Attach a photo or PDF of the
         receipt. Tag a construction phase so you can filter later. These bills stay off the rental
@@ -376,6 +386,8 @@ export function ConstructionPartnerLedger({
           </table>
         )}
       </div>
+      </>
+      )}
     </section>
   );
 }

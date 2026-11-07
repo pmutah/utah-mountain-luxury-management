@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson, isExpenseProperty } from '../../_lib/data';
 import { parseConstructionStage } from '../../_lib/construction/types';
 import {
@@ -34,6 +35,7 @@ function expenseKey(e: { propertyId: string; month: string; vendor?: string; amo
 }
 
 export const onRequestPost: PagesFunction<BulkEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   let body: { expenses?: BulkInput[] };
   try {
     body = (await request.json()) as { expenses?: BulkInput[] };

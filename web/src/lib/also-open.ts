@@ -1,3 +1,4 @@
+import { partyFits } from './house-stay';
 import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
 import { openArrivals } from './open-arrivals';
@@ -64,13 +65,17 @@ export function alsoHeld(
       ...(guests !== undefined ? { guests, ...(children !== undefined ? { children } : {}) } : {}),
     });
     if (quote.ok || !quote.reason) return [];
+    const party = guests !== undefined ? partyFits(id, guests, children) : null;
+    const calendarHold = /already booked|closed on the calendar|first stays|already passed/i.test(quote.reason);
+    const stated = party && !party.ok && party.reason && !calendarHold ? party.reason : quote.reason;
     const name = HOUSE_NAME[id];
-    const reason = quote.reason.includes('sleeps') ? quote.reason : `${name}: ${quote.reason}`;
-    const blocked = /sleeps|already booked|first stays|adult|children are part/i.test(quote.reason);
-    const longerStay =
-      blocked || /closed on the calendar/i.test(quote.reason)
-        ? null
-        : shortestStay(id, checkIn, taken[id] ?? [], asOf, paceFor(id), guests);
+    const reason = stated.includes('sleeps') ? stated : `${name}: ${stated}`;
+    const blocked =
+      (party !== null && !party.ok) ||
+      /sleeps|already booked|first stays|adult|children are part|closed on the calendar/i.test(stated);
+    const longerStay = blocked
+      ? null
+      : shortestStay(id, checkIn, taken[id] ?? [], asOf, paceFor(id), guests, closed?.[id] ?? [], children);
     const asked = quote.nights.length;
     const longer = longerStay && longerStay.nights > asked ? { checkOut: longerStay.checkOut, nights: longerStay.nights } : null;
     return [{ house: id, reason, longer }];
@@ -86,7 +91,7 @@ export function comparePhrase(
   closed?: Partial<Record<HouseId, readonly string[]>>,
 ): string {
   const name = HOUSE_NAME[house];
-  const first = openArrivals(house, taken[house] ?? [], asOf, paceFor(house), 1)[0];
+  const first = openArrivals(house, taken[house] ?? [], asOf, paceFor(house), 1, closed?.[house] ?? [])[0];
   if (!first) return `${name} has no open arrival to compare.`;
   const open = alsoOpen(house, first.checkIn, first.checkOut, taken, asOf, paceFor, undefined, closed).map(
     (item) => HOUSE_NAME[item.house],

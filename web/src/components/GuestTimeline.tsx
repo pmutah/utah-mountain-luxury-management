@@ -2,16 +2,22 @@ import { useEffect, useState } from 'react';
 import {
   guestTimeline,
   readTimelineSwitches,
+  timelineUnreadLine,
   timelineOnCount,
+  timelineStayFor,
+  timelineStayLabel,
   timelineStorageKey,
   type TimelineId,
+  type TimelineStay,
 } from '../lib/guest-timeline';
+import { stayMoment } from '../lib/journey';
+import { denverToday } from '../lib/market/dates';
 import type { HouseId } from '../lib/market/types';
 import { PROPERTIES } from '../lib/api';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 
-export function GuestTimeline() {
+export function GuestTimeline({ stays = [], unreadable = false }: { stays?: readonly TimelineStay[]; unreadable?: boolean }) {
   const [house, setHouse] = useState<HouseId>('river');
   const [switches, setSwitches] = useState(() => readTimelineSwitches(null));
 
@@ -19,8 +25,11 @@ export function GuestTimeline() {
     setSwitches(readTimelineSwitches(window.localStorage.getItem(timelineStorageKey())));
   }, []);
 
-  const messages = guestTimeline(house);
+  const today = denverToday();
+  const picked = unreadable ? null : timelineStayFor(house, stays, today);
+  const messages = guestTimeline(house, picked, unreadable ? 'quote' : 'stay');
   const on = switches[house];
+  const pickedLabel = picked ? timelineStayLabel(picked.checkIn, picked.checkOut) : '';
 
   function toggle(id: TimelineId) {
     const next = {
@@ -32,11 +41,18 @@ export function GuestTimeline() {
   }
 
   return (
-    <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guest-timeline" data-house={house}>
+    <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guest-timeline" data-house={house} data-audience={unreadable ? 'quote' : 'stay'}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">Message timeline</p>
       <p className="mt-2 text-sm text-slate-400">
-        These are the messages a stay would receive. Switches stay in this browser. Nothing is sent, and the door code stays off every message.
+        The messages a stay receives, and when each is due. The switches stay in this browser and mark
+        what this desk intends to send; they do not stop the sender on a stay card below. Nothing here
+        sends on its own, and the door code stays off every message.
       </p>
+      {unreadable && (
+        <p className="mt-2 text-sm text-slate-300" data-bot="guest-timeline-unread">
+          {timelineUnreadLine()}
+        </p>
+      )}
       <div className="mt-4 flex flex-wrap gap-2">
         {HOUSES.map((id) => (
           <button
@@ -51,8 +67,13 @@ export function GuestTimeline() {
           </button>
         ))}
       </div>
+      {pickedLabel && picked && (
+        <p className="mt-3 text-sm text-slate-300" data-bot="guest-timeline-stay">
+          This preview is for the stay from {pickedLabel}. Names stay off, and this panel sends nothing. {stayMoment(today, picked.checkIn, picked.checkOut)}
+        </p>
+      )}
       <p className="mt-3 text-xs text-slate-500" data-bot="guest-timeline-count">
-        {timelineOnCount(on)} of {messages.length} on for {PROPERTIES[house].name}. Nothing is sent.
+        {timelineOnCount(on)} of {messages.length} on for {PROPERTIES[house].name}. A message is sent by hand from that stay's card, one at a time.
       </p>
       <ul className="mt-4 space-y-4">
         {messages.map((message) => (

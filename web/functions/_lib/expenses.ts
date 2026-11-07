@@ -1,9 +1,11 @@
 import { EXPENSES, PROPERTIES, type ExpensePropertyId } from './data';
 import type { SettingsEnv } from './kv';
+import { kvPut, StorageReadError, storageReadPaused } from './kv-json';
 import type { ReservationRecord } from './agent/types';
 import type { PaidBy } from './paid-by';
 import { parsePaidDateFromNote } from './expense-month';
 import { ledgerSafeToSave } from './ledger-guard';
+import { cachedGet } from './request-cache';
 
 export interface ExpenseRecord {
   id: string;
@@ -42,20 +44,40 @@ const KV_KEY = 'customExpenses';
 
 export async function loadCustomExpenses(env: SettingsEnv): Promise<ExpenseRecord[]> {
   if (!env.SETTINGS) return [];
-  try {
-    const raw = await env.SETTINGS.get(KV_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as ExpenseRecord[];
-  } catch {
-    return [];
-  }
+  /*
+   * Read through the request cache. `/api/expenses` calls `mergeAllExpenses` and `loadCustomExpenses`,
+   * and both read this key: three KV GETs for one request before the cache, one after. On a deployment
+   * at its daily read limit that difference is the whole problem.
+   */
+  return cachedGet(
+    env,
+    async () => {
+      try {
+        const raw = await env.SETTINGS!.get(KV_KEY);
+        if (!raw) return [];
+        return JSON.parse(raw) as ExpenseRecord[];
+      } catch (err) {
+        if (storageReadPaused(err)) throw err instanceof StorageReadError ? err : new StorageReadError();
+        return [];
+      }
+    },
+    `kv:${KV_KEY}`,
+  );
 }
 
-export async function saveCustomExpenses(env: SettingsEnv, items: ExpenseRecord[]): Promise<ExpenseRecord[]> {
-  if (env.SETTINGS) {
-    await env.SETTINGS.put(KV_KEY, JSON.stringify(items));
-  }
-  return items;
+export async function saveCustomExpenses(
+  env: SettingsEnv,
+  items: ExpenseRecord[],
+  /**
+   * Set only by a path that is deleting a row on purpose, and it must say why. Every other save
+   * leaves it unset, so a shrink that nobody meant is refused rather than written.
+   */
+  options: { allowShrinkReason?: string } = {},
+): Promise<ExpenseRecord[]> {
+  // Delegate to `kvPut`, which owns the "do not shrink the ledger" guard. This function used to
+  // write to KV directly, so the guard never covered the expense ledger at all — the registry said
+  // expenses were protected and only bookings actually were.
+  return kvPut(env, KV_KEY, items, options);
 }
 
 export async function mergeAllExpenses(env: SettingsEnv): Promise<ExpenseRecord[]> {
@@ -98,7 +120,14 @@ export async function persistMissingPaidDates(env: SettingsEnv): Promise<number>
     if (hydrated.paidDate && hydrated.paidDate !== e.paidDate) written++;
     return hydrated;
   });
-  if (written > 0 && ledgerSafeToSave(custom, next)) await saveCustomExpenses(env, next);
+  // Same-length hydration, so this can only drop a row if the mapping itself changed. If a future
+  // edit ever made it unsafe, returning `written` would claim dates were saved when they were not.
+  if (written > 0) {
+    if (!ledgerSafeToSave(custom, next)) {
+      throw new Error('Refusing to save paid dates over the saved ledger. Nothing was written.');
+    }
+    await saveCustomExpenses(env, next);
+  }
   return written;
 }
 
@@ -156,7 +185,17 @@ export async function ensureTurnoverCleaningExpenses(
     return keepIds.has(e.id);
   });
 
-  if ((written > 0 || merged.length !== custom.length) && ledgerSafeToSave(custom, merged)) {
+  if (written > 0 || merged.length !== custom.length) {
+    /*
+     * A refused save used to return 0, which is indistinguishable from "there was nothing to do".
+     * That is how a whole class of silent loss stayed invisible: the caller saw success, the desk
+     * showed no cleaning rows, and nobody was told. A refusal now says so.
+     */
+    if (!ledgerSafeToSave(custom, merged)) {
+      throw new Error(
+        `Refusing to save turnover cleaning over the saved ledger: it would leave fewer expenses than it found. Nothing was written.`,
+      );
+    }
     await saveCustomExpenses(env, merged);
     return written;
   }

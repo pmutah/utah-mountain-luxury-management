@@ -1,4 +1,8 @@
 /** Same-origin `/api` — Vite proxies to Pages in dev; Pages Functions handle it in prod. */
+import type { InboxRow } from './booking-inbox';
+import type { CleanProgress } from './clean-progress';
+import type { LiveComp, LiveSnap } from './market/live';
+
 function resolveApiUrl(): string {
   const raw = import.meta.env?.VITE_API_URL?.trim() ?? '';
   if (!raw) return '';
@@ -14,8 +18,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (init?.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
+  // `credentials` is a browser fetch option. Typed here as a plain record so this module also
+  // compiles in the server graph, where Workers' RequestInit does not carry that field.
+  const browserInit = { credentials: 'include' } as Record<string, unknown>;
   const res = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
+    ...(browserInit as RequestInit),
     ...init,
     headers,
   });
@@ -56,6 +63,14 @@ export interface Reservation {
   checkOut: string;
   /** Host net after Airbnb/VRBO taxes and fees. */
   payout: number;
+  /**
+   * What the guest paid for this house, before tax, when it was known at booking time.
+   *
+   * Absent means "not recorded", never zero: a channel booking imported from an iCal feed carries
+   * none, and neither does a stay booked before this was stored. Showing it beside the payout is the
+   * point — a lone figure on a stay cannot tell a host whether it is the guest price or their own cut.
+   */
+  guestTotal?: number;
   source: string;
   status?: string;
   note?: string;
@@ -254,6 +269,7 @@ export interface PortfolioData {
   reservations: Reservation[];
   expenses: Expense[];
   extraCleaningFees: Record<string, number>;
+  storageReads?: 'ok' | 'paused';
   previousMonth?: string;
   previous?: {
     ranch: PropertyMetrics;
@@ -280,6 +296,7 @@ export interface HistoryData {
   count: number;
   history: MonthHistoryPoint[];
   reservations: Reservation[];
+  storageReads?: 'ok' | 'paused';
 }
 
 export interface SessionInfo {
@@ -402,11 +419,16 @@ export interface StayGuide {
   propertyName: string;
   checkIn: string;
   checkOut: string;
+  /** Overnight guests for this stay when known from preferences or the booking note. */
+  partyGuests?: number;
+  partyChildren?: number;
   preferencesDone: boolean;
-  /** True when the night before check-in is empty. Omitted by older servers. */
-  nightBeforeFree?: boolean;
-  /** True when nobody is arriving on checkout day. Omitted by older servers. */
-  checkoutNightFree?: boolean;
+  /** Paused when saved bookings could not be read. The phone does not call a night free. */
+  storageReads?: 'ok' | 'paused';
+  /** True when the night before check-in is empty. Omitted by older servers. Null when the calendar was not read. */
+  nightBeforeFree?: boolean | null;
+  /** True when nobody is arriving on checkout day. Omitted by older servers. Null when the calendar was not read. */
+  checkoutNightFree?: boolean | null;
   access: {
     phase: 'before' | 'during' | 'after';
     opensOn: string;
@@ -669,10 +691,40 @@ export const api = {
       body: JSON.stringify(body),
     }),
   getExpenses: () => request<{ expenses: Expense[]; custom: Expense[] }>('/api/expenses'),
-  deleteExpense: (id: string) =>
-    request<{ ok: boolean }>(`/api/expenses/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    }),
+  /** A delete is archived first, so `archived` says the row can be put back. */
+  deleteExpense: (id: string, reason?: string) =>
+    request<{ ok: boolean; archived?: boolean; restore?: string }>(
+      `/api/expenses/${encodeURIComponent(id)}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`,
+      { method: 'DELETE' },
+    ),
+  /** Removed expenses that can be restored. Not a total: see the line it returns. */
+  getExpenseArchive: () =>
+    request<{
+      archived: Array<{
+        id: string;
+        removedAt: string;
+        reason?: string;
+        description: string;
+        amount: number;
+        propertyId: string | null;
+        date: string | null;
+        hasReceipt: boolean;
+      }> | null;
+      line: string | null;
+      storageReads?: 'ok' | 'paused';
+    }>('/api/expenses/archive'),
+  /** Put one removed expense back exactly as it was. */
+  restoreExpense: (id: string) =>
+    request<{ ok: boolean; restored: string; line: string }>(
+      `/api/expenses/archive?restore=${encodeURIComponent(id)}`,
+      { method: 'POST' },
+    ),
+  /** Drop an archived row and its files for good. The only path that deletes a receipt now. */
+  purgeExpense: (id: string) =>
+    request<{ ok: boolean; purged: string; line: string }>(
+      `/api/expenses/archive?purge=${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+    ),
   updateExpense: (
     id: string,
     body: {
@@ -740,6 +792,212 @@ export const api = {
       `/api/reservations${qs ? `?${qs}` : ''}`,
     );
   },
+  /** Saved comps and the asks they carry. Read only. */
+  getCompSnapshots: (house?: string) =>
+    request<{
+      liveComps: LiveComp[] | null;
+      snaps: LiveSnap[] | null;
+      storageReads?: 'ok' | 'paused';
+    }>(`/api/pricing/snapshots${house ? `?house=${house}` : ''}`),
+  saveComp: (body: {
+    platform: 'airbnb' | 'vrbo';
+    url: string;
+    label: string;
+    propertyId?: 'ranch' | 'lindon' | 'both';
+    sleeps: number;
+    distanceMi: number;
+    area?: string;
+    rating?: number;
+    reviews?: number;
+    guestFavorite?: boolean;
+  }) =>
+    request<{ id: string; label: string }>('/api/pricing/comp-set', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  /** Record the asks a saved comp lists. Without one the live band cannot activate. */
+  saveCompAsks: (body: { compId: string; asks: Array<{ date: string; nightlyRate: number }> }) =>
+    request<{ ok: boolean; saved: number; compId: string }>('/api/pricing/snapshots', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  /** The house settings a check-in draft and a cleaner notice are built from. Host only. */
+  getHouseSettings: () =>
+    request<{
+      config: Record<string, { houseRules?: string; lockCodeTemplate?: string; cleanerEmail?: string; cleanerPhone?: string }>;
+      storageReads?: string;
+    }>('/api/operations/config'),
+  /** Save one house's settings. Merges, so another house's rules are never overwritten. */
+  saveHouseSettings: (body: {
+    house: string;
+    houseRules?: string;
+    lockCodeTemplate?: string;
+    cleanerEmail?: string;
+    cleanerPhone?: string;
+  }) =>
+    request<{ ok: boolean; house: string }>('/api/operations/config', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  /** The host-approved guest rates. This is the only comp-driven price a guest can be charged. */
+  getApprovedRates: (house?: string) =>
+    request<{
+      approved: Array<{ house: string; date: string; guest: number; approvedAt: string }> | null;
+      line: string;
+      storageReads?: 'ok' | 'paused';
+    }>(`/api/pricing/approved-rates${house ? `?house=${encodeURIComponent(house)}` : ''}`),
+  /** Approve one night's guest price. Refused on a booked or closed night, and outside the cap. */
+  approveRate: (body: { house: string; date: string; guest: number }) =>
+    request<{
+      ok: boolean;
+      approved: { house: string; date: string; guest: number; approvedAt: string };
+      nights: number;
+      /** Nights the sheet cap evicted to make room. Non-zero means the desk should say so. */
+      dropped: number;
+      line: string;
+    }>('/api/pricing/approved-rates', { method: 'POST', body: JSON.stringify(body) }),
+  /** Take one approval back, so the night returns to the published card. */
+  clearApprovedRate: (house: string, date: string) =>
+    request<{ ok: boolean; nights: number; line: string }>(
+      `/api/pricing/approved-rates?house=${encodeURIComponent(house)}&date=${encodeURIComponent(date)}`,
+      { method: 'DELETE' },
+    ),
+  getBookingRequests: () =>
+    request<{
+      rows:
+        | Array<
+            InboxRow & {
+              /** What to accept this request for, so the host is not typing a payout blind. */
+              payouts?: Array<{
+                house: string;
+                guestTotal: number;
+                cleaning: number;
+                hostNet: number;
+                nights: number;
+              }>;
+              payoutLine?: string;
+            }
+          >
+        | null;
+      summary: string | null;
+      /** Why requests were declined recently, so a repeated reason is visible. */
+      declineTally?: { total: number; line: string } | null;
+      storageReads?: 'ok' | 'paused';
+      /** Set only by the local dev fixture. The saved list is on the deployed route. */
+      source?: 'dev-preview';
+    }>('/api/book/requests'),
+  /** The durable shadow clock. A saved day is server-side, so a cleared tab cannot reset the week. */
+  getShadowDays: () =>
+    request<{
+      clock: { days: number; required: number; ready: boolean; dates: string[] } | null;
+      hasWriteToken: boolean;
+      days: Array<{ date: string }> | null;
+      storageReads?: 'ok' | 'paused';
+      source?: 'dev-preview';
+    }>('/api/pricing/shadow-days'),
+  saveShadowDay: (body: { date: string; digest: string }) =>
+    request<{
+      clock: { days: number; required: number; ready: boolean; dates: string[] };
+      days: Array<{ date: string }>;
+    }>('/api/pricing/shadow-days', { method: 'POST', body: JSON.stringify(body) }),
+  /** Take a saved request and make it a booking. Host only. It sends nothing. */
+  acceptBookingRequest: (body: { id: string; payout: number; source?: string }) =>
+    request<{
+      ok: boolean;
+      reservationId: string;
+      /** One entry per house. A two-house request returns two. */
+      reservations: Array<{ id: string; propertyId: string }>;
+      /** One entry per house, so a two-house booking shows both pages. */
+      portalLinks: Array<{ propertyId: string; link: string | null }>;
+      line: string;
+      portalLink: string | null;
+      portalError: string | null;
+      portalNote: string | null;
+      /**
+       * Set when the hold on the request had already ended, so the nights were never actually
+       * reserved. Null when the hold was live.
+       */
+      holdLine?: string | null;
+      guideOn: boolean;
+      guestEmailed: boolean;
+      guestEmailError: string | null;
+      guestLine: string | null;
+    }>('/api/book/accept', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  /** Decline a saved request with a reason. Host only. It records the decision and books nothing. */
+  declineBookingRequest: (body: { id: string; reason: string; note?: string; notify?: boolean }) =>
+    request<{
+      ok: boolean;
+      line: string;
+      reason: string;
+      guestEmailed: boolean;
+      guestEmailError: string | null;
+    }>('/api/book/decline', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  /** Cleaner links. Host only, and making one does not text it. */
+  getCleanLinks: () =>
+    request<{
+      links:
+        | Array<{ token: string; label: string; path: string; createdAt: string; lastViewedAt: string | null; views: number }>
+        | null;
+      storageReads?: 'ok' | 'paused';
+    }>('/api/clean/links'),
+  mintCleanLink: (label: string) =>
+    request<{ token: string; label: string; path: string; createdAt: string }>('/api/clean/links', {
+      method: 'POST',
+      body: JSON.stringify({ label }),
+    }),
+  revokeCleanLink: (token: string) =>
+    request<{ ok: boolean }>(`/api/clean/links?token=${encodeURIComponent(token)}`, { method: 'DELETE' }),
+  /** The ticks cleaners made on their own links. Host only. */
+  getCleanProgress: () =>
+    request<{
+      progress: CleanProgress[] | null;
+      summary: string | null;
+      storageReads?: 'ok' | 'paused';
+    }>('/api/clean/progress'),
+  /** Room photos cleaners uploaded from their own links, grouped by turn. Host only. */
+  getCleanPhotoTurns: () =>
+    request<{
+      turns: Record<string, Array<{ path: string; label: string; url: string }>>;
+      counts: Record<string, string>;
+      storageReads?: 'ok' | 'paused';
+    }>('/api/clean/photos'),
+  /** What a rate push would change. Host only, and it never sends. */
+  getPushPlan: () =>
+    request<{
+      plans:
+        | Array<{
+            house: string;
+            allowed: boolean;
+            hold: string | null;
+            nights: Array<{ date: string; from: number; to: number; kind: string }>;
+            line: string;
+            lines: string[];
+          }>
+        | null;
+      summary: string | null;
+      gate: { shadowReady: boolean; hasToken: boolean; paused: boolean; calendarReady: boolean };
+      shadowDays: { days: number; required: number; ready: boolean };
+      storageReads?: 'ok' | 'paused';
+    }>('/api/pricing/push-plan'),
+  /** Todd's read-only links. Host only, and making one does not send it. */
+  getOwnerLinks: () =>
+    request<{
+      links:
+        | Array<{ token: string; path: string; createdAt: string; lastViewedAt: string | null; views: number }>
+        | null;
+      storageReads?: 'ok' | 'paused';
+    }>('/api/owner/links'),
+  mintOwnerLink: () =>
+    request<{ token: string; path: string; createdAt: string }>('/api/owner/links', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
   getGmailStatus: () =>
     request<{ connected: boolean; email: string | null }>('/api/integrations/gmail/status'),
   getBriefing: (month: string) =>
@@ -788,7 +1046,8 @@ export const api = {
     }),
   getConstructionDocuments: () =>
     request<{
-      documents: ConstructionDocument[];
+      documents: ConstructionDocument[] | null;
+      storageReads?: 'ok' | 'paused';
       limits?: { maxMb: number; firebaseConfigured: boolean };
     }>('/api/construction/documents'),
   uploadConstructionDocument: (body: {
@@ -836,8 +1095,9 @@ export const api = {
     request<{
       surveys: GuestSurveyRecord[];
       reservations: Reservation[];
-      gmail: { connected: boolean; email: string | null; oauthConfigured?: boolean };
-      sms: { configured: boolean; from: string | null };
+      gmail: { connected: boolean; email: string | null; oauthConfigured?: boolean } | null;
+      sms: { configured: boolean; from: string | null } | null;
+      storageReads?: 'ok' | 'paused';
     }>('/api/surveys'),
   updateReservationContacts: (
     id: string,
@@ -865,8 +1125,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  getStayGuide: (token: string, preview = false) =>
-    request<StayGuideResponse>(`/api/stay-guide/${encodeURIComponent(token)}${preview ? '?preview=1' : ''}`),
+  getStayGuide: (token: string, preview = false, ready = false) => {
+    const params = new URLSearchParams();
+    if (preview) params.set('preview', '1');
+    if (ready) params.set('ready', '1');
+    const query = params.toString();
+    return request<StayGuideResponse>(`/api/stay-guide/${encodeURIComponent(token)}${query ? `?${query}` : ''}`);
+  },
   getConciergeChat: (token: string, preview = false) =>
     request<{ messages: ConciergeChatMessage[] }>(
       `/api/stay-guide/${encodeURIComponent(token)}/chat${preview ? '?preview=1' : ''}`,
@@ -914,10 +1179,11 @@ export const api = {
     }),
   getVaultDocuments: () =>
     request<{
-      documents: VaultDocument[];
+      documents: VaultDocument[] | null;
+      storageReads?: 'ok' | 'paused';
       limits?: { maxMb: number; firebaseConfigured: boolean };
-      gmail?: { connected: boolean; email: string | null; oauthConfigured?: boolean };
-      sms?: { configured: boolean; from: string | null };
+      gmail?: { connected: boolean; email: string | null; oauthConfigured?: boolean } | null;
+      sms?: { configured: boolean; from: string | null } | null;
     }>('/api/esign/documents'),
   getFormTemplates: () =>
     request<{
@@ -1086,7 +1352,7 @@ export const PROPERTIES: Record<string, Property> = {
     id: 'river',
     name: 'The River House',
     address: 'Vivian Park, Provo Canyon, Utah 84604',
-    cleaningFee: 0,
+    cleaningFee: 600,
     accentColor: 'bg-cyan-500',
     mortgage: 0,
     status: 'active',

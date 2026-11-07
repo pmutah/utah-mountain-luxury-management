@@ -40,6 +40,7 @@ export function bookingStartSummary(
   asOf: string,
   pace: YearPace,
   days = 90,
+  closed: readonly string[] = [],
 ): string {
   let weekends = 0;
   const longer: Span[] = [];
@@ -47,8 +48,8 @@ export function bookingStartSummary(
   for (let offset = 0; offset < days; offset += 1) {
     const iso = addDays(asOf, offset);
     const ask = nightAsk(house, iso);
-    if (ask.closed || taken.includes(iso)) continue;
-    const start = shortestStay(house, iso, taken, asOf, pace)?.nights ?? null;
+    if (ask.closed || taken.includes(iso) || closed.includes(iso)) continue;
+    const start = shortestStay(house, iso, taken, asOf, pace, undefined, closed)?.nights ?? null;
     if (start === null) {
       pushSpan(tooShort, iso, null);
       continue;

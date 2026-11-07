@@ -63,8 +63,10 @@ export async function updateVaultDocument(
   const idx = list.findIndex((d) => d.id === id);
   if (idx < 0) return null;
   const next: VaultDocument = { ...list[idx]!, ...patch, id };
+  // Deleting a key needs a plain record view; the document is a closed shape otherwise.
+  const mutable = next as unknown as Record<string, unknown>;
   for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined) delete (next as Record<string, unknown>)[key];
+    if (value === undefined) delete mutable[key];
   }
   list[idx] = next;
   await saveVaultDocuments(env, list);

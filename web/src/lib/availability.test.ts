@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { occupiedByHouse, occupiedNights } from './availability.ts';
+import { blockedRequestHouse, housesForRequest, occupiedByHouse, occupiedNights } from './availability.ts';
 
 test('cancelled stays free the nights and a block keeps them', () => {
   const nights = occupiedNights(
@@ -24,4 +24,14 @@ test('the window stops at check-out and ignores other houses', () => {
   );
   assert.deepEqual(byHouse.river, ['2026-12-10', '2026-12-11', '2026-12-12']);
   assert.deepEqual(byHouse.ranch, []);
+});
+
+test('a two-house request stays blocked when either house already has the nights', () => {
+  const stays = [{ propertyId: 'ranch', checkIn: '2026-11-13', checkOut: '2026-11-15', status: 'confirmed' }];
+  assert.deepEqual(housesForRequest('river', 'ranch'), ['river', 'ranch']);
+  assert.deepEqual(housesForRequest('river', 'river'), ['river']);
+  assert.deepEqual(housesForRequest('river', ''), ['river']);
+  assert.equal(blockedRequestHouse(stays, ['river', 'ranch'], '2026-11-13', '2026-11-15'), 'ranch');
+  assert.equal(blockedRequestHouse(stays, ['river'], '2026-11-13', '2026-11-15'), null);
+  assert.equal(blockedRequestHouse(stays, ['river', 'ranch'], '2026-11-15', '2026-11-17'), null);
 });

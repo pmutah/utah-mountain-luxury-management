@@ -18,4 +18,6 @@ test('a night that runs into a longer minimum starts at that minimum', () => {
   const held = bookingStartSummary('river', ['2026-11-20'], '2026-10-29', 'unknown', 30);
   assert.match(held, /Nov 19 cannot start a stay/);
   assert.equal(held.includes('$'), false);
+  const closedOnly = bookingStartSummary('lindon', [], '2026-10-29', 'unknown', 10, ['2026-11-04']);
+  assert.equal(closedOnly.includes('Nov 4'), false);
 });

@@ -1,6 +1,8 @@
+import { hostDenied, hostOnly } from '../../../../_lib/auth';
 import { corsJson } from '../../../../_lib/data';
 import { loadCustomExpenses, saveCustomExpenses, withReceiptUrls } from '../../../../_lib/expenses';
 import { deleteStoredReceipt, loadStoredReceipt } from '../../../../_lib/receipt-store';
+import { readOrRefuse } from '../../../../_lib/read-guard';
 import type { FirebaseStorageEnv } from '../../../../_lib/gcs';
 import type { SettingsEnv } from '../../../../_lib/kv';
 
@@ -11,10 +13,12 @@ function findPhoto(envExpense: { itemPhotos?: Array<{ id: string; storagePath: s
 }
 
 export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = String(params.id ?? '');
   const photoId = String(params.photoId ?? '');
-  const custom = await loadCustomExpenses(env);
-  const expense = custom.find((e) => e.id === id);
+  const read = await readOrRefuse(request, () => loadCustomExpenses(env), 'Saved expenses');
+  if (!read.ok) return read.response;
+  const expense = read.value.find((e) => e.id === id);
   const photo = expense ? findPhoto(expense, photoId) : null;
   if (!expense || !photo) {
     return new Response(JSON.stringify({ error: 'Photo not found' }), {
@@ -44,9 +48,12 @@ export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env, pa
 };
 
 export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = String(params.id ?? '');
   const photoId = String(params.photoId ?? '');
-  const custom = await loadCustomExpenses(env);
+  const read = await readOrRefuse(request, () => loadCustomExpenses(env), 'Saved expenses');
+  if (!read.ok) return read.response;
+  const custom = read.value;
   const idx = custom.findIndex((e) => e.id === id);
   if (idx === -1) return corsJson(request, { error: 'Expense not found' }, 404);
 

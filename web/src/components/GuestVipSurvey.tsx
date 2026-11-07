@@ -2,6 +2,7 @@ import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction }
 import type { GuestPreferenceAnswers } from '../lib/api';
 import { ARRIVAL_SLOTS, guestArrivalLine } from '../lib/arrival';
 import { DEPARTURE_SLOTS, guestDepartureLine } from '../lib/departure';
+import { preferenceActivities, preferenceAmenities } from '../lib/preference-choices';
 import { vipStepIds, type VipStepId } from '../lib/survey-steps';
 
 const OCCASIONS = [
@@ -15,31 +16,9 @@ const OCCASIONS = [
   'Other',
 ];
 
-const ACTIVITIES = [
-  'Fishing',
-  'River / paddle boarding',
-  'Mountain / trail biking',
-  'Skiing',
-  'Hot tub nights',
-  'Theater',
-  'Hiking',
-  'Other',
-];
+const ACTIVITIES = preferenceActivities('river');
 
-const AMENITIES = [
-  'Game room',
-  'Movies / theater',
-  'Hot tub',
-  'Sauna',
-  'Kitchen / cooking',
-  'Garage / winter parking',
-  'Outdoor time',
-  'Cozy indoor',
-  'Cards / puzzles',
-  'Kids space',
-  'Quiet / privacy',
-  'Other',
-];
+const AMENITIES = preferenceAmenities('river');
 
 const FOOD_VIBES = [
   'Comfort food',
@@ -51,13 +30,11 @@ const FOOD_VIBES = [
   'Other',
 ];
 
-const POPCORN = ['Butter', 'Light butter', 'Caramel', 'Cheese', 'Plain', 'A mix'];
-
 const NA_TOAST = ["Martinelli's", 'NA sparkling', 'Mocktails', 'Other'];
 
 const SETTINGS = [
   { id: 'outdoor', label: 'Outdoor', hint: 'River, trails, snow' },
-  { id: 'indoor', label: 'Indoor', hint: 'Theater, kitchen, fire' },
+  { id: 'indoor', label: 'Indoor', hint: 'Kitchen and fireplace' },
   { id: 'mix', label: 'A mix', hint: 'Days out, nights in' },
 ] as const;
 
@@ -181,7 +158,7 @@ export function GuestVipSurvey({
           </p>
           <h1 className="guest-display text-5xl text-[#f6f1e8] mt-4">You are all set.</h1>
           <p className="mt-5 text-[#d7cfc3] leading-relaxed text-lg">
-            We will use this to set The River House for {first}&rsquo;s group — fridge, toast, theater,
+            We will use this to set The River House for {first}&rsquo;s group — fridge, toast,
             and the extras that make arrival feel easy.
           </p>
           {guideHref ? (
@@ -395,7 +372,7 @@ export function GuestVipSurvey({
           </Step>
         )}
         {step === 'amenities' && (
-          <Step title="What should we lean into?" hint="Hot tub and sauna are separate — tap both if you want both.">
+          <Step title="What should we lean into?" hint="These follow the published guide. Nothing is sent until the form is sent.">
             <div className="flex flex-wrap gap-2">
               {AMENITIES.map((opt) => (
                 <Chip
@@ -483,30 +460,6 @@ export function GuestVipSurvey({
             />
           </Step>
         )}
-        {step === 'movie' && (
-          <Step title="Theater night" hint="A favorite movie or a genre is enough.">
-            <input
-              className={fieldClass}
-              placeholder="The Holiday, a western, kids movie…"
-              value={answers.favoriteMovie ?? ''}
-              onChange={(e) => set('favoriteMovie', e.target.value)}
-            />
-          </Step>
-        )}
-        {step === 'popcorn' && (
-          <Step title="Popcorn style">
-            <div className="flex flex-wrap gap-2">
-              {POPCORN.map((opt) => (
-                <Chip
-                  key={opt}
-                  label={opt}
-                  selected={answers.popcornStyle === opt}
-                  onClick={() => set('popcornStyle', opt)}
-                />
-              ))}
-            </div>
-          </Step>
-        )}
         {step === 'else' && (
           <Step title="Anything else that would make the stay amazing?">
             <textarea
@@ -586,8 +539,8 @@ function WelcomeStep({
         {first}.
       </h1>
       <p className="text-lg text-[#d7cfc3] leading-relaxed">
-        {meta.checkIn}–{meta.checkOut}. Two quiet minutes so we can set the fridge, a toast, the
-        theater, and the extras that make arrival feel like a hotel — without a long form.
+        {meta.checkIn}–{meta.checkOut}. Two quiet minutes so we can set the fridge, a toast,
+        and the house. Nothing is sent until the form is sent.
       </p>
     </div>
   );

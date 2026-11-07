@@ -13,6 +13,9 @@ test('a check-in runs until the next taken night, and stops at 28', () => {
   const stopped = longestStay('river', '2026-11-06', ['2026-11-10'], '2026-10-29', 'short');
   assert.equal(stopped?.checkOut, '2026-11-10');
   assert.equal(stopped?.nights, 4);
+  const closedOnly = longestStay('river', '2026-11-06', [], '2026-10-29', 'short', undefined, ['2026-11-10']);
+  assert.equal(closedOnly?.checkOut, '2026-11-10');
+  assert.equal(closedOnly?.nights, 4);
 
   const bumped = longestStay('river', '2026-11-22', [], '2026-10-29', 'unknown');
   assert.equal(bumped?.nights, 28);
@@ -25,4 +28,5 @@ test('a check-in runs until the next taken night, and stops at 28', () => {
   assert.equal(longestStay('river', '2026-11-06', ['2026-11-06'], '2026-10-29', 'short'), null);
   assert.equal(longestStay('river', '2026-10-30', [], '2026-10-29', 'short'), null);
   assert.equal(longestStay('river', '2026-11-06', [], '2026-10-29', 'short', 26), null);
+  assert.equal(longestStay('ranch', '2026-11-16', [], '2026-10-31', 'unknown', 4, [], 4), null);
 });

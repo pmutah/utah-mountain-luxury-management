@@ -10,13 +10,16 @@ import { GuestStayCard } from './GuestStayCard';
 import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
 import { GuestTimeline } from './GuestTimeline';
+import { StayMessageSender } from './StayMessageSender';
+import { RequestInbox } from './RequestInbox';
 import { earlyStayOpen, hostAccessPhrase, hostEarlyPhrase } from '../lib/house-stay';
 import { hostArrivalPhrase } from '../lib/arrival';
 import { hostDeparturePhrase, hostLaterLeavePhrase } from '../lib/departure';
 import { checkoutNightIsFree } from '../lib/journey';
 import { hostPartyPhrase } from '../lib/note-party';
-import { houseMenu, hostAddonPhrase } from '../lib/upsells';
+import { guestAddonIntro, houseMenu, hostAddonPhrase } from '../lib/upsells';
 import { loadBookedNights } from '../lib/booked-nights';
+import { guestLinkNote, guestListUnreadable, guestListUnreadNote, guestMailUnreadLine } from '../lib/guest-list';
 import { denverToday } from '../lib/market/dates';
 import type { HouseId } from '../lib/market/types';
 
@@ -86,16 +89,24 @@ export function GuestsPanel({
   const [houseFilter, setHouseFilter] = useState<HouseFilter>('all');
   const [houseQuery, setHouseQuery] = useState('');
   const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
+  const [listUnreadable, setListUnreadable] = useState(false);
   const today = denverToday();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.getGuestSurveys();
+      if (data.storageReads === 'paused') {
+        setListUnreadable(true);
+        setReservations([]);
+        setSurveys([]);
+        return;
+      }
+      setListUnreadable(false);
       setReservations(data.reservations);
       setSurveys(data.surveys);
-      setGmail(data.gmail);
-      setSms(data.sms);
+      if (data.gmail) setGmail(data.gmail);
+      if (data.sms) setSms(data.sms);
       setDrafts((prev) => {
         const next = { ...prev };
         for (const r of data.reservations) {
@@ -110,7 +121,14 @@ export function GuestsPanel({
         return next;
       });
     } catch (e) {
-      onToast(e instanceof Error ? e.message : 'Could not load guests', 'error');
+      const message = e instanceof Error ? e.message : 'Could not load guests';
+      if (guestListUnreadable(message)) {
+        setListUnreadable(true);
+        setReservations([]);
+        setSurveys([]);
+        return;
+      }
+      onToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -200,11 +218,12 @@ export function GuestsPanel({
   return (
     <div className="space-y-6" data-bot="guests">
       <GuestDossier reservations={reservations} surveys={surveys} />
-      <GuestAppEditor onToast={onToast} />
+      <GuestAppEditor onToast={onToast} locked={listUnreadable} />
+      <RequestInbox />
       <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-upsells">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">Add-ons</p>
-        <p className="mt-2 text-sm text-slate-400">
-          Guests can request these from the stay app when the night is open. Each stay below says which of these that stay can request. A request stays on their phone. A grocery list stays on that phone too. Nothing is ordered or charged. This page does not send a request.
+        <p className="mt-2 text-sm text-slate-400" data-bot="guests-upsell-note">
+          {guestAddonIntro(listUnreadable)}
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {(['ranch', 'lindon', 'river'] as const).map((house) => (
@@ -221,7 +240,15 @@ export function GuestsPanel({
           ))}
         </div>
       </section>
-      <GuestTimeline />
+      <GuestTimeline
+        unreadable={listUnreadable}
+        stays={reservations.map((stay) => ({
+          propertyId: stay.propertyId,
+          checkIn: stay.checkIn,
+          checkOut: stay.checkOut,
+          status: stay.status,
+        }))}
+      />
       <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-rules">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">House rules</p>
         <p className="mt-2 text-sm text-slate-400">
@@ -229,16 +256,17 @@ export function GuestsPanel({
         </p>
       </section>
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-sm text-slate-400">
+        {listUnreadable ? (
+          <p className="mt-3 text-slate-300" data-bot="guests-mail-unread">
+            {guestMailUnreadLine()}
+          </p>
+        ) : (
+          <>
         <p>
           Gmail: {gmail.connected ? gmail.email : 'not connected — sign in as utahmountainluxury@gmail.com'}
         </p>
         <p className="mt-1">
           SMS: {sms.configured ? `Twilio ${sms.from}` : 'waiting on Twilio env'}
-        </p>
-        <p className="mt-3 text-slate-300">
-          Each stay gets one guest app link: the preference form before arrival, then door code, Wi-Fi, the
-          house guide, and area picks. Send it by email or text, or copy it to paste in Airbnb. Guest URL:{' '}
-          <code className="text-cyan-300">/stay/&lt;token&gt;</code>
         </p>
         {!gmail.connected && (
           <button
@@ -251,6 +279,11 @@ export function GuestsPanel({
             Connect Gmail
           </button>
         )}
+          </>
+        )}
+        <p className="mt-3 text-slate-300" data-bot="guests-link-note">
+          {guestLinkNote(listUnreadable)}
+        </p>
       </div>
 
       <div className="space-y-3">
@@ -276,13 +309,19 @@ export function GuestsPanel({
           value={houseQuery}
           onChange={(e) => setHouseQuery(e.target.value)}
         />
-        <p className="text-xs text-slate-500">
-          {visibleStays.length} stay{visibleStays.length === 1 ? '' : 's'}
-          {houseFilter !== 'all' ? ` · ${HOUSE_FILTERS.find((h) => h.id === houseFilter)?.label}` : ''}
-        </p>
+        {listUnreadable ? (
+          <p className="text-sm text-slate-300" data-bot="guests-unreadable">
+            {guestListUnreadNote()}
+          </p>
+        ) : (
+          <p className="text-xs text-slate-500">
+            {visibleStays.length} stay{visibleStays.length === 1 ? '' : 's'}
+            {houseFilter !== 'all' ? ` · ${HOUSE_FILTERS.find((h) => h.id === houseFilter)?.label}` : ''}
+          </p>
+        )}
       </div>
 
-      {reservations.length === 0 && (
+      {listUnreadable ? null : reservations.length === 0 && (
         <p className="text-slate-500">No upcoming stays.</p>
       )}
 
@@ -300,7 +339,7 @@ export function GuestsPanel({
         const property = PROPERTIES[stay.propertyId]?.name ?? stay.propertyId;
         const open = openId === stay.id;
         return (
-          <article key={stay.id} className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4">
+          <article key={stay.id} className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4" data-bot="guests-stay">
             <div className="flex flex-wrap justify-between gap-3">
               <div>
                 <p className="text-white font-black">{stay.guestName}</p>
@@ -349,7 +388,24 @@ export function GuestsPanel({
               </div>
               <div className="text-right">
                 <p className="text-xs font-black uppercase text-cyan-400">{statusLabel(stay, survey)}</p>
-                <p className="text-xs text-slate-500">{formatCurrency(stay.payout)}</p>
+                {/*
+                  The payout alone read as a bare figure, so a host could not tell whether it was the
+                  guest price or their own cut. Where the guest total was recorded, both are named.
+                */}
+                {typeof stay.guestTotal === 'number' && stay.guestTotal > 0 ? (
+                  <>
+                    <p className="text-xs text-slate-500" data-bot="stay-guest-total">
+                      Guest {formatCurrency(stay.guestTotal)}
+                    </p>
+                    <p className="text-xs text-slate-500" data-bot="stay-payout">
+                      Keep {formatCurrency(stay.payout)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-500" data-bot="stay-payout">
+                    {formatCurrency(stay.payout)} host net
+                  </p>
+                )}
               </div>
             </div>
 
@@ -426,6 +482,12 @@ export function GuestsPanel({
                 >
                   Preview app
                 </a>
+              )}
+              {(survey?.token || stay.surveyToken) && (
+                <StayMessageSender
+                  token={String(survey?.token ?? stay.surveyToken ?? '')}
+                  email={String((stay as { guestEmail?: string }).guestEmail ?? '')}
+                />
               )}
               {(survey?.token || stay.surveyToken) && (
                 <a

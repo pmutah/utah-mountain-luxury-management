@@ -17,12 +17,16 @@ export async function loadReservationOverrides(
   return kvGet(env, KV_OVERRIDES, {});
 }
 
-export async function getAllReservations(env: SettingsEnv): Promise<ReservationRecord[]> {
-  const seed = RESERVATIONS.map((r) => ({
+export function seedReservations(): ReservationRecord[] {
+  return RESERVATIONS.map((r) => ({
     ...r,
     propertyId: r.propertyId as PropertyId,
     status: 'confirmed' as ReservationStatus,
   }));
+}
+
+export async function getAllReservations(env: SettingsEnv): Promise<ReservationRecord[]> {
+  const seed = seedReservations();
   const custom = await loadCustomReservations(env);
   const overrides = await loadReservationOverrides(env);
 

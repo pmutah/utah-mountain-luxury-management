@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../../../_lib/auth';
 import { corsJson } from '../../../../_lib/data';
 import { loadCustomExpenses, saveCustomExpenses, withReceiptUrls } from '../../../../_lib/expenses';
 import { storeReceiptForExpense } from '../../../../_lib/receipt-store';
@@ -9,6 +10,7 @@ type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
 const MAX_PHOTOS = 8;
 
 export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
   if (!id) return corsJson(request, { error: 'id required' }, 400);
   if (!env.SETTINGS) {

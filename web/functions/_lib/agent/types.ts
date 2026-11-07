@@ -10,6 +10,13 @@ export interface ReservationRecord {
   checkOut: string;
   /** Host net after Airbnb/VRBO taxes and fees — what we keep from the booking. */
   payout: number;
+  /**
+   * What the guest was quoted for this house, before tax, when it was known at booking time.
+   *
+   * Optional because a channel booking imported from an iCal feed never carries one, and an older row
+   * predates the field. Absent means "not known", never zero: a zero would read as a comped stay.
+   */
+  guestTotal?: number;
   source: string;
   status?: ReservationStatus;
   note?: string;
@@ -105,6 +112,14 @@ export interface CompListing {
   propertyId?: PropertyId | 'both';
   notes?: string;
   createdAt?: string;
+  /** Guests the listing sleeps. Without it the comp cannot set the rate band. */
+  sleeps?: number;
+  /** Miles from this house. Without it the comp cannot set the rate band. */
+  distanceMi?: number;
+  area?: string;
+  rating?: number;
+  reviews?: number;
+  guestFavorite?: boolean;
 }
 
 export interface PriceSnapshot {

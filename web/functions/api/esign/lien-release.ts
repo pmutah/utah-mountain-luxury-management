@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import {
   buildLienReleasePdf,
@@ -14,7 +15,8 @@ import type { SettingsEnv } from '../../_lib/kv';
 
 type Env = SettingsEnv & FirebaseStorageEnv;
 
-export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   return corsJson(request, {
     property: RIVER_LIEN_PROPERTY,
     example: JM_LT_LIEN_RELEASE,
@@ -22,6 +24,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request }) => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   try {
     const body = (await request.json()) as Partial<LienReleaseFields> & {
       sendEmail?: boolean;

@@ -25,7 +25,7 @@ import { MorningLine } from './MorningLine';
 import { AutomationPanel } from './AutomationPanel';
 import { RevenueGoals } from './RevenueGoals';
 import { YieldMoves } from './YieldMoves';
-import { TodayDesk } from './TodayDesk';
+import { TodayDeskWithSettings } from './TodayDesk';
 import { useHealthSignals } from '../hooks/useHealthSignals';
 
 export function PortfolioOverview({
@@ -57,7 +57,7 @@ export function PortfolioOverview({
 
   return (
     <div className="space-y-8">
-      <TodayDesk reservations={reservations} />
+      <TodayDeskWithSettings reservations={reservations} />
       <section className="uml-panel rounded-3xl px-6 py-8 sm:px-10">
         <p className="uml-kicker">This morning</p>
         <MorningLine data={data} />

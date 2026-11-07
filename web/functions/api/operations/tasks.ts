@@ -1,13 +1,18 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { loadOpsTasks, createOpsTask, updateOpsTask } from '../../_lib/operations-store';
+import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv } from '../../_lib/agent/types';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
-  const tasks = await loadOpsTasks(env);
-  return corsJson(request, { tasks });
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+  const read = await readOrRefuse(request, () => loadOpsTasks(env), 'Saved operations tasks');
+  if (!read.ok) return read.response;
+  return corsJson(request, { tasks: read.value });
 };
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const body = (await request.json()) as {
     propertyId: 'ranch' | 'lindon' | 'river';
     dueDate: string;
@@ -15,25 +20,38 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     reservationId?: string;
     notes?: string;
   };
-  const task = await createOpsTask(env, {
-    propertyId: body.propertyId,
-    dueDate: body.dueDate,
-    type: body.type ?? 'cleaning',
-    reservationId: body.reservationId,
-    notes: body.notes,
-  });
-  return corsJson(request, task, 201);
+  const read = await readOrRefuse(
+    request,
+    () =>
+      createOpsTask(env, {
+        propertyId: body.propertyId,
+        dueDate: body.dueDate,
+        type: body.type ?? 'cleaning',
+        reservationId: body.reservationId,
+        notes: body.notes,
+      }),
+    'Saved operations tasks',
+  );
+  if (!read.ok) return read.response;
+  return corsJson(request, read.value, 201);
 };
 
 export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const body = (await request.json()) as { id: string; status?: string; notes?: string };
   if (!body.id) return corsJson(request, { error: 'id required' }, 400);
-  const updated = await updateOpsTask(env, body.id, {
-    status: body.status as 'pending' | 'done' | 'cancelled' | undefined,
-    notes: body.notes,
-  });
-  if (!updated) return corsJson(request, { error: 'Not found' }, 404);
-  return corsJson(request, updated);
+  const read = await readOrRefuse(
+    request,
+    () =>
+      updateOpsTask(env, body.id, {
+        status: body.status as 'pending' | 'done' | 'cancelled' | undefined,
+        notes: body.notes,
+      }),
+    'Saved operations tasks',
+  );
+  if (!read.ok) return read.response;
+  if (!read.value) return corsJson(request, { error: 'Not found' }, 404);
+  return corsJson(request, read.value);
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

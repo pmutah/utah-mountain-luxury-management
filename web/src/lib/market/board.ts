@@ -1,9 +1,15 @@
+import { bandComps, isCloseSleep, isFairComp, isNearby } from './comp-fit';
 import { eachNight, isWeekendNight, monthFactor } from './dates';
 import { compsFor, type SampleComp } from './fixtures';
+import { type BoardSource, type LiveComp, liveAsk, type SnapIndex } from './live';
+import { approvedGuestRate, type QuotedSheetNight } from './rate-sheet';
 import { proposeGuestRate } from './propose';
 import { nightAsk } from './rates';
 import { median, percentileValue } from './stats';
 import type { CompCard, HouseId, MarketBoard, NightRow } from './types';
+
+/** Saved comps and the asks they carry. A night with no ask is left to the sample. */
+export type LiveNights = { comps: LiveComp[]; index: SnapIndex };
 
 const TARGET: Record<HouseId, number> = { river: 85, ranch: 70, lindon: 55 };
 const MAX_MOVE = 0.08;
@@ -27,9 +33,25 @@ function compAsk(comp: SampleComp, iso: string): number {
   return Math.round(comp.baseGuest * monthFactor(iso) * weekend * wobble);
 }
 
-function ourGuest(house: HouseId, iso: string): { guest: number; floorGuest: number; season: string | null; lock: boolean; minNights: number } {
+/**
+ * What this house currently asks for a night. A night the host approved asks the approved price:
+ * that is what the guest page quotes, so the board has to start there too. Otherwise the push plan
+ * re-proposes a night that is already set, and the two disagree about the same night.
+ */
+function ourGuest(
+  house: HouseId,
+  iso: string,
+  sheet: readonly QuotedSheetNight[] = [],
+): { guest: number; floorGuest: number; season: string | null; lock: boolean; minNights: number } {
   const ask = nightAsk(house, iso);
-  return { guest: ask.guest, floorGuest: ask.floorGuest, season: ask.season, lock: ask.lock, minNights: ask.minNights };
+  const approved = approvedGuestRate(sheet, iso, { guest: ask.guest, floorGuest: ask.floorGuest });
+  return {
+    guest: approved ?? ask.guest,
+    floorGuest: ask.floorGuest,
+    season: ask.season,
+    lock: ask.lock,
+    minNights: ask.minNights,
+  };
 }
 
 function scoreComp(comp: SampleComp, house: HouseId): number {
@@ -41,16 +63,42 @@ function scoreComp(comp: SampleComp, house: HouseId): number {
   return Math.round(rating + favorite + distance - bedGap * 3);
 }
 
-export function buildMarketBoard(house: HouseId, from: string, days = 90, selected?: SampleComp[]): MarketBoard {
-  const comps = selected ?? compsFor(house);
+export function buildMarketBoard(
+  house: HouseId,
+  from: string,
+  days = 90,
+  selected?: SampleComp[],
+  live?: LiveNights | null,
+  /** Host-approved guest rates. A night with none starts from the published card. */
+  sheet: readonly QuotedSheetNight[] = [],
+): MarketBoard {
+  const listed = selected ?? compsFor(house);
+  const band = bandComps(house, listed);
+  const comps = band.used;
   const nights: NightRow[] = eachNight(from, days).map((iso) => {
-    const priced = comps.map((comp) => ({
+    const sampleRows = comps.map((comp) => ({
       rate: compAsk(comp, iso),
       open: unit(`${comp.id}|open|${iso}`) > comp.occupancy * 0.85,
     }));
-    const openRates = priced.filter((row) => row.open).map((row) => row.rate);
-    const band = openRates.length >= 3 ? openRates : priced.map((row) => row.rate);
-    const ours = ourGuest(house, iso);
+    /*
+     * A saved ask and a sample are different things, so they are never mixed into one band: the
+     * saved comps are a separate set with their own ids, and averaging a real ask with a fabricated
+     * one would make the band look measured when half of it is not.
+     *
+     * What was wrong is what happened with only one or two saved asks. They replaced the whole band,
+     * so a single $4,000 ask became the median, p25 and p75 all at once, and the source said `live`:
+     * one observation presented as the market. Pricing was saved only by `proposeGuestRate`'s own
+     * "fewer than 3 comps" hold, so the board showed a confident median off a single listing while
+     * quietly not acting on it. Fewer than three observations is not a band, and `thin` says so.
+     */
+    const liveAsks = (live?.comps ?? [])
+      .map((comp) => liveAsk(live!.index, comp.id, iso))
+      .filter((ask): ask is number => ask !== null);
+    const sampleOpen = sampleRows.filter((row) => row.open).map((row) => row.rate);
+    const band =
+      liveAsks.length > 0 ? liveAsks : sampleOpen.length >= 3 ? sampleOpen : sampleRows.map((row) => row.rate);
+    const source: BoardSource = liveAsks.length === 0 ? 'sample' : band.length < 3 ? 'thin' : 'live';
+    const ours = ourGuest(house, iso, sheet);
     const move = proposeGuestRate({
       ourGuest: ours.guest,
       compRates: band,
@@ -60,6 +108,7 @@ export function buildMarketBoard(house: HouseId, from: string, days = 90, select
       maxMove: MAX_MOVE,
       lockBase: ours.lock,
     });
+    const observed = liveAsks.length > 0 ? liveAsks : sampleOpen;
     return {
       date: iso,
       season: ours.season,
@@ -69,7 +118,7 @@ export function buildMarketBoard(house: HouseId, from: string, days = 90, select
       p25: Math.round(percentileValue(band, 25)),
       median: Math.round(median(band)),
       p75: Math.round(percentileValue(band, 75)),
-      openComps: openRates.length,
+      openComps: observed.length,
       percentile: move.percentile,
       proposedGuest: move.proposedGuest,
       promotionPercent: 0,
@@ -77,12 +126,14 @@ export function buildMarketBoard(house: HouseId, from: string, days = 90, select
       action: move.action,
       reason: move.reason,
       minNights: ours.minNights,
-      compBookedShare: Math.round(((priced.length - openRates.length) / priced.length) * 100),
+      compBookedShare: Math.round(((sampleRows.length - observed.length) / sampleRows.length) * 100),
+      source,
     };
   });
 
   const weekend = nights.find((night) => isWeekendNight(night.date)) ?? nights[0]!;
-  const cards: CompCard[] = comps
+  const inBand = new Set(comps.map((comp) => comp.id));
+  const cards: CompCard[] = listed
     .map((comp) => ({
       id: comp.id,
       name: comp.name,
@@ -96,18 +147,26 @@ export function buildMarketBoard(house: HouseId, from: string, days = 90, select
       nextWeekendAsk: compAsk(comp, weekend.date),
       occupancy: Math.round(comp.occupancy * 100),
       score: scoreComp(comp, house),
+      fit: isFairComp(house, comp) ? ('close' as const) : isCloseSleep(house, comp.sleeps) && !isNearby(comp.distanceMi) ? ('far' as const) : ('small' as const),
+      inBand: inBand.has(comp.id),
     }))
     .sort((a, b) => b.score - a.score);
 
   const first30 = nights.slice(0, 30);
+  const liveNights = nights.filter((night) => night.source !== 'sample').length;
   return {
     house,
-    source: 'sample',
+    source: liveNights === 0 ? 'sample' : liveNights === nights.length ? 'live' : 'mixed',
     from,
     days,
     targetPercentile: TARGET[house],
     nights,
     comps: cards,
+    fit: {
+      close: cards.filter((comp) => comp.fit === 'close').length,
+      compared: cards.length,
+      narrowed: band.narrowed,
+    },
     summary: {
       medianAsk: Math.round(median(first30.map((night) => night.median))),
       ourTypical: Math.round(median(first30.map((night) => night.ourGuest))),
@@ -115,6 +174,8 @@ export function buildMarketBoard(house: HouseId, from: string, days = 90, select
       raiseNights: nights.filter((night) => night.action === 'raise').length,
       promoteNights: nights.filter((night) => night.action === 'promote').length,
       compPace30: Math.round(median(first30.map((night) => night.compBookedShare))),
+      liveNights,
+      liveComps: live?.comps.length ?? 0,
     },
   };
 }

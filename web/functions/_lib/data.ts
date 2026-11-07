@@ -21,7 +21,7 @@ export const PROPERTIES = {
     id: 'river',
     name: 'The River House',
     address: 'Vivian Park, Provo Canyon, Utah 84604',
-    cleaningFee: 0,
+    cleaningFee: 600,
     accentColor: 'bg-cyan-500',
     mortgage: 0,
     status: 'active' as const,
@@ -47,6 +47,15 @@ export const OWNER_SPLIT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'river'];
 
 export function isRentalProperty(id: string): id is RentalPropertyId {
   return id === 'ranch' || id === 'lindon' || id === 'river';
+}
+
+/**
+ * The published name for a house. A caller that already has a rental id gets the real name; an id
+ * that is not one of the three falls back to the id itself, so a log line still says something
+ * useful instead of throwing on an index.
+ */
+export function propertyName(id: string): string {
+  return isRentalProperty(id) ? PROPERTIES[id].name : id;
 }
 
 export type ExpensePropertyId = RentalPropertyId | 'construction' | 'household';
@@ -185,6 +194,11 @@ function getOverlappingNights(checkIn: string, checkOut: string, targetYearMonth
   return Math.round((actualEnd.getTime() - actualStart.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+/** A money figure in whole cents. A float artefact like 5921.5599999999995 is not money. */
+function cents(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 export function calculateMetrics(
   propId: RentalPropertyId,
   currentMonth: string,
@@ -241,18 +255,19 @@ export function calculateMetrics(
     const mgtFee = basis > 0 ? basis * 0.2 : 0;
     const leftover = basis - mgtFee - (mortgage + operationalExpenses);
     const share = leftover / 2;
-    dist = { brandon: mgtFee + share, todd: share, mgtFee };
+    dist = { brandon: cents(mgtFee + share), todd: cents(share), mgtFee: cents(mgtFee) };
   }
 
   return {
     propertyId: propId,
-    revenue,
-    baseCleaning,
-    extra,
-    totalCleaning,
-    mortgage,
-    operationalExpenses,
-    profit,
+    // Cents, because a float artefact like 5921.5599999999995 must not reach a report or a statement.
+    revenue: cents(revenue),
+    baseCleaning: cents(baseCleaning),
+    extra: cents(extra),
+    totalCleaning: cents(totalCleaning),
+    mortgage: cents(mortgage),
+    operationalExpenses: cents(operationalExpenses),
+    profit: cents(profit),
     occupancy: (occupied / days) * 100,
     stayCount,
     dist,
@@ -274,6 +289,38 @@ export function portfolioAvgOccupancy(
   return (ranchOcc + lindonOcc) / 2;
 }
 
+/**
+ * Where this app is allowed to be called from. A cookie-authenticated response may only be read by
+ * a page on one of these origins; reflecting an arbitrary `Origin` back with credentials turned on
+ * would let any website read the ledger with the host's cookie.
+ */
+const ALLOWED_ORIGINS = [
+  'https://wilhite-portfolio.pages.dev',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+];
+
+/** The origin to allow, or `null` when the caller is not one of ours. */
+export function allowedOrigin(request: Request): string {
+  const origin = request.headers.get('Origin') ?? '';
+  if (!origin) return ALLOWED_ORIGINS[0]!;
+  return ALLOWED_ORIGINS.includes(origin) ? origin : 'null';
+}
+
+/** The CORS headers for one response. A cookie only travels to a real, known origin. */
+export function corsHeaders(request: Request, extra: Record<string, string> = {}): Record<string, string> {
+  const origin = allowedOrigin(request);
+  return {
+    'Access-Control-Allow-Origin': origin,
+    // Only a real origin can carry the cookie. `null` never matches a page.
+    ...(origin === 'null' ? {} : { 'Access-Control-Allow-Credentials': 'true' }),
+    Vary: 'Origin',
+    ...extra,
+  };
+}
+
 export function corsJson(
   request: Request,
   data: unknown,
@@ -282,11 +329,10 @@ export function corsJson(
 ) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': request.headers.get('Origin') ?? '*',
     'Access-Control-Allow-Methods': 'GET, PUT, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers':
       'Authorization, Content-Type, x-muse-bot-secret, x-dashboard-password',
-    'Access-Control-Allow-Credentials': 'true',
+    ...corsHeaders(request),
     ...extraHeaders,
   };
   if (status === 204) return new Response(null, { status, headers });

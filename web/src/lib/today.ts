@@ -1,6 +1,7 @@
 import type { Reservation } from './api';
 import { addDays } from './market/dates';
 import { noteChildCount, noteGuestCount } from './note-party';
+import { noteArrivesAt1, noteLeavesAt2 } from './turn-clock';
 import type { HouseId } from './luxury';
 
 const HOUSES: HouseId[] = ['ranch', 'lindon', 'river'];
@@ -51,6 +52,7 @@ export type Turnover = {
   houseName: string;
   checkout: string;
   nextCheckIn: string | null;
+  nextCheckOut: string | null;
   /** Nights empty between checkout and the next arrival. Zero is a same-day clean. */
   gapNights: number | null;
   /** Guest count from the next booking note. Null when the note does not say. Names are not stored. */
@@ -65,6 +67,10 @@ export type Turnover = {
   checkoutGuests: number | null;
   /** Children named beside an adult count on this checkout. Null when the note does not say. */
   checkoutChildren: number | null;
+  /** The checkout note names a 2:00 PM leave. The rest of the note is not stored. */
+  leaveAt2: boolean;
+  /** The next stay note names a 1:00 PM arrival. The rest of the note is not stored. */
+  arriveAt1: boolean;
 };
 
 export function buildTurnovers(reservations: Reservation[], asOf: string, horizonDays = 14): Turnover[] {
@@ -83,6 +89,7 @@ export function buildTurnovers(reservations: Reservation[], asOf: string, horizo
         houseName: HOUSE_NAME[house],
         checkout: stay.checkOut,
         nextCheckIn: next?.checkIn ?? null,
+        nextCheckOut: next?.checkOut ?? null,
         gapNights: next ? nightsBetween(stay.checkOut, next.checkIn) : null,
         nextGuests: next ? noteGuestCount(next.note) : null,
         nextChildren: next ? noteChildCount(next.note) : null,
@@ -90,6 +97,8 @@ export function buildTurnovers(reservations: Reservation[], asOf: string, horizo
         checkoutStayId: stay.id,
         checkoutGuests: noteGuestCount(stay.note),
         checkoutChildren: noteChildCount(stay.note),
+        leaveAt2: noteLeavesAt2(stay.note),
+        arriveAt1: next ? noteArrivesAt1(next.note) : false,
       };
     })
     .sort((a, b) => a.checkout.localeCompare(b.checkout) || a.house.localeCompare(b.house));

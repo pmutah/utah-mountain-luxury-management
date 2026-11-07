@@ -25,6 +25,19 @@ const RIVER_HOLIDAYS: Array<RiverSeason & { start: string; end: string }> = [
   { start: '2027-12-18', end: '2028-01-03', name: 'Christmas through New Year', holiday: true, weekendHostNet: 3400, weekdayHostNet: 3400, minWeekend: 5, minWeekday: 5 },
 ];
 
+/** Holiday names and the night count. Rates stay off this list. */
+export function riverHolidayNights(): { name: string; nights: number }[] {
+  const seen = new Set<string>();
+  const rows: { name: string; nights: number }[] = [];
+  for (const holiday of RIVER_HOLIDAYS) {
+    const key = `${holiday.name}:${holiday.minWeekend}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ name: holiday.name, nights: holiday.minWeekend });
+  }
+  return rows;
+}
+
 export function riverSeasonOn(iso: string): RiverSeason {
   const holiday = RIVER_HOLIDAYS.find((season) => iso >= season.start && iso < season.end);
   if (holiday) {

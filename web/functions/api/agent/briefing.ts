@@ -1,7 +1,8 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { calculateMetrics, portfolioAvgOccupancy } from '../../_lib/data';
 import { mergeAllExpenses, withReceiptUrls } from '../../_lib/expenses';
 import { generateGeminiJson } from '../../_lib/gemini-call';
-import { kvGet, kvPut } from '../../_lib/kv-json';
+import { kvGet, kvPut, storageReadPaused } from '../../_lib/kv-json';
 import { loadExtraCleaningFees } from '../../_lib/kv';
 import { addMonths, currentYearMonth } from '../../_lib/months';
 import { getAllReservations } from '../../_lib/reservations-store';
@@ -15,16 +16,40 @@ function money(value: number) {
 }
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const url = new URL(request.url);
   const month = url.searchParams.get('month') ?? currentYearMonth();
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(new Date());
   const cacheKey = `briefing:${month}:${today}`;
-  const cached = await kvGet<string>(env, cacheKey, '');
-  if (cached) return corsJson(request, { line: cached, cached: true });
 
-  const fees = await loadExtraCleaningFees(env);
-  const reservations = await getAllReservations(env);
-  const expenses = withReceiptUrls(await mergeAllExpenses(env));
+  /*
+   * Every read here is on a store that may be at its limit. The cache read raises too, so it sits in
+   * the same guard: unguarded, this was the Cloudflare 1101 the live site was throwing.
+   */
+  let fees;
+  let reservations;
+  let expenses;
+  try {
+    const cached = await kvGet<string>(env, cacheKey, '');
+    if (cached) return corsJson(request, { line: cached, cached: true });
+    fees = await loadExtraCleaningFees(env);
+    reservations = await getAllReservations(env);
+    expenses = withReceiptUrls(await mergeAllExpenses(env));
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(
+        request,
+        {
+          line: '',
+          cached: false,
+          storageReads: 'paused',
+          error: 'Saved bookings could not be read, so no brief is shown. Nothing was written over them.',
+        },
+        503,
+      );
+    }
+    throw err;
+  }
   const ranch = calculateMetrics('ranch', month, fees, expenses, reservations);
   const lindon = calculateMetrics('lindon', month, fees, expenses, reservations);
   const river = calculateMetrics('river', month, fees, expenses, reservations);

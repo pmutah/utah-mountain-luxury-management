@@ -2,11 +2,14 @@ import { PROPERTIES, type Reservation } from './api';
 import { guestArrivalLine } from './arrival';
 import { guestDepartureLine, hostLaterLeavePhrase } from './departure';
 import { houseRules } from './house-rules';
-import { earlyStayOpen, hostEarlyPhrase, houseStay, nearbyGroups } from './house-stay';
+import { earlyStayOpen, hostEarlyPhrase, houseStay, nearbyGroups, STAY_CHECKOUT } from './house-stay';
 import { checkoutNightIsFree } from './journey';
 import { stayPrepPhrase } from './upsells';
 import type { HouseId } from './luxury';
 import { addDays } from './market/dates';
+import { nextStayEventLine, stayEvents } from './market/events';
+import { agreementTopicLine } from './stay-agreement';
+import { denverHour } from './stay-rhythm';
 import { buildTurnovers, type Turnover } from './today';
 
 export type CleanStep = {
@@ -78,15 +81,34 @@ export function workOrderNext(nextCheckIn: string | null, gapNights: number | nu
     : `The next stay starts ${arrive}. The door code opens ${opens}. The code stays off this list.`;
 }
 
-function includingChildren(children: number | null | undefined, lang: CleanLang): string {
+function includingChildren(children: number | null | undefined, lang: CleanLang, count?: number | null): string {
   if (children === null || children === undefined || !Number.isInteger(children) || children < 1 || children > 30) return '';
+  if (count !== null && count !== undefined && Number.isInteger(count) && count >= 1 && children > count) return '';
+  if (count !== null && count !== undefined && Number.isInteger(count) && count >= 1 && children === count) return '';
   if (lang === 'es') return children === 1 ? ', incluyendo 1 niño' : `, incluyendo ${children} niños`;
   return children === 1 ? ', including 1 child' : `, including ${children} children`;
 }
 
+function childrenOnly(count: number | null, children: number | null | undefined): boolean {
+  return (
+    count !== null &&
+    Number.isInteger(count) &&
+    count >= 1 &&
+    children !== null &&
+    children !== undefined &&
+    Number.isInteger(children) &&
+    children === count
+  );
+}
+
 /** How many people the next stay is for. Names stay off the sentence. */
 export function workOrderParty(count: number | null, lang: CleanLang, children?: number | null): string {
-  const kids = includingChildren(children, lang);
+  if (childrenOnly(count, children)) {
+    return lang === 'es'
+      ? 'La siguiente estancia nombra solo niños. Una estancia necesita un adulto. Los nombres no están en esta lista.'
+      : 'The next stay names only children. A stay needs an adult. Names stay off this list.';
+  }
+  const kids = includingChildren(children, lang, count);
   if (count === null || !Number.isInteger(count) || count < 1) {
     if (kids) {
       return lang === 'es'
@@ -203,6 +225,19 @@ export function workOrderPrep(house: HouseId, checkIn: string, asOf: string, lan
   return `${line} Names stay off this list.`;
 }
 
+/** The next stay covers a named event. Names and prices stay off the sentence. */
+export function workOrderEvent(checkIn: string | null, checkOut: string | null, lang: CleanLang): string {
+  if (!checkIn || !checkOut) return '';
+  const line = nextStayEventLine(checkIn, checkOut);
+  if (!line) return '';
+  if (lang === 'es') {
+    const names = stayEvents(checkIn, checkOut).map((event) => event.name);
+    const list = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`;
+    return `La siguiente estancia cubre ${list}. No se cobra nada extra. Los nombres no están en esta lista.`;
+  }
+  return `${line} Names stay off this list.`;
+}
+
 /** Whether the next stay can ask to arrive at 1:00 PM. Names stay off the sentence. */
 export function workOrderEarly(open: boolean, lang: CleanLang): string {
   if (lang === 'es') {
@@ -226,7 +261,12 @@ export function workOrderLaterLeave(open: boolean, lang: CleanLang): string {
 
 /** How many people are checking out. Names stay off the sentence. */
 export function workOrderCheckoutParty(count: number | null, lang: CleanLang, children?: number | null): string {
-  const kids = includingChildren(children, lang);
+  if (childrenOnly(count, children)) {
+    return lang === 'es'
+      ? 'Esta salida nombra solo niños. Una estancia necesita un adulto. Los nombres no están en esta lista.'
+      : 'This checkout names only children. A stay needs an adult. Names stay off this list.';
+  }
+  const kids = includingChildren(children, lang, count);
   if (count === null || !Number.isInteger(count) || count < 1) {
     if (kids) {
       return lang === 'es'
@@ -256,12 +296,24 @@ export function workOrderMap(house: HouseId): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
+const ESSENTIALS_ES: Record<string, string> = {
+  'Winter driving. AWD or 4WD with good tires from November to April. The canyon road can ice up at night.':
+    'Conducción en invierno. AWD o 4WD con buenas llantas de noviembre a abril. El camino del cañón puede congelarse de noche.',
+  'Groceries. Stock up before you drive up the canyon. There is no grocery store at Vivian Park.':
+    'Víveres. Abastécete antes de subir el cañón. No hay tienda en Vivian Park.',
+  'Most local restaurants close on Sundays. Plan Sunday meals ahead or cook at the house.':
+    'La mayoría de los restaurantes locales cierran los domingos. Planea las comidas del domingo o cocina en la casa.',
+};
+
 /** Drive notes from the published guide. These are not cleaner checklist steps. */
-export function workOrderEssentials(house: HouseId): string[] {
+export function workOrderEssentials(house: HouseId, lang: CleanLang = 'en'): string[] {
   const group = nearbyGroups(houseStay(house).nearby).find((item) => item.kind === 'essentials');
   return (group?.places ?? [])
     .filter((place) => !/door\s*code|wi-?fi|password/i.test(`${place.name} ${place.note}`))
-    .map((place) => `${place.name}. ${place.note}`);
+    .map((place) => {
+      const line = `${place.name}. ${place.note}`;
+      return lang === 'es' ? (ESSENTIALS_ES[line] ?? line) : line;
+    });
 }
 
 const RULES_ES: Record<string, string> = {
@@ -273,6 +325,42 @@ const RULES_ES: Record<string, string> = {
     'Horas de silencio de 10 PM a 8 AM. No fumar adentro. No fiestas.',
 };
 
+/** Whether quiet hours are in effect. The River House guide does not name a clock. Not a checklist line. */
+export function cleanQuietLine(house: HouseId, lang: CleanLang, hour = denverHour()): string {
+  const h = ((Math.floor(hour) % 24) + 24) % 24;
+  const tail = lang === 'es' ? 'Esto no es una línea de la lista. No se envió nada.' : 'This is not a checklist line. Nothing was sent.';
+  let line: string;
+  if (house === 'river') {
+    line = lang === 'es'
+      ? 'Horas de silencio en este vecindario de montaña. La guía no nombra un reloj.'
+      : 'Quiet hours in this mountain neighborhood. The guide does not name a clock.';
+  } else if (h >= 22 || h < 8) {
+    line = lang === 'es'
+      ? 'Las horas de silencio están en vigor hasta las 8:00 AM.'
+      : 'Quiet hours are in effect until 8:00 AM.';
+  } else {
+    line = lang === 'es'
+      ? 'Las horas de silencio no están en vigor. Son de 10:00 PM a 8:00 AM.'
+      : 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM.';
+  }
+  const text = `${line} ${tail}`;
+  if (text.includes('$') || /door\s*code|wi-?fi|password/i.test(text)) return tail;
+  return text;
+}
+
+/** Safety from the stay agreement. The card does not sign it. */
+export function cleanSafetyLine(lang: CleanLang): string {
+  if (lang === 'es') {
+    return 'No hay salvavidas de turno. Los niños necesitan un adulto responsable cerca del agua, las escaleras, las terrazas y la calle. No fuegos artificiales. Esta tarjeta no firma el acuerdo. No se envió nada.';
+  }
+  const line = agreementTopicLine('safety').replace(
+    'This page does not sign that. Nothing is sent.',
+    'This card does not sign the agreement. Nothing was sent.',
+  );
+  if (!line || line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) return '';
+  return line;
+}
+
 /** The guest's stay rule. Quiet hours and no smoking. This is not the cleaner checklist. */
 export function workOrderRules(house: HouseId, lang: CleanLang): string[] {
   return houseRules(house)
@@ -281,11 +369,23 @@ export function workOrderRules(house: HouseId, lang: CleanLang): string[] {
     .filter((text) => text.length > 0 && !/door\s*code|wi-?fi|password/i.test(text));
 }
 
+const NOTES_ES: Record<string, string> = {
+  'Septic. The house is on septic. Only toilet paper goes in the toilets. No wipes, even flushable ones.':
+    'Séptico. La casa usa séptico. Solo papel higiénico en los inodoros. Nada de toallitas, aunque digan que se pueden tirar.',
+  'The river. The Provo River runs cold and fast, especially in spring. Watch kids near the bank and wear life jackets on the water.':
+    'El río. El río Provo corre frío y rápido, sobre todo en primavera. Cuida a los niños en la orilla y usa chalecos salvavidas en el agua.',
+  'Hot tub. Keep the cover on when not in use. No glass in or near the tub. Kids with an adult only.':
+    'Jacuzzi. Deja la cubierta puesta cuando no se use. Nada de vidrio en el jacuzzi ni cerca. Niños solo con un adulto.',
+};
+
 /** Published house notes for the cleaner. A note that names a door code or Wi-Fi is left off. */
-export function workOrderNotes(house: HouseId): string[] {
+export function workOrderNotes(house: HouseId, lang: CleanLang = 'en'): string[] {
   return houseStay(house).notes
     .filter((note) => !/door\s*code|wi-?fi|password/i.test(`${note.title} ${note.body}`))
-    .map((note) => `${note.title}. ${note.body}`);
+    .map((note) => {
+      const line = `${note.title}. ${note.body}`;
+      return lang === 'es' ? (NOTES_ES[line] ?? line) : line;
+    });
 }
 
 const LEAVING_ES: Record<string, string> = {
@@ -295,19 +395,38 @@ const LEAVING_ES: Record<string, string> = {
   'Turn off lights and the fireplace, close windows.': 'Apaga las luces y la chimenea, y cierra las ventanas.',
   'Lock the door behind you. The lock will reset for the next guests.':
     'Cierra la puerta al salir. La cerradura se reinicia para los siguientes huéspedes.',
+  'Only toilet paper goes in the toilets. No wipes, even flushable ones.':
+    'Solo papel higiénico en los inodoros. Nada de toallitas, aunque digan que se pueden tirar.',
+  'Put the hot tub cover back on.': 'Vuelve a poner la cubierta del jacuzzi.',
 };
 
 /** What the guest was asked to do before leaving. This is not the cleaner checklist. */
-export function workOrderLeaving(lang: CleanLang): string[] {
-  return houseStay('ranch').checkout
+export function workOrderLeaving(house: HouseId, lang: CleanLang): string[] {
+  return houseStay(house).checkout
     .map((step) => step.trim())
     .filter((step) => step.length > 0 && !/door\s*code|wi-?fi|password/i.test(step))
     .map((step) => (lang === 'es' ? (LEAVING_ES[step] ?? step) : step));
 }
 
-/** One brief line. No door code. */
+const SHARED_CHECKOUT = new Set<string>(STAY_CHECKOUT);
+
+/** One brief line. Each house keeps the published extra step. No door code. */
 export function guestLeavingLine(): string {
-  return 'Before checkout the guest was asked to start the dishwasher, put used towels in the laundry room, take the kitchen trash out, turn off the lights and the fireplace, and lock the door.';
+  const shared =
+    'Before checkout the guest was asked to start the dishwasher, put used towels in the laundry room, take the kitchen trash out, turn off the lights and the fireplace, and lock the door.';
+  const extra = (house: HouseId, name: string) => {
+    const steps = houseStay(house).checkout.filter(
+      (step) => !SHARED_CHECKOUT.has(step) && !step.includes('$') && !/door\s*code|wi-?fi|password/i.test(step),
+    );
+    return steps.length > 0 ? `${name}: ${steps.join(' ')}` : '';
+  };
+  const line = [shared, extra('river', 'The River House'), extra('ranch', 'The Ranch House'), 'The Lindon House keeps that shared list. Nothing is sent.']
+    .filter((part) => part.length > 0)
+    .join(' ');
+  if (line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) {
+    return `${shared} Nothing is sent.`;
+  }
+  return line;
 }
 
 /** The photo line counts only after a room photo is attached and the box is checked. */

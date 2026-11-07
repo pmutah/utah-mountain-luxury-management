@@ -58,6 +58,8 @@ test('Todd sees Ranch and River quote choices with no price', () => {
   assert.match(arrivals[0]?.text ?? '', /Ranch Nov 4 for 4 nights\. The booking says 9 guests\./);
   assert.match(arrivals[0]?.text ?? '', /Arrive at 1:00 PM is a request/);
   assert.match(arrivals[0]?.text ?? '', /This stay can request the hot tub/);
+  assert.match(arrivals[0]?.text ?? '', /This stay covers BYU at Utah/);
+  assert.equal((arrivals[1]?.text ?? '').includes('covers'), false);
   assert.equal(/password|code\s*\d/i.test(arrivals.map((line) => line.text).join(' ')), false);
   assert.match(arrivals[1]?.text ?? '', /does not say how many guests/);
   const arrivalText = arrivals.map((line) => line.text).join(' ');
@@ -84,6 +86,13 @@ test('Todd sees Ranch and River quote choices with no price', () => {
   );
   assert.match(withChildren[0]?.text ?? '', /The booking says 20 guests, including 2 children\./);
   assert.equal(withChildren[0]?.text.includes('Ada'), false);
+  const onlyChildren = ownerArrivalLines(
+    [{ propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-08', status: 'confirmed', note: '4 guests · 4 children' }],
+    '2026-11-01',
+  );
+  assert.match(onlyChildren[0]?.text ?? '', /names only children/);
+  assert.match(onlyChildren[0]?.text ?? '', /needs an adult/);
+  assert.equal(onlyChildren[0]?.text.includes('$'), false);
   assert.match(named[1]?.text ?? '', /does not say how many guests\. This stay does not name an arrival time\./);
   assert.equal(named.map((line) => line.text).join(' ').includes('801'), false);
   assert.equal(named.map((line) => line.text).join(' ').includes('Ada'), false);

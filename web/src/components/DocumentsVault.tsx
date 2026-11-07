@@ -18,6 +18,7 @@ import {
   type VaultFolder,
   type VaultPropertyScope,
 } from '../lib/api';
+import { vaultListUnreadable, vaultUnreadLine } from '../lib/vault-read';
 import { isPdfContentType } from '../lib/device';
 import { ReceiptViewerModal } from './ReceiptViewerModal';
 import { SignaturePad } from './SignaturePad';
@@ -96,6 +97,7 @@ export function DocumentsVault({
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
 }) {
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
+  const [listUnreadable, setListUnreadable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [vaultView, setVaultView] = useState<'library' | 'packets'>('library');
   const [folder, setFolder] = useState<VaultFolder | 'all'>('all');
@@ -141,11 +143,23 @@ export function DocumentsVault({
     setLoading(true);
     try {
       const data = await api.getVaultDocuments();
+      if (data.storageReads === 'paused' || !Array.isArray(data.documents)) {
+        setListUnreadable(true);
+        setDocuments([]);
+        return;
+      }
+      setListUnreadable(false);
       setDocuments(data.documents);
       if (data.gmail) setGmail(data.gmail);
       if (data.sms) setSms(data.sms);
     } catch (e) {
-      onToast(e instanceof Error ? e.message : 'Failed to load documents', 'error');
+      const message = e instanceof Error ? e.message : 'Failed to load documents';
+      if (vaultListUnreadable(message)) {
+        setListUnreadable(true);
+        setDocuments([]);
+        return;
+      }
+      onToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -171,6 +185,7 @@ export function DocumentsVault({
   };
 
   const upload = async () => {
+    if (listUnreadable) return;
     if (!pendingFile) {
       onToast('Choose a PDF or image first.', 'error');
       return;
@@ -303,11 +318,15 @@ export function DocumentsVault({
             Documents
           </h2>
           <p className="text-xs text-slate-500 mt-2 max-w-xl">
-            The library is every form Utah Mountain Luxury will send for signature. Fill one, then
-            email or text the link. Signed packets stay here with a certificate of completion. You
-            can still upload a one-off PDF if it is not in the library yet.
+            {listUnreadable
+              ? 'The library stays closed until the saved documents can be read.'
+              : 'The library is every form Utah Mountain Luxury will send for signature. Fill one, then email or text the link. Signed packets stay here with a certificate of completion. You can still upload a one-off PDF if it is not in the library yet.'}
           </p>
           <div className="mt-4 text-xs text-slate-400 space-y-2">
+            {listUnreadable ? (
+              <p data-bot="vault-unread">{vaultUnreadLine()}</p>
+            ) : (
+            <>
             <p>
               Gmail:{' '}
               {gmail.connected
@@ -331,6 +350,8 @@ export function DocumentsVault({
               >
                 Connect Gmail
               </button>
+            )}
+            </>
             )}
           </div>
         </div>
@@ -375,7 +396,7 @@ export function DocumentsVault({
         </div>
       </section>
 
-      {vaultView === 'library' && (
+      {vaultView === 'library' && !listUnreadable && (
         <FormLibrary
           onCreated={async () => {
             await load();
@@ -389,7 +410,7 @@ export function DocumentsVault({
         />
       )}
 
-      {vaultView === 'packets' && (
+      {vaultView === 'packets' && !listUnreadable && (
       <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl space-y-4">
         <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
           <Upload className="w-4 h-4" />
@@ -548,6 +569,10 @@ export function DocumentsVault({
         </div>
         {loading ? (
           <p className="p-8 text-sm text-slate-500 font-bold">Loading documents…</p>
+        ) : listUnreadable ? (
+          <p className="p-8 text-sm text-slate-300" data-bot="vault-unread-folder">
+            {vaultUnreadLine()}
+          </p>
         ) : visible.length === 0 ? (
           <p className="p-8 text-sm text-slate-500 font-bold">
             Nothing in this folder yet. Open the library to send a form, or upload a one-off PDF.

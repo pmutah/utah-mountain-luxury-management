@@ -1,7 +1,10 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import type { AgentEnv } from '../../_lib/agent/types';
 
+/** Transcription spends an OpenAI key, so it is host-only. It used to answer any caller. */
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const openaiKey = env.OPENAI_API_KEY?.trim();
   if (!openaiKey) {
     return corsJson(

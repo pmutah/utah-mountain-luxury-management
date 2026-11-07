@@ -10,11 +10,14 @@ import { buildStayCard, formatStayCardText } from '../../_lib/survey-stay-card';
 import { staffNotifyRecipients, staffSurveyNotifyBody, staffSurveyNotifySubject } from '../../_lib/survey-copy';
 import { surveyVariantForProperty } from '../../_lib/survey-fields';
 import { gmailSend } from '../../_lib/gmail-store';
+import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv } from '../../_lib/agent/types';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
   const token = String(params.token ?? '');
-  const survey = await findSurveyByToken(env, token);
+  const read = await readOrRefuse(request, () => findSurveyByToken(env, token), 'This preference form');
+  if (!read.ok) return read.response;
+  const survey = read.value;
   if (!survey) return corsJson(request, { error: 'This link is not valid.' }, 404);
   const property = PROPERTIES[survey.propertyId];
   const variant = survey.variant ?? surveyVariantForProperty(survey.propertyId);
@@ -33,7 +36,9 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, para
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
   const token = String(params.token ?? '');
-  const survey = await findSurveyByToken(env, token);
+  const found = await readOrRefuse(request, () => findSurveyByToken(env, token), 'This preference form');
+  if (!found.ok) return found.response;
+  const survey = found.value;
   if (!survey) return corsJson(request, { error: 'This link is not valid.' }, 404);
 
   let answers: GuestPreferenceAnswers;

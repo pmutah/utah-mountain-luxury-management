@@ -17,6 +17,12 @@ export interface IcalReservationSyncResult {
   linkedToSeed: number;
   cancelled: number;
   cleaningExpenses: number;
+  /**
+   * Why the turnover cleaning rows were not written, when they could not be. The bookings in the same
+   * run were saved, so this is a partial success rather than a failed sync, and it has to be reported
+   * as such: a background run that swallowed it would change the calendar and say nothing.
+   */
+  cleaningError?: string;
 }
 
 function findSeedIdByIcalUid(
@@ -156,6 +162,18 @@ export async function syncReservationsFromIcal(
   await kvPut(env, 'reservationOverrides', overrides);
 
   const all = await getAllReservations(env);
-  stats.cleaningExpenses = await ensureTurnoverCleaningExpenses(env, all);
+  /*
+   * The turnover cleaning expenses are derived from the stays that were just saved, so they run
+   * *after* the bookings are already written. A failure here must not make the whole sync look
+   * failed: the bookings did land, and a caller that treats this as "nothing happened" would be
+   * wrong — in a background run the rejection is caught and swallowed, so the calendar would quietly
+   * change with no report at all. The count is left as zero and the reason is carried instead.
+   */
+  try {
+    stats.cleaningExpenses = await ensureTurnoverCleaningExpenses(env, all);
+  } catch (err) {
+    stats.cleaningError =
+      err instanceof Error ? err.message : 'The turnover cleaning expenses could not be written.';
+  }
   return stats;
 }

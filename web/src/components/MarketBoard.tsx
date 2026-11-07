@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
+import { api } from '../lib/api';
 import { loadPaceStays, loadQuoteCalendar } from '../lib/booked-nights';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
-import { chooseComps, loadCompChoices, saveCompChoices, type CompChoice } from '../lib/market/comps';
+import { chooseComps, fairCompView, loadCompChoices, saveCompChoices, sortCompCards, type CompChoice, type CompSort } from '../lib/market/comps';
 import { benchFor, compsFor } from '../lib/market/fixtures';
 import { RIVER_FIRST_STAY } from '../lib/brand';
-import { buildMarketBoard } from '../lib/market/board';
+import { boardFromOverview, loadMarketOverview } from '../lib/market/overview-client';
+import { boardSourceLine } from '../lib/market/live';
+import { LiveComps } from './LiveComps';
+import { PushPlanPanel } from './PushPlanPanel';
 import { addDays, denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
 import { forwardWindows, sampleBookedShare } from '../lib/market/forward';
-import { runShadow, portfolioDigest } from '../lib/market/shadow';
+import { houseShadowText, portfolioDigest, paceUnreadLine, raiseHint, runShadow, unreadMoneyNote } from '../lib/market/shadow';
 import {
   hospitablePushAllowed,
   loadShadowLog,
@@ -16,12 +20,20 @@ import {
   saveShadowLog,
   shadowClock,
   shadowClockLine,
+  type ShadowClock,
 } from '../lib/market/shadow-log';
-import { judgeTrial } from '../lib/market/whatif';
-import type { HouseId, NightRow } from '../lib/market/types';
+import { eventPlanCompare } from '../lib/event-plan';
+import { housePageHref } from '../lib/house-page';
+import { rateCardHouses, rateCardHousesNote, rateCardWeek } from '../lib/rate-week';
+import { judgeHousesOnCard } from '../lib/market/card-houses';
+import { judgeTrial, judgeCardTrial, rateGuardLine } from '../lib/market/whatif';
+import type { HouseId, MarketBoard as MarketBoardData, NightRow } from '../lib/market/types';
 import { formatWhole } from '../lib/luxury';
-import { listingOpportunities } from '../lib/listing';
+import { listingOpenLine, listingOpportunities } from '../lib/listing';
 import { amenityGaps, compAmenityLine } from '../lib/market/amenities';
+import { compFitLine, compFitSummary } from '../lib/market/comp-fit';
+import { yearHeat } from '../lib/market/year-heat';
+import { YearHeat } from './YearHeat';
 import { bookingStartSummary } from '../lib/booking-starts';
 import { directNight } from '../lib/quote';
 import { shortestStay } from '../lib/shortest-stay';
@@ -131,6 +143,9 @@ export function MarketBoard() {
   const preferenceTimes = usePreferenceTimes();
   const [paceState, setPaceState] = useState<'loading' | 'live' | 'off'>('loading');
   const [compChoices, setCompChoices] = useState(loadCompChoices);
+  const [overviewByHouse, setOverviewByHouse] = useState<Partial<Record<HouseId, MarketBoardData | null>>>({});
+  const [compSort, setCompSort] = useState<CompSort>('listed');
+  const [fairOnly, setFairOnly] = useState(false);
   const [storedLog] = useState(loadShadowLog);
   const [trial, setTrial] = useState<{ date: string; text: string } | null>(null);
   const today = denverToday();
@@ -142,7 +157,20 @@ export function MarketBoard() {
     }),
     [compChoices],
   );
-  const board = useMemo(() => buildMarketBoard(house, today, 90, activeComps[house]), [house, today, activeComps]);
+  useEffect(() => {
+    let cancel = false;
+    void loadMarketOverview(house, new URLSearchParams(window.location.search).has('live') ? '&live=1' : '').then((board) => {
+      if (!cancel) setOverviewByHouse((current) => ({ ...current, [house]: board }));
+    });
+    return () => {
+      cancel = true;
+    };
+  }, [house]);
+  const overview = overviewByHouse[house] ?? null;
+  const board = useMemo(
+    () => boardFromOverview(house, today, 90, activeComps[house], overview),
+    [house, today, activeComps, overview],
+  );
   const pace: YearPace =
     paceState !== 'live' || !stays ? 'unknown' : grossPace(house, stays, today).stillNeeded > 0 ? 'short' : 'met';
   const shadow = useMemo(
@@ -179,14 +207,41 @@ export function MarketBoard() {
     [settled, storedLog, today, daily],
   );
   const clock = shadowClock(shadowLog, today);
-  const pushOpen = hospitablePushAllowed(clock.ready, false);
+  const [serverClock, setServerClock] = useState<{ clock: ShadowClock; remote: boolean } | null>(null);
+  useEffect(() => {
+    if (!settled) return;
+    let cancel = false;
+    void api
+      .saveShadowDay({ date: today, digest: daily })
+      .then((result) => {
+        if (!cancel) setServerClock({ clock: result.clock, remote: true });
+      })
+      .catch(() => {
+        // The local clock stays the one this tab shows when the save does not land.
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [settled, today, daily]);
+  const shownClock = serverClock?.clock ?? clock;
+  const pushOpen = hospitablePushAllowed(shownClock.ready, false);
   useEffect(() => {
     if (!settled) return;
     saveShadowLog(shadowLog);
   }, [settled, shadowLog]);
   const moves = groupMoves(shadow.nights);
   const choice = compChoices[house];
-  const cards = [...board.comps].sort((a, b) => Number(choice.pinned.includes(b.id)) - Number(choice.pinned.includes(a.id)));
+  const listed = sortCompCards(
+    [...board.comps].sort((a, b) => Number(choice.pinned.includes(b.id)) - Number(choice.pinned.includes(a.id))),
+    choice.pinned,
+    compSort,
+  );
+  const fairView = fairCompView(listed, fairOnly);
+  const cards = fairView.cards;
+  const heat = useMemo(
+    () => yearHeat(house, today, taken[house] ?? [], closed[house] ?? [], activeComps[house]),
+    [house, today, taken, closed, activeComps],
+  );
   const hidden = choice.excluded
     .map((id) => [...compsFor(house), ...benchFor(house)].find((comp) => comp.id === id))
     .filter((comp): comp is NonNullable<typeof comp> => Boolean(comp));
@@ -207,6 +262,7 @@ export function MarketBoard() {
         compRates: trialNight.compRates,
         closed: trialNight.action === 'closed',
         booked: trialNight.action === 'booked',
+        unbookable: trialNight.reason.startsWith('This night cannot be booked'),
         holiday: board.nights.some((night) => night.date === trialNight.date && night.action === 'locked'),
       })
     : null;
@@ -217,15 +273,15 @@ export function MarketBoard() {
       ? directNight(house, trialNight.date, taken[house] ?? [], today, housePace)
       : null;
   const openings = useMemo(
-    () => (calendar === 'live' ? openArrivals(house, taken[house] ?? [], today, pace) : []),
-    [calendar, house, taken, today, pace],
+    () => (calendar === 'live' ? openArrivals(house, taken[house] ?? [], today, pace, 3, closed[house] ?? []) : []),
+    [calendar, house, taken, closed, today, pace],
   );
   const lengths = useMemo(() => {
     const first = openings[0];
     if (calendar !== 'live' || !first) return null;
-    return stayLengths(house, first.checkIn, taken[house] ?? [], today, pace);
-  }, [calendar, openings, house, taken, today, pace]);
-  const addons = calendar === 'live' ? addonPhrase(house, taken[house] ?? [], today, pace) : '';
+    return stayLengths(house, first.checkIn, taken[house] ?? [], today, pace, undefined, closed[house] ?? []);
+  }, [calendar, openings, house, taken, closed, today, pace]);
+  const addons = calendar === 'live' ? addonPhrase(house, taken[house] ?? [], today, pace, closed[house] ?? []) : '';
   const compared = useMemo(() => {
     if (calendar !== 'live') return '';
     const paceFor = (id: HouseId): YearPace =>
@@ -233,13 +289,28 @@ export function MarketBoard() {
     return comparePhrase(house, taken, today, paceFor, closed);
   }, [calendar, house, taken, closed, today, paceState, stays]);
   const starts = useMemo(
-    () => (calendar === 'live' ? bookingStartSummary(house, taken[house] ?? [], today, pace) : ''),
-    [calendar, house, taken, today, pace],
+    () => (calendar === 'live' ? bookingStartSummary(house, taken[house] ?? [], today, pace, 90, closed[house] ?? []) : ''),
+    [calendar, house, taken, closed, today, pace],
   );
   const bookingStart =
     trialNight && calendar === 'live' && trialNight.action !== 'closed' && trialNight.action !== 'booked'
-      ? shortestStay(house, trialNight.date, taken[house] ?? [], today, pace)
+      ? shortestStay(house, trialNight.date, taken[house] ?? [], today, pace, undefined, closed[house] ?? [])
       : undefined;
+  const cardNights = board.nights.filter((night) => house !== 'river' || night.date >= RIVER_FIRST_STAY).slice(0, 21);
+  const cardNight = (trial && cardNights.find((night) => night.date === trial.date)) || cardNights[0];
+  const cardText =
+    trial && cardNight && trial.date === cardNight.date ? trial.text : calendar === 'live' ? String(cardNight?.ourGuest ?? '') : '';
+  const cardVerdict = cardNight
+    ? judgeCardTrial({
+        publishedGuest: cardNight.ourGuest,
+        trialGuest: Number(cardText),
+        floorGuest: cardNight.floorGuest,
+        ceilingGuest: cardNight.ourGuest * 2,
+        maxMove: 0.08,
+        compRates: cardNight.compRates,
+        holiday: cardNight.action === 'locked',
+      })
+    : null;
 
   function writeChoice(next: CompChoice) {
     const all = { ...compChoices, [house]: next };
@@ -295,7 +366,7 @@ export function MarketBoard() {
           {daily}
         </pre>
         <p className="mt-3 text-sm" data-bot="market-shadow-clock">
-          {settled ? shadowClockLine(clock) : 'This Denver day is counted once the calendar check finishes.'}
+          {settled ? shadowClockLine(shownClock) : 'This Denver day is counted once the calendar check finishes.'}
         </p>
         <p className="mt-1 text-sm text-[var(--uml-muted)]" data-bot="market-shadow-dates">
           {clock.dates.length === 0
@@ -312,7 +383,9 @@ export function MarketBoard() {
           <div>
             <h2 className="font-display text-4xl leading-none">Top 10 comps</h2>
             <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
-              Sample canyon and valley homes, so the board can be judged before live data is connected.
+              {board.summary.liveComps > 0
+                ? boardSourceLine(board.source, board.summary.liveNights, board.summary.liveComps)
+                : 'Sample canyon and valley homes, so the board can be judged before live data is connected.'}{' '}
               Shadow mode only. Nothing here changes Airbnb, VRBO, or Hospitable.
             </p>
           </div>
@@ -333,10 +406,25 @@ export function MarketBoard() {
           </div>
         </div>
         <dl className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Our ask, next 30" value={formatWhole(board.summary.ourTypical)} />
-          <Stat label="Comp median" value={formatWhole(board.summary.medianAsk)} />
+          <Stat
+            label="Our ask, next 30"
+            value={calendar === 'live' ? formatWhole(board.summary.ourTypical) : 'Not shown'}
+            hint={calendar === 'off' ? unreadMoneyNote('ask') : calendar === 'loading' ? 'Checking the calendar.' : undefined}
+            bot="market-ask-off"
+          />
+          <Stat
+            label="Comp median"
+            value={calendar === 'live' ? formatWhole(board.summary.medianAsk) : 'Not shown'}
+            hint={calendar === 'off' ? unreadMoneyNote('ask') : calendar === 'loading' ? 'Checking the calendar.' : undefined}
+            bot="market-median-off"
+          />
           <Stat label="Our percentile" value={`p${board.summary.ourPercentile}`} hint={`Target p${board.targetPercentile}`} />
-          <Stat label="Comps booked, 30 days" value={`${board.summary.compPace30}%`} hint={`${shadow.counts.raise} shadow raises`} />
+          <Stat
+            label="Comps booked, 30 days"
+            value={`${board.summary.compPace30}%`}
+            hint={raiseHint(calendar, shadow.counts.raise)}
+            bot="market-raise-hint"
+          />
         </dl>
         <div className="mt-6" data-bot="market-pace">
           <p className="uml-kicker">Next 30, 60, and 90 nights</p>
@@ -359,7 +447,7 @@ export function MarketBoard() {
                   <p className="font-display text-3xl uml-num mt-1">{ours ? `${ours.bookedShare}%` : '—'}</p>
                   <p className="mt-1 text-sm text-[var(--uml-muted)]">
                     {paceState === 'loading' && 'Checking the calendar…'}
-                    {paceState === 'off' && 'Our calendar is not on this server yet.'}
+                    {paceState === 'off' && paceUnreadLine()}
                     {paceState === 'live' &&
                       ours &&
                       `${ours.booked} of ${ours.sellable} nights booked · ${ours.startingStays} ${ours.startingStays === 1 ? 'stay begins' : 'stays begin'} here · ${ours.held} calendar blocks left out`}
@@ -372,7 +460,7 @@ export function MarketBoard() {
         </div>
         {openings.length > 0 && (
           <div className="mt-6" data-bot="market-open">
-            <p className="uml-kicker">Open on our booking page</p>
+            <p className="uml-kicker">Arrivals a guest can pick</p>
             <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
               The same next arrivals a guest can pick. Opening one does not send a request.
             </p>
@@ -432,6 +520,55 @@ export function MarketBoard() {
         )}
       </div>
 
+      <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-rate-houses">
+        <p className="uml-kicker">Three houses</p>
+        <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="market-rate-houses-note">
+          {rateCardHousesNote(calendar === 'live')}
+        </p>
+        <ul className="mt-4 space-y-1 text-sm">
+          {rateCardHouses(today, calendar === 'live' ? { taken, closed } : null).map((line) => (
+            <li key={line} data-bot="market-rate-houses-day">
+              {line}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-events">
+        <p className="uml-kicker">Named events</p>
+        <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="market-events-note">
+          {calendar === 'live'
+            ? 'The shortest stay the rate card can quote for each upcoming event. A booked start is named and stays off the quote link. This does not say a house is open. Nothing is posted.'
+            : 'The shortest stay the rate card can quote for each upcoming event. This does not say a house is open. Nothing is posted.'}
+        </p>
+        {eventPlanCompare(today, calendar === 'live' ? { taken, closed } : undefined).map((row) => (
+          <div key={row.label} className="mt-4 text-sm" data-bot="market-event">
+            <p>{row.label}</p>
+            {row.houses.map((house) => (
+              <p key={house.house} data-bot="market-event-house" data-house={house.house}>
+                {house.absent ? (
+                  `${house.name} is not on this event.`
+                ) : house.hold ? (
+                  `${house.name}: ${house.hold} Nothing is charged yet.`
+                ) : house.nights == null || !house.checkIn || !house.checkOut ? (
+                  `${house.name} cannot quote a start.`
+                ) : (
+                  <a
+                    href={housePageHref(house.house, house.checkIn, house.checkOut)}
+                    data-bot="market-event-link"
+                    data-house={house.house}
+                  >
+                    {house.name}, {house.nights === 1 ? '1 night' : `${house.nights} nights`}. This link does not hold the dates.
+                  </a>
+                )}
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <YearHeat months={heat} calendarLive={calendar === 'live'} />
+
       <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-shadow">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -451,7 +588,7 @@ export function MarketBoard() {
           </button>
         </div>
         <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6" data-bot="market-digest">
-          {shadow.digest}
+          {houseShadowText(calendar, shadow.digest, compFitSummary(house, board.comps))}
         </pre>
         {starts && (
           <p className="mt-3 text-sm" data-bot="market-starts">
@@ -460,7 +597,9 @@ export function MarketBoard() {
         )}
         {calendar === 'loading' && <p className="text-xs text-[var(--uml-muted)]">Checking which nights are already booked…</p>}
         {calendar === 'off' && (
-          <p className="text-xs text-[var(--uml-muted)]">The calendar is not on this server yet, so booked nights are not masked.</p>
+          <p className="text-xs text-[var(--uml-muted)]" data-bot="market-shadow-unread">
+            The calendar could not be read. No night is raised or promoted.
+          </p>
         )}
         {calendar === 'live' && paused[house] && (
           <p className="text-xs text-[var(--uml-muted)]">Paused. Published rates stay, including on nights that are already booked.</p>
@@ -477,14 +616,100 @@ export function MarketBoard() {
       <div className="uml-panel rounded-3xl p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="uml-kicker">Next 90 nights</p>
-          <p className="text-xs text-[var(--uml-muted)]">
-            <span className="text-[#d4b56a]">Gold</span> is our ask. The band is the open comps, 25th to 75th.
+          <p className="text-xs text-[var(--uml-muted)]" data-bot="market-band-note">
+            {calendar === 'live' ? (
+              <>
+                <span className="text-[#d4b56a]">Gold</span> is our published ask.{' '}
+                {board.summary.liveComps > 0 ? (
+                  <>
+                    A night with a saved ask uses {board.summary.liveComps === 1 ? '1 saved comp' : `${board.summary.liveComps} saved comps`}
+                    ; a night with none keeps the sample.{' '}
+                  </>
+                ) : board.fit.narrowed ? (
+                  `The band is the ${board.fit.close} sample comps that sleep close to this house and sit within 10 miles, 25th to 75th.`
+                ) : (
+                  'The band keeps the full sample list because fewer than 4 samples are close and nearby.'
+                )}
+              </>
+            ) : calendar === 'loading' ? (
+              'Checking the calendar.'
+            ) : (
+              unreadMoneyNote('band')
+            )}
           </p>
         </div>
-        <div className="mt-3 text-[var(--uml-muted)]">
-          <RateBand nights={board.nights} />
-        </div>
-        {moves.length === 0 ? (
+        {calendar === 'live' && (
+          <div className="mt-3 text-[var(--uml-muted)]">
+            <RateBand nights={board.nights} />
+          </div>
+        )}
+        {calendar !== 'live' ? (
+          <>
+            <p className="mt-4 text-sm" data-bot="market-moves-unread">
+              {calendar === 'loading' ? 'Checking the calendar.' : 'The calendar could not be read. No night is raised or promoted.'}
+            </p>
+            <p className="mt-2 text-sm" data-bot="market-rate-guard">
+              {rateGuardLine()}
+            </p>
+            {calendar === 'off' && (
+              <ul className="mt-4 space-y-1 text-sm" data-bot="market-rate-week">
+                {rateCardWeek(house, today).map((line) => (
+                  <li key={line} data-bot="market-rate-week-day">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {calendar === 'off' && cardNight && cardVerdict && (
+              <form
+                className="mt-6 grid gap-3 sm:grid-cols-[12rem_10rem_1fr] sm:items-end"
+                data-bot="market-card-trial"
+                onSubmit={(event) => event.preventDefault()}
+              >
+                <label className="block text-sm">
+                  <span className="uml-kicker">Try the rate card</span>
+                  <select
+                    className="mt-2 w-full rounded-xl border border-white/15 bg-transparent px-3 py-2"
+                    data-bot="market-card-date"
+                    value={cardNight.date}
+                    onChange={(event) => {
+                      setTrial({ date: event.target.value, text: '' });
+                    }}
+                  >
+                    {cardNights.map((night) => (
+                      <option key={night.date} value={night.date}>
+                        {shortDate(night.date)}
+                        {night.season ? ` · ${night.season}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  <span className="uml-kicker">Nightly ask</span>
+                  <input
+                    className="mt-2 w-full rounded-xl border border-white/15 bg-transparent px-3 py-2 uml-num"
+                    data-bot="market-card-price"
+                    inputMode="numeric"
+                    value={cardText}
+                    onChange={(event) => setTrial({ date: cardNight.date, text: event.target.value })}
+                  />
+                </label>
+                <p className="text-sm" data-bot="market-card-verdict">
+                  {cardVerdict.note}
+                </p>
+              </form>
+            )}
+            {calendar === 'off' && cardNight && Number(cardText) > 0 && (
+              <ul className="mt-4 space-y-1 text-sm" data-bot="market-card-houses">
+                {judgeHousesOnCard(today, cardNight.date, Number(cardText)).map((line) => (
+                  <li key={line} data-bot="market-card-house">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : moves.length === 0 ? (
           <p className="mt-2 text-sm text-[var(--uml-muted)]">No shadow moves in this window. Hold the rate.</p>
         ) : (
           <ul className="mt-2 grid gap-3 sm:grid-cols-2">
@@ -503,7 +728,7 @@ export function MarketBoard() {
             ))}
           </ul>
         )}
-        {trialNight && verdict && (
+        {calendar === 'live' && trialNight && verdict && (
           <form className="mt-6 grid gap-3 sm:grid-cols-[12rem_10rem_1fr] sm:items-end" data-bot="market-whatif" onSubmit={(event) => event.preventDefault()}>
             <label className="block text-sm">
               <span className="uml-kicker">Try a night</span>
@@ -564,6 +789,9 @@ export function MarketBoard() {
         <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
           What our own booking page still needs. Nothing here posts to Airbnb, VRBO, or Hospitable.
         </p>
+        <p className="mt-3 text-sm" data-bot="market-listing-open">
+          {listingOpenLine()}
+        </p>
         <ul className="mt-4 space-y-3">
           {listingOpportunities(house).map((item) => (
             <li key={item.id} data-bot={`market-opportunity-${item.id}`}>
@@ -578,13 +806,17 @@ export function MarketBoard() {
         </ul>
       </div>
 
+      <LiveComps house={house} from={today} />
+
+      <PushPlanPanel />
+
       <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-amenities">
         <p className="uml-kicker">Sample amenities</p>
         <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
           Counts use the sample comps on this page. Hiding one changes the count. These are not live listings, and nothing is posted.
         </p>
         <ul className="mt-4 space-y-2">
-          {amenityGaps(house, cards).map((row) => (
+          {amenityGaps(house, listed).map((row) => (
             <li key={row.id} data-bot={`market-amenity-${row.id}`} data-ours={row.ours ? 'yes' : 'no'} data-listed={row.listed}>
               <p className="text-sm">{row.line}</p>
             </li>
@@ -592,6 +824,48 @@ export function MarketBoard() {
         </ul>
       </div>
 
+      <p className="text-sm text-[var(--uml-muted)]" data-bot="market-comp-fit" data-narrowed={board.fit.narrowed ? 'yes' : 'no'}>
+        {compFitSummary(house, cards)}
+      </p>
+      <div className="flex flex-wrap gap-2" data-bot="market-comp-sort">
+        {(
+          [
+            ['listed', 'Listed'],
+            ['distance', 'Closest'],
+            ['rating', 'Rating'],
+            ['sleeps', 'Sleeps'],
+            ['reviews', 'Reviews'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className="uml-nav"
+            data-bot={`market-comp-sort-${id}`}
+            aria-pressed={compSort === id}
+            onClick={() => setCompSort(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-[var(--uml-muted)]">Sorting stays in this tab. A pin stays first. Nothing is posted.</p>
+      <div className="mt-3">
+        <button
+          type="button"
+          className="uml-nav"
+          data-bot="market-comp-fair"
+          aria-pressed={fairOnly}
+          onClick={() => setFairOnly((current) => !current)}
+        >
+          Fair only
+        </button>
+        {fairView.note && (
+          <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="market-comp-fair-note">
+            {fairView.note}
+          </p>
+        )}
+      </div>
       <div className="grid gap-3 sm:grid-cols-2" data-bot="market-comps">
         {cards.map((comp, index) => (
           <article key={comp.id} className="uml-panel rounded-3xl p-4" data-bot={index === 0 ? 'market-top-comp' : undefined}>
@@ -603,7 +877,15 @@ export function MarketBoard() {
                 </p>
                 <h3 className="font-display text-2xl leading-tight mt-1">{comp.name.replace('Sample · ', '')}</h3>
               </div>
-              <p className="uml-num text-lg">{formatWhole(comp.nextWeekendAsk)}</p>
+              {calendar === 'live' ? (
+                <p className="uml-num text-lg" data-bot="market-comp-ask">
+                  {formatWhole(comp.nextWeekendAsk)}
+                </p>
+              ) : (
+                <p className="max-w-40 text-right text-xs text-[var(--uml-muted)]" data-bot="market-comp-ask">
+                  {calendar === 'loading' ? 'Checking the calendar.' : unreadMoneyNote('comp')}
+                </p>
+              )}
             </div>
             <p className="mt-2 text-sm text-[var(--uml-muted)]">
               {comp.beds} bed · sleeps {comp.sleeps} · {comp.rating.toFixed(2)} · {comp.reviews} reviews
@@ -611,6 +893,9 @@ export function MarketBoard() {
             </p>
             <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="market-comp-amenities">
               {compAmenityLine(comp.id)}
+            </p>
+            <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="market-comp-sleep" data-fit={comp.fit} data-in-band={comp.inBand ? 'yes' : 'no'}>
+              {compFitLine(house, comp.sleeps, comp.distanceMi, comp.inBand)}
             </p>
             <div className="mt-3 flex gap-2">
               <button
@@ -678,12 +963,16 @@ export function MarketBoard() {
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({ label, value, hint, bot }: { label: string; value: string; hint?: string; bot?: string }) {
   return (
     <div>
       <dt className="uml-kicker">{label}</dt>
       <dd className="font-display text-3xl uml-num mt-1">{value}</dd>
-      {hint && <p className="text-xs text-[var(--uml-muted)]">{hint}</p>}
+      {hint && (
+        <p className="text-xs text-[var(--uml-muted)]" data-bot={bot}>
+          {hint}
+        </p>
+      )}
     </div>
   );
 }

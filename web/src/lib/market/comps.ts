@@ -6,6 +6,48 @@ export type CompChoice = {
   excluded: string[];
 };
 
+export type CompSort = 'listed' | 'distance' | 'rating' | 'sleeps' | 'reviews';
+
+/** Reorder sample cards. Pinned names stay first. This does not change the saved set. */
+export function sortCompCards<T extends { id: string; distanceMi: number; rating: number; sleeps: number; reviews: number }>(
+  cards: readonly T[],
+  pinned: readonly string[],
+  sort: CompSort,
+): T[] {
+  if (sort === 'listed') return [...cards];
+  const pinnedSet = new Set(pinned);
+  const order = new Map(cards.map((card, index) => [card.id, index]));
+  const rank = (card: T) => {
+    if (sort === 'distance') return card.distanceMi;
+    if (sort === 'rating') return -card.rating;
+    if (sort === 'sleeps') return -card.sleeps;
+    return -card.reviews;
+  };
+  const head = cards.filter((card) => pinnedSet.has(card.id));
+  const tail = cards.filter((card) => !pinnedSet.has(card.id));
+  tail.sort((a, b) => rank(a) - rank(b) || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  return [...head, ...tail];
+}
+
+/** A tab view of the close, nearby samples. It does not change the saved set or the rate band. */
+export function fairCompView<T extends { fit: 'close' | 'small' | 'far' }>(
+  cards: readonly T[],
+  fairOnly: boolean,
+): { cards: T[]; note: string } {
+  if (!fairOnly) return { cards: [...cards], note: '' };
+  const fair = cards.filter((card) => card.fit === 'close');
+  if (fair.length === 0) {
+    return {
+      cards: [...cards],
+      note: 'No sample is close and nearby, so the full list stays. This view does not change the rate band. Nothing is posted.',
+    };
+  }
+  return {
+    cards: fair,
+    note: `${fair.length} of ${cards.length} samples are close and nearby. Smaller or farther houses stay out of this view. This view does not change the rate band. Nothing is posted.`,
+  };
+}
+
 export const EMPTY_COMP_CHOICE: CompChoice = { pinned: [], excluded: [] };
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];

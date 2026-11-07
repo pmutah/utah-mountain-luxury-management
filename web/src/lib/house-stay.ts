@@ -15,6 +15,66 @@ export type PlaceKind = 'ski' | 'food' | 'outdoors' | 'family' | 'essentials';
 
 export type NearbyPlace = { name: string; note: string; area?: string; url?: string; kind: PlaceKind };
 
+export type AreaPlace = {
+  name: string;
+  note: string;
+  area?: string;
+  url?: string;
+  kind: PlaceKind | 'rentals';
+};
+
+const AREA_SECRET = /door\s*code|wi-?fi|password/i;
+
+function areaKind(value: string | undefined): AreaPlace['kind'] {
+  if (value === 'ski' || value === 'food' || value === 'outdoors' || value === 'family' || value === 'rentals' || value === 'essentials') {
+    return value;
+  }
+  return 'essentials';
+}
+
+function cleanAreaPlaces(
+  places: readonly { name?: string; note?: string; area?: string; url?: string; kind?: string }[],
+): AreaPlace[] {
+  return places.flatMap((place) => {
+    const name = place.name?.trim() ?? '';
+    const note = place.note?.trim() ?? '';
+    const area = place.area?.trim() ?? '';
+    const url = place.url?.trim() ?? '';
+    const line = `${name} ${note} ${area} ${url}`;
+    if (!name || !note || AREA_SECRET.test(line) || line.includes('$')) return [];
+    return [{ name, note, ...(area ? { area } : {}), ...(url ? { url } : {}), kind: areaKind(place.kind) }];
+  });
+}
+
+/** Saved area places win. An empty saved list uses the published nearby places. Nothing is sent. */
+export function stayAreaPlaces(
+  house: HouseId,
+  saved?: readonly { name?: string; note?: string; area?: string; url?: string; kind?: string }[],
+): AreaPlace[] {
+  const custom = cleanAreaPlaces(saved ?? []);
+  if (custom.length > 0) return custom;
+  return cleanAreaPlaces(houseStay(house).nearby);
+}
+
+/** Saved house notes win. An empty saved list uses the published notes. Nothing is sent. */
+export function stayHouseNotes(
+  house: HouseId,
+  saved?: readonly { title?: string; body?: string }[],
+): HouseNote[] {
+  const custom = (saved ?? []).flatMap((note) => {
+    const title = note.title?.trim() ?? '';
+    const body = note.body?.trim() ?? '';
+    const line = `${title} ${body}`;
+    if (!title || !body || AREA_SECRET.test(line) || line.includes('$')) return [];
+    return [{ title, body }];
+  });
+  if (custom.length > 0) return custom;
+  return houseStay(house).notes.filter((note) => {
+    const line = `${note.title} ${note.body}`;
+    return note.title.trim().length > 0 && note.body.trim().length > 0 && !AREA_SECRET.test(line) && !line.includes('$');
+  });
+}
+
 const KIND_LABEL: Record<PlaceKind, string> = {
   ski: 'Ski',
   food: 'Food',
@@ -105,6 +165,66 @@ export const STAY_CHECKOUT = [
   'Lock the door behind you. The lock will reset for the next guests.',
 ] as const;
 
+const EXTRA_CHECKOUT: Record<HouseId, readonly string[]> = {
+  river: ['Only toilet paper goes in the toilets. No wipes, even flushable ones.'],
+  ranch: ['Put the hot tub cover back on.'],
+  lindon: [],
+};
+
+/** Shared departure steps, plus the house rule that belongs on that list. */
+export function houseCheckout(house: HouseId): readonly string[] {
+  return [...STAY_CHECKOUT, ...EXTRA_CHECKOUT[house]];
+}
+
+function guideNorm(text: string): string {
+  return text.trim().toLowerCase().replace(/[.]+$/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function safeGuide(text: string): string {
+  const line = text.trim().replace(/\s+/g, ' ');
+  if (!line || line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) return '';
+  return line;
+}
+
+/** A saved line that only repeats part of the published guide is replaced by that guide line. */
+function repeatsPublished(saved: string, published: string): boolean {
+  const custom = guideNorm(saved);
+  const guide = published.trim().toLowerCase();
+  if (!custom || !guide) return false;
+  if (guideNorm(published).startsWith(custom)) return true;
+  let from = 0;
+  while (from < guide.length) {
+    const at = guide.indexOf(custom, from);
+    if (at < 0) return false;
+    const before = at === 0 ? '' : guide[at - 1]!;
+    const after = guide[at + custom.length] ?? '';
+    const beforeOk = before === '' || /[\s,.;:!?]/.test(before);
+    const afterOk = after === '' || /[\s,.;:!?]/.test(after);
+    if (beforeOk && afterOk) return true;
+    from = at + 1;
+  }
+  return false;
+}
+
+/** Saved arrival, parking, or emergency text. A fragment of the published line uses that line. Nothing is sent. */
+export function keptGuideLine(saved: string, published: string): string {
+  const guide = safeGuide(published);
+  const custom = safeGuide(saved);
+  if (!guide) return custom;
+  if (!custom || repeatsPublished(custom, guide)) return guide;
+  if (guideNorm(custom).includes(guideNorm(guide))) return custom;
+  return `${custom} ${guide}`;
+}
+
+/** Keep a saved departure list and add the published house step when it is missing. */
+export function mergeHouseCheckout(house: string, saved: readonly string[]): string[] {
+  const steps = saved.map((step) => step.trim()).filter((step) => step.length > 0);
+  if (house !== 'river' && house !== 'ranch' && house !== 'lindon') return steps;
+  const have = new Set(steps.map((step) => step.toLowerCase()));
+  const extras = EXTRA_CHECKOUT[house].filter((step) => !have.has(step.toLowerCase()));
+  return [...steps, ...extras];
+}
+
 /** Public facts from the guest guide. Door codes and Wi-Fi stay off this page. */
 const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>> = {
   river: {
@@ -145,7 +265,7 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>
 };
 
 export function houseStay(house: HouseId): HouseStay {
-  return { sleeps: SLEEPS[house], emergency: STAY_EMERGENCY, ...STAY[house], checkout: STAY_CHECKOUT };
+  return { sleeps: SLEEPS[house], emergency: STAY_EMERGENCY, ...STAY[house], checkout: houseCheckout(house) };
 }
 
 /** A direct request names the overnight party. Children count toward that number. Extra guests are not priced. */
@@ -171,6 +291,7 @@ export function partyNote(guests: string, children: string): string {
   if (count < 1) return '';
   if (!/^\d+$/.test(children)) return `Overnight guests ${count}.`;
   const kids = Number(children);
+  if (kids === count) return '';
   if (kids < 1 || kids > count) return `Overnight guests ${count}.`;
   return `Overnight guests ${count}, including ${kids} ${kids === 1 ? 'child' : 'children'}.`;
 }
@@ -230,16 +351,16 @@ export function accessLine(checkIn: string): string | null {
 }
 
 /** An earlier arrival is only a request, and only when the night before is open. */
-export function earlyLine(checkIn: string, taken: readonly string[], asOf: string): string | null {
+export function earlyLine(checkIn: string, taken: readonly string[], asOf: string, closed: readonly string[] = []): string | null {
   if (!accessLine(checkIn) || asOf >= checkIn) return null;
-  if (!nightBeforeIsFree(checkIn, taken)) return null;
+  if (!nightBeforeIsFree(checkIn, taken, closed)) return null;
   return 'The night before is open. Arriving early is a request. The door code still opens the day before.';
 }
 
 /** True only before check-in, and only when the night before is empty. */
-export function earlyStayOpen(checkIn: string, taken: readonly string[], asOf: string): boolean {
+export function earlyStayOpen(checkIn: string, taken: readonly string[], asOf: string, closed: readonly string[] = []): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(checkIn) || asOf >= checkIn) return false;
-  return nightBeforeIsFree(checkIn, taken);
+  return nightBeforeIsFree(checkIn, taken, closed);
 }
 
 /** Whether this stay can ask for 1:00 PM. A taken night before stays closed. */

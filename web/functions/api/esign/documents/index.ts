@@ -1,3 +1,4 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
 import { decodeBase64Receipt, storageConfigured } from '../../../_lib/gcs';
 import { loadGmailTokens } from '../../../_lib/gmail-store';
@@ -6,14 +7,33 @@ import { ESIGN_MAX_MB } from '../../../_lib/esign/esign-file-kv';
 import { storeEsignFile } from '../../../_lib/esign/esign-file-store';
 import { addVaultDocument, loadVaultDocuments, newEsignDocId } from '../../../_lib/esign/esign-store';
 import { isPropertyScope, isSignerRole, isVaultFolder } from '../../../_lib/esign/types';
+import { storageReadPaused } from '../../../_lib/kv-json';
 import type { FirebaseStorageEnv } from '../../../_lib/gcs';
 import type { SettingsEnv } from '../../../_lib/kv';
 
 type Env = SettingsEnv & FirebaseStorageEnv;
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
-  const [documents, gmail] = await Promise.all([loadVaultDocuments(env), loadGmailTokens(env)]);
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+  let documents;
+  let gmail;
+  try {
+    [documents, gmail] = await Promise.all([loadVaultDocuments(env), loadGmailTokens(env)]);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(request, {
+        documents: null,
+        storageReads: 'paused',
+        error: 'Saved documents could not be read. Nothing was written over them.',
+        gmail: null,
+        sms: null,
+      });
+    }
+    const message = err instanceof Error ? err.message : 'Documents failed';
+    return corsJson(request, { error: message }, 500);
+  }
   return corsJson(request, {
+    storageReads: 'ok',
     documents,
     limits: { maxMb: ESIGN_MAX_MB, firebaseConfigured: storageConfigured(env) },
     gmail: {
@@ -26,6 +46,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   try {
     const body = (await request.json()) as {
       fileBase64?: string;

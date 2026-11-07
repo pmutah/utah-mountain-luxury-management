@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildMarketBoard } from './board.ts';
-import { runShadow, portfolioDigest } from './shadow.ts';
+import { houseShadowText, paceUnreadLine, portfolioDigest, raiseHint, runShadow, unreadMoneyNote } from './shadow.ts';
 
 test('a booked night keeps the published rate even when comps are higher', () => {
   const board = buildMarketBoard('ranch', '2026-11-06', 3);
@@ -60,6 +60,32 @@ test('a short year can promote an open weekend without cutting the base', () => 
   assert.ok(night.offerGuest >= night.floorGuest);
 });
 
+test('a night no stay can cover keeps the published rate', () => {
+  const board = buildMarketBoard('river', '2026-11-03', 1);
+  const open = board.nights[0]!;
+  open.action = 'raise';
+  open.proposedGuest = open.ourGuest + 40;
+  const run = runShadow(board, ['2026-11-02', '2026-11-04'], false, '2026-11-03', 'short');
+  const night = run.nights[0]!;
+  assert.equal(night.action, 'hold');
+  assert.equal(night.proposedGuest, night.ourGuest);
+  assert.equal(night.promotionPercent, 0);
+  assert.match(night.reason, /This night cannot be booked/);
+  assert.match(run.digest, /1 night cannot be booked\. The published rate stays\./);
+  assert.match(run.digest, /No raises today/);
+  assert.match(run.digest, /Nothing sent to Hospitable/);
+  const pair = buildMarketBoard('river', '2026-11-03', 2);
+  const kept = runShadow(pair, ['2026-11-02', '2026-11-05'], false, '2026-11-03', 'short');
+  assert.equal(kept.nights.some((row) => row.reason.includes('cannot be booked')), false);
+  const friday = buildMarketBoard('ranch', '2026-11-13', 1);
+  friday.nights[0]!.action = 'raise';
+  friday.nights[0]!.proposedGuest = friday.nights[0]!.ourGuest + 20;
+  const lone = runShadow(friday, ['2026-11-12', '2026-11-14'], false, '2026-10-30', 'short');
+  assert.equal(lone.nights[0]?.action, 'hold');
+  assert.match(lone.nights[0]?.reason ?? '', /cannot be booked/);
+  assert.equal(lone.digest.includes('guest'), false);
+});
+
 test('a booked night is not promoted', () => {
   const board = buildMarketBoard('ranch', '2026-11-06', 1);
   const run = runShadow(board, ['2026-11-06'], false, '2026-11-06', 'short');
@@ -77,6 +103,12 @@ test('the daily text names every house and leaves a paused house alone', () => {
   });
   assert.match(text, /^UML shadow 2026-10-29/);
   assert.match(text, /River: paused/);
+  const eventLine = text.split('\n').find((line) => line.startsWith('Next named event:'));
+  assert.match(eventLine ?? '', /BYU vs Arizona State, Oct 30–31/);
+  assert.equal((eventLine ?? '').includes('$'), false);
+  assert.match(text, /River: \d+ of \d+ sample comps sleep close/);
+  assert.match(text, /The rate band uses those/);
+  assert.equal(text.split('\n').find((line) => line.includes('sample comps sleep close'))?.includes('$') ?? false, false);
   assert.match(text, /Ranch: \d+ raises, \d+ promotions, [1-9]\d* booked left alone/);
   assert.match(text, /Lindon: \d+ raises, 0 promotions/);
   assert.match(text, /Nothing sent to Hospitable/);
@@ -105,6 +137,9 @@ test('the daily text names every house and leaves a paused house alone', () => {
   assert.equal(text.includes('Service:'), false);
   assert.equal(text.includes('Arrivals:'), false);
   assert.equal(text.includes('Departures:'), false);
+  assert.match(quiet, /The calendar could not be read\. No night is raised or promoted/);
+  assert.equal(quiet.includes('raises'), false);
+  assert.equal(quiet.includes('$'), false);
   assert.match(quiet, /Nothing sent to Hospitable/);
 });
 
@@ -153,4 +188,31 @@ test('the daily text names party size, arrival, and departure without a name or 
   assert.match(service, /Ranch Nov 6: Leave at 2:00 PM is a request/);
   assert.equal(service.includes('$'), false);
   assert.equal(service.includes('Guest'), false);
+});
+
+test('the house panel does not list raises when the calendar is unread', () => {
+  const unread = houseShadowText('off', 'Raises 12 · $1,000 → $1,080', '6 of 10 sample comps sleep close to this house.');
+  assert.match(unread, /The calendar could not be read/);
+  assert.equal(unread.includes('Raises'), false);
+  assert.equal(unread.includes('$'), false);
+  assert.equal(houseShadowText('loading', 'Raises 1', 'fit'), 'Checking the calendar.');
+  const live = houseShadowText('live', 'No raises today.\nNothing sent to Hospitable.', '6 of 10 sample comps sleep close to this house. The rate band uses those 6.');
+  assert.match(live, /Nothing sent to Hospitable/);
+  assert.match(live, /The rate band uses those 6/);
+  assert.equal(live.includes('$'), false);
+  assert.equal(raiseHint('off', 4), unread);
+  assert.equal(raiseHint('off', 4).includes('4'), false);
+  assert.equal(raiseHint('live', 1), '1 shadow raise');
+  assert.equal(raiseHint('live', 0), '0 shadow raises');
+  assert.match(paceUnreadLine(), /not a stand-in/);
+  assert.equal(paceUnreadLine().includes('not on this server'), false);
+  assert.equal(paceUnreadLine().includes('$'), false);
+  const money = ['ask', 'band', 'comp'] as const;
+  for (const where of money) {
+    const note = unreadMoneyNote(where);
+    assert.equal(note.includes('$'), false);
+    assert.match(note, /Nothing is posted/);
+  }
+  assert.match(unreadMoneyNote('band'), /rate band stays off/);
+  assert.match(unreadMoneyNote('comp'), /sample ask stays off/);
 });

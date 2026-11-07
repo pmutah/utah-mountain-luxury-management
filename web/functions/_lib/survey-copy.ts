@@ -14,7 +14,11 @@ export function surveyPublicUrl(origin: string, token: string): string {
   return `${origin.replace(/\/$/, '')}/stay/${encodeURIComponent(token)}`;
 }
 
-export function surveyEmailSubject(guestName: string, propertyName: string, guideOn = false): string {
+/**
+ * The subject line. It does not use the guest's name: the first name is in the body, and keeping it
+ * out of the subject helps the message land in an inbox rather than a promotions tab.
+ */
+export function surveyEmailSubject(propertyName: string, guideOn = false): string {
   return guideOn ? `${propertyName} — your stay guide` : `${propertyName} — a few preferences before you arrive`;
 }
 

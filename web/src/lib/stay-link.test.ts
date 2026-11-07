@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readStayLink, stayLinkSearch } from './stay-link.ts';
+import { quoteShareButton, quoteShareLine, readStayLink, stayLinkSearch } from './stay-link.ts';
 
 test('a stay link restores the house, dates, and party', () => {
   const link = readStayLink('?house=ranch&in=2026-11-04&out=2026-11-05&guests=6');
@@ -79,9 +79,48 @@ test('a stay link keeps a leave time and turns 2:00 PM into the late add-on', ()
   );
 });
 
+test('a stay link keeps a party or event mark and drops a name', () => {
+  const link = readStayLink('?house=river&in=2026-11-03&out=2026-11-05&guests=4&event=1&name=Ada');
+  assert.equal(link.event, true);
+  assert.equal(JSON.stringify(link).includes('Ada'), false);
+  assert.equal(readStayLink('?house=river&in=2026-11-03&out=2026-11-05&event=yes').event, undefined);
+  const search = stayLinkSearch({
+    house: 'river',
+    checkIn: '2026-11-03',
+    checkOut: '2026-11-05',
+    guests: '4',
+    event: true,
+  });
+  assert.equal(search, '?house=river&in=2026-11-03&out=2026-11-05&guests=4&event=1');
+  assert.equal(
+    stayLinkSearch({ house: 'river', checkIn: '2026-11-03', checkOut: '2026-11-05', guests: '4' }).includes('event'),
+    false,
+  );
+});
+
 test('an impossible calendar day is left off the link', () => {
   const link = readStayLink('?house=lindon&in=2026-02-31&out=2026-03-02&guests=4');
   assert.equal(link.house, 'lindon');
   assert.equal(link.checkIn, undefined);
   assert.equal(link.guests, '4');
+});
+
+test('a stay this page cannot quote is not called a quote on the share line', () => {
+  const held = quoteShareLine(false);
+  assert.match(held, /This stay is not quoted/);
+  assert.equal(held.includes('reopens the quote'), false);
+  assert.equal(held.includes('$'), false);
+  assert.equal(/\bis open\b/.test(held), false);
+  assert.equal(quoteShareButton(false), 'Copy this link');
+  const named = quoteShareLine(false, 'Add the number of overnight guests. Nothing is sent.');
+  assert.match(named, /Add the number of overnight guests/);
+  assert.equal(named.includes('This stay is not quoted'), false);
+  assert.match(named, /Nothing is sent/);
+  const refused = quoteShareLine(false, 'This stay needs at least 5 nights. Nothing is sent.');
+  assert.match(refused, /at least 5 nights/);
+  assert.equal(quoteShareLine(false, 'Preview $9. Nothing is sent.').includes('$'), false);
+  const ready = quoteShareLine(true);
+  assert.match(ready, /reopens the quote/);
+  assert.match(ready, /does not send a request/);
+  assert.equal(quoteShareButton(true), 'Copy quote link');
 });

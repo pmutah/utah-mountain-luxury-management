@@ -1,4 +1,4 @@
-import { comparePhrase } from '../also-open';
+﻿import { comparePhrase } from '../also-open';
 import { arrivalBrief } from '../arrival';
 import { bookingStartSummary } from '../booking-starts';
 import { RIVER_FIRST_STAY } from '../brand';
@@ -6,6 +6,10 @@ import { serviceBrief } from '../clean';
 import { departureBrief } from '../departure';
 import { childBrief, partyBrief } from '../note-party';
 import { addonPhrase, lengthPhrase } from '../open-arrivals';
+import { SHADOW_UNREAD } from './shadow-log';
+import { bookableNights } from './bookable';
+import { compFitSummary } from './comp-fit';
+import { nextEventLine } from './events';
 import { promotionForNight, type YearPace } from './fill';
 import { buildMarketBoard } from './board';
 import type { SampleComp } from './fixtures';
@@ -72,7 +76,16 @@ export function runShadow(
   const takenSet = new Set(taken);
   const blockedSet = new Set(blocked);
   const guarded = board.nights.map((night) => guardNight(night, board.house, takenSet, paused, blockedSet));
-  const nights = guarded.map((night) => applyFill(night, takenSet, asOf, pace));
+  /*
+   * Nights a guest can actually book, from the same `bookableNights` the booking page uses. A one-night
+   * hole at the River House, or a lone Friday with the Saturday taken, reads as open on the board but
+   * no stay can start there — so its rate is not a live decision and must not be raised or promoted.
+   * This is computed only when the calendar was read: a stand-in night list would invent coverage.
+   */
+  const bookable = paused
+    ? null
+    : bookableNights(board.house, board.nights.map((night) => night.date), taken, asOf, pace, blocked);
+  const nights = guarded.map((night) => applyFill(night, takenSet, asOf, pace, bookable));
   const counts = emptyCounts();
   for (const night of nights) counts[night.action] += 1;
   const raises = nights.filter((night) => night.action === 'raise');
@@ -84,10 +97,19 @@ export function runShadow(
     ? [`UML shadow ${LABEL[board.house]} ${asOf}`, 'Paused. Every night stays at the published rate.']
     : [
         `UML shadow ${LABEL[board.house]} ${asOf}`,
-        `Raises ${counts.raise} · promotions ${counts.promote} · booked left alone ${counts.booked} · closed ${counts.closed} · held ${counts.hold + counts.locked}`,
+        `Raises ${counts.raise} Â· promotions ${counts.promote} Â· booked left alone ${counts.booked} Â· closed ${counts.closed} Â· held ${counts.hold + counts.locked}`,
         largest
-          ? `Largest raise ${shortDate(largest.date)} ${money(largest.ourGuest)} → ${money(largest.proposedGuest)}`
+          ? `Largest raise ${shortDate(largest.date)} ${money(largest.ourGuest)} to ${money(largest.proposedGuest)}`
           : 'No raises today.',
+        /*
+         * Named separately, because "no raises" beside an unbookable night reads as a quiet market
+         * rather than a night no stay can reach.
+         */
+        (() => {
+          const stuck = nights.filter((night) => night.reason.startsWith('This night cannot be booked')).length;
+          if (stuck === 0) return '';
+          return `${stuck} ${stuck === 1 ? 'night' : 'nights'} cannot be booked. The published rate stays.`;
+        })(),
         pace === 'met'
           ? 'The year is on the books. No promotions.'
           : pace === 'unknown'
@@ -95,7 +117,7 @@ export function runShadow(
             : 'The year is still short. A promotion is 20% off the base on Airbnb and VRBO.',
       ];
   lines.push('Nothing sent to Hospitable.');
-  return { house: board.house, paused, nights, counts, digest: lines.join('\n') };
+  return { house: board.house, paused, nights, counts, digest: lines.filter((line) => line.length > 0).join('\n') };
 }
 
 const PORTFOLIO: HouseId[] = ['river', 'ranch', 'lindon'];
@@ -122,15 +144,34 @@ export function portfolioDigest(input: {
   departureWindows?: Readonly<Record<string, string | undefined>> | null;
 }): string {
   const lines = [`UML shadow ${input.asOf}`];
-  for (const house of PORTFOLIO) {
+  /*
+   * The next named event sits above the houses, unlinked from any rate: it explains why a stretch may
+   * be busier, and nothing extra is charged for it. It is part of the same digest so the desk reads
+   * one message rather than two.
+   */
+  lines.push(nextEventLine(input.asOf));
+  /*
+   * With the calendar unread, a count of raises would describe nights the app never saw. The house
+   * lines are skipped rather than annotated: "3 raises" beside "could not be read" still reads as
+   * three raises happened. The event line stays, because a named event is a fact from the rate card
+   * and not from the calendar. The party, arrival, and departure lines also stay: they come from the
+   * saved stays, not from the calendar, so they are just as true either way.
+   */
+  const ratesUnread = !input.calendarLive;
+  if (ratesUnread) lines.push('The calendar could not be read. No night is raised or promoted.');
+  if (!ratesUnread) for (const house of PORTFOLIO) {
+    const board = buildMarketBoard(house, input.asOf, 90, input.comps?.[house]);
     const run = runShadow(
-      buildMarketBoard(house, input.asOf, 90, input.comps?.[house]),
+      board,
       input.calendarLive ? (input.taken[house] ?? []) : [],
       input.paused[house],
       input.asOf,
       input.pace[house],
       input.calendarLive ? (input.closed?.[house] ?? []) : [],
     );
+    // The fit line comes before the pause check: how much of the band is real is true either way,
+    // and a paused house still has sample comps setting the band it would use.
+    lines.push(`${LABEL[house]}: ${compFitSummary(house, board.comps)}`);
     if (run.paused) {
       lines.push(`${LABEL[house]}: paused. Published rates stay.`);
       continue;
@@ -141,7 +182,7 @@ export function portfolioDigest(input: {
       return night.proposedGuest - night.ourGuest > best.proposedGuest - best.ourGuest ? night : best;
     }, null);
     const raiseBit = largest
-      ? `, largest raise ${shortDate(largest.date)} ${money(largest.ourGuest)} → ${money(largest.proposedGuest)}`
+      ? `, largest raise ${shortDate(largest.date)} ${money(largest.ourGuest)} to ${money(largest.proposedGuest)}`
       : '';
     const blocks = run.nights.filter((night) => night.reason.startsWith('Closed on the calendar')).length;
     const blockBit = blocks > 0 ? `, ${blocks} calendar blocks left closed` : '';
@@ -172,7 +213,7 @@ export function portfolioDigest(input: {
       status: stay.status,
       note:
         stay.childCount && stay.childCount >= 1
-          ? `${Math.max((stay.partySize ?? stay.childCount) - stay.childCount, 0)} adults · ${stay.childCount} ${stay.childCount === 1 ? 'child' : 'children'}`
+          ? `${Math.max((stay.partySize ?? stay.childCount) - stay.childCount, 0)} adults Â· ${stay.childCount} ${stay.childCount === 1 ? 'child' : 'children'}`
           : stay.partySize
             ? `${stay.partySize} guests`
             : undefined,
@@ -187,9 +228,31 @@ export function portfolioDigest(input: {
   return lines.join('\n');
 }
 
-function applyFill(night: ShadowNight, taken: Set<string>, asOf: string, pace: YearPace): ShadowNight {
+function applyFill(
+  night: ShadowNight,
+  taken: Set<string>,
+  asOf: string,
+  pace: YearPace,
+  bookable: ReadonlySet<string> | null,
+): ShadowNight {
   if (night.action === 'booked' || night.action === 'closed' || night.action === 'paused') {
     return { ...night, promotionPercent: 0, offerGuest: night.proposedGuest };
+  }
+  /*
+   * A night no stay can cover keeps the published rate. It reads as open on the board, but every
+   * check-in that would include it is refused, so raising or promoting it changes a price nobody can
+   * pay. The reason says "cannot be booked" so the desk can tell this apart from a night the floor
+   * stopped.
+   */
+  if (bookable !== null && !bookable.has(night.date)) {
+    return {
+      ...night,
+      action: 'hold',
+      proposedGuest: night.ourGuest,
+      promotionPercent: 0,
+      offerGuest: night.ourGuest,
+      reason: 'This night cannot be booked, so the published rate stays.',
+    };
   }
   const decision = promotionForNight({
     date: night.date,
@@ -224,3 +287,49 @@ function applyFill(night: ShadowNight, taken: Set<string>, asOf: string, pace: Y
     reason: night.action === 'promote' ? decision.reason : night.reason,
   };
 }
+
+/* ------------------------------------------------------------------------------------------------
+ * Calendar-state wording for the desk.
+ *
+ * Each of these exists so a page can say what it does not know instead of showing a figure. When the
+ * calendar could not be read, an ask, a band, or a count of raises would be a stand-in presented as
+ * real; these return the sentence that says so, and never a number.
+ * ---------------------------------------------------------------------------------------------- */
+
+/** How the market page last read the booking calendar. */
+export type CalendarState = 'loading' | 'live' | 'off';
+
+/**
+ * The house panel's text. With the calendar unread the digest would describe nights the app never
+ * saw, so it is replaced outright rather than annotated â€” a raise count beside "could not be read"
+ * still reads as a count.
+ */
+export function houseShadowText(state: CalendarState, digest: string, compFit: string): string {
+  if (state === 'loading') return 'Checking the calendar.';
+  if (state === 'off') {
+    return `${SHADOW_UNREAD} The rate band and every ask stay off this panel until the calendar is read. Nothing is posted.`;
+  }
+  return `${digest}\n${compFit}`;
+}
+
+/** A count of shadow raises. Unread returns the unread line, so no number is implied. */
+export function raiseHint(state: CalendarState, raises: number): string {
+  if (state === 'off') return houseShadowText('off', '', '');
+  if (state === 'loading') return 'Checking the calendar.';
+  return `${raises} shadow ${raises === 1 ? 'raise' : 'raises'}`;
+}
+
+/** Why no book-share figure is shown: the stay list could not be read, so it is not zero. */
+export function paceUnreadLine(): string {
+  return 'The booking pace could not be read, so this is not a stand-in figure. Nothing is raised.';
+}
+
+/** Which figure is missing on an unread calendar, said plainly and without a number. */
+export function unreadMoneyNote(where: 'ask' | 'band' | 'comp'): string {
+  if (where === 'band') return 'The calendar could not be read, so the rate band stays off. Nothing is posted.';
+  if (where === 'comp') return 'The calendar could not be read, so the sample ask stays off. Nothing is posted.';
+  return 'The calendar could not be read, so this ask is not shown. Nothing is posted.';
+}
+
+
+

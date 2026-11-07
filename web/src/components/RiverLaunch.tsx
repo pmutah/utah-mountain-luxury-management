@@ -3,6 +3,7 @@ import { api, type ConstructionProject, type Reservation } from '../lib/api';
 import { RIVER_FIRST_STAY } from '../lib/brand';
 import { CONSTRUCTION_STAGES } from '../lib/construction-stages';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
+import { launchBookingsNote, riverLaunchLine } from '../lib/launch-bookings';
 
 const CHECKS = [
   { id: 'dry-in', group: 'Build', label: 'Weather-tight and dried in' },
@@ -25,7 +26,13 @@ function daysUntil(iso: string) {
   return Math.round((target - now.getTime()) / 86400000);
 }
 
-export function RiverLaunch({ reservations }: { reservations: Reservation[] }) {
+export function RiverLaunch({
+  reservations,
+  bookingsUnreadable = false,
+}: {
+  reservations: Reservation[];
+  bookingsUnreadable?: boolean;
+}) {
   const [project, setProject] = useState<ConstructionProject | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const days = daysUntil(RIVER_FIRST_STAY);
@@ -76,7 +83,7 @@ export function RiverLaunch({ reservations }: { reservations: Reservation[] }) {
           <p className="uml-kicker text-[#e7d7b1]">River House · Vivian Park</p>
           <h2 className="font-display text-5xl mt-2">November 1</h2>
           <p className="font-display text-2xl mt-2">
-            {days > 0 ? `${days} days until the first stays` : days === 0 ? 'First stays are today' : 'The house is open'}
+            {riverLaunchLine(days)}
           </p>
           <p className="text-sm mt-3 max-w-xl text-[#e7eee9]">
             Sleeps 25. The opening moved from October 15. {photo?.caption}.
@@ -111,9 +118,13 @@ export function RiverLaunch({ reservations }: { reservations: Reservation[] }) {
         </ul>
       </section>
 
-      <section className="uml-panel rounded-3xl p-6">
+      <section className="uml-panel rounded-3xl p-6" data-bot="river-launch-bookings" data-unreadable={bookingsUnreadable ? 'yes' : 'no'}>
         <p className="uml-kicker">First bookings</p>
-        {bookings.length === 0 ? (
+        {bookingsUnreadable ? (
+          <p className="mt-2 text-sm" data-bot="river-launch-unread">
+            {launchBookingsNote(true)}
+          </p>
+        ) : bookings.length === 0 ? (
           <p className="font-display text-2xl mt-2">No November stays on the books yet.</p>
         ) : (
           <ul className="mt-3 space-y-2">

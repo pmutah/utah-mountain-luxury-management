@@ -1,15 +1,19 @@
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import { loadCustomExpenses, saveCustomExpenses, withReceiptUrls } from '../../_lib/expenses';
 import { parsePaidDate } from '../../_lib/expense-month';
 import { parseConstructionStage } from '../../_lib/construction/types';
 import { isPaidBy } from '../../_lib/paid-by';
-import { deleteStoredReceipt } from '../../_lib/receipt-store';
+import { archiveExpense } from '../../_lib/expense-archive';
+import { readOrRefuse } from '../../_lib/read-guard';
+import { storageReadPaused } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
 
 export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
   if (!id) return corsJson(request, { error: 'id required' }, 400);
   if (!env.SETTINGS) {
@@ -31,7 +35,9 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     return corsJson(request, { error: 'Invalid JSON body' }, 400);
   }
 
-  const custom = await loadCustomExpenses(env);
+  const read = await readOrRefuse(request, () => loadCustomExpenses(env), 'Saved expenses');
+  if (!read.ok) return read.response;
+  const custom = read.value;
   const idx = custom.findIndex((e) => e.id === id);
   if (idx === -1) {
     return corsJson(request, { error: 'Expense not found' }, 404);
@@ -103,37 +109,51 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
 };
 
 export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
   if (!id) return corsJson(request, { error: 'id required' }, 400);
+  // A reason is optional but useful later, and it is kept with the archived row.
+  const reason = new URL(request.url).searchParams.get('reason') ?? '';
 
-  const custom = await loadCustomExpenses(env);
+  const read = await readOrRefuse(request, () => loadCustomExpenses(env), 'Saved expenses');
+  if (!read.ok) return read.response;
+  const custom = read.value;
   const idx = custom.findIndex((e) => e.id === id);
   if (idx === -1) {
     return corsJson(request, { error: 'Expense not found or cannot delete built-in expense' }, 404);
   }
 
   const expense = custom[idx]!;
-  if (expense.receiptStoragePath) {
-    try {
-      await deleteStoredReceipt(env, expense);
-    } catch {
-      // continue even if storage delete fails
+  /*
+   * Archive first. A removal that cannot be archived does not happen, so a storage failure leaves the
+   * expense on the books instead of losing the row and its receipt with nothing to restore.
+   */
+  try {
+    await archiveExpense(env, expense, reason);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(
+        request,
+        { error: 'The expense could not be archived, so it was not removed. Nothing was written.' },
+        503,
+      );
     }
-  }
-  for (const photo of expense.itemPhotos ?? []) {
-    try {
-      await deleteStoredReceipt(env, {
-        id: `${expense.id}--${photo.id}`,
-        receiptStoragePath: photo.storagePath,
-      });
-    } catch {
-      // continue
-    }
+    const message = err instanceof Error ? err.message : 'The archive failed';
+    return corsJson(request, { error: `The expense was not removed: ${message}` }, 500);
   }
 
+  /*
+   * The receipt file is deliberately NOT deleted here. Deleting it would make the archive a lie: the
+   * row would come back on a restore pointing at a file that no longer exists. The bytes are small
+   * next to losing a bill, so they stay in storage until the archived row is purged on purpose.
+   * Storage is not a ledger, and nothing reads an orphaned file.
+   */
   custom.splice(idx, 1);
-  await saveCustomExpenses(env, custom);
-  return corsJson(request, { ok: true, id });
+  // Archived above, so this is a deletion we mean. The reason is what lets the ledger guard tell
+  // this apart from a wipe caused by a bad read.
+  await saveCustomExpenses(env, custom, { allowShrinkReason: `Expense ${id} archived, then removed.` });
+  // The row is restorable, and the answer says so, so a host who deleted by mistake knows the way back.
+  return corsJson(request, { ok: true, id, archived: true, restore: `POST /api/expenses/archive?restore=${id}` });
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

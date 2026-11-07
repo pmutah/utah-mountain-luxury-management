@@ -1,4 +1,13 @@
-export type HouseId = 'ranch' | 'lindon' | 'river';
+﻿export type HouseId = 'ranch' | 'lindon' | 'river';
+
+/**
+ * Where a night's band came from.
+ *
+ * `thin` means a saved ask is present but the band has fewer than three observations, so it is not a
+ * market: there is no meaningful percentile to place our rate in. The host's own ask is still shown,
+ * because hiding it would be worse, but the board must not call it live.
+ */
+export type BoardSource = 'sample' | 'live' | 'mixed' | 'thin';
 
 export type NightRow = {
   date: string;
@@ -22,6 +31,8 @@ export type NightRow = {
   action: 'hold' | 'raise' | 'promote' | 'locked' | 'booked' | 'closed' | 'paused';
   reason: string;
   compBookedShare: number;
+  /** Where this night's band came from. A night with no saved comp ask stays on the sample. */
+  source: BoardSource;
 };
 
 export type CompCard = {
@@ -37,16 +48,21 @@ export type CompCard = {
   nextWeekendAsk: number;
   occupancy: number;
   score: number;
+  fit: 'close' | 'small' | 'far';
+  inBand: boolean;
 };
 
 export type MarketBoard = {
   house: HouseId;
-  source: 'sample';
+  /** 'sample' means every ask is a stand-in. 'live' means saved asks set every night. 'mixed' is both. */
+  source: BoardSource;
   from: string;
   days: number;
   targetPercentile: number;
   nights: NightRow[];
   comps: CompCard[];
+  /** How many listed samples sleep close to this house, and whether the band dropped the rest. */
+  fit: { close: number; compared: number; narrowed: boolean };
   summary: {
     medianAsk: number;
     ourTypical: number;
@@ -54,5 +70,10 @@ export type MarketBoard = {
     raiseNights: number;
     promoteNights: number;
     compPace30: number;
+    /** Nights in this window whose band used a saved comp ask. */
+    liveNights: number;
+    /** How many saved comps were offered to the board. Zero means the sample set only. */
+    liveComps: number;
   };
 };
+

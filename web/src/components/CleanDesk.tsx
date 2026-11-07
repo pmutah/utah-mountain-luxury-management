@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Reservation } from '../lib/api';
-import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderLaterLeave, workOrderEarly, workOrderPrep, workOrderWhen, type CleanLang } from '../lib/clean';
+import { cleanJobs, cleanLabel, jobDoneCount, stepDone, workOrderEssentials, workOrderLeaving, workOrderMap, workOrderNotes, workOrderPlace, workOrderRules, cleanQuietLine, cleanSafetyLine, workOrderNext, workOrderParty, workOrderArrival, workOrderDeparture, workOrderCheckoutParty, workOrderLaterLeave, workOrderEarly, workOrderPrep, workOrderWhen, workOrderEvent, type CleanLang } from '../lib/clean';
+import type { CleanJob } from '../lib/clean';
+import { jobLeaveAt2, stepText, turnHours } from '../lib/turn-clock';
+import { canyonDesk, canyonFromTurns, turnLoad } from '../lib/turn-load';
+import { CleanLinkPanel } from './CleanLinkPanel';
+import { turnState, turnStateLine, type CleanProgress, type TurnState } from '../lib/clean-progress';
+import { api } from '../lib/api';
 import { earlyStayOpen } from '../lib/house-stay';
-import { loadBookedNights } from '../lib/booked-nights';
+import { loadBookedNights, loadQuoteCalendar, type QuoteTurn } from '../lib/booked-nights';
 import { checkoutNightIsFree } from '../lib/journey';
 import type { HouseId } from '../lib/market/types';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { loadCleanFixes, saveCleanFixes, upsertCleanFix, type CleanFix } from '../lib/clean-notes';
+import { HouseFixPad } from './CleanHouseNotes';
+import { cleanJobsEmptyLine, cleanTurnsLine, cleanTurnsVisible, photoGuideLine } from '../lib/clean-ready';
+import { cleanRouteForTurns } from '../lib/clean-route';
 import { currentDayIso } from '../lib/months';
 
 type OpenTask = {
@@ -60,12 +69,70 @@ function gapLabel(gap: number | null, lang: CleanLang) {
 export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   const asOf = currentDayIso();
   const jobs = useMemo(() => cleanJobs(reservations, asOf), [reservations, asOf]);
+  // Ticks the cleaner made on their own link. Read from the server so the desk and the phone agree.
+  const [cleanProgress, setCleanProgress] = useState<CleanProgress[] | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    void api
+      .getCleanProgress()
+      .then((result) => {
+        if (!cancel) setCleanProgress(result.storageReads === 'paused' ? null : result.progress);
+      })
+      .catch(() => {
+        if (!cancel) setCleanProgress(null);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+  const progressRows = cleanProgress ?? [];
+  // The cleaner's own room photos. Without these the photo step would only count photos attached in
+  // this browser tab, so a cleaner who uploaded from their link would still read as unfinished.
+  useEffect(() => {
+    let cancel = false;
+    void api
+      .getCleanPhotoTurns()
+      .then((result) => {
+        if (cancel || result.storageReads === 'paused') return;
+        setUploaded(result.turns);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancel = true;
+    };
+  }, []);
+  function uploadedFor(job: CleanJob): Array<{ path: string; label: string; url: string }> {
+    return uploaded[`${job.house}:${job.checkout}`] ?? [];
+  }
+  function hostTurnState(job: CleanJob): TurnState {
+    return turnState(job.house, job.checkout, job.priority, progressRows);
+  }
+  function hostProgressLine(job: CleanJob): string {
+    if (cleanProgress === null) return 'The cleaner ticks could not be read. This line is not a zero.';
+    return turnStateLine(job.house, job.checkout, job.priority, progressRows);
+  }
   const preferenceTimes = usePreferenceTimes();
   const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
   const [checks, setChecks] = useState<Record<string, boolean>>(loadChecks);
   const [tasks, setTasks] = useState<OpenTask[]>([]);
   const [lang, setLang] = useState<CleanLang>(loadLang);
+  const [turns, setTurns] = useState<QuoteTurn[] | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    loadQuoteCalendar()
+      .then((calendar) => {
+        if (!cancel) setTurns(calendar?.turns ?? null);
+      })
+      .catch(() => {
+        if (!cancel) setTurns(null);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
   const [photos, setPhotos] = useState<Record<string, string[]>>({});
+  /** Room photos the cleaner uploaded from their own link, keyed by turn. */
+  const [uploaded, setUploaded] = useState<Record<string, Array<{ path: string; label: string; url: string }>>>({});
   const [fixes, setFixes] = useState<CleanFix[]>(loadCleanFixes);
   const photosRef = useRef(photos);
 
@@ -149,6 +216,37 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
             ? 'Las salidas salen de las reservas que ya están en el calendario. Las marcas se quedan en este navegador. Una foto se queda en esta pestaña y no se sube. No cambia una reserva ni un gasto.'
             : 'Turnovers come from the bookings already on the calendar. Checks stay on this browser. A room photo stays in this tab and is not uploaded. A fix note stays in this browser and does not create a task. They do not change a booking or an expense.'}
         </p>
+        {cleanTurnsVisible(turns, jobs.length) && (
+          <p className="mt-4 text-sm" data-bot="clean-turns">
+            {cleanTurnsLine(turns ?? [], lang)}
+          </p>
+        )}
+        <p className="mt-4 text-sm" data-bot="clean-route">
+          {cleanRouteForTurns(
+            turns,
+            jobs.length > 0 ? jobs.map((job) => job.house) : ['ranch', 'lindon', 'river'],
+            lang,
+          )}
+        </p>
+        {(turns
+          ? canyonFromTurns(turns, lang)
+          : canyonDesk(
+              jobs.map((job) => ({
+                house: job.house,
+                houseName: job.houseName,
+                checkout: job.checkout,
+                clock: { sameDay: job.priority, leaveAt2: false, arriveAt1: false },
+              })),
+              lang,
+            )
+        ).map((row) => (
+          <p key={row.date || 'none'} className="mt-2 text-sm" data-bot="clean-canyon" data-date={row.date || 'none'}>
+            {row.line}
+          </p>
+        ))}
+        <div className="mt-4">
+          <HouseFixPad lang={lang} houses={['river', 'ranch', 'lindon']} />
+        </div>
         <div className="mt-4 flex flex-wrap gap-2" data-bot="clean-lang" data-print-hide>
           <button type="button" className="uml-nav" data-bot="clean-lang-en" aria-pressed={lang === 'en'} onClick={() => chooseLang('en')}>
             English
@@ -161,13 +259,42 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
           </button>
         </div>
       </div>
-      {jobs.length === 0 ? (
-        <p className="uml-panel rounded-3xl p-6 text-sm text-[var(--uml-muted)]">No checkouts in the next two weeks.</p>
-      ) : (
+      <CleanLinkPanel />
+      {cleanJobsEmptyLine(jobs.length, turns, lang) ? (
+        <p className="uml-panel rounded-3xl p-6 text-sm text-[var(--uml-muted)]" data-bot="clean-empty">
+          {cleanJobsEmptyLine(jobs.length, turns, lang)}
+        </p>
+      ) : jobs.length === 0 ? null : (
         <div className="space-y-4">
+          {turnLoad(
+            jobs.map((job) => ({
+              house: job.house,
+              houseName: job.houseName,
+              checkout: job.checkout,
+              clock: {
+                sameDay: job.priority,
+                leaveAt2: jobLeaveAt2(preferenceTimes?.departure[job.checkoutStayId], job.leaveAt2),
+                arriveAt1: job.arriveAt1,
+              },
+            })),
+            lang,
+          ).map((row) => (
+            <p key={row.date} className="uml-panel rounded-3xl p-6 text-sm" data-bot="clean-load" data-date={row.date}>
+              {row.line}
+            </p>
+          ))}
           {jobs.map((job) => {
-            const photoCount = photos[job.id]?.length ?? 0;
+            // A cleaner's uploaded photo counts the same as one attached in this browser.
+            const photoCount = Math.max(photos[job.id]?.length ?? 0, uploadedFor(job).length);
             const done = jobDoneCount(job.steps, checks, job.id, photoCount);
+            const clock = turnHours(
+              {
+                sameDay: job.priority,
+                leaveAt2: jobLeaveAt2(preferenceTimes?.departure[job.checkoutStayId], job.leaveAt2),
+                arriveAt1: job.arriveAt1,
+              },
+              lang,
+            );
             return (
               <article key={job.id} className="uml-panel rounded-3xl p-6" data-bot="clean-job">
                 <div className="flex flex-wrap items-end justify-between gap-3">
@@ -177,8 +304,17 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     <p className="mt-1 text-sm text-[var(--uml-muted)]">
                       {shortDate(job.checkout)} · {gapLabel(job.gapNights, lang)}
                     </p>
+                    <p className="mt-1 text-sm" data-bot="clean-quiet">
+                      {cleanQuietLine(job.house, lang)}
+                    </p>
                     <p className="mt-1 text-sm" data-bot="clean-window">
                       {workOrderWhen(job.house, job.priority, lang)}
+                    </p>
+                    <p className="mt-1 text-sm" data-bot="clean-hours">
+                      {clock.text}
+                    </p>
+                    <p className="mt-1 text-sm" data-bot="clean-progress" data-state={hostTurnState(job)}>
+                      {hostProgressLine(job)}
                     </p>
                     <p className="mt-1 text-sm" data-bot="clean-checkout-party">
                       {workOrderCheckoutParty(job.checkoutGuests, lang, job.checkoutChildren)}
@@ -196,6 +332,11 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                     <p className="mt-1 text-sm" data-bot="clean-next">
                       {workOrderNext(job.nextCheckIn, job.gapNights, lang)}
                     </p>
+                    {workOrderEvent(job.nextCheckIn, job.nextCheckOut, lang) && (
+                      <p className="mt-1 text-sm" data-bot="clean-event">
+                        {workOrderEvent(job.nextCheckIn, job.nextCheckOut, lang)}
+                      </p>
+                    )}
                     {taken && job.nextCheckIn && (
                       <p className="mt-1 text-sm" data-bot="clean-early">
                         {workOrderEarly(earlyStayOpen(job.nextCheckIn, taken[job.house] ?? [], asOf), lang)}
@@ -221,18 +362,21 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                         {workOrderPlace(job.house, lang)}
                       </a>
                     </p>
-                    {workOrderEssentials(job.house).length > 0 && (
+                    {workOrderEssentials(job.house, lang).length > 0 && (
                       <div className="mt-2" data-bot="clean-essentials">
                         <p className="text-sm text-[var(--uml-muted)]">
                           {lang === 'es' ? 'Antes de ir. Es para el camino, no es tu lista.' : 'Before you go. This is for the drive, not your checklist.'}
                         </p>
                         <ul className="mt-1 space-y-1 text-sm">
-                          {workOrderEssentials(job.house).map((line) => (
+                          {workOrderEssentials(job.house, lang).map((line) => (
                             <li key={line}>{line}</li>
                           ))}
                         </ul>
                       </div>
                     )}
+                    <p className="mt-2 text-sm" data-bot="clean-safety">
+                      {cleanSafetyLine(lang)}
+                    </p>
                     {workOrderRules(job.house, lang).length > 0 && (
                       <div className="mt-2" data-bot="clean-rules">
                         <p className="text-sm text-[var(--uml-muted)]">
@@ -247,9 +391,9 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                         </ul>
                       </div>
                     )}
-                    {workOrderNotes(job.house).length > 0 && (
+                    {workOrderNotes(job.house, lang).length > 0 && (
                       <ul className="mt-2 space-y-1 text-sm" data-bot="clean-notes">
-                        {workOrderNotes(job.house).map((line) => (
+                        {workOrderNotes(job.house, lang).map((line) => (
                           <li key={line}>{line}</li>
                         ))}
                       </ul>
@@ -260,7 +404,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                         : 'The guest was asked to do this before leaving. It is not your checklist.'}
                     </p>
                     <ul className="mt-1 space-y-1 text-sm" data-bot="clean-leaving">
-                      {workOrderLeaving(lang).map((step) => (
+                      {workOrderLeaving(job.house, lang).map((step) => (
                         <li key={step}>{step}</li>
                       ))}
                     </ul>
@@ -282,7 +426,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                             checked={checked}
                             onChange={() => toggle(job.id, step.id)}
                           />
-                          {cleanLabel(step.id, lang)}
+                          {stepText(step.id, cleanLabel(step.id, lang), clock.text)}
                         </label>
                       </li>
                     );
@@ -303,21 +447,35 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                       }}
                     />
                   </label>
-                  {photoCount > 0 && (
-                    <div className="mt-3 flex gap-2" data-bot="clean-photo-strip">
+                  {(photoCount > 0 || uploadedFor(job).length > 0) && (
+                    <div className="mt-3 flex flex-wrap gap-2" data-bot="clean-photo-strip">
+                      {uploadedFor(job).map((photo) => (
+                        <a key={photo.path} href={photo.url} target="_blank" rel="noreferrer" data-bot="clean-photo-uploaded">
+                          <img src={photo.url} alt={photo.label} className="h-16 w-16 rounded-xl object-cover" />
+                        </a>
+                      ))}
                       {photos[job.id]?.map((url) => (
                         <img key={url} src={url} alt="" className="h-16 w-16 rounded-xl object-cover" />
                       ))}
                     </div>
                   )}
+                  {photoGuideLine(job.house, lang) && (
+                    <p className="mt-2 text-sm" data-bot="clean-photo-guide" data-house={job.house}>
+                      {photoGuideLine(job.house, lang)}
+                    </p>
+                  )}
                   <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="clean-photo-note">
-                    {photoCount === 0
+                    {uploadedFor(job).length > 0
                       ? lang === 'es'
-                        ? 'La línea de fotos sigue abierta hasta que haya una foto.'
-                        : 'The photo line stays open until a room photo is attached.'
-                      : lang === 'es'
-                        ? `${photoCount} en esta pestaña. No se sube.`
-                        : `${photoCount} in this tab. Not uploaded.`}
+                        ? `${uploadedFor(job).length} del enlace del limpiador.`
+                        : `${uploadedFor(job).length} from the cleaner's link.`
+                      : photoCount === 0
+                        ? lang === 'es'
+                          ? 'La línea de fotos sigue abierta hasta que haya una foto.'
+                          : 'The photo line stays open until a room photo is attached.'
+                        : lang === 'es'
+                          ? `${photoCount} en esta pestaña. No se sube.`
+                          : `${photoCount} in this tab. Not uploaded.`}
                   </p>
                 </div>
                 <label className="mt-4 block text-sm">

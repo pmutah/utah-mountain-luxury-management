@@ -220,7 +220,13 @@ function ownerSplit(
   const mgtFee = basis > 0 ? basis * 0.2 : 0;
   const leftover = basis - mgtFee - (mortgage + operating);
   const share = leftover / 2;
-  return { brandon: mgtFee + share, todd: share, mgtFee };
+  // Cents, so a statement or a printed report never shows 1908.3439999999998.
+  return { brandon: cents(mgtFee + share), todd: cents(share), mgtFee: cents(mgtFee) };
+}
+
+/** A money figure in whole cents. A ratio such as occupancy is left as it is. */
+function cents(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 function ratio(num: number, den: number): number {
@@ -230,11 +236,14 @@ function ratio(num: number, den: number): number {
 function finalizeRow(row: Omit<PropertyReportRow, 'occupancy' | 'adr' | 'revpar' | 'avgLos' | 'avgBooking' | 'margin'>): PropertyReportRow {
   return {
     ...row,
+    // Money is cents; a ratio stays a ratio.
+    revenue: cents(row.revenue),
+    profit: cents(row.profit),
     occupancy: ratio(row.occupiedNights, row.availableNights) * 100,
-    adr: ratio(row.revenue, row.stayNights),
-    revpar: ratio(row.revenue, row.availableNights),
+    adr: cents(ratio(row.revenue, row.stayNights)),
+    revpar: cents(ratio(row.revenue, row.availableNights)),
     avgLos: ratio(row.stayNights, row.stayCount),
-    avgBooking: ratio(row.revenue, row.stayCount),
+    avgBooking: cents(ratio(row.revenue, row.stayCount)),
     margin: ratio(row.profit, row.revenue) * 100,
   };
 }

@@ -1,4 +1,5 @@
 import { corsJson, isExpenseProperty } from '../../_lib/data';
+import { hostDenied, hostOnly } from '../../_lib/auth';
 import { parseConstructionStage } from '../../_lib/construction/types';
 import {
   loadCustomExpenses,
@@ -15,16 +16,29 @@ import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
 
-type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
+type ExpenseEnv = SettingsEnv & FirebaseStorageEnv & { DASHBOARD_PASSWORD?: string };
+
+const PAUSED =
+  'Saved expenses could not be read. Storage reads are paused for the rest of the day. Nothing was written over them.';
 
 export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env }) => {
-  await persistMissingPaidDates(env).catch(() => 0);
-  const all = withReceiptUrls(await mergeAllExpenses(env));
-  const custom = withReceiptUrls(await loadCustomExpenses(env));
-  return corsJson(request, { expenses: all, custom });
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+  try {
+    await persistMissingPaidDates(env);
+    const all = withReceiptUrls(await mergeAllExpenses(env));
+    const custom = withReceiptUrls(await loadCustomExpenses(env));
+    return corsJson(request, { expenses: all, custom });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/limit exceeded|paused for the rest of the day|could not be read/i.test(message)) {
+      return corsJson(request, { error: PAUSED }, 503);
+    }
+    return corsJson(request, { error: message }, 500);
+  }
 };
 
 export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   if (!env.SETTINGS) {
     return corsJson(
       request,
@@ -88,7 +102,16 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
     ...meta,
   };
 
-  const custom = await loadCustomExpenses(env);
+  let custom: ExpenseRecord[];
+  try {
+    custom = await loadCustomExpenses(env);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/limit exceeded|paused for the rest of the day|could not be read/i.test(message)) {
+      return corsJson(request, { error: PAUSED }, 503);
+    }
+    return corsJson(request, { error: message }, 500);
+  }
   custom.push(item);
   await saveCustomExpenses(env, custom);
 

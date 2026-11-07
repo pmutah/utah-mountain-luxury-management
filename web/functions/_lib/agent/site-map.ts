@@ -37,7 +37,9 @@ export const AGENT_SITE_MAP = {
     household: 'Brandon & Stephanie furnishings and house purchases — tab Our expenses (#/ours)',
   },
   apis: {
-    session: 'GET /api/auth/session',
+    auth:
+      'Every private route needs a configured DASHBOARD_PASSWORD and a matching cookie, or a Bearer MUSE_BOT_SECRET / AMANDA_BOT_SECRET. With no password set, private reads answer 401 with code "not-configured" and the site stays closed instead of open. A cookie response is only readable from the deployed origin or a local dev port (Access-Control-Allow-Origin is an allow-list, not a reflection).',
+    session: 'GET /api/auth/session — { authenticated, authRequired, open }. open:true means no password is set and private data is closed.',
     login: 'POST /api/auth/login { password }',
     portfolio: 'GET /api/portfolio/metrics?month=YYYY-MM',
     history: 'GET /api/portfolio/history?end=YYYY-MM&count=12',
@@ -61,9 +63,31 @@ export const AGENT_SITE_MAP = {
     publicHouses:
       'GET /houses and /houses/river|ranch|lindon — public pages from the guest guide. No door codes, no prices, no card. A group larger than the River House links to the two-house quote, which does not hold dates.',
     publicBook:
-      'GET /book — guest quote preview from the season rates. GET /api/book/availability returns booked nights only, with no guest names. POST /api/book emails a request and refuses nights that are already booked. It does not charge a card or hold dates.',
+      'GET /book — guest quote preview from the season rates. GET /api/book/availability returns booked nights, closed nights, held nights, and host-approved guest prices with no guest names. POST /api/book saves a request, holds both houses it names for 30 minutes, and emails the team plus a receipt to the guest. A second guest is refused those nights with 409 and held:true. It does not charge a card. The receipt carries the guest their own /request/:token link.',
+    guestRequest:
+      'GET /api/book/request/:token — public, no sign-in. The guest sees where their own request stands: waiting, accepted, declined, expired, or cancelled, with the dates and the party. An expired hold does not mean nobody answered: the request is still acceptable and the page says so. A cancelled booking is its own state, never "nobody answered". The token is the whole credential and is the only thing this route accepts. It returns no name, email, phone, host note, internal id, or price, so a forwarded link exposes nothing that was not already on the booking page. An accepted request is matched by the request id in the stay note, not by dates. The page is /request/:token.',
+    bookingInbox:
+      'GET /api/book/requests — host only. The saved direct requests with a taken flag, an accepted flag, and a summary. GET/POST /api/book/holds — host only; list live holds or release one by id or requestId. POST /api/book/accept { id, payout, source? } turns a request into a booking, refuses a second accept or a clashing night, mints the guest /stay/:token link, and emails the confirmation. It never charges a card.',
+    cleanLinks:
+      'GET/POST/DELETE /api/clean/links — host only. A cleaner link is the credential for GET /api/clean/:token, which needs no login and returns the next two weeks of turns (house, day, steps, how to get in, house rules) with no door code, guest name, or rate. POST /api/clean/:token { house, checkout, done:[stepIds] } ticks a step; only ids that turn has are kept and only a turn on the list can be ticked. GET /api/clean/progress — host only; what cleaners have ticked, with a summary.',
+    ownerPortal:
+      'GET/POST /api/owner/links — host only. Mints a read-only link for Todd. GET /api/owner/:token needs no login and returns the Ranch and River share after the fee, per house and per month, with no Lindon, household, construction, or guest names. It never books or sends.',
+    marketComps:
+      'GET /api/pricing/snapshots — saved comps and the asks they carry. POST /api/pricing/comp-set { platform, url, label, sleeps, distanceMi, area?, rating?, reviews?, guestFavorite? } saves a real comp; a comp without sleeps or a distance is refused. POST /api/pricing/snapshots { compId, asks:[{ date, nightlyRate }] } records the guest ask a comp actually lists, up to 120 nights per save. A comp sets the band only on a night that carries a recorded ask, so that POST is what activates the live band.',
+    approvedRates:
+      'GET/POST/DELETE /api/pricing/approved-rates — host only. POST { house, date, guest } approves one night, and that night is then quoted at that price on our own booking page and in the guest month grid. It is the only path from the pricing engine to a guest. Refused on a booked, closed, held, or paused night, and outside the floor, the ceiling, the 8% raise cap, and the published 20% promotion. DELETE ?house=&date= returns the night to the published card. It sends nothing to Airbnb, VRBO, or Hospitable.',
+    ratePushPlan:
+      'GET /api/pricing/push-plan — host only. What a rate push would change, built from the shadow run: booked, closed, paused, locked, and held nights are never in it. It answers sends:false and has no writer, so no price can leave from it. GET/POST /api/pricing/shadow-days is the durable seven-day clock; the write token is never returned.',
     sharedWork:
       'GET/POST /api/agent/work — the job list Muse, Amanda, and the co-host share. list, claim, done, release. A done job is not done again.',
+    houseSettings:
+      'GET/POST /api/operations/config — host only. The house rules and check-in line the guest and cleaner messages are built from, plus the cleaner contact. It merges rather than replaces, so saving one house leaves the other two alone, and a field left blank keeps what is already saved. A malformed cleaner email is refused. These lines go into the check-in draft a guest receives.',
+    operationsTasks:
+      'GET/POST/PATCH /api/operations/tasks — host only. The shared operations task list with a due date, a house, and an optional reservation. It records the job; it does not send a text or change a booking.',
+    automation:
+      'GET/PUT /api/automation — host only. The automation switches: which scheduled chores are on, and their settings. POST /api/automation/run — host only; runs the due chores now. It records what it did; it does not send a rate to Airbnb or VRBO.',
+    gmail:
+      'GET /api/integrations/gmail/status — host only; whether a Gmail account is connected and whose. GET /api/integrations/gmail/connect — host only; starts the OAuth consent for the mailbox the team sends from. GET /api/integrations/gmail/callback — the OAuth return target; it stores the tokens and redirects back to the dashboard. No token is ever returned by any of these.',
     museOpenApi: 'GET /api/muse/openapi.json (or /api/muse/openapi) — public',
     museInstructions: 'GET /api/muse/instructions — public standing rules',
     museTools:
@@ -81,9 +105,11 @@ export const AGENT_SITE_MAP = {
       'POST /api/surveys/send { reservationId? , confirmationCode?, channel:"email"|"sms"|"none", guestEmail?, guestPhone? } — none mints a /stay/:token link without sending',
     publicStaySurvey: 'GET/POST /api/stay-preferences/:token — public River VIP / classic preference form',
     guestApp:
-      'GET /api/guest-guide — each house guest app (codes, Wi-Fi, house sections, videos, area picks). POST { propertyId, guide } saves one house. Guests see it at /stay/:token; codes show from the day before check-in until noon on checkout day. Never paste codes into chat, SMS, or email.',
+      'GET /api/guest-guide — each house guest app (house sections, videos, area picks). A caller who is not signed in gets the published facts with doorCode, wifiName, wifiPassword, and doorNotes blanked; a host cookie or a bot bearer gets the whole guide to edit. POST { propertyId, guide } needs the host and saves one house. Guests see the real codes only at /stay/:token, from the day before check-in until noon on checkout day. Never paste codes into chat, SMS, or email.',
     publicStayGuide:
       'GET /api/stay-guide/:token — what the guest app shows. Add ?preview=1 with the owner cookie or bot bearer to see codes early. POST /api/stay-guide/:token/chat { text } is Nora, a text concierge for this stay only. When she needs Brandon she texts him a link to /stay/:token/host. POST /api/stay-guide/:token/thread (owner sign-in) is his reply, which the guest app shows. She has no access to the books.',
+    stayMessages:
+      'GET/POST /api/stay-guide/:token/stay-message — host only. GET lists the stay messages that are right to send today; POST { id, to } sends exactly one, by hand. Nothing is scheduled, so no message goes out on its own. Each message has a window measured from check-in or checkout, a message already sent for that stay is refused, and no price, door code, or password goes out. The stay comes from the guest record behind the token, never from the request body.',
   },
   partnerSpend: {
     onlyOn: 'construction',

@@ -1,5 +1,13 @@
 import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
+import { addDays } from '../../src/lib/market/dates';
+import { indexSnaps, liveCompFits, toLiveComp, toLiveSnaps, type LiveComp, type SnapIndex } from '../../src/lib/market/live';
+import {
+  toApprovedRate,
+  withApprovedRateReport,
+  withoutApprovedRate,
+  type ApprovedRate,
+} from '../../src/lib/market/rate-sheet';
 import type {
   CompListing,
   ListingConfig,
@@ -12,6 +20,8 @@ const KV_LISTINGS = 'listingConfig';
 const KV_COMP = 'compSet';
 const KV_SNAPSHOTS = 'priceSnapshots';
 const KV_ALERTS = 'pricingAlerts';
+/** Host-approved guest rates. The only comp-driven price a guest can be charged. */
+const KV_SHEET = 'approvedRates';
 
 export async function loadListingConfig(
   env: SettingsEnv,
@@ -93,11 +103,70 @@ export async function dismissPricingAlert(env: SettingsEnv, id: string): Promise
   return true;
 }
 
-export function median(values: number[]): number {
-  if (values.length === 0) return 0;
+/** Every approved rate on the sheet. A row that cannot be trusted is dropped on read. */
+export async function loadApprovedRates(env: SettingsEnv): Promise<ApprovedRate[]> {
+  const raw = await kvGet<unknown[]>(env, KV_SHEET, []);
+  if (!Array.isArray(raw)) return [];
+  const out: ApprovedRate[] = [];
+  for (const value of raw) {
+    const row = toApprovedRate(value);
+    if (row) out.push(row);
+  }
+  return out;
+}
+
+/**
+ * Save one approved night. A second approval for that night replaces the first.
+ *
+ * `dropped` is how many nights the cap evicted to make room. It is returned rather than swallowed
+ * because the previous version silently erased a whole house's sheet, and nothing surfaced it.
+ */
+export async function saveApprovedRate(
+  env: SettingsEnv,
+  row: ApprovedRate,
+): Promise<{ sheet: ApprovedRate[]; dropped: number }> {
+  const written = withApprovedRateReport(await loadApprovedRates(env), row);
+  await kvPut(env, KV_SHEET, written.sheet);
+  return written;
+}
+
+/** Take one house's approval back off the sheet for that night. */
+export async function clearApprovedRate(env: SettingsEnv, house: string, date: string): Promise<ApprovedRate[]> {
+  const sheet = withoutApprovedRate(await loadApprovedRates(env), house, date);
+  await kvPut(env, KV_SHEET, sheet);
+  return sheet;
+}
+
+export function median(values: number[]): number {  if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+/**
+ * The saved comps that can carry a real ask, and the asks they carry. A comp without a sleep count
+ * or a distance stays off the band rather than guessing one, and a house's own listing is skipped.
+ */
+export async function loadLiveNights(
+  env: SettingsEnv,
+  house: 'ranch' | 'lindon' | 'river',
+  from: string,
+  days: number,
+): Promise<{ comps: LiveComp[]; index: SnapIndex }> {
+  const comps = (await loadCompSet(env)).filter(
+    (comp) => !comp.propertyId || comp.propertyId === 'both' || comp.propertyId === house,
+  );
+  const live = comps
+    .map((comp) => toLiveComp(comp))
+    .filter((comp): comp is LiveComp => comp !== null)
+    .filter((comp) => liveCompFits(house, comp.sleeps, comp.distanceMi));
+  if (live.length === 0) return { comps: [], index: new Map() };
+  const ids = new Set(live.map((comp) => comp.id));
+  const until = addDays(from, days);
+  const snaps = toLiveSnaps(await loadPriceSnapshots(env)).filter(
+    (snap) => ids.has(snap.compId) && snap.date >= from && snap.date < until,
+  );
+  return { comps: live, index: indexSnaps(snaps) };
 }
 
 export async function compareMarket(

@@ -31,5 +31,15 @@ test('the occupancy file lists taken nights and leaves the guest off it', () => 
   assert.match(file, /UID:ranch-2026-11-04-2026-11-06@uml/);
   assert.match(file, /UID:ranch-2026-11-04-2026-11-06-2@uml/);
   assert.equal(occupancyFilename(), 'uml-occupancy.ics');
+  const blocked = occupancyCalendar(
+    [{ propertyId: 'ranch', checkIn: '2026-11-04', checkOut: '2026-11-06', status: 'confirmed' }],
+    '2026-10-29',
+    { ranch: ['2026-11-04', '2026-11-10', '2026-11-11'] },
+  );
+  assert.equal(blocked.includes('Secret'), false);
+  assert.equal(blocked.includes('$'), false);
+  assert.match(blocked, /DTSTART;VALUE=DATE:20261110/);
+  assert.match(blocked, /DTEND;VALUE=DATE:20261112/);
+  assert.equal((blocked.match(/BEGIN:VEVENT/g) ?? []).length, 2);
   assert.equal(file.endsWith('END:VCALENDAR\r\n'), true);
 });

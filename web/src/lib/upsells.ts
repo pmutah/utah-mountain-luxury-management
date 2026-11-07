@@ -1,5 +1,7 @@
 import { checkoutNightIsFree, nightBeforeIsFree } from './journey';
+import type { YearPace } from './market/fill';
 import type { HouseId } from './market/types';
+import { quoteStay } from './quote';
 
 export type UpsellId = 'early' | 'late' | 'tub' | 'groceries';
 
@@ -71,6 +73,60 @@ export function toggleUpsell(current: readonly UpsellId[], id: UpsellId): Upsell
   return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
 }
 
+/** The host add-on note. An unread guest list does not say a night is open or name a stay. */
+export function guestAddonIntro(unreadable: boolean): string {
+  const tail = 'Nothing is ordered or charged. This page does not send a request.';
+  if (unreadable) {
+    return `Saved bookings could not be read. This page does not say which stay can request an add-on, and it does not say a night is open. The menu is the published list. ${tail}`;
+  }
+  return `Guests can request these from the stay app when the night is open. Each stay below says which of these that stay can request. A request stays on their phone. A grocery list stays on that phone too. ${tail}`;
+}
+
+/** Names the add-ons without a price. Early and late wait until the calendar can be read. */
+export function addonMenuLine(house: HouseId): string {
+  const named = houseMenu(house)
+    .filter((offer) => offer.id === 'tub' || offer.id === 'groceries')
+    .map((offer) => offer.name);
+  const wait = 'An early arrival and a later checkout wait until the calendar can be read.';
+  const close = 'This list has no price and does not send a request.';
+  if (named.length === 0) return `${wait} ${close}`;
+  return `${named.join('. ')}. ${wait} ${close}`;
+}
+
+/** Early arrival and a later checkout for a party in both houses. Both calendars have to be clear. */
+export function bothHouseFlex(input: {
+  checkIn: string;
+  checkOut: string;
+  taken: Partial<Record<HouseId, readonly string[]>>;
+  closed?: Partial<Record<HouseId, readonly string[]>>;
+}): { early: boolean; late: boolean } {
+  const houses: HouseId[] = ['river', 'ranch'];
+  return {
+    early: houses.every((id) => nightBeforeIsFree(input.checkIn, input.taken[id] ?? [], input.closed?.[id] ?? [])),
+    late: houses.every((id) => checkoutNightIsFree(input.checkOut, input.taken[id] ?? [], input.closed?.[id] ?? [])),
+  };
+}
+
+/** The request line for both houses. No price and no door-code timing. */
+export function bothHouseFlexLine(kind: 'early' | 'late', open: boolean): string {
+  const line = !open
+    ? kind === 'early'
+      ? 'A 1:00 PM arrival is not open for both houses.'
+      : 'A 2:00 PM leave is not open for both houses.'
+    : kind === 'early'
+      ? 'Arrive at 1:00 PM is a request for both houses. Nothing is charged yet.'
+      : 'Leave at 2:00 PM is a request for both houses. Nothing is charged yet.';
+  if (line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) return 'Nothing is charged yet.';
+  return line;
+}
+
+/** The booking-page line for both houses. Nothing is sent. */
+export function bothHouseFlexRhythm(flex: { early: boolean; late: boolean }): string {
+  const line = `${bothHouseFlexLine('early', flex.early)} ${bothHouseFlexLine('late', flex.late)} Nothing is sent.`;
+  if (line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) return 'Nothing is sent.';
+  return line;
+}
+
 /** Add-ons the booking page can offer for these dates. An unknown calendar hides early and late. */
 export function quoteOffers(input: {
   house: HouseId;
@@ -79,22 +135,73 @@ export function quoteOffers(input: {
   asOf: string;
   taken: readonly string[];
   calendarLive: boolean;
+  closed?: readonly string[];
+  pace?: YearPace;
+  guests?: number;
+  children?: number;
 }): UpsellOffer[] {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.checkIn) || !/^\d{4}-\d{2}-\d{2}$/.test(input.checkOut)) return [];
   if (input.checkOut <= input.checkIn || input.asOf >= input.checkOut) return [];
+  const quote = quoteStay(input.house, input.checkIn, input.checkOut, input.taken, {
+    asOf: input.asOf,
+    pace: input.pace ?? 'unknown',
+    closed: input.closed ?? [],
+    ...(input.guests !== undefined ? { guests: input.guests, ...(input.children !== undefined ? { children: input.children } : {}) } : {}),
+  });
+  if (!quote.ok) return [];
   const phase = input.asOf >= input.checkIn ? 'during' : 'before';
   return guestOffers({
     house: input.house,
     phase,
-    nightBeforeFree: input.calendarLive ? nightBeforeIsFree(input.checkIn, input.taken) : null,
-    checkoutNightFree: input.calendarLive ? checkoutNightIsFree(input.checkOut, input.taken) : null,
+    nightBeforeFree: input.calendarLive ? nightBeforeIsFree(input.checkIn, input.taken, input.closed ?? []) : null,
+    checkoutNightFree: input.calendarLive ? checkoutNightIsFree(input.checkOut, input.taken, input.closed ?? []) : null,
   });
+}
+
+/** A grocery list written with the drop. It is not saved and nothing is ordered. */
+export function quoteGroceryLine(list: string, marked: boolean): string {
+  if (!marked) return '';
+  const saved = groceryListForSave(list);
+  if (!saved) return 'A grocery list can be written here. It stays in this tab. Nothing is ordered or charged. This stay is not booked.';
+  if (saved.includes('$') || /door\s*code|wi-?fi|password/i.test(saved)) {
+    return 'That list stays off this paper. Nothing is ordered or charged. This stay is not booked.';
+  }
+  return `Grocery list: ${saved} This list stays in this tab. Nothing is ordered or charged. This stay is not booked.`;
+}
+
+/** A hot tub or grocery drop marked while the calendar is unread. No price. */
+export function quoteCardAddonLine(names: readonly string[]): string {
+  const clean = names.map((name) => name.trim()).filter((name) => name.length > 0);
+  if (clean.length === 0) return '';
+  const text = `${clean.join(' and ')} would be on the request. This stay is not booked. Nothing is charged yet. Nothing is sent.`;
+  if (text.includes('$') || /door\s*code|wi-?fi|password/i.test(text)) return '';
+  return text;
+}
+
+/** The booking page names an add-on without the door-code timing. The stay phone keeps its own detail. */
+export function quoteOfferDetail(offer: { id: string; detail: string }): string {
+  if (offer.id === 'early') return 'Arrive at 1:00 PM is a request. Nothing is charged yet.';
+  const detail = offer.detail
+    .replace(/The door code still opens the day before(?: check-in)?\. ?/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (/door\s*code|wi-?fi|password|\$/i.test(detail) || /\bis open\b/i.test(detail)) return '';
+  return detail;
 }
 
 /** The line that would ride along with a request. Checking a box does not send it. */
 export function quoteOfferNote(offers: readonly UpsellOffer[]): string {
   if (offers.length === 0) return '';
   return `Add-on request: ${offers.map((offer) => offer.name).join(', ')}. Nothing is charged yet.`;
+}
+
+/** A checked add-on stays beside the stay total. It is not folded into that total. */
+export function quoteAddonApart(offers: readonly { name: string }[]): string {
+  if (offers.length === 0) return '';
+  const names = offers.map((offer) => offer.name).filter((name) => name.trim().length > 0);
+  if (names.length === 0) return '';
+  const verb = names.length === 1 ? 'is' : 'are';
+  return `${names.join(', ')} ${verb} not in that total. Nothing is charged yet.`;
 }
 
 const HOST_SPOKEN: Record<UpsellId, string> = {

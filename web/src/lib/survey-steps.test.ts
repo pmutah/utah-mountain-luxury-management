@@ -9,4 +9,6 @@ test('the River preference form asks for an arrival time before the last step se
   assert.ok(steps.indexOf('leave') < steps.indexOf('else'));
   assert.equal(steps.at(-1), 'else');
   assert.equal(steps.includes('fishing'), true);
+  assert.equal(steps.includes('movie'), false);
+  assert.equal(steps.includes('popcorn'), false);
 });

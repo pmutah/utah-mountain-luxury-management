@@ -30,10 +30,17 @@ export function longestStay(
   asOf: string,
   pace: YearPace,
   guests?: number,
+  closed: readonly string[] = [],
+  children?: number,
 ): LongestStay | null {
-  const floor = shortestStay(house, checkIn, taken, asOf, pace, guests);
+  const floor = shortestStay(house, checkIn, taken, asOf, pace, guests, closed, children);
   if (!floor) return null;
-  const options = { asOf, pace, ...(guests !== undefined ? { guests } : {}) };
+  const options = {
+    asOf,
+    pace,
+    closed,
+    ...(guests !== undefined ? { guests, ...(children !== undefined ? { children } : {}) } : {}),
+  };
   let best: LongestStay = floor;
   let nights = floor.nights + 1;
   while (nights <= MAX_NIGHTS) {

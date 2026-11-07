@@ -1,14 +1,33 @@
-import { corsJson, PROPERTIES } from '../../../_lib/data';
+﻿import { corsJson, PROPERTIES } from '../../../_lib/data';
 import { findSurveyByToken } from '../../../_lib/survey-store';
-import { getAllReservations } from '../../../_lib/reservations-store';
+import { getAllReservations, loadCustomReservations, loadReservationOverrides } from '../../../_lib/reservations-store';
 import { loadCalendarBlocks } from '../../../_lib/calendar-store';
 import { accessWindow, GUIDE_HOUSE_IDS, loadGuides, type GuideHouseId } from '../../../_lib/guest-guide';
-import { isAuthenticated } from '../../../_lib/auth';
-import { isMuseAuthorized } from '../../../_lib/muse/auth';
-import type { AgentEnv } from '../../../_lib/agent/types';
+import { hostOnly } from '../../../_lib/auth';
+import type { AgentEnv, ReservationRecord } from '../../../_lib/agent/types';
 import { occupiedNights, type StaySpan } from '../../../../src/lib/availability';
-import { nightBeforeIsFree, checkoutNightIsFree } from '../../../../src/lib/journey';
+import { nightBeforeIsFree, checkoutNightIsFree, stayNightFlags } from '../../../../src/lib/journey';
+import { stayAccessSecrets } from '../../../../src/lib/stay-rules';
 import { addDays } from '../../../../src/lib/market/dates';
+import { storageReadPaused } from '../../../_lib/kv-json';
+import { noteChildCount, noteGuestCount } from '../../../../src/lib/note-party';
+import type { GuestPreferenceAnswers } from '../../../_lib/survey-store';
+
+function stayPartyFromAnswers(answers?: GuestPreferenceAnswers): { guests: number; children?: number } | null {
+  if (!answers?.adults?.trim()) return null;
+  const adults = Number(answers.adults.trim());
+  if (!Number.isInteger(adults) || adults < 1 || adults > 30) return null;
+  const kidRaw = answers.children?.trim();
+  let children = 0;
+  if (kidRaw) {
+    const kids = Number(kidRaw);
+    if (!Number.isInteger(kids) || kids < 0 || kids >= adults) return null;
+    children = kids;
+  }
+  const guests = adults + children;
+  if (guests < 1 || guests > 30) return null;
+  return children > 0 ? { guests, children } : { guests };
+}
 
 export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: string }> = async ({
   request,
@@ -16,49 +35,115 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
   params,
 }) => {
   const token = String(params.token ?? '');
-  const survey = await findSurveyByToken(env, token);
+  let survey;
+  try {
+    survey = await findSurveyByToken(env, token);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(
+        request,
+        { error: 'Saved bookings could not be read. Nothing was written over them.', storageReads: 'paused' },
+        503,
+      );
+    }
+    const message = err instanceof Error ? err.message : 'Stay guide failed';
+    return corsJson(request, { error: message }, 500);
+  }
   if (!survey || !GUIDE_HOUSE_IDS.includes(survey.propertyId as GuideHouseId)) {
     return corsJson(request, { error: 'This link is not valid.' }, 404);
   }
   const houseId = survey.propertyId as GuideHouseId;
-  const guide = (await loadGuides(env))[houseId];
+  let guide;
+  try {
+    guide = (await loadGuides(env))[houseId];
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(
+        request,
+        { error: 'The saved guide could not be read. Nothing was written over it.', storageReads: 'paused' },
+        503,
+      );
+    }
+    const message = err instanceof Error ? err.message : 'Stay guide failed';
+    return corsJson(request, { error: message }, 500);
+  }
+  // A preview shows the door code early, so it needs a real host. `isAuthenticated` returns true
+  // when DASHBOARD_PASSWORD is unset, which would have let anyone read the codes with ?preview=1.
   const wantsPreview = new URL(request.url).searchParams.get('preview') === '1';
-  const preview = wantsPreview && (isMuseAuthorized(request, env) || isAuthenticated(request, env));
+  const preview = wantsPreview && hostOnly(request, env);
   if (!guide.enabled && !preview) {
     return corsJson(request, { enabled: false }, 200, { 'Cache-Control': 'no-store' });
   }
 
-  const reservations = await getAllReservations(env);
-  const stay = reservations.find((item) => item.id === survey.reservationId);
+  let reservations;
+  let blocks;
+  let calendarPaused = false;
+  try {
+    reservations = await getAllReservations(env);
+    blocks = await loadCalendarBlocks(env);
+  } catch (err) {
+    if (!storageReadPaused(err)) {
+      const message = err instanceof Error ? err.message : 'Stay guide failed';
+      return corsJson(request, { error: message }, 500);
+    }
+    calendarPaused = true;
+  }
+  const stay = reservations?.find((item) => item.id === survey.reservationId);
   if (stay?.status === 'cancelled') {
     return corsJson(request, { error: 'This stay was cancelled.' }, 410);
+  }
+  /*
+   * A cancelled stay is filtered out of `getAllReservations` â€” correct for every calendar, and wrong
+   * here: the lookup above misses, the route falls back to the survey's own dates, and a cancelled
+   * stay went on serving its door code and Wi-Fi inside what looked like a live window. The 410 branch
+   * existed but could never be reached. So cancellation is checked against the stored rows directly,
+   * which is the only source that still holds a cancelled stay.
+   */
+  if (!stay) {
+    const stored = await loadCustomReservations(env).catch(() => null);
+    const overrides = await loadReservationOverrides(env).catch(
+      () => ({}) as Record<string, Partial<ReservationRecord>>,
+    );
+    const storedRow = stored?.find((item) => item.id === survey.reservationId);
+    const rowStatus = storedRow?.status ?? overrides[survey.reservationId]?.status;
+    if (rowStatus === 'cancelled') {
+      return corsJson(request, { error: 'This stay was cancelled.' }, 410);
+    }
   }
 
   const checkIn = stay?.checkIn ?? survey.checkIn;
   const checkOut = stay?.checkOut ?? survey.checkOut;
+  const partyFromForm = stayPartyFromAnswers(survey.answers);
+  const partyGuests = partyFromForm?.guests ?? noteGuestCount(stay?.note) ?? undefined;
+  const partyChildren = partyFromForm?.children ?? noteChildCount(stay?.note) ?? undefined;
   const window = accessWindow(checkIn, checkOut);
   const unlocked = window.open || preview;
-  const blocks = await loadCalendarBlocks(env);
+  const ready = preview || new URL(request.url).searchParams.get('ready') === '1';
+  const secrets = stayAccessSecrets({
+    unlocked,
+    ready,
+    wifiName: guide.wifiName,
+    wifiPassword: guide.wifiPassword,
+    doorCode: guide.doorCode,
+    doorNotes: guide.doorNotes,
+  });
   const spans: StaySpan[] = [
-    ...reservations.map((item) => ({
+    ...(reservations ?? []).map((item) => ({
       propertyId: item.propertyId,
       checkIn: item.checkIn,
       checkOut: item.checkOut,
       status: item.status,
     })),
-    ...blocks.map((block) => ({
+    ...(blocks ?? []).map((block) => ({
       propertyId: block.propertyId,
       checkIn: block.start,
       checkOut: block.end,
     })),
   ];
-  const nightBeforeFree = nightBeforeIsFree(
-    checkIn,
-    occupiedNights(spans, houseId, addDays(checkIn, -1), checkIn),
-  );
-  const checkoutNightFree = checkoutNightIsFree(
-    checkOut,
-    occupiedNights(spans, houseId, checkOut, addDays(checkOut, 1)),
+  const flags = stayNightFlags(
+    calendarPaused,
+    nightBeforeIsFree(checkIn, occupiedNights(spans, houseId, addDays(checkIn, -1), checkIn)),
+    checkoutNightIsFree(checkOut, occupiedNights(spans, houseId, checkOut, addDays(checkOut, 1))),
   );
 
   return corsJson(request, {
@@ -68,18 +153,20 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
     propertyName: PROPERTIES[houseId].name,
     checkIn,
     checkOut,
+    ...(partyGuests !== undefined ? { partyGuests, ...(partyChildren !== undefined ? { partyChildren } : {}) } : {}),
     preferencesDone: Boolean(survey.completedAt),
-    nightBeforeFree,
-    checkoutNightFree,
+    storageReads: calendarPaused ? 'paused' : 'ok',
+    nightBeforeFree: flags.nightBeforeFree,
+    checkoutNightFree: flags.checkoutNightFree,
     access: {
       phase: window.phase,
       opensOn: window.opensOn,
       preview,
       unlocked,
-      wifiName: unlocked ? guide.wifiName : null,
-      wifiPassword: unlocked ? guide.wifiPassword : null,
-      doorCode: unlocked ? guide.doorCode : null,
-      doorNotes: unlocked ? guide.doorNotes : null,
+      wifiName: secrets.wifiName,
+      wifiPassword: secrets.wifiPassword,
+      doorCode: secrets.doorCode,
+      doorNotes: secrets.doorNotes,
     },
     guide: {
       headline: guide.headline,
@@ -101,3 +188,5 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);
+
+

@@ -1,8 +1,10 @@
+import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
 import { gmailOAuthUrl } from '../../../_lib/gmail-store';
 import type { AgentEnv } from '../../../_lib/agent/types';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const url = new URL(request.url);
   const origin = url.origin;
   const redirectUri = `${origin}/api/integrations/gmail/callback`;

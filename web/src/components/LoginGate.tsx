@@ -7,6 +7,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
+  const [open, setOpen] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +26,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
       .then((s) => {
         setAuthRequired(s.authRequired);
         setAuthenticated(s.authenticated);
+        setOpen(Boolean((s as { open?: boolean }).open));
       })
       .catch(() => setAuthenticated(import.meta.env.DEV))
       .finally(() => setChecking(false));
@@ -46,6 +48,33 @@ export function LoginGate({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-[var(--uml-bg)] flex items-center justify-center text-[var(--uml-muted)] text-sm tracking-widest uppercase">
         Checking access…
+      </div>
+    );
+  }
+
+  // A deployment with no password is refused by every host route, so showing the dashboard would
+  // only render a page full of errors. Say what is wrong instead.
+  if (open) {
+    return (
+      <div className="min-h-screen bg-[var(--uml-bg)] text-[var(--uml-ink)] flex items-center justify-center p-6">
+        <div className="uml-panel w-full max-w-lg rounded-[32px] p-8 shadow-xl space-y-4" data-bot="login-unconfigured">
+          <div className="flex items-center gap-3">
+            <BrandMark />
+            <div>
+              <p className="uml-kicker">Setup needed</p>
+              <h1 className="font-display text-3xl">{APP_NAME.replace(' Management', '')}</h1>
+            </div>
+          </div>
+          <p className="text-sm">
+            This site has no dashboard password set, so private data stays closed. The ledger, the
+            booking list, guest details, and the document vault will not load until{' '}
+            <code className="rounded bg-black/10 px-1">DASHBOARD_PASSWORD</code> is set in Cloudflare
+            Pages, and the site is redeployed.
+          </p>
+          <p className="text-sm text-[var(--uml-muted)]">
+            Nothing was written or deleted. The public booking page and any guest stay link keep working.
+          </p>
+        </div>
       </div>
     );
   }
