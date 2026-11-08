@@ -193,6 +193,26 @@ export function median(values: number[]): number {  if (values.length === 0) ret
 }
 
 /**
+ * The saved comps that may set a band for this house.
+ *
+ * This is the **one** definition, used by the board and by the market comparison. It had drifted: the
+ * board filtered through `liveCompFits`, while `compareMarket` selected by house alone. That second path
+ * built an alert reading "Comp median $324/night (20 data points)" out of comps the board correctly
+ * rejects — our own Ranch House and a listing that only books 28-night stays — so the alert described a
+ * market that does not exist. A comp must belong to the house, be a real listing, and pass the fit rules.
+ */
+export async function loadBandComps(env: SettingsEnv, house: 'ranch' | 'lindon' | 'river'): Promise<LiveComp[]> {
+  /*
+   * Only this house's comps. A comp saved without a house used to count for every house, which put
+   * the River House's canyon lodge in the Lindon House's band beside a $210 rambler.
+   */
+  return compsForHouse(await loadCompSet(env), house)
+    .map((comp) => toLiveComp(comp))
+    .filter((comp): comp is LiveComp => comp !== null)
+    .filter((comp) => liveCompFits(house, comp.sleeps, comp.distanceMi, comp.isOwn, comp.minNights));
+}
+
+/**
  * The saved comps that can carry a real ask, and the asks they carry. A comp without a sleep count
  * or a distance stays off the band rather than guessing one, and a house's own listing is skipped.
  */
@@ -202,15 +222,7 @@ export async function loadLiveNights(
   from: string,
   days: number,
 ): Promise<{ comps: LiveComp[]; index: SnapIndex }> {
-  /*
-   * Only this house's comps. A comp saved without a house used to count for every house, which put
-   * the River House's canyon lodge in the Lindon House's band beside a $210 rambler.
-   */
-  const comps = compsForHouse(await loadCompSet(env), house);
-  const live = comps
-    .map((comp) => toLiveComp(comp))
-    .filter((comp): comp is LiveComp => comp !== null)
-    .filter((comp) => liveCompFits(house, comp.sleeps, comp.distanceMi, comp.isOwn, comp.minNights));
+  const live = await loadBandComps(env, house);
   if (live.length === 0) return { comps: [], index: new Map() };
   const ids = new Set(live.map((comp) => comp.id));
   const until = addDays(from, days);
@@ -232,10 +244,7 @@ export async function compareMarket(
   message: string;
 }> {
   const snaps = await loadPriceSnapshots(env);
-  const comps = await loadCompSet(env);
-  const relevantCompIds = new Set(
-    compsForHouse(comps, propertyId as 'ranch' | 'lindon' | 'river').map((c) => c.id),
-  );
+  const relevantCompIds = new Set((await loadBandComps(env, propertyId as 'ranch' | 'lindon' | 'river')).map((c) => c.id));
   const rates = snaps
     .filter((s) => relevantCompIds.has(s.compId) && s.date >= from && s.date <= to)
     .map((s) => s.nightlyRate);
@@ -247,8 +256,8 @@ export async function compareMarket(
     openAlerts: alerts.length,
     message:
       rates.length === 0
-        ? 'No comp price data yet — add comps and refresh prices.'
-        : `Comp median $${compMedian.toFixed(0)}/night for ${from} to ${to} (${rates.length} data points).`,
+        ? 'No comp price data yet that can set a band for this house — every saved comp is either one of our own listings, a long-minimum rental, or carries no saved ask.'
+        : `Comp median $${compMedian.toFixed(0)}/night for ${from} to ${to} (${rates.length} data points, from comps that pass the band rules).`,
   };
 }
 

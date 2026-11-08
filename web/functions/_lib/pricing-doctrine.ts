@@ -1,7 +1,7 @@
 import { PROPERTIES } from './data';
 import { getAllReservations } from './reservations-store';
 import { loadCalendarBlocks } from './calendar-store';
-import { compareMarket, loadCompSet, loadListingConfig, loadPriceSnapshots, median } from './pricing-store';
+import { compareMarket, loadBandComps, loadCompSet, loadListingConfig, loadPriceSnapshots, median } from './pricing-store';
 import { compsForHouse } from '../../src/lib/market/comp-house';
 import type { SettingsEnv } from './kv';
 import type { PropertyId } from './agent/types';
@@ -532,14 +532,16 @@ function achievedHostNightly(
 }
 
 async function compHostNetMedian(env: SettingsEnv, propertyId: PropertyId, from: string, to: string) {
-  const comps = await loadCompSet(env);
+  // The same band comps the board uses. Selecting by house alone let our own listing and a 28-night
+  // rental into the host-net median, which then fed the rate doctrine.
+  const band = compsForHouse(await loadCompSet(env), propertyId);
+  const bandIds = new Set(await loadBandComps(env, propertyId as 'ranch' | 'lindon' | 'river').then((rows) => rows.map((row) => row.id)));
   const snaps = await loadPriceSnapshots(env);
-  const relevant = new Map(
-    compsForHouse(comps, propertyId).map((comp) => [comp.id, comp.platform]),
-  );
+  const platformOf = new Map(band.map((comp) => [comp.id, comp.platform]));
   const hostNets: number[] = [];
   for (const snap of snaps) {
-    const platform = relevant.get(snap.compId);
+    if (!bandIds.has(snap.compId)) continue;
+    const platform = platformOf.get(snap.compId);
     if (!platform || snap.date < from || snap.date > to || snap.nightlyRate <= 0) continue;
     hostNets.push(snap.nightlyRate * (platform === 'vrbo' ? VRBO_KEEP : AIRBNB_KEEP));
   }
