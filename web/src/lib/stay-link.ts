@@ -7,6 +7,26 @@ import type { UpsellId } from './upsells';
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 const ADDONS: UpsellId[] = ['early', 'late', 'tub', 'groceries'];
 
+/**
+ * Every query key a stay link may carry.
+ *
+ * Exported because something outside this file has to recognise a booking URL: the router rescues a
+ * quote link that the host mangled into `/?house=river`, and it must rescue on exactly the keys a real
+ * link can have. A hand-written list there drifted — it lacked `leave` and `event` and invented an
+ * `arrival` key that nothing reads — so the list lives beside the parser instead.
+ */
+export const STAY_LINK_KEYS = [
+  'house',
+  'in',
+  'out',
+  'guests',
+  'children',
+  'addons',
+  'arrive',
+  'leave',
+  'event',
+] as const;
+
 export type StayLink = {
   house: HouseId;
   checkIn: string;

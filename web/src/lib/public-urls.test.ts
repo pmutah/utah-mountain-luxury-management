@@ -1,8 +1,8 @@
-/**
+﻿/**
  * The guest booking page must be reachable without a trailing-slash dance.
  *
  * Cloudflare Pages serves the built `index.html` at an extensionless path by *normalising* it: a request
- * for `/book` answers `308 -> /`, and `/book?house=river` becomes `/?house=river` — the path is dropped
+ * for `/book` answers `308 -> /`, and `/book?house=river` becomes `/?house=river` â€” the path is dropped
  * and the guest lands on the dashboard login. `/book/` serves the app correctly.
  *
  * The app linked to `/book?...` everywhere, so **every "Book now" and "Quote" link landed on a login
@@ -14,7 +14,8 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import test from 'node:test';
-import { bookPath, housePagePath, HOUSES_PATH } from './public-paths.ts';
+import { bookPath, housePagePath, HOUSES_PATH, rescueLegacyLink } from './public-paths.ts';
+import { STAY_LINK_KEYS } from './stay-link.ts';
 import { bookShare, GROUP_TRIP_HREF, houseQuoteHref, parseHousePath } from './house-page.ts';
 
 test('the public path helpers produce the form the host serves', () => {
@@ -54,8 +55,8 @@ test('no source file links to /book or /houses without the slash', () => {
    * The broad check, because a new link added by hand is exactly how this regressed.
    *
    * It looks for the places a URL is *handed to a browser*: an `href` or a share URL. Router comparisons
-   * are exempt by design — `parseHousePath` and `App.tsx` compare a *received* pathname, which may
-   * arrive either way and must still match — and so is prose in a comment.
+   * are exempt by design â€” `parseHousePath` and `App.tsx` compare a *received* pathname, which may
+   * arrive either way and must still match â€” and so is prose in a comment.
    */
   const root = join(process.cwd(), 'src');
   const offenders: string[] = [];
@@ -86,3 +87,59 @@ test('no source file links to /book or /houses without the slash', () => {
   walk(root);
   assert.deepEqual(offenders, [], `these build a URL that redirects to the login:\n${offenders.join('\n')}`);
 });
+
+test('every parameter a real stay link can carry is rescued', () => {
+  /*
+   * The first version of this rescue had its own hand-written key list, and it was already wrong: it
+   * missed `leave` and `event`, and carried an `arrival` key nothing reads. So the list is checked
+   * against every key the parser actually honours, one by one — a single `house` case would have passed
+   * while an arrival time still fell through to the dashboard.
+   */
+  for (const key of STAY_LINK_KEYS) {
+    const rescued = rescueLegacyLink('/', `?${key}=x`);
+    assert.ok(rescued, `a link with ${key} was not rescued`);
+    assert.equal(rescued!.startsWith('/book/?'), true, `${key} rescued to ${rescued}`);
+  }
+});
+
+test('a quote link mangled by the host redirect still reaches the booking page', () => {
+  /*
+   * `/book?house=river` answers 308 to `/?house=river`: the query survives, the path does not. Someone
+   * who was emailed that link before the fix would otherwise land on a login form.
+   */
+  assert.equal(rescueLegacyLink('/', '?house=river'), '/book/?house=river');
+  assert.equal(rescueLegacyLink('/', '?house=river&guests=8'), '/book/?house=river&guests=8');
+  assert.equal(
+    rescueLegacyLink('/', '?house=river&in=2026-11-13&out=2026-11-15&guests=30&children=2'),
+    '/book/?house=river&in=2026-11-13&out=2026-11-15&guests=30&children=2',
+  );
+});
+
+test('a plain dashboard visit is not hijacked', () => {
+  /*
+   * The narrow part matters more than the rescue. `/` is the dashboard, and only a booking-shaped query
+   * may be redirected â€” otherwise a host opening the site with any stray parameter lands on /book.
+   */
+  assert.equal(rescueLegacyLink('/', ''), null);
+  assert.equal(rescueLegacyLink('/', '?'), null);
+  assert.equal(rescueLegacyLink('/', '?month=2026-11'), null);
+  assert.equal(rescueLegacyLink('/', '?tab=guests'), null);
+  assert.equal(rescueLegacyLink('/', '?utm_source=email'), null);
+});
+
+test('a real path is never rescued, because it does not need to be', () => {
+  // Only the root is rewritten. A working path keeps its own routing.
+  assert.equal(rescueLegacyLink('/book/', '?house=river'), null);
+  assert.equal(rescueLegacyLink('/houses/', ''), null);
+  assert.equal(rescueLegacyLink('/stay/abc', '?x=1'), null);
+});
+
+test('the rescued address carries the slash, so a reload still works', () => {
+  const rescued = rescueLegacyLink('/', '?house=ranch');
+  assert.ok(rescued);
+  // The whole point: the address bar is left on a URL the host actually serves.
+  assert.equal(rescued!.startsWith('/book/?'), true);
+  assert.equal(/\/book\?/.test(rescued!), false);
+});
+
+

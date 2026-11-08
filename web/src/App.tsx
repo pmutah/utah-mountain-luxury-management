@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+﻿import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, type HistoryData, type PortfolioData } from './lib/api';
 import {
   parseDashboardHash,
@@ -7,6 +7,7 @@ import {
   type RiverView,
 } from './lib/bot-nav';
 import { installUmlBridge, syncDocumentView } from './lib/uml-bridge';
+import { rescueLegacyLink, servedPath } from './lib/public-paths';
 import { LoginGate } from './components/LoginGate';
 import { Header } from './components/Header';
 import { PortfolioOverview } from './components/PortfolioOverview';
@@ -450,6 +451,22 @@ function Dashboard() {
 }
 
 export default function App() {
+  /*
+   * A quote link sent before the paths were fixed arrives here as `/?house=river` â€” the host's 308 kept
+   * the query and dropped the path. Hand it to the booking page instead of showing a guest a login form.
+   *
+   * The path is rewritten with `replaceState` so the address bar shows the real URL and a reload keeps
+   * working, and the booking page is rendered directly. Reloading instead would throw away the app and
+   * re-fetch everything for what is only a path correction.
+   */
+  if (rescueLegacyLink(window.location.pathname, window.location.search)) {
+    window.history.replaceState(null, '', servedPath('/book', window.location.search));
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <DirectBook />
+      </Suspense>
+    );
+  }
   const hostMatch = window.location.pathname.match(/^\/stay\/([^/]+)\/host\/?$/);
   if (hostMatch?.[1]) {
     return (
@@ -512,3 +529,4 @@ export default function App() {
     </LoginGate>
   );
 }
+
