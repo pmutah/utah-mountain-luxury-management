@@ -33,7 +33,7 @@ test('a trip sheet names the arrival and leaves the door code off the paper', ()
   assert.equal(sheet.event, 'This stay covers BYU at Utah. Nothing extra is added for that.');
   assert.equal(sheet.event.includes('$'), false);
   assert.equal(sheet.address, 'Vivian Park, Provo Canyon, Utah 84604');
-  assert.match(sheet.photo, /Listing rendering/);
+  assert.match(sheet.photo, /Architectural rendering/);
   assert.equal(sheet.photo.includes('$'), false);
   assert.match(sheet.privateNote, /not on this paper/);
   assert.equal(sheet.arrival, 'The house sits at Vivian Park.');
@@ -225,7 +225,7 @@ test('a two-house paper names each house and leaves the door-code timing off', (
   );
   const river = papers[0]!;
   const ranch = papers[1]!;
-  assert.match(river.photo, /Listing rendering/);
+  assert.match(river.photo, /Architectural rendering/);
   assert.equal(ranch.photo, 'Listing photo');
   assert.match(river.address, /Vivian Park/);
   assert.match(ranch.address, /Lindon/);

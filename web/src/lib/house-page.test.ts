@@ -22,7 +22,7 @@ test('each public house page uses the published guide and leaves prices and door
   const cards = houseCardFacts('river').join('\n');
   assert.match(cards, /Sleeps 24/);
   assert.match(cards, /Check-in 4:00 PM · Check-out 11:00 AM/);
-  assert.match(cards, /Listing rendering/);
+  assert.match(cards, /Architectural rendering/);
   assert.equal(cards.includes('$'), false);
   assert.match(houseCardFacts('ranch').join('\n'), /Sleeps 20/);
   assert.equal(houseCardFacts('lindon').join('\n').includes('rendering'), false);
@@ -33,7 +33,7 @@ test('each public house page uses the published guide and leaves prices and door
   assert.match(ranchStay, /Park in the driveway/);
   assert.equal(ranchStay.includes('rendering'), false);
   assert.equal(ranchStay.includes('$'), false);
-  assert.match(companionStayFacts('river').join('\n'), /Listing rendering/);
+  assert.match(companionStayFacts('river').join('\n'), /Architectural rendering/);
   assert.match(companionStayNote(), /other house/);
   assert.equal(/\bis open\b/.test(companionStayNote()), false);
   const river = publicHouse('river');

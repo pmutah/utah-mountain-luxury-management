@@ -7,7 +7,7 @@ test('the printed house guide leaves the door code off the paper', () => {
   const guide = bookingGuide('river', '2026-11-06', '2026-11-08');
   const text = JSON.stringify(guide);
   assert.equal(guide.name, 'The River House');
-  assert.match(guide.facts.join('\n'), /Listing rendering/);
+  assert.match(guide.facts.join('\n'), /Architectural rendering/);
   assert.equal(bookingGuide('ranch', '2026-11-06', '2026-11-08').facts.join('\n').includes('rendering'), false);
   assert.equal(guide.checkout[0], 'Start the dishwasher.');
   assert.match(text, /sundanceresort\.com/);

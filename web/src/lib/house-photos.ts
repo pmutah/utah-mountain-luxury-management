@@ -20,6 +20,14 @@ export const HOUSE_PHOTOS: Partial<Record<HouseId, { src: string; caption: strin
   },
   river: {
     src: '/houses/river.jpg',
-    caption: 'Listing rendering · finish photos after the house is done',
+    /*
+     * A guest reads this, so it says what the picture *is* rather than what the desk still has to do.
+     * The old caption — "finish photos after the house is done" — was a note to the ops team, and it
+     * reached a guest who had already paid: River has four confirmed stays, the first in December. A
+     * paid guest reading that sentence reasonably wonders whether the house will be ready. The
+     * rendering is still labeled plainly, which is the accuracy this line owes; it no longer carries
+     * an internal to-do.
+     */
+    caption: 'Architectural rendering of the River House',
   },
 };
