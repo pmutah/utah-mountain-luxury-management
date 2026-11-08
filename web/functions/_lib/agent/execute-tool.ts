@@ -243,7 +243,29 @@ async function handleFinances(
         byProperty[pid]!.profit += metrics.profit;
       }
     }
-    return { startMonth: start, endMonth: end, totalRevenue, totalProfit, byProperty, months };
+    /*
+     * `profit` here is the **house's** profit: revenue minus mortgage, cleaning, and operating costs.
+     * It is not what a partner takes home. On the Ranch, 2026 year-to-date sums to `totalProfit`
+     * +$5,288.72 while Todd's statement shows **−$3,090.13**, because the owner share is struck after the
+     * 20% management fee and then split 50/50.
+     *
+     * Both are correct and they answer different questions. Returned bare, "profit $5,288.72" reads as
+     * "what I made", which is the wrong number for a partner by $8,378.96. The response now names which
+     * one it is and carries the owner split beside it, so the model does not have to guess.
+     */
+    return {
+      startMonth: start,
+      endMonth: end,
+      totalRevenue,
+      totalProfit,
+      byProperty,
+      months,
+      /** What these figures are, and what they are not. */
+      basis:
+        'totalProfit is the house profit: revenue minus mortgage, cleaning, and operating costs. It is not a partner share. An owner share is struck after the 20% management fee and split 50/50, so it differs from this figure — use the owner portal or manage_finances get_profit_summary per house for that.',
+      ownerSplitNote:
+        'Ranch and River: 20% management fee to Brandon, then 50/50 Todd vs Brandon & Stephanie. Lindon is Brandon only.',
+    };
   }
 
   return { error: `Unknown action: ${action}` };
