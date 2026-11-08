@@ -93,7 +93,35 @@ async function refreshAccessToken(env: SettingsEnv, tokens: GmailTokens): Promis
       grant_type: 'refresh_token',
     }),
   });
-  if (!res.ok) throw new Error('Failed to refresh Gmail token');
+  if (!res.ok) {
+    /*
+     * The bare message was the whole problem: `Failed to refresh Gmail token` says nothing about *why*,
+     * and the two causes need opposite fixes.
+     *
+     *   `invalid_grant`  — the refresh token was revoked or expired. The mailbox has to be reconnected.
+     *   `invalid_client` — the client id/secret do not match the token. On 2026-11-08 the OAuth client id
+     *                      was changed because the old one did not exist in any project, which strands
+     *                      every token minted before that change.
+     *
+     * Google's own `error` and `error_description` are surfaced, because guessing between those two
+     * wastes exactly the kind of time this did.
+     */
+    const raw = await res.text().catch(() => '');
+    let detail = raw.slice(0, 200);
+    try {
+      const parsed = JSON.parse(raw) as { error?: string; error_description?: string };
+      detail = [parsed.error, parsed.error_description].filter(Boolean).join(': ') || detail;
+    } catch {
+      // A non-JSON error body is still worth showing.
+    }
+    const hint =
+      /invalid_grant/.test(raw)
+        ? ' The mailbox needs reconnecting — the refresh token is no longer valid.'
+        : /invalid_client/.test(raw)
+          ? ' The OAuth client id or secret does not match this token. Reconnect the mailbox so it mints a token for the current client.'
+          : '';
+    throw new Error(`Failed to refresh Gmail token (${res.status})${detail ? `: ${detail}` : ''}.${hint}`);
+  }
   const data = (await res.json()) as { access_token: string; expires_in: number };
   const updated = {
     ...tokens,
