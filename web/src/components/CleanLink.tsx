@@ -169,7 +169,11 @@ export function CleanLink({ token }: { token: string }) {
               onClick={() => setLang(id)}
               data-bot={`clean-link-lang-${id}`}
               aria-pressed={lang === id}
-              className={`rounded-full border px-3 py-1 text-xs uppercase ${
+              /*
+               * 44px minimum, like the steps. A cleaner switches to Spanish on the same phone, often one-handed in a
+               * driveway; a 26px pill is a miss.
+               */
+              className={`min-h-11 min-w-11 rounded-full border px-3 py-2 text-xs uppercase ${
                 lang === id ? 'border-[#8a6f2f] bg-[#8a6f2f] text-white' : 'border-[#cfc6b6] text-[#5d564b]'
               }`}
             >
@@ -248,7 +252,7 @@ export function CleanLink({ token }: { token: string }) {
                             data-step={step.id}
                             data-done={done ? 'yes' : 'no'}
                             aria-pressed={done}
-                            className={`flex w-full items-start gap-2 rounded-xl border px-3 py-2 text-left ${
+                            className={`flex w-full items-start gap-2 rounded-xl border px-3 py-3 text-left ${
                               done ? 'border-[#8a6f2f] bg-[#8a6f2f]/10 text-[#5d564b] line-through' : 'border-[#e2dbcd]'
                             }`}
                           >
