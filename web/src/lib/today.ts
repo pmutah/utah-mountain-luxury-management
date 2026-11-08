@@ -74,10 +74,17 @@ export type Turnover = {
 };
 
 export function buildTurnovers(reservations: Reservation[], asOf: string, horizonDays = 14): Turnover[] {
+  /*
+   * `< until` excluded a checkout that lands exactly on the horizon. With `asOf` 2026-11-08 and a
+   * 14-day horizon, `until` is 2026-11-22, so a confirmed Lindon checkout on 2026-11-22 was dropped —
+   * and that turn is a **same-day** clean with the next guest arriving that afternoon. A cleaner's
+   * page read "No turnover in the next two weeks" while the most urgent job of the fortnight was the
+   * one hidden by the boundary. The horizon is inclusive: a clean due on day 14 is due.
+   */
   const until = addDays(asOf, horizonDays);
   const stays = liveStays(reservations);
   return stays
-    .filter((stay) => stay.checkOut >= asOf && stay.checkOut < until)
+    .filter((stay) => stay.checkOut >= asOf && stay.checkOut <= until)
     .map((stay) => {
       const house = stay.propertyId as HouseId;
       const next = stays
