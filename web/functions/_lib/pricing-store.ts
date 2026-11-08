@@ -68,11 +68,39 @@ export async function addPriceSnapshot(
   env: SettingsEnv,
   snap: Omit<PriceSnapshot, 'fetchedAt'>,
 ): Promise<PriceSnapshot> {
-  const item: PriceSnapshot = { ...snap, fetchedAt: new Date().toISOString() };
+  const [item] = await addPriceSnapshots(env, [snap]);
+  return item!;
+}
+
+/**
+ * Save a run of nights in **one** write.
+ *
+ * Cloudflare KV allows one write per key per second, and the ask route used to call
+ * `addPriceSnapshot` once per night: a five-night save did five read-modify-writes to
+ * `priceSnapshots` inside that second, the later ones failed, and the route answered
+ * 503 `saved: 1` — a run half-saved while the route's own contract says a bad save writes
+ * nothing. One write for the whole run is both correct and cheaper.
+ *
+ * A night already saved keeps one row: this is a price, and the newer read of the same night
+ * replaces the older one rather than stacking a second row on it.
+ */
+export async function addPriceSnapshots(
+  env: SettingsEnv,
+  snaps: ReadonlyArray<Omit<PriceSnapshot, 'fetchedAt'>>,
+): Promise<PriceSnapshot[]> {
+  if (snaps.length === 0) return [];
+  const fetchedAt = new Date().toISOString();
+  const items: PriceSnapshot[] = snaps.map((snap) => ({ ...snap, fetchedAt }));
   const list = await loadPriceSnapshots(env);
-  list.push(item);
-  await kvPut(env, KV_SNAPSHOTS, list.slice(-500));
-  return item;
+
+  // Later rows win for the same comp and night, so a re-record corrects rather than duplicates.
+  const key = (snap: { compId: string; date: string }) => `${snap.compId}|${snap.date}`;
+  const incoming = new Map(items.map((item) => [key(item), item]));
+  const kept = list.filter((row) => !incoming.has(key(row)));
+  const next = [...kept, ...items];
+
+  await kvPut(env, KV_SNAPSHOTS, next.slice(-500));
+  return items;
 }
 
 export async function loadPricingAlerts(env: SettingsEnv): Promise<PricingAlert[]> {

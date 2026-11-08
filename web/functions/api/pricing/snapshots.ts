@@ -1,6 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
-import { addPriceSnapshot, loadCompSet, loadPriceSnapshots } from '../../_lib/pricing-store';
+import { addPriceSnapshots, loadCompSet, loadPriceSnapshots } from '../../_lib/pricing-store';
 import { toLiveComps, toLiveSnaps, MAX_ASK_NIGHTS, type LiveComp } from '../../../src/lib/market/live';
 import { compsForHouse, compNeedsHouse } from '../../../src/lib/market/comp-house';
 import { storageReadPaused } from '../../_lib/kv-json';
@@ -103,15 +103,24 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
       400,
     );
   }
+  /*
+   * One write for the whole run, not one per night.
+   *
+   * Cloudflare KV allows one write per key per second. Looping `addPriceSnapshot` did a
+   * read-modify-write of `priceSnapshots` per night, so a five-night run tripped the limit partway
+   * through and answered 503 `saved: 1` — the exact half-save this route's own message says cannot
+   * happen. A single write makes the promise true and costs a fifth as many operations.
+   */
   let saved = 0;
   try {
-    for (const snap of accepted) {
-      await addPriceSnapshot(env, { compId, date: snap.date, nightlyRate: snap.nightlyRate, source: 'manual' });
-      saved += 1;
-    }
+    const written = await addPriceSnapshots(
+      env,
+      accepted.map((snap) => ({ compId, date: snap.date, nightlyRate: snap.nightlyRate, source: 'manual' as const })),
+    );
+    saved = written.length;
   } catch (err) {
     if (storageReadPaused(err)) {
-      return corsJson(request, { error: 'The snapshots could not be written.', saved }, 503);
+      return corsJson(request, { error: 'The snapshots could not be written. Nothing was saved.', saved: 0 }, 503);
     }
     throw err;
   }
