@@ -5,9 +5,13 @@ type Plan = {
   house: string;
   allowed: boolean;
   hold: string | null;
-  nights: Array<{ date: string; from: number; to: number; kind: string }>;
+  nights: Array<{ date: string; from: number; to: number; kind: string; source?: string }>;
   line: string;
   lines: string[];
+  /** Lines priced off a live ask, and lines priced off the invented sample set, counted separately. */
+  liveLines?: number;
+  sampleLines?: number;
+  sampleNote?: string | null;
 };
 
 /** A night the host has already approved, so it can be seen and taken back. */
@@ -160,7 +164,8 @@ export function PushPlanPanel() {
       <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
         A plan, not a send. Booked, closed, paused, locked, and held nights stay put, and a raise never goes under the
         floor. Nothing here changes a rate on Airbnb or VRBO: <strong>type the listed price into the site yourself.</strong>{' '}
-        Approving a night sets the price this site quotes, and that night only.
+        A night whose only comps are the invented sample set shows no price to type, because there is no measurement
+        behind it. Approving a night sets the price this site quotes, and that night only.
       </p>
 
       {state === 'paused' && (
@@ -217,6 +222,21 @@ export function PushPlanPanel() {
                 {plan.lines.length > 0 && (
                   <div className="mt-2">
                     {/*
+                      The provenance note sits **above** the button, because the button is an instruction to paste
+                      these numbers into a live listing. A line priced off `fixtures.ts` is arithmetic on numbers
+                      this repo invented, so it carries no figure to type and this note says why.
+                    */}
+                    {plan.sampleNote && (
+                      <p
+                        className="mb-2 rounded-xl border border-[var(--uml-line)] px-3 py-2 text-xs text-[var(--uml-muted)]"
+                        data-bot={`push-plan-source-${plan.house}`}
+                        data-sample-lines={plan.sampleLines ?? 0}
+                        data-live-lines={plan.liveLines ?? 0}
+                      >
+                        {plan.sampleNote}
+                      </p>
+                    )}
+                    {/*
                       A copy button, because the plan only reaches Airbnb when a person types it in. Without one the
                       host retypes thirty prices by hand; with one the whole house can be pasted into a note or a
                       message to whoever is doing the typing. It copies the same lines the list shows.
@@ -258,26 +278,42 @@ export function PushPlanPanel() {
                   <div className="mt-3 space-y-2" data-bot="push-plan-approve">
                     <p className="text-xs text-[var(--uml-muted)]">
                       Approve a night to quote that price on our own page. It is written on this site only.
+                      {/*
+                        An approve button on a sample-priced night would write a fabricated rate onto our real
+                        booking page — the one place these numbers actually reach a guest. The typed price is the
+                        danger; this button is the delivery mechanism, so the sample nights are not offered here.
+                      */}
+                      {(plan.sampleLines ?? 0) > 0 && (
+                        <span data-bot={`push-plan-approve-note-${plan.house}`}>
+                          {' '}
+                          Nights priced only off the sample set are not offered here, because approving one would put
+                          an invented rate on the booking page.
+                        </span>
+                      )}
                     </p>
                     <ul className="flex flex-wrap gap-2">
-                      {plan.nights.slice(0, 14).map((night) => {
-                        const key = `${plan.house}|${night.date}`;
-                        const verb = night.kind === 'promote' ? 'Promote' : night.kind === 'raise' ? 'Raise' : 'Restore';
-                        return (
-                          <li key={night.date}>
-                            <button
-                              type="button"
-                              disabled={busy === key}
-                              onClick={() => void approve(plan.house, night.date, night.to)}
-                              data-bot="push-plan-approve-night"
-                              data-date={night.date}
-                              className="rounded-full border border-[var(--uml-line)] px-3 py-1 text-xs uppercase tracking-[0.12em] disabled:opacity-50"
-                            >
-                              {busy === key ? 'Saving…' : `${verb} ${night.date.slice(5)} to ${night.to}`}
-                            </button>
-                          </li>
-                        );
-                      })}
+                      {plan.nights
+                        .filter((night) => night.source !== 'sample')
+                        .slice(0, 14)
+                        .map((night) => {
+                          const key = `${plan.house}|${night.date}`;
+                          const verb = night.kind === 'promote' ? 'Promote' : night.kind === 'raise' ? 'Raise' : 'Restore';
+                          return (
+                            <li key={night.date}>
+                              <button
+                                type="button"
+                                disabled={busy === key}
+                                onClick={() => void approve(plan.house, night.date, night.to)}
+                                data-bot="push-plan-approve-night"
+                                data-date={night.date}
+                                data-source={night.source}
+                                className="rounded-full border border-[var(--uml-line)] px-3 py-1 text-xs uppercase tracking-[0.12em] disabled:opacity-50"
+                              >
+                                {busy === key ? 'Saving…' : `${verb} ${night.date.slice(5)} to ${night.to}`}
+                              </button>
+                            </li>
+                          );
+                        })}
                     </ul>
                   </div>
                 )}

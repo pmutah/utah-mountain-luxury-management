@@ -111,6 +111,18 @@ export function buildMarketBoard(
     const observed = liveAsks.length > 0 ? liveAsks : sampleOpen;
     const p75 = Math.round(percentileValue(band, 75));
     /*
+     * A band with no saved ask is the invented sample set from `fixtures.ts` — comps named "Sample · Canyon
+     * lodge" with rates this repo made up. `proposeGuestRate` cannot tell the difference: it sees eight
+     * plausible numbers, places our rate in them, and recommends a raise or a promotion. That recommendation
+     * then reaches the push plan as a price to type into Airbnb, and the market page as a "shadow raise".
+     *
+     * So a night with no measurement does not move. The band is still shown, because hiding it would leave the
+     * page blank before any comp exists and the sample set is labelled everywhere it appears — but a price
+     * *instruction* rests on a measurement or it does not happen. This is what the `source` field has always
+     * meant; nothing downstream was reading it.
+     */
+    const invented = liveAsks.length === 0;
+    /*
      * When the floor is above the whole comp cluster, no allowed discount can bring this night into the
      * market: the floor is the lowest price the house may quote, and it already sits above the 75th
      * percentile. The River House is the case that surfaced this — a flat $1,500 host-net floor is $1,776
@@ -118,7 +130,19 @@ export function buildMarketBoard(
      * never work. Saying so is the point: a plan full of promotions that arithmetic forbids is worse than
      * no plan.
      */
-    const floorAboveMarket = band.length >= 3 && ours.floorGuest > p75;
+    const floorAboveMarket = !invented && band.length >= 3 && ours.floorGuest > p75;
+    /*
+     * A holiday lock is not a market judgement: it comes from the season table, so it holds whether or not a
+     * comp has watched the night. Only the *market-derived* actions are withheld on an invented band.
+     */
+    const action: NightRow['action'] = ours.lock
+      ? 'locked'
+      : invented
+        ? 'hold'
+        : floorAboveMarket && move.action === 'promote'
+          ? 'hold'
+          : move.action;
+    const proposedGuest = invented || ours.lock ? ours.guest : move.proposedGuest;
     return {
       date: iso,
       season: ours.season,
@@ -130,13 +154,17 @@ export function buildMarketBoard(
       p75,
       openComps: observed.length,
       percentile: move.percentile,
-      proposedGuest: move.proposedGuest,
+      proposedGuest,
       promotionPercent: 0,
-      offerGuest: move.proposedGuest,
-      action: floorAboveMarket && move.action === 'promote' ? 'hold' : move.action,
-      reason: floorAboveMarket
-        ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
-        : move.reason,
+      offerGuest: proposedGuest,
+      action,
+      reason: ours.lock
+        ? 'Holiday rate stays on the season table.'
+        : invented
+          ? `No saved comp ask covers this night, so the band is the invented sample set. No rate move is recommended until a real comp watches this date. The published rate stays.`
+          : floorAboveMarket
+            ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
+            : move.reason,
       minNights: ours.minNights,
       compBookedShare: Math.round(((sampleRows.length - observed.length) / sampleRows.length) * 100),
       source,

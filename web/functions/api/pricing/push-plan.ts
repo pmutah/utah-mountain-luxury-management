@@ -2,7 +2,7 @@ import { corsJson } from '../../_lib/data';
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { buildMarketBoard } from '../../../src/lib/market/board';
 import { runShadow } from '../../../src/lib/market/shadow';
-import { planLines, pushPayload, pushPlanAll, pushSendState, pushSummaryLine, type PushGate } from '../../../src/lib/market/push';
+import { planLines, planProvenance, pushPayload, pushPlanAll, pushSendState, pushSummaryLine, type PushGate } from '../../../src/lib/market/push';
 import { shadowClockFromSaved, type SavedShadowDay } from '../../../src/lib/market/shadow-log';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
@@ -116,6 +116,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         ...plan,
         // A night-by-night list the desk can show, and the payload a future writer would use.
         lines: planLines(plan),
+        // How much of that list is arithmetic on real asks. The panel says so next to the copy button.
+        ...planProvenance(plan),
         payload: pushPayload(plan),
       })),
       summary: pushSummaryLine(plans),

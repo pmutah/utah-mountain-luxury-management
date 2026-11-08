@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { planLines, pushHold, pushNights, pushPayload, pushPlanAll, pushPlanFor, pushSummaryLine, type PushGate } from './push.ts';
+import { planLines, planProvenance, pushHold, pushNights, pushPayload, pushPlanAll, pushPlanFor, pushSummaryLine, type PushGate } from './push.ts';
 import type { ShadowNight, ShadowRun } from './shadow.ts';
 
 const READY: PushGate = { shadowReady: true, hasToken: true, paused: false, calendarReady: true };
@@ -167,12 +167,62 @@ test('the plan lines carry the price to type, because a plan without one is not 
    * 20% promotion." leaves the host to find the number elsewhere to do the one thing the line exists to
    * prompt. The panel is host-only and states that nothing is sent, so the figure belongs here — and the
    * previous price goes with it, so the change is visible rather than implied.
+   *
+   * A **measured** band only: that is the case where a price is worth typing into a live listing.
    */
-  const plan = pushPlanFor('river', run('river', [night(), night({ date: '2026-12-05', action: 'promote', offerGuest: 960, promotionPercent: 20 })]), READY);
+  const plan = pushPlanFor(
+    'river',
+    run('river', [
+      night({ source: 'live' }),
+      night({ date: '2026-12-05', action: 'promote', offerGuest: 960, promotionPercent: 20, source: 'live' }),
+    ]),
+    READY,
+  );
   const lines = planLines(plan);
   assert.equal(lines.length, 2);
   assert.match(lines[0] ?? '', /raise/);
   assert.match(lines[1] ?? '', /20% promotion/);
   assert.match(lines[0] ?? '', /\$\d+ to \$\d+/, 'a raise line must name both prices');
   assert.match(lines[1] ?? '', /\$1000 to \$960/, 'a promotion line must name the base and the offer');
+});
+
+test('a price built on the invented sample set is never printed as a price to type', () => {
+  /*
+   * The bug this locks: the plan is an instruction — "type the listed price into Airbnb". Fifty of sixty live
+   * plan lines were priced off `fixtures.ts`, whose comps are named "Sample · Canyon lodge" and carry invented
+   * rates. Under a "Copy these prices" button that invites the host to paste a fabrication into a real listing.
+   * The night still gets a line, because the host should see the engine wants to move it; it just does not get
+   * a number.
+   */
+  const plan = pushPlanFor('lindon', run('lindon', [night({ source: 'sample', action: 'promote', offerGuest: 800 })]), READY);
+  const lines = planLines(plan);
+  assert.equal(lines.length, 1, 'the night should still be named');
+  assert.equal(/\$\d/.test(lines[0] ?? ''), false, 'a sample-priced line must not print a price');
+  assert.match(lines[0] ?? '', /no price to type/);
+  assert.match(lines[0] ?? '', /invented sample set/);
+});
+
+test('the provenance count separates measured lines from sample lines and says so', () => {
+  const mixed = pushPlanFor(
+    'ranch',
+    run('ranch', [
+      night({ date: '2026-12-01', source: 'live' }),
+      night({ date: '2026-12-02', source: 'sample' }),
+      night({ date: '2026-12-03', source: 'sample' }),
+      night({ date: '2026-12-04', source: 'thin' }),
+    ]),
+    READY,
+  );
+  const provenance = planProvenance(mixed);
+  assert.equal(provenance.liveLines, 2, 'live and thin bands both rest on a saved ask');
+  assert.equal(provenance.sampleLines, 2);
+  assert.match(provenance.sampleNote ?? '', /2 of these 4 lines are not measured/);
+
+  const allLive = pushPlanFor('ranch', run('ranch', [night({ source: 'live' })]), READY);
+  assert.equal(planProvenance(allLive).sampleNote, null, 'a fully measured plan needs no warning');
+  assert.equal(planProvenance(allLive).liveLines, 1);
+
+  const allSample = pushPlanFor('ranch', run('ranch', [night({ source: 'sample' })]), READY);
+  assert.match(planProvenance(allSample).sampleNote ?? '', /None of these prices is measured/);
+  assert.equal(planProvenance(allSample).sampleLines, 1);
 });

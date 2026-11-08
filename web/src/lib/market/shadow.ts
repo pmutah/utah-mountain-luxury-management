@@ -252,6 +252,9 @@ function applyFill(
    * check-in that would include it is refused, so raising or promoting it changes a price nobody can
    * pay. The reason says "cannot be booked" so the desk can tell this apart from a night the floor
    * stopped.
+   *
+   * This is checked **before** the sample-band hold: our own calendar is a fact we hold directly, so it is a
+   * better reason than the provenance of a comp, and the desk should see the actionable one.
    */
   if (bookable !== null && !bookable.has(night.date)) {
     return {
@@ -261,6 +264,25 @@ function applyFill(
       promotionPercent: 0,
       offerGuest: night.ourGuest,
       reason: 'This night cannot be booked, so the published rate stays.',
+    };
+  }
+  /*
+   * A night whose band is the invented sample set does not move — and that has to hold here as well as on the
+   * board. The board sets such a night to `hold`, but this function runs *after* it and the promotion rule has
+   * its own reasons to act: a short year plus a lead time under 21 days is enough. So it re-promoted every
+   * sample night the board had just held, at 20% off, and the plan carried the result as a price to type.
+   *
+   * A promotion cut is a claim about the market ("this discount reaches the ask") as much as a raise is. With
+   * no measured ask there is nothing for the claim to be true of.
+   */
+  if (night.source === 'sample') {
+    return {
+      ...night,
+      action: 'hold',
+      proposedGuest: night.ourGuest,
+      promotionPercent: 0,
+      offerGuest: night.ourGuest,
+      reason: 'No saved comp ask covers this night, so no promotion is recommended. The published rate stays.',
     };
   }
   const decision = promotionForNight({

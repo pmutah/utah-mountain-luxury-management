@@ -1,4 +1,4 @@
-import type { HouseId } from './types';
+import type { BoardSource, HouseId } from './types';
 import type { ShadowNight, ShadowRun } from './shadow';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -11,6 +11,14 @@ export type PushNight = {
   to: number;
   /** `raise`, `promote`, or a restore after a promotion ends. */
   kind: 'raise' | 'promote' | 'restore';
+  /**
+   * Where the band behind this price came from. Carried because a plan line is an **instruction**: the panel
+   * tells the host to type `to` into Airbnb. A price derived from `fixtures.ts` is derived from numbers this
+   * repo invented ("Sample · Canyon lodge", $2,100 a night), so printing it as a rate to type asks the host to
+   * copy a fabrication into a live listing. The board already knows this per night; it was discarded on the
+   * way into the plan, which is how 50 of 60 live plan lines came to be priced off sample comps.
+   */
+  source: BoardSource;
 };
 
 export type PushPlan = {
@@ -89,6 +97,7 @@ export function pushNights(house: HouseId, nights: readonly ShadowNight[], asOf?
       from,
       to,
       kind: night.action === 'promote' ? 'promote' : to > from ? 'raise' : 'restore',
+      source: night.source,
     });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));
@@ -222,13 +231,20 @@ export function pushPayload(plan: PushPlan): PushPayload | null {
 }
 
 /**
- * The plan as a night-by-night list for the desk, **with the price to type**.
+ * The plan as a night-by-night list for the desk, **with the price to type** — but only where the price
+ * rests on a real observation.
  *
  * This used to omit the price deliberately — a plan must never read as a published rate. But a list saying
  * "Dec 6: raise" with no number is not actionable: the host has to hunt the figure elsewhere to do the one
  * thing the plan exists to prompt. The panel is host-only, behind the dashboard gate, and says plainly that
  * nothing is sent, so the number belongs here. The night's `from` is also shown so the change is visible
  * rather than implied.
+ *
+ * **Except on the sample set.** A line whose band came from `fixtures.ts` is arithmetic on numbers this repo
+ * invented — there is no Canyon lodge asking $2,100. Printing it in the same shape as a measured line, under a
+ * "Copy these prices" button, invites the host to paste a fabrication into a live listing. On this board that
+ * was 50 of 60 lines. Those lines name the change and the source instead of a figure to type, because a price
+ * with nothing behind it is exactly the defect this whole surface exists to avoid.
  */
 export function planLines(plan: PushPlan): string[] {
   return plan.nights.slice(0, 14).map((night) => {
@@ -239,6 +255,34 @@ export function planLines(plan: PushPlan): string[] {
       timeZone: 'UTC',
     });
     const label = night.kind === 'promote' ? '20% promotion' : night.kind === 'raise' ? 'raise' : 'back to base';
+    if (night.source === 'sample') {
+      return `${when}: ${label} suggested, no price to type — the only comps for this night are the invented sample set.`;
+    }
     return `${when}: ${label}, $${night.from} to $${night.to}.`;
   });
+}
+
+/**
+ * How many of a plan's lines carry a price built on a measured ask, and how many rest on the sample set.
+ *
+ * The host needs this beside the copy button: a plan of thirty lines where twenty-seven are sample arithmetic
+ * looks identical to a plan of thirty measured ones, and only one of those is safe to act on.
+ *
+ * The keys are named to match what the panel reads. An earlier version returned `{ live, sample, note }` while
+ * `PushPlanPanel` rendered `plan.sampleNote`, so the warning was computed, sent, and then silently dropped on
+ * the floor — the same "label with nothing behind it" shape this whole change exists to remove.
+ */
+export function planProvenance(plan: PushPlan): { liveLines: number; sampleLines: number; sampleNote: string | null } {
+  const shown = plan.nights.slice(0, 14);
+  const sampleLines = shown.filter((night) => night.source === 'sample').length;
+  const liveLines = shown.length - sampleLines;
+  const sampleNote =
+    sampleLines === 0
+      ? null
+      : `${
+          sampleLines === shown.length
+            ? 'None of these prices is measured'
+            : `${sampleLines} of ${shown.length === 1 ? 'this line is' : `these ${shown.length} lines are`} not measured`
+        }: the only comps for ${sampleLines === 1 ? 'that night are' : 'those nights are'} the invented sample set, so no price is shown to type. Add a real comp for those dates before acting.`;
+  return { liveLines, sampleLines, sampleNote };
 }

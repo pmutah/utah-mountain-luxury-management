@@ -38,10 +38,34 @@ test('pausing a house freezes every night', () => {
 });
 
 test('an open night can still raise inside the cap', () => {
-  const board = buildMarketBoard('ranch', '2026-11-06', 2);
+  /*
+   * This ran on the sample band, which no longer moves a rate: a night whose only comps are invented is held
+   * because the recommendation would rest on nothing. The behaviour under test — a real raise survives the
+   * shadow run and stays inside the 8% cap — needs a band built from saved asks.
+   */
+  const comp = (id: string) => ({
+    id,
+    name: id,
+    area: 'Orem',
+    beds: 6,
+    sleeps: 20,
+    rating: 4.8,
+    reviews: 10,
+    guestFavorite: false,
+    distanceMi: 4,
+    isOwn: false,
+    minNights: 1,
+  });
+  const board = buildMarketBoard('ranch', '2026-11-06', 2, undefined, {
+    comps: [comp('k1'), comp('k2'), comp('k3')],
+    index: new Map([
+      ['k1', new Map([['2026-11-06', 1400]])],
+      ['k2', new Map([['2026-11-06', 1450]])],
+      ['k3', new Map([['2026-11-06', 1500]])],
+    ]),
+  });
   const open = board.nights[0]!;
-  open.action = 'raise';
-  open.proposedGuest = Math.round(open.ourGuest * 1.08);
+  assert.equal(open.source, 'live', 'this fixture must carry a measured band');
   const run = runShadow(board, [], false, '2026-11-06');
   assert.equal(run.nights[0]?.action, 'raise');
   assert.ok(run.nights[0]!.proposedGuest <= Math.round(open.ourGuest * 1.08));
