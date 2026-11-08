@@ -18,6 +18,17 @@ import type {
   ToolStep,
 } from './types';
 
+/**
+ * A reminder appended after a tool result.
+ *
+ * The loop used to `continue` straight back to the model with no instruction. A model that believed the
+ * tool output spoke for itself then returned empty text, and the host got no answer — which happened on
+ * three runs out of three in testing. The tool result is data; the person still needs it in words.
+ */
+const ANSWER_NOW =
+  'Now answer the question in plain language using the tool result above. State the figures you found ' +
+  'and do not reply with a single word. If the tool returned nothing useful, say what was missing.';
+
 const MAX_TURNS = 8;
 
 export async function runAgentChat(
@@ -67,12 +78,14 @@ export async function runAgentChat(
         });
       }
       geminiContents.push(toolResults(toolResultParts));
+      // Tell the model to answer, rather than letting it assume the tool output was enough.
+      geminiContents.push(userMessage(ANSWER_NOW));
       continue;
     }
 
     reply = result.text?.trim() ?? '';
     /*
-     * The model sometimes returns empty text after a tool call â€” often when it believes the tool result
+     * The model sometimes returns empty text after a tool call - often when it believes the tool result
      * speaks for itself. Substituting "Done." here was a non-answer dressed as an answer: a host asks a
      * question, gets "Done.", and has no idea what happened or whether anything was read. When the model
      * says nothing, the reply says what the tools actually did instead.
