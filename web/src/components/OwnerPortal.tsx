@@ -112,6 +112,17 @@ export function OwnerPortal({ token }: { token: string }) {
               cleaning.
             </p>
             {/*
+              A closed-period statement, said out loud.
+              Todd opened this on 2026-11-08 and saw the River House at 0 stays and $0 in a "year to date" that runs to
+              November — which reads as a dead asset when two confirmed River stays worth $20,733 are already on the
+              calendar for December. A settled statement must not include them; that would mix what happened with what
+              is booked. Saying where the window ends is what stops the zero being read as the house's whole story.
+            */}
+            <p className="mt-1 text-xs text-[#5d564b]" data-bot="owner-portal-window">
+              This statement covers completed months only, so it ends before the nights already booked later in the
+              year. A house at $0 here has no settled stay in the window; it is not an empty house.
+            </p>
+            {/*
               Only shown when a month had a stay but no cleaning receipt, because the fee basis and the
               costs line both use an assumed figure for it. An estimate presented as a receipt is the
               kind of thing an owner should not have to discover by dividing.
