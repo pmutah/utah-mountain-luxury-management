@@ -1,15 +1,24 @@
 /**
  * A real secret must not be committed, and a test fixture is where one hides.
  *
- * Nine test files carried the actual River House Wi-Fi password as a fixture — fifteen occurrences
- * across `guest-secrets`, `agent-map`, `stay-access`, and six others. Every one of those tests asserts
- * that the password does *not* leak, so the value only had to be a string; using the real one added
- * nothing and would have published it the moment this branch was pushed. It was never committed
- * (`git log -S` is empty and the files are untracked), so nothing was exposed — but the first commit
- * would have done it.
+ * Nine test files carried the actual River House Wi-Fi password as a fixture — fifteen occurrences across
+ * `guest-secrets`, `agent-map`, `stay-access`, and six others. Every one of those tests asserts that the
+ * password does *not* leak, so the value only had to be a string; using the real one added nothing.
  *
- * This test keeps a small list of values that must never appear in the tree. It reads source files
- * only; it does not need a browser, a store, or a deploy.
+ * This test keeps a small list of values that must never appear in the tree. It reads source files only; it
+ * does not need a browser, a store, or a deploy.
+ *
+ * **One entry on that list is a judgement call the owner has made, not a leak to be reverted.** The River
+ * House Wi-Fi network name and password are fixed by Brandon's decision (2026-11-08): the same pair for the
+ * life of the house, and guests are given it on arrival. That makes it a **guest-facing convenience**, not a
+ * credential — any guest who stays there knows it, and it appears in the guide a guest can read.
+ *
+ * So why is it still on this list? Because the *source tree* is not the place for it. It belongs in the
+ * guest guide a signed-in host edits, and in the code that serves it, not hardcoded in test fixtures and
+ * verification scripts — where it would be copied into every new file that needs a sample and slowly become
+ * impossible to change. Keeping it out of source is tidiness and future flexibility, not secrecy.
+ *
+ * If the password is ever rotated, this list only gets shorter. It never needs to grow for that reason.
  */
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -19,16 +28,21 @@ import test from 'node:test';
 /**
  * Values that must not appear anywhere in the source.
  *
- * The Wi-Fi password is here because it was really in the tree. Add a value to this list rather than
- * deleting the guard: a published credential is not recoverable by rotating it alone, since the old
- * one is in the history forever.
- *
- * Each value is assembled from parts on purpose. Writing the literal here would put the secret in the
- * very file that exists to keep it out — the first version of this guard failed on itself, which is
- * the same mistake it was built to prevent.
+ * Each value is assembled from parts on purpose. Writing the literal here would put the value in the very
+ * file that exists to keep it out — the first version of this guard failed on itself, which is the same
+ * mistake it was built to prevent.
  */
-const FORBIDDEN: Array<{ parts: string[]; what: string }> = [
-  { parts: ['provo', 'river', '6802'], what: 'the River House Wi-Fi password' },
+const FORBIDDEN: Array<{ parts: string[]; what: string; why: string }> = [
+  {
+    parts: ['provo', 'river', '6802'],
+    what: 'the River House Wi-Fi password',
+    /*
+     * Deliberately NOT treated as leaked. Brandon keeps this password permanently and guests are told it.
+     * It is kept out of source so it lives in one editable place (the guest guide), not because reading it
+     * would give anyone access they could not get by booking a night.
+     */
+    why: 'fixed by the owner and guest-facing; kept in the guide, not hardcoded in source',
+  },
 ];
 
 /** The value a reader would search for, joined at the moment of the check. */
