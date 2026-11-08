@@ -7,6 +7,12 @@ export type OwnerHouseLine = {
   name: string;
   revenue: number;
   costs: number;
+  /** Cleaning taken out before the fee. It is also inside `costs`, which is why the two cancel. */
+  cleaning: number;
+  /** The 20% management fee: 20% of `revenue - cleaning`. */
+  fee: number;
+  /** `revenue - cleaning - fee - (costs - cleaning)`, the money split in half. */
+  leftover: number;
   todd: number;
   stays: number;
 };
@@ -72,12 +78,24 @@ export function buildOwnerStatement(
   const report = buildPortfolioReport(endMonth, period, reservations, expenses, extraCleaningFees, 'all', 'todd');
   const rawHouses: OwnerHouseLine[] = report.properties.flatMap((row) => {
     if (row.propertyId !== 'ranch' && row.propertyId !== 'river') return [];
+    /*
+     * The fee is charged on rent **after cleaning**, and `costs` below includes cleaning. Those two
+     * choices cancel exactly — but only if a reader is told, because `revenue − fee − costs` is what
+     * anyone will try first, and against the raw revenue a $11,469 fee on $70,068 of rent looks like
+     * 16% rather than 20%. Publishing the fee, the leftover it came from, and the basis is what stops
+     * that misreading; it is not extra detail.
+     */
+    const fee = cents(row.dist?.mgtFee ?? 0);
+    const leftover = cents(row.revenue - row.cleaning - fee - (row.mortgage + row.operating));
     return [
       {
         id: row.propertyId,
         name: row.name,
         revenue: cents(row.revenue),
         costs: cents(row.mortgage + row.cleaning + row.operating),
+        cleaning: cents(row.cleaning),
+        fee,
+        leftover,
         todd: cents(row.dist?.todd ?? 0),
         stays: row.stayCount,
       },

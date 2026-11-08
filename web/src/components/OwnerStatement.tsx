@@ -71,7 +71,7 @@ export function OwnerStatement({
         <p className="uml-kicker">Owner statement</p>
         <h2 className="font-display text-5xl">Todd Wilhite</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
-          Ranch and River, after the 20% management fee, then half. Lindon, household purchases, and construction bills are not on this page. Nothing here can be edited.
+          Ranch and River, after the 20% management fee, then half. The fee is 20% of rent after cleaning — not 20% of the guest payout — so it reads lower than a fifth of the revenue line. Lindon, household purchases, and construction bills are not on this page. Nothing here can be edited.
         </p>
       </div>
       <div className="flex flex-wrap gap-2" data-bot="owner-controls">
@@ -120,6 +120,14 @@ export function OwnerStatement({
             <p className="mt-3 font-display text-4xl uml-num">{formatCurrency(house.todd)}</p>
             <p className="mt-2 text-sm text-[var(--uml-muted)]">
               {formatCurrency(house.revenue)} host payout · {formatCurrency(house.costs)} costs · {house.stays} stays
+            </p>
+            {/*
+              The working, so the headline can be checked without a spreadsheet. Cleaning is inside
+              `costs` and is also taken out before the fee, which is why the two lines below reconcile
+              to the number above instead of looking a couple of thousand light.
+            */}
+            <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot={`owner-working-${house.id}`}>
+              {formatCurrency(house.leftover)} left after the {formatCurrency(house.fee)} fee and costs. Half is {formatCurrency(house.todd)}.
             </p>
           </article>
         ))}

@@ -2,20 +2,43 @@ import { ownerPortalView } from '../src/lib/owner-portal';
 import type { OwnerStatement } from '../src/lib/owner-statement';
 import { denverToday } from '../src/lib/market/dates';
 
-/**
+/*
  * Local preview only. The deployed routes read the saved links and the real ledger; these fixtures
  * let the owner portal and the host link card be checked in a dev browser.
+ *
+ * The house lines carry their own working (`cleaning`, `fee`, `leftover`) because the statement prints
+ * it. A preview that omitted those fields would typecheck only if they were made optional, and an
+ * optional field on a money statement is how a blank figure reaches an owner.
  */
 const PREVIEW_TOKEN = '0123456789abcdef0123456789abcdef';
 
+/** Build a house line from the figures a preview wants, so the working always reconciles. */
+function previewHouse(id: 'ranch' | 'river', name: string, revenue: number, cleaning: number, operating: number, stays: number) {
+  const fee = Math.round((revenue - cleaning) * 0.2 * 100) / 100;
+  const leftover = Math.round((revenue - cleaning - fee - operating) * 100) / 100;
+  return {
+    id,
+    name,
+    revenue,
+    costs: Math.round((cleaning + operating) * 100) / 100,
+    cleaning,
+    fee,
+    leftover,
+    todd: Math.round((leftover / 2) * 100) / 100,
+    stays,
+  };
+}
+
+const PREVIEW_HOUSES = [
+  previewHouse('ranch', 'The Ranch House', 61200, 8600, 6200, 18),
+  previewHouse('river', 'The River House', 24100, 3400, 2700, 7),
+];
+
 const STATEMENT: OwnerStatement = {
   rangeLabel: 'January – November 2026',
-  todd: 41250.44,
-  fee: 18304.62,
-  houses: [
-    { id: 'ranch', name: 'The Ranch House', revenue: 61200, costs: 14800, todd: 30125.5, stays: 18 },
-    { id: 'river', name: 'The River House', revenue: 24100, costs: 6100, todd: 11124.94, stays: 7 },
-  ],
+  todd: Math.round((PREVIEW_HOUSES.reduce((total, house) => total + house.todd, 0)) * 100) / 100,
+  fee: Math.round((PREVIEW_HOUSES.reduce((total, house) => total + house.fee, 0)) * 100) / 100,
+  houses: PREVIEW_HOUSES,
   months: [
     { month: '2026-08', label: 'August 2026', todd: 8100.25, ranch: 6550, river: 1550.25 },
     { month: '2026-09', label: 'September 2026', todd: 7420.75, ranch: 5900, river: 1520.75 },
