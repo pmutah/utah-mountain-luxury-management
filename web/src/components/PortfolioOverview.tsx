@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BarChart3, DollarSign, Users } from 'lucide-react';
-import { formatCurrency, type HistoryData, type PortfolioData } from '../lib/api';
+import { api, formatCurrency, type HistoryData, type PortfolioData } from '../lib/api';
 import { pctChange } from '../lib/months';
 import {
   formatWhole,
@@ -46,6 +46,34 @@ export function PortfolioOverview({
   onOpenBuild: () => void;
 }) {
   const [opsOpen, setOpsOpen] = useState(false);
+  /**
+   * Direct booking requests waiting on a reply.
+   *
+   * The dashboard had **no mention of them at all** — no badge, no line. With email broken (the Gmail secret is
+   * invalid, so every request fails to send) a guest request was invisible to a host who opened the page they open
+   * every day, and only visible by chance in `#/guests`. Measured: a request waiting since 14:30 produced zero
+   * mentions on `#/overview`.
+   *
+   * `summary` is the line the requests route already writes; this only surfaces it where the host lands.
+   */
+  const [requestLine, setRequestLine] = useState<{ line: string; count: number } | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    void api
+      .getBookingRequests()
+      .then((result) => {
+        if (cancel) return;
+        const count = (result.rows ?? []).filter((row) => !row.accepted && !row.declined).length;
+        if (count === 0) return;
+        setRequestLine({ line: result.summary ?? `${count} direct requests are waiting.`, count });
+      })
+      .catch(() => {
+        // The dashboard must still render when the inbox cannot be read. It says nothing rather than zero.
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
   const { ranch, lindon, previous } = data;
   const rev = portfolioRevenue(data);
   const profit = portfolioProfit(data);
@@ -57,6 +85,28 @@ export function PortfolioOverview({
 
   return (
     <div className="space-y-8">
+      {/*
+        A waiting guest goes **first**, above everything.
+        It was inside "This morning" and measured at **1770px** down the page — below the seven-day desk and the
+        house-rules form, so a host opening the dashboard would not see it. With email broken there is no other
+        notification, and a real request has been sitting since 14:30.
+      */}
+      {requestLine && (
+        <section
+          className="uml-panel rounded-3xl border border-[#d4b56a] px-6 py-5"
+          data-bot="overview-request-waiting"
+          data-count={requestLine.count}
+        >
+          <p className="uml-kicker">Waiting on you</p>
+          <p className="mt-1 text-base font-bold">
+            {requestLine.line}{' '}
+            <a href="#/guests" className="underline">
+              Open Guests to reply
+            </a>{' '}
+            <span className="font-normal text-[var(--uml-muted)]">— the email may not have reached anyone.</span>
+          </p>
+        </section>
+      )}
       <TodayDeskWithSettings reservations={reservations} />
       <section className="uml-panel rounded-3xl px-6 py-8 sm:px-10">
         <p className="uml-kicker">This morning</p>
