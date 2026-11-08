@@ -244,7 +244,26 @@ export async function gmailSend(
   subject: string,
   body: string,
 ): Promise<{ id?: string; error?: string }> {
-  const tokens = await getValidGmailToken(env);
+  /*
+   * This function must never throw.
+   *
+   * Its contract is already `{ id } | { error }`, and six of the nine call sites treat a throw as an
+   * error object — but `getValidGmailToken` **throws** when the refresh fails, and that escaped. On
+   * 2026-11-08 it did: a booking request was saved, then `Failed to refresh Gmail token` threw out of
+   * here and Cloudflare answered the guest with a 500 crash page for a request that had gone through.
+   *
+   * Four other callers (`surveys/send`, `stay-message`, `automation`, `esign/send-session`) had no guard
+   * at all, so the same fault would have destroyed their responses too — including an e-signature send
+   * that has already written its session and a nightly automation that has already done its work.
+   *
+   * Every caller now gets the error back as data, which is what its signature always promised.
+   */
+  let tokens;
+  try {
+    tokens = await getValidGmailToken(env);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'The mailbox could not be reached.' };
+  }
   if (!tokens) return { error: 'Gmail is not connected. Connect utahmountainluxury@gmail.com in the dashboard.' };
 
   const raw = btoa(
@@ -254,14 +273,20 @@ export async function gmailSend(
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 
-  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${tokens.accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ raw }),
-  });
+  let res: Response;
+  try {
+    res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${tokens.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ raw }),
+    });
+  } catch (err) {
+    // A network fault is a failed send, not a crash for whoever asked for the mail.
+    return { error: err instanceof Error ? err.message : 'Gmail could not be reached.' };
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
     return { error: `Gmail send failed (${res.status})${detail ? `: ${detail.slice(0, 180)}` : ''}` };
