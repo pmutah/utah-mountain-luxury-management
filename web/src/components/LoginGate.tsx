@@ -64,6 +64,14 @@ export function LoginGate({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [emailSignIn, setEmailSignIn] = useState(false);
+  /**
+   * Whether a dashboard password exists at all.
+   *
+   * The form was rendered unconditionally, so the live site showed a password box on a deployment where
+   * none was set — a control that could never work. Somebody typed a password into it and had no way to
+   * know why it failed. The box only appears when there is a password to type.
+   */
+  const [passwordSignIn, setPasswordSignIn] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [googleFailed, setGoogleFailed] = useState(false);
@@ -97,6 +105,7 @@ export function LoginGate({ children }: { children: ReactNode }) {
       .getLoginOptions()
       .then((options) => {
         setEmailSignIn(options.emailSignIn && Boolean(options.googleClientId));
+        setPasswordSignIn(options.passwordSignIn);
         setClientId(options.googleClientId);
         setSummary(options.summary);
       })
@@ -214,7 +223,9 @@ export function LoginGate({ children }: { children: ReactNode }) {
             <div ref={buttonHost} data-bot="login-google" className="flex justify-center" />
             {googleFailed && (
               <p className="text-xs text-[var(--uml-muted)]" data-bot="login-google-unavailable">
-                Google sign-in could not load. Use the dashboard password below.
+                {passwordSignIn
+                  ? 'Google sign-in could not load. Use the dashboard password below.'
+                  : 'Google sign-in could not load. Try again in a moment.'}
               </p>
             )}
             {summary && (
@@ -225,33 +236,54 @@ export function LoginGate({ children }: { children: ReactNode }) {
           </div>
         )}
 
-        {emailSignIn && <div className="h-px bg-[var(--uml-line)]" />}
+        {emailSignIn && passwordSignIn && <div className="h-px bg-[var(--uml-line)]" />}
 
-        <form onSubmit={(e) => void submit(e)} className="space-y-4">
-          <input
-            type="password"
-            data-bot="login-password"
-            name="password"
-            aria-label="Dashboard password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Dashboard password"
-            className="w-full bg-transparent border border-[var(--uml-line)] rounded-2xl px-4 py-3 text-[var(--uml-ink)] outline-none focus:ring-1 focus:ring-[var(--uml-gold)]"
-            autoComplete="current-password"
-          />
-          {error && (
-            <p className="text-red-400 text-sm font-bold" data-bot="login-error">
-              {error}
-            </p>
-          )}
-          <button
-            type="submit"
-            data-bot="login-submit"
-            className="uml-gold-btn w-full py-3 rounded-full text-sm uppercase tracking-widest"
-          >
-            Continue
-          </button>
-        </form>
+        {/*
+          The form only appears when a password exists. It used to render always, so the live site
+          showed a password box on a deployment with none set — a control that could never work, with
+          nothing saying why.
+        */}
+        {passwordSignIn && (
+          <form onSubmit={(e) => void submit(e)} className="space-y-4">
+            <input
+              type="password"
+              data-bot="login-password"
+              name="password"
+              aria-label="Dashboard password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Dashboard password"
+              className="w-full bg-transparent border border-[var(--uml-line)] rounded-2xl px-4 py-3 text-[var(--uml-ink)] outline-none focus:ring-1 focus:ring-[var(--uml-gold)]"
+              autoComplete="current-password"
+            />
+            {error && (
+              <p className="text-red-400 text-sm font-bold" data-bot="login-error">
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              data-bot="login-submit"
+              className="uml-gold-btn w-full py-3 rounded-full text-sm uppercase tracking-widest"
+            >
+              Continue
+            </button>
+          </form>
+        )}
+
+        {/* An error from a Google attempt has nowhere else to show when there is no password form. */}
+        {emailSignIn && !passwordSignIn && error && (
+          <p className="text-red-400 text-sm font-bold" data-bot="login-error">
+            {error}
+          </p>
+        )}
+
+        {!emailSignIn && !passwordSignIn && (
+          <p className="text-sm" data-bot="login-nothing-configured">
+            No sign-in is set up on this deployment yet, so the dashboard stays closed. The public booking page
+            still works.
+          </p>
+        )}
       </div>
     </div>
   );
