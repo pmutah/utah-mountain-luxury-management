@@ -45,6 +45,12 @@ export function PushPlanPanel() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   /**
+   * Whether the last copy worked. A copy button that fails without saying so is worse than no button: the host
+   * would paste whatever was already on the clipboard into a live listing. `navigator.clipboard` needs a secure
+   * context and a user gesture, neither of which this code can guarantee, so the outcome is reported.
+   */
+  const [copied, setCopied] = useState<'ok' | 'failed' | null>(null);
+  /**
    * The nights already carrying an approved price. `null` means the sheet could not be read, which
    * is not the same as an empty sheet: an unreadable sheet must not render as "nothing approved".
    */
@@ -209,11 +215,44 @@ export function PushPlanPanel() {
                   {plan.line}
                 </p>
                 {plan.lines.length > 0 && (
-                  <ul className="mt-2 space-y-0.5 text-xs text-[var(--uml-muted)]">
-                    {plan.lines.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
+                  <div className="mt-2">
+                    {/*
+                      A copy button, because the plan only reaches Airbnb when a person types it in. Without one the
+                      host retypes thirty prices by hand; with one the whole house can be pasted into a note or a
+                      message to whoever is doing the typing. It copies the same lines the list shows.
+                    */}
+                    <button
+                      type="button"
+                      data-bot={`push-plan-copy-${plan.house}`}
+                      onClick={() => {
+                        const text = plan.lines.join('\n');
+                        setCopied(null);
+                        navigator.clipboard
+                          ?.writeText(text)
+                          .then(() => setCopied('ok'))
+                          .catch(() => setCopied('failed'));
+                        if (!navigator.clipboard) setCopied('failed');
+                      }}
+                      className="rounded-full border border-[var(--uml-line)] px-3 py-1 text-[11px] uppercase tracking-[0.12em]"
+                    >
+                      Copy these prices
+                    </button>
+                    {copied === 'ok' && (
+                      <span className="ml-2 text-[11px]" data-bot="push-plan-copied">
+                        Copied {plan.lines.length} {plan.lines.length === 1 ? 'night' : 'nights'}.
+                      </span>
+                    )}
+                    {copied === 'failed' && (
+                      <span className="ml-2 text-[11px]" data-bot="push-plan-copy-failed">
+                        Copying was blocked. Select the lines below and copy them by hand.
+                      </span>
+                    )}
+                    <ul className="mt-2 space-y-0.5 text-xs text-[var(--uml-muted)]">
+                      {plan.lines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 {plan.nights.length > 0 && (
                   <div className="mt-3 space-y-2" data-bot="push-plan-approve">
