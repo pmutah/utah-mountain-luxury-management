@@ -47,6 +47,7 @@ import { bookingInbox } from '../../../src/lib/booking-inbox';
 import { suggestedPayoutLine, suggestedPayouts } from '../../../src/lib/payout-suggest';
 import { isDeclineReason } from '../../../src/lib/booking-decline';
 import { denverToday } from '../../../src/lib/market/dates';
+import { buildTurnovers } from '../../../src/lib/today';
 import { isCompHouse } from '../../../src/lib/market/comp-house';
 import type { StaySpan } from '../../../src/lib/availability';
 import { onRequestPost as acceptRoute } from '../../api/book/accept';
@@ -633,7 +634,37 @@ async function handleOperations(
   if (action === 'list_tasks') {
     const tasks = await loadOpsTasks(env);
     const propertyId = args.propertyId as PropertyId | undefined;
-    return { tasks: propertyId ? tasks.filter((t) => t.propertyId === propertyId) : tasks };
+    /*
+     * Saved tasks are not the whole answer. The cleaner's page builds its jobs from the **bookings** —
+     * `buildTurnovers` over the reservations — while this tool read only a task store that nothing has
+     * ever been written to. Asked who was cleaning the Lindon House on Nov 22 the co-host answered "the
+     * cleaning task list is empty", on the same day the cleaner's own page showed a same-day turnover for
+     * it. An empty task list is not an empty schedule, so the turnovers are returned beside the tasks and
+     * the agent can tell the two apart.
+     */
+    const stays = await getAllReservations(env);
+    const asOf = denverToday();
+    const turns = buildTurnovers(stays as never, asOf, 14)
+      .filter((turn) => !propertyId || turn.house === propertyId)
+      .map((turn) => ({
+        house: turn.house,
+        checkout: turn.checkout,
+        nextCheckIn: turn.nextCheckIn,
+        gapNights: turn.gapNights,
+        sameDay: turn.gapNights === 0,
+        line:
+          turn.gapNights === 0
+            ? `Same-day turn at ${turn.houseName} on ${turn.checkout}: the next guest arrives that afternoon, so finish before 4:00 PM.`
+            : `${turn.houseName} checks out ${turn.checkout}${turn.nextCheckIn ? `; next arrival ${turn.nextCheckIn} (${turn.gapNights} empty ${turn.gapNights === 1 ? 'night' : 'nights'})` : '; no next booking yet'}.`,
+      }));
+    return {
+      tasks: propertyId ? tasks.filter((t) => t.propertyId === propertyId) : tasks,
+      turnovers: turns,
+      note:
+        turns.length > 0 && tasks.length === 0
+          ? 'No saved cleaning task has been created, but the bookings above produce turnovers. The schedule is not empty.'
+          : undefined,
+    };
   }
 
   if (action === 'create_cleaning_task') {
