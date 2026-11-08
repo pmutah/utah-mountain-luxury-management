@@ -173,14 +173,32 @@ async function handleFinances(
     const propertyId = args.propertyId as PropertyId | undefined;
     const month = args.month ? String(args.month) : undefined;
     const paidBy = parsePaidBy(args.paidBy);
+    /*
+     * Mortgage rows used to be dropped here, silently, and `count` described the filtered list as
+     * though it were the whole month. Asked "what are the Ranch House expenses for November 2026", the
+     * agent summed the cleaning row, answered **$350**, and the mortgage's $3,133.36 was never in front
+     * of it. The books hold $3,483.36 for that month.
+     *
+     * A tool that withholds rows from a total is not a filter, it is a wrong answer waiting to happen.
+     * Everything is returned now, and the mortgage is flagged so the model can talk about it separately
+     * if it wants to — a mortgage is a real cash cost and the biggest line on most months.
+     */
     const list = allExpenses.filter((e) => {
       if (propertyId && e.propertyId !== propertyId) return false;
       if (month && e.month !== month) return false;
       if (paidBy && e.paidBy !== paidBy) return false;
-      if (e.category === 'Mortgage') return false;
       return true;
     });
-    return { expenses: list.slice(0, 50), count: list.length };
+    const total = list.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    return {
+      expenses: list.slice(0, 50),
+      count: list.length,
+      /** The sum of every row returned above, so a total never depends on the model adding up. */
+      total: Math.round(total * 100) / 100,
+      /** Said explicitly, because these rows are the ones that used to vanish. */
+      mortgageIncluded: list.some((e) => e.category === 'Mortgage'),
+      ...(list.length > 50 ? { truncated: true, note: `Showing the first 50 of ${list.length} rows; total covers all ${list.length}.` } : {}),
+    };
   }
 
   if (action === 'get_partner_contributions') {
