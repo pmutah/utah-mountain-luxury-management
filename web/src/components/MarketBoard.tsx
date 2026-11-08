@@ -159,13 +159,23 @@ export function MarketBoard() {
   );
   useEffect(() => {
     let cancel = false;
-    void loadMarketOverview(house, new URLSearchParams(window.location.search).has('live') ? '&live=1' : '').then((board) => {
-      if (!cancel) setOverviewByHouse((current) => ({ ...current, [house]: board }));
-    });
+    /*
+     * All three boards, not only the house in view. The shadow digest needs every house, and a day may only
+     * be recorded when all three are real — so fetching one left this page unable to record a shadow day at
+     * all. Each board costs three KV reads, so this runs only when the day is not already saved.
+     */
+    const alreadySaved = loadShadowLog().some((day) => day.date === today && day.digest);
+    const houses: HouseId[] = alreadySaved ? [house] : ['river', 'ranch', 'lindon'];
+    void Promise.all(
+      houses.map(async (id) => {
+        const board = await loadMarketOverview(id, new URLSearchParams(window.location.search).has('live') ? '&live=1' : '');
+        if (!cancel && board) setOverviewByHouse((current) => ({ ...current, [id]: board }));
+      }),
+    ).catch(() => undefined);
     return () => {
       cancel = true;
     };
-  }, [house]);
+  }, [house, today]);
   const overview = overviewByHouse[house] ?? null;
   /*
    * The digest takes only real boards. A house whose overview has not loaded stays undefined so the
