@@ -109,6 +109,16 @@ export function buildMarketBoard(
       lockBase: ours.lock,
     });
     const observed = liveAsks.length > 0 ? liveAsks : sampleOpen;
+    const p75 = Math.round(percentileValue(band, 75));
+    /*
+     * When the floor is above the whole comp cluster, no allowed discount can bring this night into the
+     * market: the floor is the lowest price the house may quote, and it already sits above the 75th
+     * percentile. The River House is the case that surfaced this — a flat $1,500 host-net floor is $1,776
+     * as a guest price, above p75 on 21 of its 23 live nights, so the 20% promotion it was offered could
+     * never work. Saying so is the point: a plan full of promotions that arithmetic forbids is worse than
+     * no plan.
+     */
+    const floorAboveMarket = band.length >= 3 && ours.floorGuest > p75;
     return {
       date: iso,
       season: ours.season,
@@ -117,14 +127,16 @@ export function buildMarketBoard(
       compRates: band,
       p25: Math.round(percentileValue(band, 25)),
       median: Math.round(median(band)),
-      p75: Math.round(percentileValue(band, 75)),
+      p75,
       openComps: observed.length,
       percentile: move.percentile,
       proposedGuest: move.proposedGuest,
       promotionPercent: 0,
       offerGuest: move.proposedGuest,
-      action: move.action,
-      reason: move.reason,
+      action: floorAboveMarket && move.action === 'promote' ? 'hold' : move.action,
+      reason: floorAboveMarket
+        ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
+        : move.reason,
       minNights: ours.minNights,
       compBookedShare: Math.round(((sampleRows.length - observed.length) / sampleRows.length) * 100),
       source,
