@@ -1530,6 +1530,103 @@ export function DirectBook() {
                 </p>
               )}
             </div>
+            {requestPromo && (
+              <p className="mt-8 text-sm" data-bot="stay-request-promo">
+                {requestPromo}
+              </p>
+            )}
+            {calendar === 'live' && !twoHouse && (
+              <p className="sr-only" data-bot="stay-request-note" data-off={requestNote.includes('20% off') ? 'yes' : 'no'} data-fill={/\bfill\b/i.test(requestNote) ? 'yes' : 'no'} />
+            )}
+            {sent ? (
+              <>
+                <p className="mt-8 font-display text-3xl">We have the request. Someone will write back.</p>
+                {/*
+                  The route has always reported `guestEmailed`, and the page never read it. So when email failed — as it
+                  does on every request on this deployment, because the Gmail secret is invalid — the guest saw a clean
+                  success screen and waited for a receipt that was never sent. The status link below is the part that
+                  still works, so it becomes the instruction rather than a footnote.
+                */}
+                {receiptFailed && (
+                  <p className="mt-2 text-sm" data-bot="stay-receipt-failed">
+                    The confirmation email could not be sent, so do not wait for it. Your request is saved and the
+                    link below opens it — keep that link.
+                  </p>
+                )}
+                {holdLine && (
+                  <p className="mt-2 text-sm" data-bot="stay-hold-confirmed">
+                    {holdLine}
+                  </p>
+                )}
+                {statusPath && (
+                  <div className="mt-5" data-bot="stay-status-link">
+                    <p className="text-sm text-[var(--uml-muted)]">
+                      {receiptFailed
+                        ? 'This link is the only copy you will get. Keep it somewhere you can find it — no sign-in, and it shows only these dates.'
+                        : 'Keep this link to check on the request yourself. No sign-in, and it shows only these dates.'}
+                    </p>
+                    <a
+                      href={statusPath}
+                      data-bot="stay-status-open"
+                      className="uml-gold-btn mt-3 inline-block rounded-full px-5 py-3 text-xs uppercase tracking-[0.16em]"
+                    >
+                      See the request
+                    </a>
+                  </div>
+                )}
+              </>
+            ) : requestHold ? (
+              <p className="mt-8 text-sm" data-bot="stay-request-hold">
+                {requestHold}
+              </p>
+            ) : (
+              <form
+                onSubmit={(e) => void submit(e)}
+                className="mt-8 space-y-3"
+                data-also-house={twoHouse ? 'ranch' : ''}
+              >
+                <input
+                  required
+                  placeholder="Your name"
+                  aria-label="Your name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className="w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
+                />
+                <input
+                  required
+                  type="email"
+                  placeholder="Email"
+                  aria-label="Email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
+                />
+                <input
+                  placeholder="Mobile"
+                  aria-label="Mobile"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
+                />
+                <textarea
+                  placeholder="Anything we should know"
+                  aria-label="Note"
+                  value={form.note}
+                  onChange={(e) => setForm({ ...form, note: e.target.value })}
+                  className="min-h-24 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
+                />
+                {error && <p className="text-sm text-red-300">{error}</p>}
+                <button
+                  type="submit"
+                  data-bot="stay-request"
+                  disabled={busy || !requestReady}
+                  className="rounded-full bg-[var(--uml-gold)] px-5 py-3 text-xs uppercase tracking-[0.16em] text-[var(--uml-gold-ink)] disabled:opacity-40"
+                >
+                  {busy ? 'Sending' : twoHouse ? 'Request both houses' : 'Request these dates'}
+                </button>
+              </form>
+            )}
 
             {ics && (
               <button
@@ -1713,103 +1810,6 @@ export function DirectBook() {
               <p className="mt-8 text-sm" data-bot="stay-both-request">
                 {bothHouseRequestNote()}
               </p>
-            )}
-            {requestPromo && (
-              <p className="mt-8 text-sm" data-bot="stay-request-promo">
-                {requestPromo}
-              </p>
-            )}
-            {calendar === 'live' && !twoHouse && (
-              <p className="sr-only" data-bot="stay-request-note" data-off={requestNote.includes('20% off') ? 'yes' : 'no'} data-fill={/\bfill\b/i.test(requestNote) ? 'yes' : 'no'} />
-            )}
-            {sent ? (
-              <>
-                <p className="mt-8 font-display text-3xl">We have the request. Someone will write back.</p>
-                {/*
-                  The route has always reported `guestEmailed`, and the page never read it. So when email failed — as it
-                  does on every request on this deployment, because the Gmail secret is invalid — the guest saw a clean
-                  success screen and waited for a receipt that was never sent. The status link below is the part that
-                  still works, so it becomes the instruction rather than a footnote.
-                */}
-                {receiptFailed && (
-                  <p className="mt-2 text-sm" data-bot="stay-receipt-failed">
-                    The confirmation email could not be sent, so do not wait for it. Your request is saved and the
-                    link below opens it — keep that link.
-                  </p>
-                )}
-                {holdLine && (
-                  <p className="mt-2 text-sm" data-bot="stay-hold-confirmed">
-                    {holdLine}
-                  </p>
-                )}
-                {statusPath && (
-                  <div className="mt-5" data-bot="stay-status-link">
-                    <p className="text-sm text-[var(--uml-muted)]">
-                      {receiptFailed
-                        ? 'This link is the only copy you will get. Keep it somewhere you can find it — no sign-in, and it shows only these dates.'
-                        : 'Keep this link to check on the request yourself. No sign-in, and it shows only these dates.'}
-                    </p>
-                    <a
-                      href={statusPath}
-                      data-bot="stay-status-open"
-                      className="uml-gold-btn mt-3 inline-block rounded-full px-5 py-3 text-xs uppercase tracking-[0.16em]"
-                    >
-                      See the request
-                    </a>
-                  </div>
-                )}
-              </>
-            ) : requestHold ? (
-              <p className="mt-8 text-sm" data-bot="stay-request-hold">
-                {requestHold}
-              </p>
-            ) : (
-              <form
-                onSubmit={(e) => void submit(e)}
-                className="mt-8 space-y-3"
-                data-also-house={twoHouse ? 'ranch' : ''}
-              >
-                <input
-                  required
-                  placeholder="Your name"
-                  aria-label="Your name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
-                />
-                <input
-                  required
-                  type="email"
-                  placeholder="Email"
-                  aria-label="Email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
-                />
-                <input
-                  placeholder="Mobile"
-                  aria-label="Mobile"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
-                />
-                <textarea
-                  placeholder="Anything we should know"
-                  aria-label="Note"
-                  value={form.note}
-                  onChange={(e) => setForm({ ...form, note: e.target.value })}
-                  className="min-h-24 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
-                />
-                {error && <p className="text-sm text-red-300">{error}</p>}
-                <button
-                  type="submit"
-                  data-bot="stay-request"
-                  disabled={busy || !requestReady}
-                  className="rounded-full bg-[var(--uml-gold)] px-5 py-3 text-xs uppercase tracking-[0.16em] text-[var(--uml-gold-ink)] disabled:opacity-40"
-                >
-                  {busy ? 'Sending' : twoHouse ? 'Request both houses' : 'Request these dates'}
-                </button>
-              </form>
             )}
           </section>
         </div>
