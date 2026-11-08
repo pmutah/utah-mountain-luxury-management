@@ -72,8 +72,8 @@ export function quietNow(house: HouseId, hour: number): string {
   if (house === 'river') {
     return 'Quiet hours apply in this canyon neighborhood. Keep noise down at night so the neighbors are not disturbed.';
   }
-  if (h >= 22 || h < 8) return 'Quiet hours are in effect until 8:00 AM. Nothing is sent.';
-  return 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM. Nothing is sent.';
+  if (h >= 22 || h < 8) return 'Quiet hours are in effect until 8:00 AM.';
+  return 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM.';
 }
 
 /** A right-now quiet-hours question. Other questions stay on the published guide. */
@@ -93,5 +93,5 @@ export function quietNowAnswer(query: string, house: HouseId, hour = denverHour(
 export function homeQuietLine(hour: number): string {
   const h = ((Math.floor(hour) % 24) + 24) % 24;
   const valley = h >= 22 || h < 8 ? 'Quiet hours are in effect until 8:00 AM.' : 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM.';
-  return `Ranch and Lindon: ${valley} The River House sits in a canyon neighborhood, so keep noise down at night. Nothing is sent.`;
+  return `Ranch and Lindon: ${valley} The River House sits in a canyon neighborhood, so keep noise down at night.`;
 }

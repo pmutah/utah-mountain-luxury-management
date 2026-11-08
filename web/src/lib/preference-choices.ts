@@ -124,13 +124,16 @@ export function preferenceCardLines(house: string | null | undefined, answers: P
   return lines;
 }
 
-/** The stay phone names the card. Nothing is sent. */
+/**
+ * The stay phone names the card. It says whether a card exists, which is the fact a guest needs; the
+ * "Nothing is sent" suffix only described our plumbing, and the page printed that phrase 20 times.
+ */
 export function preferenceCardNote(count: number): string {
   const line =
     count > 0
-      ? 'This phone shows the preference card for this stay. Nothing is sent.'
-      : 'This stay has no preference card yet. Nothing is sent.';
-  if (line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) return 'Nothing is sent.';
+      ? 'This phone shows the preference card for this stay.'
+      : 'This stay has no preference card yet.';
+  if (line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) return '';
   return line;
 }
 

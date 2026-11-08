@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { stayCountdown } from './journey.ts';
+import { stayCountdown, rightNow, arrivalJourney } from './journey.ts';
 import { arriveReadyNote } from './arrive-ready.ts';
 import { houseDayNote } from './house-day.ts';
+import { preferenceCardNote } from './preference-choices.ts';
 
 /*
  * The River guest phone said "Nothing is sent." **20 times** and "does not sign" 29 times on a single
@@ -50,7 +51,33 @@ test('a guest page cannot accumulate plumbing notes', () => {
     stayCountdown('2026-11-08', '2026-12-10', '2026-12-13', 'phone'),
     arriveReadyNote('phone'),
     houseDayNote('phone'),
+    preferenceCardNote(0),
+    preferenceCardNote(2),
   ].join('\n');
   const count = (page.match(/Nothing is sent/gi) ?? []).length;
-  assert.ok(count <= 1, `a guest page carried ${count} "Nothing is sent" notes`);
+  assert.equal(count, 0, `a guest page carried ${count} "Nothing is sent" notes`);
+});
+
+test('the preference card says whether a card exists, not what we transmit', () => {
+  assert.match(preferenceCardNote(0), /no preference card yet/i);
+  assert.match(preferenceCardNote(3), /shows the preference card/i);
+  assert.equal(/Nothing is sent/i.test(preferenceCardNote(0) + preferenceCardNote(3)), false);
+});
+
+test('the trip summary says what is open, not what we transmit', () => {
+  const steps = arrivalJourney({
+    asOf: '2026-11-08',
+    checkIn: '2026-12-10',
+    checkOut: '2026-12-13',
+    opensOn: '2026-12-09',
+    checkInTime: '4:00 PM',
+    checkOutTime: '11:00 AM',
+    phase: 'before',
+    preferencesDone: false,
+    hasSurvey: false,
+    agreementRead: false,
+  });
+  const summary = rightNow(steps);
+  assert.match(summary, /Right now: /);
+  assert.equal(/Nothing is sent/i.test(summary), false, 'the trip summary carried a plumbing note');
 });

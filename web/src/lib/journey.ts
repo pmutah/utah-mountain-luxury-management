@@ -159,16 +159,16 @@ export function rightNow(steps: readonly JourneyStep[]): string {
   const leave = steps.find((step) => step.id === 'leave');
   const arrive = steps.find((step) => step.id === 'arrive');
   if (leave?.state === 'done' && arrive?.state === 'done') {
-    return 'This stay is finished. The door code stays off this phone. Nothing is sent.';
+    return 'This stay is finished. The door code stays off this phone.';
   }
   const open = NOW_ORDER.map((id) => steps.find((step) => step.id === id && step.state === 'now')).filter(
     (step): step is JourneyStep => Boolean(step),
   );
-  if (open.length === 0) return 'Nothing is due on this phone right now. Nothing is sent.';
+  if (open.length === 0) return 'Nothing is due on this phone right now.';
   const extra = open.length - 1;
   const more =
     extra <= 0 ? '' : extra === 1 ? ' One other step is also open.' : extra === 2 ? ' Two other steps are also open.' : ` ${extra} other steps are also open.`;
-  return `Right now: ${open[0]!.title}.${more} Nothing is sent.`;
+  return `Right now: ${open[0]!.title}.${more}`;
 }
 
 function daySpan(from: string, to: string): number | null {

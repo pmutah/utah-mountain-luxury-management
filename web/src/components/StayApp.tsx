@@ -827,7 +827,7 @@ export function StayApp({ token }: { token: string }) {
                     URL.revokeObjectURL(url);
                   }}
                 >
-                  Add these dates to a calendar. This file is the stay on this phone. It does not change the reservation. Nothing is sent.
+                  Add these dates to a calendar. This file is the stay on this phone. It does not change the reservation.
                 </button>
               )}
               <a
