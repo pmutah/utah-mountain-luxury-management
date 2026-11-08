@@ -133,8 +133,9 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
   const party = entry.guests !== undefined ? partyNote(String(entry.guests), entry.children !== undefined ? String(entry.children) : '') : '';
   const list = await kvGet<BookingRequest[]>(env, 'booking-requests', []);
   list.unshift(entry);
-  await kvPut(env, 'booking-requests', list.slice(0, 100));  const house =
-    houses.map((id) => PROPERTIES[id].name).join(' and ') || propertyName(propertyId);
+  await kvPut(env, 'booking-requests', list.slice(0, 100));
+
+  const house = houses.map((id) => PROPERTIES[id].name).join(' and ') || propertyName(propertyId);
   const sent = await gmailSend(
     env,
     'utahmountainluxury@gmail.com',
@@ -151,20 +152,35 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
       .filter(Boolean)
       .join('\n'),
   );
-  // The accepted request holds both houses until the guest finishes or the window closes.
+  /*
+   * Everything from here on writes. `kvPut` above already saved the request, and `addHolds` below reads
+   * and writes the hold list — three KV writes across two keys in one request. That is the shape that
+   * has broken twice already on this project (one write per key per second), and a throw here is *after*
+   * the request is saved, which is why the guest sees a crash page while the inbox is empty of the row
+   * they just sent: the write that failed is the hold, and the whole response is replaced by a 500.
+   *
+   * The hold is a convenience — the request is already saved and the team already has the email. So a
+   * hold failure must not destroy the confirmation. It is caught, reported, and the guest still gets
+   * their status link.
+   */
   const now = new Date();
   const expiresAt = holdExpiresAt(now);
-  const newHolds: BookingHold[] = houses.map((house) => ({
-    id: newId(`hold-${house}`),
-    propertyId: house,
+  const newHolds: BookingHold[] = houses.map((houseId) => ({
+    id: newId(`hold-${houseId}`),
+    propertyId: houseId,
     checkIn: entry.checkIn,
     checkOut: entry.checkOut,
     expiresAt,
     createdAt: now.toISOString(),
     requestId: entry.id,
   }));
-  for (const hold of newHolds) {
-    await addHolds(env, [hold]);
+  let holdError: string | null = null;
+  try {
+    for (const hold of newHolds) {
+      await addHolds(env, [hold]);
+    }
+  } catch (err) {
+    holdError = err instanceof Error ? err.message : 'The dates could not be held.';
   }
   // The guest gets a receipt that says request and not booking. A failure here does not lose the request.
   // The receipt carries the guest's own status link, so they can check where the request stands
@@ -192,7 +208,14 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     guestEmailed: !guestSent.error,
     guestEmailError: guestSent.error,
     guestLine: guestSent.error ? null : sentLine('receipt', email),
-    heldUntil: expiresAt,
+    heldUntil: holdError ? null : expiresAt,
+    /**
+     * A hold that could not be saved is reported, not swallowed. The request itself is safe — it was
+     * written before this point and the team has the email — so the guest is told their dates are with
+     * us rather than being handed a crash page.
+     */
+    holdError,
+    ...(holdError ? { notice: 'Your request is saved. The short date hold could not be placed, so we will confirm the dates by hand.' } : {}),
     // The browser shows the same link the email carries, so a guest who closes the tab can find it.
     statusPath: entry.statusToken ? `/request/${entry.statusToken}` : null,
   });
