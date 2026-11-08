@@ -35,14 +35,25 @@ export async function sendTwilioSms(
     Body: body.slice(0, 1600),
   });
 
-  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${btoa(`${sid}:${token}`)}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params,
-  });
+  /*
+   * This must never throw, for the same reason `gmailSend` must not: it is typed `{ sid } | { error }`,
+   * every caller treats a throw as an error object, and a network fault here would replace a whole
+   * response with a 500. A booking request that already saved, a confirmation that already wrote its
+   * stay — all of it would be lost to a DNS blip on the SMS step.
+   */
+  let res: Response;
+  try {
+    res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${btoa(`${sid}:${token}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Twilio could not be reached.' };
+  }
 
   const json = (await res.json().catch(() => ({}))) as { sid?: string; message?: string };
   if (!res.ok) {
