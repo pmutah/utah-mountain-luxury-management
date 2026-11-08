@@ -9,6 +9,8 @@ import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { loadLiveNights, loadApprovedRates } from '../../_lib/pricing-store';
 import { kvGet, storageReadPaused } from '../../_lib/kv-json';
 import { denverToday } from '../../../src/lib/market/dates';
+import { grossPace } from '../../../src/lib/revenue-goals';
+import type { YearPace } from '../../../src/lib/market/fill';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
 import type { HouseId } from '../../../src/lib/market/types';
 import type { SettingsEnv } from '../../_lib/kv';
@@ -95,7 +97,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       today,
       `${today.slice(0, 4)}-12-31`,
     );
-    const run = runShadow(board, taken, false, today, 'unknown', closed);
+    /*
+     * Year pace, computed from the stays this route already read. It used to be hardcoded `'unknown'`, and
+     * `promotionForNight` refuses to recommend a promotion on an unknown pace — so **every promotion was
+     * suppressed on the authoritative plan**, while the board beside it still labelled 23 River and 19 Lindon
+     * nights as `promote`. A host saw "promote" with no discount and a plan with no promotions, and neither
+     * said why. The reservations are already in hand, so the pace is real rather than assumed.
+     */
+    const pace: YearPace = grossPace(house, stays, today).stillNeeded > 0 ? 'short' : 'met';
+    const run = runShadow(board, taken, false, today, pace, closed);
     plans.push(pushPlanAll([run], gate, today)[0]!);
   }
 
