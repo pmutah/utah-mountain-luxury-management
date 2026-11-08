@@ -5,7 +5,7 @@ import type { CleanJob } from '../lib/clean';
 import { jobLeaveAt2, stepText, turnHours } from '../lib/turn-clock';
 import { canyonDesk, canyonFromTurns, turnLoad } from '../lib/turn-load';
 import { CleanLinkPanel } from './CleanLinkPanel';
-import { turnState, turnStateLine, type CleanProgress, type TurnState } from '../lib/clean-progress';
+import { openSteps, turnState, turnStateLine, type CleanProgress, type TurnState } from '../lib/clean-progress';
 import { api } from '../lib/api';
 import { earlyStayOpen } from '../lib/house-stay';
 import { loadBookedNights, loadQuoteCalendar, type QuoteTurn } from '../lib/booked-nights';
@@ -110,6 +110,21 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   function hostProgressLine(job: CleanJob): string {
     if (cleanProgress === null) return 'The cleaner ticks could not be read. This line is not a zero.';
     return turnStateLine(job.house, job.checkout, job.priority, progressRows);
+  }
+  /**
+   * How many of this turn's steps the **cleaner** has ticked, from the server row.
+   *
+   * Uses `openSteps` from the shared progress module rather than re-deriving it, so the desk's count and the line
+   * above it cannot disagree about the same turn again. A photo the cleaner uploaded counts as the photo step even if
+   * their tick for it has not landed yet, because the photo is itself evidence the step was done.
+   */
+  function serverDoneCount(job: CleanJob, progress: readonly CleanProgress[], photoCount: number): number {
+    const total = job.steps.length;
+    const open = openSteps(job.house, job.checkout, job.priority, progress);
+    let done = Math.max(0, total - open);
+    const row = progress.find((item) => item.house === job.house && item.checkout === job.checkout);
+    if (photoCount > 0 && !(row?.done ?? []).includes('photos')) done = Math.min(total, done + 1);
+    return done;
   }
   const preferenceTimes = usePreferenceTimes();
   const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
@@ -286,7 +301,21 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
           {jobs.map((job) => {
             // A cleaner's uploaded photo counts the same as one attached in this browser.
             const photoCount = Math.max(photos[job.id]?.length ?? 0, uploadedFor(job).length);
-            const done = jobDoneCount(job.steps, checks, job.id, photoCount);
+            /*
+             * The count has to come from the same store as the line above it.
+             *
+             * The card read "The cleaner marked this turn done." directly above "0 of 7", because the line above came
+             * from the server (what the cleaner actually ticked) while this count came from `checks` — this browser's
+             * own sessionStorage. Measured on production with a fully-ticked turn: the desk said 0 of 7.
+             *
+             * A cleaner works on their phone; the host's browser has none of their ticks, so this count was always
+             * zero for real work. It now counts the server row, and falls back to the local checks only when the
+             * server read FAILED — in which case the line above already says the ticks could not be read.
+             */
+            const done =
+              cleanProgress === null
+                ? jobDoneCount(job.steps, checks, job.id, photoCount)
+                : serverDoneCount(job, progressRows, photoCount);
             const clock = turnHours(
               {
                 sameDay: job.priority,
