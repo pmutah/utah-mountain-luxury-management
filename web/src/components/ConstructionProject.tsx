@@ -312,6 +312,18 @@ export function ConstructionProjectView({
                 amount — use Re-analyze below. The total above is short by whatever those are worth.
               </p>
             )}
+            {/*
+              Two large figures sit on this page and they are not the same measure: this one is what the
+              **documents** say was billed, and Partner Spend below is what was **logged as paid**. Measured on
+              production they differ by $78,195.66, and nothing connected them — so a partner comparing the two
+              would reasonably conclude money had gone missing. One sentence is cheaper than that suspicion.
+            */}
+            {!docsUnreadable && (
+              <p className="text-[10px] text-slate-500 mt-1" data-bot="construction-invoiced-scope">
+                This is what the uploaded documents bill. It is not the same as Partner Spend below, which is what was
+                logged as paid — the two will not match, and a difference is not money missing.
+              </p>
+            )}
           </div>
         </div>
         {project.budgetTarget > 0 && !docsUnreadable && (
