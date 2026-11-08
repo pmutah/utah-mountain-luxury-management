@@ -51,6 +51,52 @@ function nightLabel(iso: string) {
 
 const EMPTY_TAKEN: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [] };
 
+/**
+ * The gate a guest has already worked through, kept for this visit.
+ *
+ * Opening seven agreement topics and ticking "I have read the house rules" lived only in React state, so a reload
+ * erased it. Measured on production: seven `data-read="yes"` before a refresh, seven `no` after, and the request form
+ * gone. On a seven-step gate that is a real reason to give up and book elsewhere.
+ *
+ * `sessionStorage` and not `localStorage` on purpose: this is one visit. A new tab, or tomorrow, starts clean, which
+ * is what "read the rules for this stay" should mean. Keyed by house, because the rules differ per house — the same
+ * rule the in-memory state now follows.
+ *
+ * Every read and write is guarded. Private mode throws on storage, and a guest must never see a broken page because a
+ * browser refused to remember something.
+ */
+const GATE_KEY = 'uml-book-gate';
+
+type GateState = { topics: Partial<Record<HouseId, string[]>>; read: Partial<Record<HouseId, boolean>> };
+
+function loadGate(): GateState {
+  const empty: GateState = { topics: {}, read: {} };
+  try {
+    if (typeof sessionStorage === 'undefined') return empty;
+    const raw = sessionStorage.getItem(GATE_KEY);
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as Partial<GateState>;
+    const topics: Partial<Record<HouseId, string[]>> = {};
+    const read: Partial<Record<HouseId, boolean>> = {};
+    for (const id of ['river', 'ranch', 'lindon'] as HouseId[]) {
+      const list = parsed.topics?.[id];
+      if (Array.isArray(list)) topics[id] = list.filter((item): item is string => typeof item === 'string');
+      if (parsed.read?.[id] === true) read[id] = true;
+    }
+    return { topics, read };
+  } catch {
+    return empty;
+  }
+}
+
+function saveGate(next: GateState): void {
+  try {
+    sessionStorage.setItem(GATE_KEY, JSON.stringify(next));
+  } catch {
+    // A browser that refuses storage still gets a working form; it just will not survive a reload.
+  }
+}
+
 export function DirectBook() {
   const linked = readStayLink(typeof window === 'undefined' ? '' : window.location.search);
   const today = denverToday();
@@ -82,12 +128,21 @@ export function DirectBook() {
    * Per house, because the house rules differ. A single flag meant ticking "I have read the house rules" on the
    * Lindon tab also opened River's request form, on rules the guest never saw. The agreement topics were already
    * keyed by house; this was the one half that leaked.
+   *
+   * Both halves now also survive a reload within this visit, through `loadGate`/`saveGate`. The effect below keeps
+   * them in one record, so a write cannot save one without the other.
    */
-  const [rulesReadByHouse, setRulesReadByHouse] = useState<Partial<Record<HouseId, boolean>>>({});
+  const [rulesReadByHouse, setRulesReadByHouse] = useState<Partial<Record<HouseId, boolean>>>(
+    () => loadGate().read,
+  );
   const rulesRead = rulesReadByHouse[house] === true;
   const setRulesRead = (value: boolean) => setRulesReadByHouse((current) => ({ ...current, [house]: value }));
   const [eventStay, setEventStay] = useState(linked.event === true);
-  const [openedTopics, setOpenedTopics] = useState<Partial<Record<HouseId, string[]>>>({});
+  const [openedTopics, setOpenedTopics] = useState<Partial<Record<HouseId, string[]>>>(() => loadGate().topics);
+  // One write for both halves of the gate, so they can never be saved out of step.
+  useEffect(() => {
+    saveGate({ topics: openedTopics, read: rulesReadByHouse });
+  }, [openedTopics, rulesReadByHouse]);
   const [addons, setAddons] = useState<UpsellId[]>(linked.addons ?? []);
   const [groceryList, setGroceryList] = useState('');
   const [arrival, setArrival] = useState<string | null>(linked.arrive ?? null);
