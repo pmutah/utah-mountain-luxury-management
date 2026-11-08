@@ -49,15 +49,63 @@ test('an open night can still raise inside the cap', () => {
 });
 
 test('a short year can promote an open weekend without cutting the base', () => {
-  const board = buildMarketBoard('ranch', '2026-11-06', 1);
-  const before = board.nights[0]!.proposedGuest;
+  /*
+   * This used to run on the **sample** band, whose p75 for that night was $640 against an $890 base — so the
+   * 20% promotion landed at $712 and stayed above the market. `promotionForNight` applied it anyway because it
+   * never saw the band, which is why the River House was offered discounts that could not fill a night.
+   *
+   * The promotion still has to be possible, so this fixture gives real comps high enough that a 20% cut
+   * actually reaches them. That is the case the rule is meant to allow.
+   */
+  const board = buildMarketBoard('ranch', '2026-11-06', 1, undefined, {
+    comps: [
+      { id: 'p1', name: 'Comp', area: 'Orem', beds: 6, sleeps: 20, rating: 4.8, reviews: 10, guestFavorite: false, distanceMi: 4, isOwn: false, minNights: 1 },
+      { id: 'p2', name: 'Comp 2', area: 'Orem', beds: 6, sleeps: 20, rating: 4.8, reviews: 10, guestFavorite: false, distanceMi: 4, isOwn: false, minNights: 1 },
+      { id: 'p3', name: 'Comp 3', area: 'Orem', beds: 6, sleeps: 20, rating: 4.8, reviews: 10, guestFavorite: false, distanceMi: 4, isOwn: false, minNights: 1 },
+    ],
+    index: new Map([
+      ['p1', new Map([['2026-11-06', 950]])],
+      ['p2', new Map([['2026-11-06', 980]])],
+      ['p3', new Map([['2026-11-06', 1000]])],
+    ]),
+  });
+  const night0 = board.nights[0]!;
+  const before = night0.proposedGuest;
+  assert.equal(night0.source, 'live', 'this fixture must carry a real band');
+  assert.ok(night0.p75 >= 900, `p75 should be near the comps, got ${night0.p75}`);
+
   const run = runShadow(board, [], false, '2026-11-06', 'short');
   const night = run.nights[0]!;
   assert.equal(night.action, 'promote');
-  assert.equal(night.proposedGuest, before);
   assert.equal(night.promotionPercent, 20);
-  assert.ok(night.offerGuest < night.proposedGuest);
-  assert.ok(night.offerGuest >= night.floorGuest);
+  assert.equal(night.proposedGuest, before, 'the base itself must not be cut');
+  assert.ok(night.offerGuest < night.proposedGuest, 'the offer should be below the base');
+  assert.ok(night.offerGuest >= night.floorGuest, 'the offer must respect the floor');
+});
+
+test('a promotion that cannot reach the market is not applied', () => {
+  /*
+   * The River case, reduced: a base far above a compact band. A 20% cut lands above p75, so it cannot fill
+   * the night and must not be presented as a promotion. The night holds and the reason names both numbers.
+   */
+  const board = buildMarketBoard('ranch', '2026-11-06', 1, undefined, {
+    comps: [
+      { id: 'q1', name: 'Comp', area: 'Orem', beds: 6, sleeps: 20, rating: 4.8, reviews: 10, guestFavorite: false, distanceMi: 4, isOwn: false, minNights: 1 },
+      { id: 'q2', name: 'Comp 2', area: 'Orem', beds: 6, sleeps: 20, rating: 4.8, reviews: 10, guestFavorite: false, distanceMi: 4, isOwn: false, minNights: 1 },
+      { id: 'q3', name: 'Comp 3', area: 'Orem', beds: 6, sleeps: 20, rating: 4.8, reviews: 10, guestFavorite: false, distanceMi: 4, isOwn: false, minNights: 1 },
+    ],
+    index: new Map([
+      ['q1', new Map([['2026-11-06', 420]])],
+      ['q2', new Map([['2026-11-06', 450]])],
+      ['q3', new Map([['2026-11-06', 480]])],
+    ]),
+  });
+  const run = runShadow(board, [], false, '2026-11-06', 'short');
+  const night = run.nights[0]!;
+  assert.ok(night.offerGuest > night.p75, 'this fixture should leave the offer above the market');
+  assert.notEqual(night.action, 'promote', 'a discount that cannot reach the market was offered');
+  assert.equal(night.promotionPercent, 0);
+  assert.match(night.reason, /75th percentile/);
 });
 
 test('a night no stay can cover keeps the published rate', () => {
