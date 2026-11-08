@@ -84,25 +84,32 @@ export function pushHold(gate: PushGate): string | null {
 }
 
 /**
- * Whether a rate could actually leave this app, which is a different question from whether the plan is
- * allowed.
+ * Whether a rate could actually leave this app, and **where it would have to go**.
  *
- * A plan can be fully computed and still not send: `HOSPITABLE_WRITE_TOKEN` is only ever read to compute
- * the gate, and there is no Hospitable client and no outbound price call anywhere in this codebase. That
- * is **not** a hold, because a hold drops the nights and the desk would lose sight of what would change —
- * which is the one thing this page is good for. So the plan stays allowed and this flag says plainly
- * whether sending exists, and why not.
+ * Two separate facts, and the second one changes the first:
+ *
+ * 1. No writer exists. `HOSPITABLE_WRITE_TOKEN` is only read to compute the gate; a repo-wide scan found no
+ *    Hospitable host and no outbound price call. A fully open gate builds a payload and stops.
+ *
+ * 2. **Hospitable is the wrong destination anyway.** The owner's own vault note says "Hospitable is the
+ *    calendar and inbox. Do not change nightly rates or create promotions here. Promotions go on Airbnb and
+ *    VRBO directly", and `pricing-doctrine.ts` says the same in its own words: "Do not change the rate and
+ *    do not create the promotion in Hospitable." So a sender aimed at Hospitable's calendar API would do the
+ *    one thing the doctrine forbids, and would not produce the Airbnb/VRBO promotion badges that make a
+ *    discount worth running in the first place.
+ *
+ * This function therefore never says "set the token and it will send", because that is not true.
  */
 export function pushSendState(gate: PushGate): { sends: boolean; line: string } {
   if (!gate.hasToken) {
     return {
       sends: false,
-      line: 'A rate would not leave this app: there is no write token, and no sender is built yet either.',
+      line: 'A rate would not leave this app: there is no write token, no sender, and Hospitable is not the destination for a rate anyway.',
     };
   }
   return {
     sends: false,
-    line: 'A rate still would not leave this app: the write token is set, but no sender is built yet. What you see is a plan, not a send.',
+    line: 'A rate still would not leave this app: no sender is built, and the doctrine keeps rates out of Hospitable. A rate and a promotion are typed on Airbnb and VRBO directly.',
   };
 }
 

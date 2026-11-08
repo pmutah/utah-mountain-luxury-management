@@ -29,7 +29,18 @@ test('a missing token is named, and is not the only reason nothing sends', () =>
   const send = pushSendState({ ...READY, hasToken: false });
   assert.equal(send.sends, false);
   assert.match(send.line, /no write token/i);
-  assert.match(send.line, /no sender is built/i, 'the missing sender was hidden behind the missing token');
+  // The old wording stopped at "no sender". That was incomplete: a sender aimed at Hospitable would do the
+  // one thing the doctrine forbids, so the line has to say the destination is wrong too.
+  assert.match(send.line, /Hospitable is not the destination/i, 'the missing sender was hidden behind the missing token');
+});
+
+test('setting the token never reads as turning publishing on', () => {
+  // With a token the line must still refuse, and must point at Airbnb and VRBO, not at Hospitable.
+  const send = pushSendState({ ...READY, hasToken: true });
+  assert.equal(send.sends, false);
+  assert.match(send.line, /no sender is built/i);
+  assert.match(send.line, /Airbnb and VRBO/i, 'the line must say where a rate is actually typed');
+  assert.equal(/will send|is now live|pushing now/i.test(send.line), false, 'the copy promised a send');
 });
 
 test('nothing in the codebase writes a rate to Hospitable', () => {
