@@ -832,11 +832,18 @@ export async function suggestRateAdjustment(
     snapshotCount: market.snapshotCount,
     targetMinNightly: target || null,
     carryingFloor: floor || null,
+    /*
+     * The floor is a **host net**. A host reading "$1,500" as the guest price would undercut it: the guest
+     * price that lands $1,500 of host net is $1,776 on Airbnb once the channel fee is grossed up. The AI
+     * was reporting 1,500 as a floor alongside a 2,219 guest rate, which mixes the two bases in the one
+     * place a wrong number costs money. Both are named here so it cannot pick the wrong one silently.
+     */
+    carryingFloorGuest: floor > 0 ? listPriceForHostNet(floor, AIRBNB_KEEP) : null,
     carryingFloorMeans:
       propertyId === 'river'
-        ? 'River premium floor: $1,500 host net. No night or promotion goes under it.'
+        ? `River premium floor: $${floor || 1500} host net, which is a $${listPriceForHostNet(floor || 1500, AIRBNB_KEEP)} guest price on Airbnb. No night or promotion goes under it.`
         : floor > 0
-        ? `Mortgage $${house.mortgage.toFixed(2)} / 30. Last-week floor only, not the asking rate.`
+        ? `Mortgage $${house.mortgage.toFixed(2)} / 30, a $${floor} host net and a $${listPriceForHostNet(floor, AIRBNB_KEEP)} guest price on Airbnb. Last-week floor only, not the asking rate.`
         : 'No mortgage on the books. Do not invent a floor.',
     publishWhere:
       'Type airbnbListNightly into Airbnb and vrboListNightly into VRBO. Apply promotionPercent to those listed prices on the soft dates. Do not type listingHostNightly into either site, and do not set the rate in Hospitable. directOfferHostNightly is only a past-guest /book request.',

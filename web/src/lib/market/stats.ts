@@ -23,6 +23,7 @@ export function percentileRank(value: number, values: number[]): number {
   return Math.round((below / values.length) * 100);
 }
 
+/** The guest price that leaves `hostNet` after the Airbnb fee, for the app-side rate card. */
 export function listPriceForHostNet(hostNet: number): number {
   return Math.ceil(hostNet / 0.845);
 }
