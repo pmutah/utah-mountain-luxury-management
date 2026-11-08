@@ -76,6 +76,7 @@ const HOST_ROUTES = [
   'clean/photo.ts',
   'book/accept.ts',
   'book/decline.ts',
+  'book/discard.ts',
   'book/requests.ts',
   'book/holds.ts',
   'agent/chat.ts',

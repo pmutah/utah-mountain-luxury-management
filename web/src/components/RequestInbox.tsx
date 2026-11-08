@@ -33,6 +33,33 @@ export function RequestInbox() {
   const [tallyLine, setTallyLine] = useState<string | null>(null);
 
   /** Decline a request. The reason is required; the guest is told unless the host unticks it. */
+  /**
+   * Discard a request without answering it.
+   *
+   * For a duplicate, a test, or a request already answered by phone. Distinct from decline, which emails
+   * the guest — the confirmation says plainly that nobody is contacted, because that is the whole reason
+   * this exists.
+   */
+  async function discard(id: string, summary: string) {
+    if (
+      !window.confirm(
+        `Remove this request from the inbox?\n\n${summary}\n\nNobody is emailed. Use Decline instead if the guest should be told.`,
+      )
+    ) {
+      return;
+    }
+    setBusy(id);
+    setError(null);
+    try {
+      await api.discardBookingRequest(id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'The request could not be removed.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function decline(id: string, summary: string) {
     const reason = declineReasons[id] ?? '';
     if (!reason) {
@@ -302,6 +329,21 @@ export function RequestInbox() {
                       className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.16em] text-slate-400 disabled:opacity-50"
                     >
                       {busy === row.id ? 'Saving…' : 'Decline'}
+                    </button>
+                    {/*
+                      Separate from Decline on purpose: this one is silent. It exists for a duplicate, a
+                      test, or a request already answered by phone, none of which should mail a guest to say
+                      their dates are unavailable.
+                    */}
+                    <button
+                      type="button"
+                      disabled={busy === row.id}
+                      onClick={() => void discard(row.id, row.line)}
+                      data-bot="request-inbox-discard"
+                      className="rounded-full border border-slate-800 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-500 disabled:opacity-50"
+                      title="Remove from the inbox. Nobody is emailed."
+                    >
+                      Remove
                     </button>
                   </div>
                 </div>

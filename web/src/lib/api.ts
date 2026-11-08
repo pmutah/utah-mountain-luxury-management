@@ -954,6 +954,15 @@ export const api = {
       body: JSON.stringify(body),
     }),
   /** Decline a saved request with a reason. Host only. It records the decision and books nothing. */
+  /**
+   * Remove a request without answering the guest. For a duplicate, a test, or one already handled by
+   * phone. Nothing is emailed; `declineBookingRequest` is the one that tells the guest.
+   */
+  discardBookingRequest: (id: string) =>
+    request<{ ok: boolean; id: string; remaining: number; sent: number; note: string }>('/api/book/discard', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
   declineBookingRequest: (body: { id: string; reason: string; note?: string; notify?: boolean }) =>
     request<{
       ok: boolean;
