@@ -80,6 +80,17 @@ export function directNight(
       ? null
       : approvedGuestRate(sheet, iso, { guest: approvalBase(ask.guest, sheet, iso), floorGuest: ask.floorGuest });
   if (approved !== null) {
+    /*
+     * An approved rate is a **channel guest price**, and `/book` charges the host net for it — a deliberate
+     * discount to the guest, because our own page takes no platform fee. The doctrine says so in as many words:
+     * "/book has no platform fee, so that offer is not grossed up."
+     *
+     * I changed this to charge the full approved price and was wrong. A test already pinned the behaviour
+     * (`approved-rate-quote.test.ts`: "the total moves by the guest difference less the platform keep — that is
+     * the documented behaviour"), so the arithmetic was never the defect. The defect is that the approve panel
+     * announces "That night now quotes this price on our own page" about a page that quotes 15.5% less. The copy
+     * is fixed there; the price stays as designed.
+     */
     return {
       date: iso,
       guest: approved,

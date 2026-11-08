@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { AIRBNB_KEEP } from '../lib/revenue-goals';
 
 type Plan = {
   house: string;
@@ -130,7 +131,9 @@ export function PushPlanPanel() {
     setNotice(null);
     try {
       const result = await api.approveRate({ house, date, guest });
-      setNotice(`Approved ${guest} for ${date}. That night now quotes this price on our own page.`);
+      setNotice(
+        `Approved ${guest} for ${date}. That is the Airbnb price for that night; our own page quotes the host net, ${Math.round(guest * AIRBNB_KEEP)}, so a direct guest saves the platform fee.`,
+      );
       if (result.dropped > 0) {
         setNotice(
           (line) =>
@@ -324,7 +327,8 @@ export function PushPlanPanel() {
                 {plan.nights.length > 0 && (
                   <div className="mt-3 space-y-2" data-bot="push-plan-approve">
                     <p className="text-xs text-[var(--uml-muted)]">
-                      Approve a night to quote that price on our own page. It is written on this site only.
+                      Approve a night to set that Airbnb price. Our own page quotes the host net, so a direct guest
+                      saves the platform fee. It is written on this site only.
                       {/*
                         An approve button on a sample-priced night would write a fabricated rate onto our real
                         booking page — the one place these numbers actually reach a guest. The typed price is the
