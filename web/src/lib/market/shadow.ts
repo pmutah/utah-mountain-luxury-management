@@ -142,6 +142,8 @@ export function portfolioDigest(input: {
   }[];
   arrivalWindows?: Readonly<Record<string, string | undefined>> | null;
   departureWindows?: Readonly<Record<string, string | undefined>> | null;
+  /** Boards the caller already built with live comps. When given, these are used instead of samples. */
+  boards?: Partial<Record<HouseId, MarketBoard>>;
 }): string {
   const lines = [`UML shadow ${input.asOf}`];
   /*
@@ -160,7 +162,13 @@ export function portfolioDigest(input: {
   const ratesUnread = !input.calendarLive;
   if (ratesUnread) lines.push('The calendar could not be read. No night is raised or promoted.');
   if (!ratesUnread) for (const house of PORTFOLIO) {
-    const board = buildMarketBoard(house, input.asOf, 90, input.comps?.[house]);
+    /*
+     * Prefer the board the caller already built: the market page holds one per house built from **live**
+     * comps. This function used to rebuild each house from `input.comps` alone, which are the sample
+     * fixtures — so the page showed a live band in one panel and a daily text computed from invented
+     * comps in another. The text read "5 of 10 sample comps" while 19 real comps sat in the store.
+     */
+    const board = input.boards?.[house] ?? buildMarketBoard(house, input.asOf, 90, input.comps?.[house]);
     const run = runShadow(
       board,
       input.calendarLive ? (input.taken[house] ?? []) : [],
@@ -169,9 +177,10 @@ export function portfolioDigest(input: {
       input.pace[house],
       input.calendarLive ? (input.closed?.[house] ?? []) : [],
     );
-    // The fit line comes before the pause check: how much of the band is real is true either way,
-    // and a paused house still has sample comps setting the band it would use.
-    lines.push(`${LABEL[house]}: ${compFitSummary(house, board.comps)}`);
+    // The fit line comes before the pause check: how much of the band is real is true either way, and a
+    // paused house still has its comps setting the band it would use. A board carrying saved comps is
+    // described as saved, not as samples.
+    lines.push(`${LABEL[house]}: ${compFitSummary(house, board.comps, (board.summary?.liveComps ?? 0) > 0 ? 'saved' : 'sample')}`);
     if (run.paused) {
       lines.push(`${LABEL[house]}: paused. Published rates stay.`);
       continue;

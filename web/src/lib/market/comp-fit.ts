@@ -44,11 +44,24 @@ export function compFitLine(house: HouseId, sleeps: number, distanceMi: number, 
   return `${place} Too far. Left out of the rate band.`;
 }
 
-export function compFitSummary(house: HouseId, comps: readonly { sleeps: number; distanceMi: number }[]): string {
+/**
+ * How much of a house's comp list can actually set its band.
+ *
+ * The word "sample" used to be hardcoded, so even a list built from **live** comps was described as
+ * samples. On the market page that read "5 of 10 sample comps" for River while 19 real comps sat in the
+ * store — a sentence that was wrong about its own data. The caller now says which it is, and the default
+ * stays "sample" so existing sample-based callers keep an accurate description.
+ */
+export function compFitSummary(
+  house: HouseId,
+  comps: readonly { sleeps: number; distanceMi: number }[],
+  kind: 'sample' | 'saved' = 'sample',
+): string {
   const close = comps.filter((comp) => isFairComp(house, comp)).length;
   const total = comps.length;
+  const noun = kind === 'saved' ? (total === 1 ? 'saved comp' : 'saved comps') : 'sample comps';
   if (close >= 4) {
-    return `${close} of ${total} sample comps sleep close to this house and sit within 10 miles. The rate band uses those ${close}. Smaller or farther houses stay on the list and stay out of the band.`;
+    return `${close} of ${total} ${noun} sleep close to this house and sit within 10 miles. The rate band uses those ${close}. Smaller or farther houses stay on the list and stay out of the band.`;
   }
-  return `${close} of ${total} sample comps sleep close to this house and sit within 10 miles. The rate band keeps the full list because fewer than 4 are close.`;
+  return `${close} of ${total} ${noun} sleep close to this house and sit within 10 miles. The rate band keeps the full list because fewer than 4 are close.`;
 }

@@ -167,6 +167,18 @@ export function MarketBoard() {
     };
   }, [house]);
   const overview = overviewByHouse[house] ?? null;
+  /*
+   * The digest takes only real boards. A house whose overview has not loaded stays undefined so the
+   * digest falls back to its own build for that house rather than receiving a null it must guard.
+   */
+  const liveBoards = useMemo(() => {
+    const out: Partial<Record<HouseId, MarketBoardData>> = {};
+    for (const id of ['river', 'ranch', 'lindon'] as HouseId[]) {
+      const b = overviewByHouse[id];
+      if (b) out[id] = b;
+    }
+    return out;
+  }, [overviewByHouse]);
   const board = useMemo(
     () => boardFromOverview(house, today, 90, activeComps[house], overview),
     [house, today, activeComps, overview],
@@ -195,12 +207,18 @@ export function MarketBoard() {
       pace: { river: paceOf('river'), ranch: paceOf('ranch'), lindon: paceOf('lindon') },
       calendarLive: calendar === 'live',
       comps: activeComps,
+      /*
+       * The live boards the page already built, per house. Without these the digest rebuilt every house
+       * from the sample fixtures, so its raise counts and fit lines described invented comps while the
+       * board beside them used the real ones.
+       */
+      boards: liveBoards,
       closed,
       stays: paceState === 'live' && stays ? stays : undefined,
       arrivalWindows: paceState === 'live' && preferenceTimes ? preferenceTimes.arrival : null,
       departureWindows: paceState === 'live' && preferenceTimes ? preferenceTimes.departure : null,
     });
-  }, [today, taken, closed, paused, stays, paceState, calendar, activeComps, preferenceTimes]);
+  }, [today, taken, closed, paused, stays, paceState, calendar, activeComps, preferenceTimes, liveBoards]);
   const settled = calendar !== 'loading' && paceState !== 'loading';
   const shadowLog = useMemo(
     () => (settled ? recordShadowDay(storedLog, today, daily) : storedLog),
