@@ -23,6 +23,10 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     sleeps?: number;
     distanceMi?: number;
     area?: string;
+    /** The street address from the listing's location block. With the host, this identifies the house. */
+    address?: string;
+    /** The host's name as the listing shows it. */
+    hostName?: string;
     rating?: number;
     reviews?: number;
     guestFavorite?: boolean;

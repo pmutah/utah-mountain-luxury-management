@@ -117,6 +117,15 @@ export interface CompListing {
   /** Miles from this house. Without it the comp cannot set the rate band. */
   distanceMi?: number;
   area?: string;
+  /**
+   * The street address, read off the listing's own location block. This is the fact that identifies a
+   * **house** across platforms: the same home is sold on Airbnb and VRBO under different titles ("Luxury
+   * 7000 SQFT · Sleeps 20 · Orem" against "Luxury -7000 SQFT-Sleeps 20- Bball VBall 1 Acre"), so a title
+   * comparison cannot tell they are one property, and each copy would count as a separate observation.
+   */
+  address?: string;
+  /** The host's name as the listing shows it. Paired with `address`, this identifies the house. */
+  hostName?: string;
   rating?: number;
   reviews?: number;
   guestFavorite?: boolean;

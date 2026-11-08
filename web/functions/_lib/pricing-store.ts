@@ -47,21 +47,33 @@ export async function loadCompSet(env: SettingsEnv): Promise<CompListing[]> {
  * nights; the Orem Oasis appears on both too. Saving both would let **one landlord supply every observation
  * on a night**, so the band would read as a market while measuring one competitor.
  *
- * What this key can and cannot do, stated plainly because it matters:
+ * The identifying fact is the **street address**, because that is the house. Titles are not: the real pair
+ * reads `Luxury 7000 SQFT · Sleeps 20 · Orem` on VRBO and `Luxury -7000 SQFT-Sleeps 20- Bball VBall 1 Acre`
+ * on Airbnb, and no title comparison can know those are one home.
  *
- * - It **does** catch a second save of the same URL, and two platform names that share the house's own
- *   words (both Oasis titles contain "Orem Oasis", for instance).
- * - It **does not** catch two platforms that describe one house with different words. The real pair proves
- *   it: VRBO calls it `Luxury 7000 SQFT · Sleeps 20 · Orem` and Airbnb calls it `Luxury -7000 SQFT-Sleeps 20-
- *   Bball VBall 1 Acre`, which reduce to `luxury orem` and `luxury bball vball 1 acre`. A title comparison
- *   cannot know those are one home.
+ * So the key is layered, strongest first:
  *
- * So this is a duplicate *discourager*, not proof. The reliable check is the host plus the street address,
- * which the listings carry but this store does not yet capture. Until it does, a wrong second save is
- * caught by the ask data (two comps on identical nights at near-identical rates are worth a look), and the
- * honest statement is that URL equality is guaranteed while cross-platform identity is best-effort.
+ *   1. **Address** (normalised) — two platforms for one house collide here, which is the case that matters.
+ *   2. **Title + sleeps** — a fallback that still catches two titles sharing the house's own words, such as
+ *      both Oasis listings. It cannot catch a house described differently, and that limitation is pinned by
+ *      a test rather than glossed over.
  */
-export function compHouseKey(comp: { label?: string; sleeps?: number }): string {
+export function compHouseKey(comp: { label?: string; sleeps?: number; address?: string }): string {
+  const address = String(comp.address ?? '')
+    .toLowerCase()
+    // Directionals abbreviate differently on each platform, so they are expanded to one form.
+    .replace(/\b(north|n)\b/g, 'n ')
+    .replace(/\b(south|s)\b/g, 's ')
+    .replace(/\b(east|e)\b/g, 'e ')
+    .replace(/\b(west|w)\b/g, 'w ')
+    .replace(/\b(street|st|avenue|ave|road|rd|drive|dr|lane|ln|court|ct|circle|cir|boulevard|blvd|way|place|pl)\b/g, ' ')
+    .replace(/\b(utah|ut)\b/g, ' ')
+    .replace(/\b\d{5}\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+  if (address.length >= 6) return `addr:${address}`;
+
   const title = String(comp.label ?? '')
     .toLowerCase()
     // Platform-specific decoration: our own suffix, sizing claims, and punctuation.
@@ -84,18 +96,25 @@ export async function addCompListing(
   return item;
 }
 
-/** The saved comp that is the same house as this one, if any. Different url, same property. */
+/** The saved comp that is the same house as this one, if any. Different url and platform, same property. */
 export async function findSameHouse(
   env: SettingsEnv,
-  comp: { label?: string; sleeps?: number; url?: string },
+  comp: { label?: string; sleeps?: number; url?: string; address?: string },
 ): Promise<CompListing | null> {
   const list = await loadCompSet(env);
-  const url = String(comp.url ?? '');
-  const exact = list.find((row) => row.url === url);
+
+  // Same URL is the same row, whatever else is true.
+  const exact = list.find((row) => row.url === String(comp.url ?? ''));
   if (exact) return exact;
+
+  /*
+   * The address is the strong signal and is checked first: two platforms for one house share a street, and
+   * nothing else does. The title key is the weaker fallback — it catches two titles that share the house's
+   * own words and, as a test pins, cannot catch a house each platform describes differently.
+   */
   const key = compHouseKey(comp);
-  if (!key || key.endsWith('|')) return null;
-  return list.find((row) => compHouseKey(row) === key) ?? null;
+  if (!key) return null;
+  return list.find((row) => compHouseKey(row as never) === key) ?? null;
 }
 
 export async function removeCompListing(env: SettingsEnv, id: string): Promise<boolean> {

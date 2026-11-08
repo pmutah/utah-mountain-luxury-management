@@ -15,11 +15,45 @@ import { compHouseKey } from '../../functions/_lib/pricing-store.ts';
  * one competitor. `compHouseKey` reduces a listing to the house behind it so a second platform is refused.
  */
 
-test('identical urls always match, which is the guarantee', () => {
-  // The URL case is the one that must never fail. `findSameHouse` checks it before any title logic.
-  const key = compHouseKey({ label: 'Luxury 7000 SQFT · Sleeps 20 · Orem', sleeps: 20 });
-  assert.equal(/\$/.test(key), false, 'a price reached the house key');
-  assert.equal(/sleeps 20/.test(key), false, 'the sleep claim survived, so listings claiming different sleeps would split');
+test('two platforms for one house collide on the address, which is the whole point', () => {
+  /*
+   * The case the title key could not catch. VRBO and Airbnb describe this house differently, but both
+   * publish the same street, and the street is the house.
+   */
+  const vrbo = { label: 'Luxury 7000 SQFT · Sleeps 20 · Orem', sleeps: 20, address: '1234 W 400 N, Orem, UT 84057' };
+  const airbnb = { label: 'Luxury -7000 SQFT-Sleeps 20- Bball VBall 1 Acre', sleeps: 20, address: '1234 W 400 N, Orem, UT 84057' };
+  assert.equal(compHouseKey(vrbo), compHouseKey(airbnb), 'the same street must produce the same key');
+  assert.match(compHouseKey(vrbo), /^addr:/, 'an address key should be recognisable as one');
+});
+
+test('the address key ignores the spelling differences a listing may use', () => {
+  const a = compHouseKey({ address: '270 East Center Street, Lindon, Utah 84042' });
+  const b = compHouseKey({ address: '270 E Center St, Lindon UT 84042' });
+  // Abbreviations and the state/postcode are normalised, so both reduce to the house and number.
+  assert.match(a, /^addr:/);
+  assert.match(a, /270/);
+  assert.match(a, /center/);
+  assert.equal(/street/.test(a), false, 'the suffix survived normalisation');
+  assert.equal(/84042/.test(a), false, 'the postcode survived normalisation');
+  assert.equal(a, b, 'the abbreviated form of the same address must match');
+});
+
+test('two different streets never collide, even at the same size', () => {
+  const one = compHouseKey({ address: '100 Main St, Orem, UT 84057', sleeps: 20 });
+  const two = compHouseKey({ address: '200 Main St, Orem, UT 84057', sleeps: 20 });
+  assert.notEqual(one, two);
+});
+
+test('with no address the key falls back to the title, and says so by shape', () => {
+  const title = compHouseKey({ label: 'Orem Oasis · Sleeps 20 · Game Rm', sleeps: 20 });
+  assert.equal(title.startsWith('addr:'), false, 'a title key must not look like an address key');
+  assert.match(title, /orem oasis/);
+});
+
+test('a very short address is not treated as one', () => {
+  // "UT" or a bare number is not an address; it must fall through to the title rather than match everything.
+  const key = compHouseKey({ address: 'UT', label: 'Some House', sleeps: 12 });
+  assert.equal(key.startsWith('addr:'), false);
 });
 
 test('two platform names that share the house words collapse to one key', () => {
