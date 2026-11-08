@@ -5,6 +5,7 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { denverToday } from './market/dates.ts';
 
 type Store = Map<string, string>;
 type RouteHandler = (context: { request: Request; env: unknown; params: Record<string, string> }) => Promise<Response>;
@@ -12,7 +13,12 @@ type RouteHandler = (context: { request: Request; env: unknown; params: Record<s
 const PW = 'pw';
 const COOKIE = `wpm_auth=${btoa(`wpm:${PW}`).replace(/=+$/, '')}`;
 const TOKEN = 'staye'.padEnd(32, '0');
-const TODAY = new Date().toISOString().slice(0, 10);
+/*
+ * Denver's date, because the route judges the send window with `denverToday()`. Deriving it from UTC
+ * put the newest day a day ahead for six hours each evening, which is the same fault that broke the
+ * shadow-clock test.
+ */
+const TODAY = denverToday();
 
 function fakeKv(store: Store) {
   return {

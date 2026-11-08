@@ -4,6 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { denverToday } from './market/dates.ts';
 
 type Store = Map<string, string>;
 
@@ -39,7 +40,9 @@ async function route() {
 
 function sevenDays() {
   const days = [];
-  const today = new Date();
+  // Denver's date: the route compares against `denverToday()`, and a UTC today is a day ahead
+  // for six hours each evening, so the newest day was counted as a future date and dropped.
+  const today = new Date(`${denverToday()}T00:00:00Z`);
   for (let back = 6; back >= 0; back -= 1) {
     const day = new Date(today);
     day.setUTCDate(day.getUTCDate() - back);

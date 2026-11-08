@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mergeSavedShadowDay, shadowClockFromSaved, SHADOW_UNREAD } from './market/shadow-log.ts';
+import { denverToday } from './market/dates.ts';
 
 type Store = Map<string, string>;
 
@@ -73,7 +74,12 @@ test('seven saved days make the server clock ready and never leak the token', as
   const store: Store = new Map();
   const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD, HOSPITABLE_WRITE_TOKEN: 'secret-token' };
   const days = await route();
-  const today = new Date().toISOString().slice(0, 10);
+  /*
+   * Denver's date, not UTC's. Between 00:00 and 06:00 UTC these differ, and a UTC "today" is then a
+   * day ahead of the clock this route uses — so the newest of the seven days was filtered as a future
+   * date and only six counted. The failure was real but only for part of each day.
+   */
+  const today = denverToday();
   const start = new Date(`${today}T00:00:00Z`);
   for (let back = 6; back >= 0; back -= 1) {
     const day = new Date(start);
