@@ -3,7 +3,7 @@ import test from 'node:test';
 import { LISTING_TITLE, listingOpenLine, listingOpportunities } from './listing.ts';
 
 test('the booking titles name the sleep count and the best feature', () => {
-  assert.match(LISTING_TITLE.river, /Sleeps 25/);
+  assert.match(LISTING_TITLE.river, /Sleeps 24/);
   assert.match(LISTING_TITLE.river, /7 King Suites/);
   assert.match(LISTING_TITLE.ranch, /Hot Tub/);
   assert.match(LISTING_TITLE.lindon, /near BYU/);

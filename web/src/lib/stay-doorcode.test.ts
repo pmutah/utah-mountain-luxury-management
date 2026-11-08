@@ -22,7 +22,7 @@ const GUIDE = {
   doorCode: '4821',
   wifiPassword: 'fixture-wifi-secret-not-real',
   wifiName: 'FixtureNet',
-  headline: 'Sleeps 25',
+  headline: 'Sleeps 24',
   address: 'Vivian Park',
   arrival: 'Park in the drive',
   parking: 'Drive',

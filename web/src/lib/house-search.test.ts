@@ -88,10 +88,10 @@ test('a clear River weekend says which houses will quote and leaves the price of
 
 test('a party larger than the River House is offered both houses with no price', () => {
   const result = searchHouses('2026-11-06', '2026-11-08', 30, undefined, open, '2026-10-30', pace);
-  assert.match(result.rows.find((row) => row.house === 'river')?.line ?? '', /sleeps 25/);
+  assert.match(result.rows.find((row) => row.house === 'river')?.line ?? '', /sleeps 24/);
   assert.equal(result.rows.find((row) => row.house === 'river')?.ok, false);
   assert.equal(result.together?.ok, true);
-  assert.match(result.together?.line ?? '', /25 stay at the River House/);
+  assert.match(result.together?.line ?? '', /24 stay at the River House/);
   assert.equal(textOf(result).includes('$'), false);
 });
 
@@ -182,8 +182,8 @@ test('a party is matched to the sleep count and the dates stay unheld', () => {
 
   const big = partyFitList(30);
   assert.equal(big.rows.every((row) => row.fits === false), true);
-  assert.match(big.together ?? '', /together sleep 45/);
-  assert.match(big.together ?? '', /25 stay at the River House and 5 stay at the Ranch House/);
+  assert.match(big.together ?? '', /together sleep 44/);
+  assert.match(big.together ?? '', /24 stay at the River House and 6 stay at the Ranch House/);
   assert.match(big.together ?? '', /Each house keeps an adult/);
   assert.match(big.together ?? '', /does not hold the dates/);
   assert.equal((big.together ?? '').includes('$'), false);
@@ -199,8 +199,8 @@ test('a house page says whether the party on the link fits', () => {
   const ranch = housePartyLine('ranch', '30');
   assert.match(ranch, /The Ranch House sleeps 20/);
   assert.match(ranch, /larger than that house/);
-  assert.match(ranch, /together sleep 45/);
-  assert.match(ranch, /25 stay at the River House and 5 stay at the Ranch House/);
+  assert.match(ranch, /together sleep 44/);
+  assert.match(ranch, /24 stay at the River House and 6 stay at the Ranch House/);
   assert.match(ranch, /does not hold the dates/);
   assert.match(housePartyLine('lindon', '4'), /This party fits that house/);
   assert.equal(housePartyLine('ranch', ''), '');

@@ -3,7 +3,18 @@ import { nightBeforeIsFree } from './journey';
 import type { HouseId } from './market/types';
 
 /** Published sleep counts from the listing titles and the guest guide. */
-export const SLEEPS: Record<HouseId, number> = { river: 25, ranch: 20, lindon: 12 };
+/**
+ * How many a house sleeps. This is the number we tell a guest and check a party against, so it has to
+ * match the published listing on every channel.
+ *
+ * The River House was 25 here while the Airbnb listing says "sleeps 24" in two places. That is the
+ * kind of gap a guest finds at booking: the page sells a party of 25, the channel caps at 24, and the
+ * two disagree on the same night. The listing is the contract, so this follows it.
+ */
+export const SLEEPS: Record<HouseId, number> = { river: 24, ranch: 20, lindon: 12 };
+
+/** The Ranch and the River booked together. Derived, so it cannot drift from the two numbers above. */
+export const SLEEPS_TOGETHER = SLEEPS.river + SLEEPS.ranch;
 
 const LABEL: Record<HouseId, string> = {
   river: 'The River House',

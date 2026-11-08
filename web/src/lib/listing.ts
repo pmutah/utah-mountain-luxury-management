@@ -3,7 +3,7 @@ import { addonMenuLine } from './upsells';
 
 /** Titles from the pricing playbook. Our booking page uses these. Airbnb and VRBO do not. */
 export const LISTING_TITLE: Record<HouseId, string> = {
-  river: 'Sleeps 25 · On the Provo River · 7 King Suites',
+  river: 'Sleeps 24 · On the Provo River · 7 King Suites',
   ranch: 'Sleeps 20 · Hot Tub · Lindon',
   lindon: 'Sleeps 12 · Family Home near BYU',
 };

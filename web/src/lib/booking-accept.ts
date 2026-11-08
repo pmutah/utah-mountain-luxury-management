@@ -60,7 +60,7 @@ export type AcceptPlan = {
   guestShares?: Partial<Record<HouseId, number>>;
   /**
    * The host net for each house, when the quote knows it. The payout is split in that proportion
-   * rather than in half, because a party of 30 puts 25 in one house and 5 in the other.
+   * rather than in half, because a party of 30 puts 24 in one house and 6 in the other.
    *
    * These are lodging figures, not guest totals: cleaning differs per house and is not part of the
    * payout, so weighting by the guest total put money on the wrong house.

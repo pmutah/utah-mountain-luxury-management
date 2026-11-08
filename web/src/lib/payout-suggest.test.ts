@@ -126,7 +126,7 @@ test('a two-house request shows one payout per house', () => {
 });
 
 test('a two-house party too small for both houses shows no figure', () => {
-  // The River House sleeps 25, so 10 guests cannot be split across both.
+  // The River House Sleeps 24, so 10 guests cannot be split across both.
   const rows = suggestedPayouts({
     propertyId: 'river',
     alsoPropertyId: 'ranch',
@@ -177,8 +177,8 @@ test('one house never reads another house’s approved price', () => {
 
   // Each house matches a single-house quote with only its own approved night in hand.
   for (const [house, party, own] of [
-    ['river', 25, river],
-    ['ranch', 5, ranch],
+    ['river', 24, river],
+    ['ranch', 6, ranch],
   ] as const) {
     const solo = suggestedPayoutFor(
       house,

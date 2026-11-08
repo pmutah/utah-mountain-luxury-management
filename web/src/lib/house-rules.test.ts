@@ -97,14 +97,14 @@ test('each house publishes its own rules and the request waits for them', () => 
     event: false,
     agreementRead: false,
     partyOk: false,
-    partyReason: 'The River House sleeps 25.',
+    partyReason: 'The River House sleeps 24.',
     quoteOk: false,
-    quoteReason: 'The River House sleeps 25.',
+    quoteReason: 'The River House sleeps 24.',
     rulesRead: false,
     bothOfferOk: true,
   });
   assert.match(together, /Open each topic before the request/);
-  assert.equal(together.includes('sleeps 25'), false);
+  assert.equal(together.includes('sleeps 24'), false);
   assert.match(together, /Nothing is sent/);
   const shortBoth = requestHoldLine({
     calendarLoading: false,
@@ -113,15 +113,15 @@ test('each house publishes its own rules and the request waits for them', () => 
     event: false,
     agreementRead: false,
     partyOk: false,
-    partyReason: 'The River House sleeps 25.',
+    partyReason: 'The River House sleeps 24.',
     quoteOk: false,
-    quoteReason: 'The River House sleeps 25.',
+    quoteReason: 'The River House sleeps 24.',
     rulesRead: false,
     bothOfferOk: false,
     bothReason: 'River: This stay needs at least 5 nights.',
   });
   assert.match(shortBoth, /at least 5 nights/);
-  assert.equal(shortBoth.includes('sleeps 25'), false);
+  assert.equal(shortBoth.includes('sleeps 24'), false);
   assert.equal(shortBoth.includes('$'), false);
   const agreement = quoteAgreementHold();
   assert.match(agreement, /stay agreement stays off/);

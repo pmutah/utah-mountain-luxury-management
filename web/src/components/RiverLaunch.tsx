@@ -86,7 +86,7 @@ export function RiverLaunch({
             {riverLaunchLine(days)}
           </p>
           <p className="text-sm mt-3 max-w-xl text-[#e7eee9]">
-            Sleeps 25. The opening moved from October 15. {photo?.caption}.
+            Sleeps 24. The opening moved from October 15. {photo?.caption}.
           </p>
         </div>
       </section>

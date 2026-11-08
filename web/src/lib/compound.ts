@@ -45,7 +45,7 @@ export function compoundOffer(
 ): CompoundOffer {
   if (!Number.isInteger(guests) || guests < 1) return { show: false };
   if (guests <= SLEEPS.river) return { show: false };
-  if (guests > TOGETHER) return refused('Ranch and River together sleep 45.');
+  if (guests > TOGETHER) return refused(`Ranch and River together sleep ${TOGETHER}.`);
 
   const kids = children ?? 0;
   if (!Number.isInteger(kids) || kids < 0 || kids > guests) {

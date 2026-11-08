@@ -1,4 +1,5 @@
 import { isRealDay } from './dates';
+import { SLEEPS } from '../house-stay';
 import type { BoardSource, HouseId } from './types';
 
 /**
@@ -142,8 +143,7 @@ export function liveCoverage(
 
 /** True when this comp sleeps at least 60% of the house and sits within 10 miles. */
 export function liveCompFits(house: HouseId, sleeps: number, distanceMi: number): boolean {
-  const ours = house === 'river' ? 25 : house === 'ranch' ? 20 : 12;
-  return sleeps * 5 >= ours * 3 && distanceMi <= 10;
+  return sleeps * 5 >= SLEEPS[house] * 3 && distanceMi <= 10;
 }
 
 /** A card line for a saved comp. It names whether the ask is observed, and never invents a rate. */

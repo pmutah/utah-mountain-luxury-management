@@ -92,9 +92,13 @@ test('a Ranch weekday adds the house cleaning fee to the direct price', () => {
 test('a party larger than the house is not quoted', () => {
   const quote = quoteStay('river', '2026-11-06', '2026-11-08', [], { guests: 26 });
   assert.equal(quote.ok, false);
-  assert.match(quote.reason ?? '', /sleeps 25/);
-  const open = quoteStay('river', '2026-11-06', '2026-11-08', [], { guests: 25 });
-  assert.equal(open.ok, true);
+  assert.match(quote.reason ?? '', /sleeps 24/);
+  const atCap = quoteStay('river', '2026-11-06', '2026-11-08', [], { guests: 24 });
+  assert.equal(atCap.ok, true);
+  // 25 fit when the house was published as 25; the listing says 24, so this is now refused.
+  const over = quoteStay('river', '2026-11-06', '2026-11-08', [], { guests: 25 });
+  assert.equal(over.ok, false);
+  assert.match(over.reason ?? '', /sleeps 24/);
   const kids = quoteStay('ranch', '2026-11-04', '2026-11-05', [], { guests: 4, children: 4 });
   assert.equal(kids.ok, false);
   assert.match(kids.reason ?? '', /adult/);

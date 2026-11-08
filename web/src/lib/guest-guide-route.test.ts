@@ -30,7 +30,7 @@ const GUIDES = {
     wifiName: 'Riverhouse',
     wifiPassword: 'secret-wifi-123',
     doorNotes: 'Lockbox on the left post.',
-    headline: 'Sleeps 25 on the Provo River',
+    headline: 'Sleeps 24 on the Provo River',
     parking: 'Park in the driveway.',
   },
 };

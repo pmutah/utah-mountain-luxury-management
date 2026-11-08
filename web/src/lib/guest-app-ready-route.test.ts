@@ -24,7 +24,7 @@ const PASSWORD = 'test-password';
 const cookie = `wpm_auth=${btoa(`wpm:${PASSWORD}`).replace(/=+$/, '')}`;
 
 const FULL = {
-  headline: 'Sleeps 25 on the Provo River',
+  headline: 'Sleeps 24 on the Provo River',
   address: '270 East Center Street, Lindon, Utah 84042',
   arrival: 'Drive up Provo Canyon to Vivian Park.',
   parking: 'Park in the driveway.',
