@@ -24,7 +24,12 @@ export function readVrboCalendarPrices(text: string, year: number): Record<strin
   ];
 
   // The picker prints month headings in order; track which month a day belongs to as we walk the text.
-  const tokens = text.split(/\||\n/).map((token) => token.trim()).filter((token) => token.length > 0);
+  // A day and its price arrive either as separate cells (`1 | $690`) or joined (`1:$690`), depending on
+  // how the picker was rendered, so the split is on any of the separators real pages produce.
+  const tokens = text
+    .split(/\||\n|\s*:\s*/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
   let month: number | null = null;
   let cursorYear = year;
 
