@@ -61,14 +61,21 @@ export function AgentsHub({
     void loadShadowCalendar()
       .then(async (inputs) => {
         if (cancel || !inputs) return;
-        // Load the real boards for each house. Without them the digest is built from the sample fixtures,
-        // and a shadow day saved that way counts toward the seven-day gate on a market that does not exist.
-        const loaded = await Promise.all(
-          (['river', 'ranch', 'lindon'] as const).map(async (id) => [id, await loadMarketOverview(id)] as const),
-        );
+        /*
+         * Only fetch the real boards when this visit would actually save a day. `withToday` keeps one record
+         * per date, so a second visit on the same day wrote nothing — and each board costs three KV reads
+         * (comp set, all snapshots, approved rates). This page is the daily habit, so those reads would
+         * repeat on every visit for no gain, on a store that has already hit Cloudflare's daily KV limit once.
+         */
+        const alreadySaved = loadShadowLog().some((day) => day.date === today && day.digest);
         const boards: Partial<Record<'river' | 'ranch' | 'lindon', MarketBoard>> = {};
-        for (const [id, board] of loaded) {
-          if (board) boards[id] = board;
+        if (!alreadySaved) {
+          const loaded = await Promise.all(
+            (['river', 'ranch', 'lindon'] as const).map(async (id) => [id, await loadMarketOverview(id)] as const),
+          );
+          for (const [id, board] of loaded) {
+            if (board) boards[id] = board;
+          }
         }
         const record = shadowDayDigest({
           asOf: today,

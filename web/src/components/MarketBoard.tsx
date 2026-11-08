@@ -220,14 +220,23 @@ export function MarketBoard() {
     });
   }, [today, taken, closed, paused, stays, paceState, calendar, activeComps, preferenceTimes, liveBoards]);
   const settled = calendar !== 'loading' && paceState !== 'loading';
+  /**
+   * A shadow day may only be recorded when **every** house's board is real.
+   *
+   * This page loads one board — the house in view — and the digest needs three. Recording with only one live
+   * board meant the other two houses were described from the sample fixtures, and that digest still counted
+   * toward the seven-day gate. The day is saved from the brief, which loads all three, so nothing is lost by
+   * refusing to record a partial one here.
+   */
+  const allBoardsLive = Boolean(liveBoards.river && liveBoards.ranch && liveBoards.lindon);
   const shadowLog = useMemo(
-    () => (settled ? recordShadowDay(storedLog, today, daily) : storedLog),
-    [settled, storedLog, today, daily],
+    () => (settled && allBoardsLive ? recordShadowDay(storedLog, today, daily) : storedLog),
+    [settled, allBoardsLive, storedLog, today, daily],
   );
   const clock = shadowClock(shadowLog, today);
   const [serverClock, setServerClock] = useState<{ clock: ShadowClock; remote: boolean } | null>(null);
   useEffect(() => {
-    if (!settled) return;
+    if (!settled || !allBoardsLive) return;
     let cancel = false;
     void api
       .saveShadowDay({ date: today, digest: daily })
