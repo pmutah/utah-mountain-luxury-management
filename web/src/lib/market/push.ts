@@ -1,3 +1,4 @@
+import { median, percentileRank, percentileValue } from './stats';
 import type { BoardSource, HouseId } from './types';
 import type { ShadowNight, ShadowRun } from './shadow';
 
@@ -19,6 +20,13 @@ export type PushNight = {
    * way into the plan, which is how 50 of 60 live plan lines came to be priced off sample comps.
    */
   source: BoardSource;
+  /**
+   * Where `to` still sits in the measured band, when the band has one. A raise that leaves the house at the
+   * bottom of its market is a step, not a fix, and the plan said neither.
+   */
+  percentileAfter?: number | null;
+  /** The band's 75th percentile for that night, so the line can name the ceiling it is walking toward. */
+  bandP75?: number | null;
 };
 
 export type PushPlan = {
@@ -91,6 +99,15 @@ export function pushNights(house: HouseId, nights: readonly ShadowNight[], asOf?
     // A raise never drops below the floor, and the engine already holds the base. Belt and braces.
     if (to < Math.round(night.floorGuest)) continue;
     if (from === to) continue;
+    /*
+     * Where the new price leaves us in the measured band. The engine steps 8% a day toward a target
+     * percentile, which is the right guard against a wild swing — but the plan then read "raise, $179 to
+     * $193" with nothing saying $193 is still the **bottom** of a $418–$489 cluster. A host could approve
+     * every line and reasonably believe the house was repriced when it is still the cheapest thing on the
+     * street. The percentile is computed from the same `compRates` the board used, and only where a real
+     * band exists.
+     */
+    const measured = night.source !== 'sample' && night.compRates.length > 0;
     out.push({
       house,
       date: night.date,
@@ -98,6 +115,8 @@ export function pushNights(house: HouseId, nights: readonly ShadowNight[], asOf?
       to,
       kind: night.action === 'promote' ? 'promote' : to > from ? 'raise' : 'restore',
       source: night.source,
+      percentileAfter: measured ? Math.round(percentileRank(to, night.compRates)) : null,
+      bandP75: measured ? Math.round(percentileValue(night.compRates, 75)) : null,
     });
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));
@@ -258,8 +277,47 @@ export function planLines(plan: PushPlan): string[] {
     if (night.source === 'sample') {
       return `${when}: ${label} suggested, no price to type — the only comps for this night are the invented sample set.`;
     }
-    return `${when}: ${label}, $${night.from} to $${night.to}.`;
+    /*
+     * The percentile belongs in the line, not only in a column. "raise, $179 to $193" is a true statement that
+     * leaves a false impression: it reads as though the house is being repriced, when $193 is still the
+     * bottom of a $418–$489 cluster. Naming where the new price lands turns the line into the fact it
+     * needed to be — this is one 8% step, and there are more to take.
+     */
+    const place =
+      typeof night.percentileAfter === 'number' && night.percentileAfter <= 5 && night.bandP75
+        ? ` Still the lowest in a band whose top is $${night.bandP75}; the 8% cap means more steps.`
+        : typeof night.percentileAfter === 'number' && night.percentileAfter >= 95 && night.bandP75
+          ? ` Now at the top of a band whose 75th percentile is $${night.bandP75}.`
+          : '';
+    return `${when}: ${label}, $${night.from} to $${night.to}.${place}`;
   });
+}
+
+/**
+ * The climb still ahead on a house's plan, said plainly.
+ *
+ * The 8% daily cap means a house at the bottom of its band needs many days of approvals to reach the market.
+ * Lindon is the live case: $179 against a $421 median takes roughly fifteen steps. A plan that lists seven
+ * raises without saying so reads as a repricing, so the panel names both the target and an honest estimate of
+ * the steps. It is deliberately approximate — "about 15 more trading days" is truer than a precise figure that
+ * assumes every night moves the maximum.
+ */
+export function planClimb(plan: PushPlan): string | null {
+  const raises = plan.nights.filter((night) => night.kind === 'raise');
+  if (raises.length === 0) return null;
+  const behind = raises.filter((night) => typeof night.percentileAfter === 'number' && night.percentileAfter <= 25);
+  if (behind.length === 0) return null;
+  const targets = behind.map((night) => night.bandP75).filter((value): value is number => typeof value === 'number' && value > 0);
+  if (targets.length === 0) return null;
+  const lowest = Math.min(...behind.map((night) => night.from));
+  const target = Math.round(median(targets));
+  if (lowest <= 0 || target <= lowest) return null;
+  /*
+   * An 8% compound step reaches `target` in ln(target/lowest)/ln(1.08) days. A single day is one approval, and
+   * the plan can show today's — so the number a host needs is the additional ones.
+   */
+  const days = Math.ceil(Math.log(target / lowest) / Math.log(1.08));
+  return `${behind.length === 1 ? '1 night is' : `${behind.length} nights are`} still in the bottom quarter of the market. At the 8% daily cap, closing the gap to about $${target} takes roughly ${days} more trading ${days === 1 ? 'day' : 'days'} after this one — approving these lines is a start, not a repricing.`;
 }
 
 /**

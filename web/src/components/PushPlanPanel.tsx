@@ -12,6 +12,8 @@ type Plan = {
   liveLines?: number;
   sampleLines?: number;
   sampleNote?: string | null;
+  /** How far the plan still is from the market at the 8% daily cap. Null when it is not behind. */
+  climb?: string | null;
 };
 
 /** A night the host has already approved, so it can be seen and taken back. */
@@ -219,6 +221,16 @@ export function PushPlanPanel() {
                 <p className="mt-1 text-sm" data-bot="push-plan-line">
                   {plan.line}
                 </p>
+                {/*
+                  The climb sits directly under the headline, before the night list, because the list is what a
+                  host would act on. "7 nights would change" beside a house at the bottom of its market reads as
+                  a repricing; this says how many more days the cap requires.
+                */}
+                {plan.climb && (
+                  <p className="mt-1 text-sm" data-bot={`push-plan-climb-${plan.house}`}>
+                    {plan.climb}
+                  </p>
+                )}
                 {plan.lines.length > 0 && (
                   <div className="mt-2">
                     {/*

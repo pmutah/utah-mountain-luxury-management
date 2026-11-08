@@ -226,3 +226,73 @@ test('the provenance count separates measured lines from sample lines and says s
   assert.match(planProvenance(allSample).sampleNote ?? '', /None of these prices is measured/);
   assert.equal(planProvenance(allSample).sampleLines, 1);
 });
+
+test('a raise that leaves the house at the bottom of its market says so', () => {
+  /*
+   * The plan read "raise, $179 to $193" and nothing more, while the band for that night was $418–$489 with a
+   * $421 median — so $193 was still **p0**. Approving every line left the host believing the house was
+   * repriced when it was still the cheapest on the street. The 8% daily cap is the right guard against a wild
+   * swing; the gap it creates is what has to be visible.
+   */
+  const plan = pushPlanFor(
+    'lindon',
+    run('lindon', [
+      night({
+        date: '2026-12-08',
+        source: 'live',
+        ourGuest: 179,
+        floorGuest: 51,
+        proposedGuest: 179,
+        offerGuest: 193,
+        compRates: [418, 421, 489],
+        p25: 418,
+        median: 421,
+        p75: 489,
+        action: 'raise',
+      }),
+    ]),
+    READY,
+  );
+  const line = planLines(plan)[0] ?? '';
+  assert.match(line, /\$179 to \$193/);
+  assert.match(line, /Still the lowest in a band/, 'the line reads as a repricing when it is one step');
+  assert.match(line, /8% cap means more steps/);
+  assert.equal(plan.nights[0]!.percentileAfter, 0);
+  assert.equal(plan.nights[0]!.bandP75, 455);
+  assert.match(line, /\$455/);
+});
+
+test('a raise already at the top of its market says that instead', () => {
+  const plan = pushPlanFor(
+    'lindon',
+    run('lindon', [
+      night({ date: '2026-12-08', source: 'live', ourGuest: 900, floorGuest: 300, proposedGuest: 900, offerGuest: 980, compRates: [600, 620, 640], p75: 640, action: 'raise' }),
+    ]),
+    READY,
+  );
+  assert.match(planLines(plan)[0] ?? '', /at the top of a band/);
+});
+
+test('a raise inside the band carries the price and no band commentary', () => {
+  /*
+   * The note is for the two ends, where the number misleads without it. A mid-band raise is just a raise, and
+   * padding every line with a percentile would bury the cases that matter.
+   */
+  const plan = pushPlanFor(
+    'lindon',
+    run('lindon', [
+      night({ date: '2026-12-08', source: 'live', ourGuest: 400, floorGuest: 125, proposedGuest: 400, offerGuest: 432, compRates: [300, 430, 600, 700], p75: 625, action: 'raise' }),
+    ]),
+    READY,
+  );
+  const line = planLines(plan)[0] ?? '';
+  assert.match(line, /\$400 to \$432/);
+  assert.equal(/Still the lowest|at the top of a band/.test(line), false);
+});
+
+test('a sample-priced night carries no percentile, because there is no band to be in', () => {
+  const plan = pushPlanFor('lindon', run('lindon', [night({ source: 'sample', action: 'raise' })]), READY);
+  assert.equal(plan.nights[0]!.percentileAfter, null);
+  assert.equal(plan.nights[0]!.bandP75, null);
+});
+
