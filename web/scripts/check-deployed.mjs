@@ -117,10 +117,44 @@ if (llms.status !== 200) {
   }
 }
 
-// 4. A public route must answer JSON, so a deployment with no KV or no Functions is caught here.
+// 4. The client bundle actually being served must be the one this build produced.
+//
+//    This is the check that was missing. On 2026-11-08 `npm run deploy` reported "Deployed and verified"
+//    while production's index.html still referenced `index-Q9gtsZVq.js` and the build had produced
+//    `index-GOWt05II.js`. Every API route was fresh, `llms.txt` was current, and all five checks below
+//    passed — but a lazy-loaded chunk was being served as **3 KB of HTML fallback** instead of the 28 KB
+//    component, so two turns of client fixes silently never reached anybody. I only found it by fetching
+//    a chunk and noticing the byte length was absurd.
+//
+//    A content-hashed filename makes this exact: if the build produced a different hash than the deployed
+//    HTML names, the static half of the deploy is stale. It compares names, never contents, so it cannot
+//    false-positive on whitespace.
+try {
+  const { readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const localIndex = readFileSync(join(process.cwd(), 'dist', 'index.html'), 'utf8');
+  const localScript = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(localIndex)?.[0] ?? null;
+  const liveScript = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(home.body)?.[0] ?? null;
+  if (!localScript) {
+    problems.push('dist/index.html names no built bundle, so this check cannot compare it.');
+  } else if (!liveScript) {
+    problems.push('/ : the live HTML names no built bundle, so the static deploy is not this build.');
+  } else if (localScript !== liveScript) {
+    problems.push(
+      `/ : the live HTML loads ${liveScript} but this build produced ${localScript}. The static half of the deploy is stale, so client changes are not live even though the Functions are.`,
+    );
+  } else {
+    notes.push(`/ : serving this build's bundle (${localScript.split('/').pop()})`);
+  }
+} catch (err) {
+  // No dist on disk (a check run before a build) is not a deploy problem; say so without failing.
+  notes.push(`/ : could not compare the bundle (${err instanceof Error ? err.message : String(err)})`);
+}
+
+// 5. A public route must answer JSON, so a deployment with no KV or no Functions is caught here.
 await expectJson('/api/book/availability');
 
-// 5. A private route must refuse with a readable reason, not crash. An empty 5xx is a broken build:
+// 6. A private route must refuse with a readable reason, not crash. An empty 5xx is a broken build:
 //    this branch answers 401 with a message when no password is set.
 const expenses = await probe('/api/expenses');
 if (expenses.status === 0) {
