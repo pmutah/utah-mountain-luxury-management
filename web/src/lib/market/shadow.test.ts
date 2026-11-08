@@ -105,7 +105,32 @@ test('a promotion that cannot reach the market is not applied', () => {
   assert.ok(night.offerGuest > night.p75, 'this fixture should leave the offer above the market');
   assert.notEqual(night.action, 'promote', 'a discount that cannot reach the market was offered');
   assert.equal(night.promotionPercent, 0);
-  assert.match(night.reason, /75th percentile/);
+  assert.match(night.reason, /highest open comp ask/);
+});
+
+test('a two-comp night is checked too, because a thin band deserves more scrutiny', () => {
+  /*
+   * The first version of the market check required three comps and therefore skipped a night with two —
+   * which is backwards. River's 20 and 21 November each had two observed asks and still received a
+   * promotion to $1,989 against a highest ask of about $1,558. Fewer observations should mean more caution.
+   */
+  const board = buildMarketBoard('ranch', '2026-11-06', 1, undefined, {
+    comps: [
+      { id: 't1', name: 'Comp', area: 'Orem', beds: 6, sleeps: 20, rating: 4.8, reviews: 10, guestFavorite: false, distanceMi: 4, isOwn: false, minNights: 1 },
+      { id: 't2', name: 'Comp 2', area: 'Orem', beds: 6, sleeps: 20, rating: 4.8, reviews: 10, guestFavorite: false, distanceMi: 4, isOwn: false, minNights: 1 },
+    ],
+    index: new Map([
+      ['t1', new Map([['2026-11-06', 420]])],
+      ['t2', new Map([['2026-11-06', 450]])],
+    ]),
+  });
+  const night0 = board.nights[0]!;
+  assert.equal(night0.compRates.length, 2, 'this fixture must carry exactly two asks');
+
+  const run = runShadow(board, [], false, '2026-11-06', 'short');
+  const night = run.nights[0]!;
+  assert.ok(night.offerGuest > Math.max(...night0.compRates), 'the offer should be above both asks');
+  assert.notEqual(night.action, 'promote', 'a two-comp night was promoted above both of its comps');
 });
 
 test('a night no stay can cover keeps the published rate', () => {

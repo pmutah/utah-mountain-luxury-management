@@ -6,7 +6,6 @@ import { serviceBrief } from '../clean';
 import { departureBrief } from '../departure';
 import { childBrief, partyBrief } from '../note-party';
 import { addonPhrase, lengthPhrase } from '../open-arrivals';
-import { percentileValue } from './stats';
 import { SHADOW_UNREAD } from './shadow-log';
 import { bookableNights } from './bookable';
 import { compFitSummary } from './comp-fit';
@@ -279,17 +278,21 @@ function applyFill(
      * House proves the case: a 20% cut took $2,486 to $1,989 while the comp cluster's 75th percentile was
      * about $1,480, so the "discount" was still a third above the most expensive comparable and could not
      * fill the night. `promotionForNight` checks pace and lead time but never the market, because it does
-     * not receive the band. When the offer stays above p75 the night holds at its base, and the reason says
-     * which two numbers forbid the discount.
+     * not receive the band.
+     *
+     * The band is required at **any** count of one or more, not three or more. The first version of this
+     * check demanded three comps and therefore skipped a two-comp night, which is exactly backwards: fewer
+     * observations make the band less trustworthy, so a discount there deserves more scrutiny rather than
+     * none. A night with at least one observed ask must land at or under the top of that ask range.
      */
-    const p75 = night.compRates.length >= 3 ? Math.round(percentileValue(night.compRates, 75)) : null;
-    if (p75 !== null && decision.offerGuest > p75) {
+    const bandHigh = night.compRates.length > 0 ? Math.max(...night.compRates.map((rate) => Math.round(rate))) : null;
+    if (bandHigh !== null && decision.offerGuest > bandHigh) {
       return {
         ...night,
         action: 'hold',
         promotionPercent: 0,
         offerGuest: night.proposedGuest,
-        reason: `A 20% promotion would be ${money(decision.offerGuest)} and the market's 75th percentile is ${money(p75)}, so the discount would not reach the market. The base stays.`,
+        reason: `A 20% promotion would be ${money(decision.offerGuest)} and the highest open comp ask is ${money(bandHigh)}, so the discount would not reach the market. The base stays.`,
       };
     }
     const raised = night.proposedGuest > night.ourGuest;
