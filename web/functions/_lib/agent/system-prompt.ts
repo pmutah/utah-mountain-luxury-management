@@ -2,7 +2,7 @@ import { listSharedWork } from '../agent-work';
 import { PRICING_DOCTRINE, grossGoalSnapshot } from '../pricing-doctrine';
 import { PROPERTIES } from '../data';
 import { getAllReservations, getOccupancySummary } from '../reservations-store';
-import { loadPricingAlerts, compareMarket } from '../pricing-store';
+import { loadApprovedRates, loadPricingAlerts, compareMarket } from '../pricing-store';
 import { checkCalendarDiscrepancies } from '../calendar-store';
 import type { AgentChatContext, AgentEnv } from './types';
 
@@ -35,6 +35,33 @@ export async function buildAgentContext(
   }
 
   const shared = await listSharedWork(env).catch(() => ({ open: [], done: [] }));
+  /*
+   * The nights the host has already priced.
+   *
+   * Without this the model answered a direct pricing question from the comp band alone: asked what to charge for
+   * a Lindon night the host had approved at $193, it replied "$527 Airbnb, and a 20% promotion since it is inside
+   * 21 days" — a number four times the host's decision, plus a discount on a night the host had deliberately
+   * priced. The sheet is read here as well as in the tool, because a model that answers from context never calls
+   * the tool at all.
+   */
+  let approvedLine = 'Approved prices: none. Every night uses the published card.';
+  try {
+    const sheet = await loadApprovedRates(env);
+    if (sheet.length > 0) {
+      const rows = [...sheet].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 40);
+      const byHouse = new Map<string, string[]>();
+      for (const row of rows) {
+        const list = byHouse.get(row.house) ?? [];
+        list.push(`${row.date} $${row.guest}`);
+        byHouse.set(row.house, list);
+      }
+      approvedLine = `Approved prices (the host's decision — quote these, and apply no promotion to them): ${[...byHouse.entries()]
+        .map(([house, list]) => `${house} — ${list.join(', ')}`)
+        .join('; ')}`;
+    }
+  } catch {
+    approvedLine = 'Approved prices: could not be read, so treat every night as the published card and say so.';
+  }
   const sharedLine = [
     ...shared.done.slice(0, 8).map((item) => `${item.ownerName} finished ${item.title} ${item.atDenver}. ${item.result}`),
     ...shared.open.slice(0, 5).map((item) =>
@@ -56,6 +83,7 @@ export async function buildAgentContext(
     `- Lindon House (lindon): ${lindonAddr}`,
     `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
     `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
+    approvedLine,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : '',
     uiContext.activeTab ? `Active tab: ${uiContext.activeTab}` : '',
     `Gross booking goals (host payout, before mortgage and bills): ${(['lindon', 'ranch', 'river'] as const)

@@ -85,7 +85,7 @@ function isPublicMusePath(pathname) {
 }
 var init_auth = __esm({
   "_lib/muse/auth.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(museBotSecret, "museBotSecret");
     __name(safeEqual, "safeEqual");
     __name(providedMuseSecret, "providedMuseSecret");
@@ -203,7 +203,7 @@ function corsJson(request, data, status = 200, extraHeaders = {}) {
 var PROPERTIES, OWNER_SPLIT_PROPERTY_IDS, RESERVATIONS, EXPENSES, DEFAULT_EXTRA_CLEANING, RIVER_OPEN_MONTH, ALLOWED_ORIGINS;
 var init_data = __esm({
   "_lib/data.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     PROPERTIES = {
       ranch: {
         id: "ranch",
@@ -408,7 +408,7 @@ function allowlistSummary(env) {
 var BOOTSTRAP_EMAILS, BOT_EMAILS;
 var init_email_allowlist = __esm({
   "_lib/email-allowlist.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     BOOTSTRAP_EMAILS = ["pmutah@gmail.com", "stephlouw@gmail.com", "utahviper@hotmail.com"];
     BOT_EMAILS = ["muse-dms@pmutah.com", "barbara-dms@pmutah.com"];
     __name(normalizeEmail, "normalizeEmail");
@@ -491,7 +491,7 @@ function hmacSha256(key, message2) {
 var K;
 var init_sha256 = __esm({
   "_lib/sha256.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     K = [
       1116352408,
       1899447441,
@@ -622,7 +622,7 @@ function clearCookieHeader() {
 var COOKIE, MAX_AGE_SECONDS, encoder;
 var init_email_session = __esm({
   "_lib/email-session.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_sha256();
     COOKIE = "wpm_auth";
     MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -713,7 +713,7 @@ function hostDenied(request, env) {
 var COOKIE2;
 var init_auth2 = __esm({
   "_lib/auth.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth();
     init_data();
     init_email_allowlist();
@@ -883,7 +883,7 @@ function decodeBase64Receipt(base64) {
 var STORAGE_SCOPE, TOKEN_URL, RECEIPT_MAX_BYTES, RECEIPT_ALLOWED_MIME, cachedToken;
 var init_gcs = __esm({
   "_lib/gcs.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     STORAGE_SCOPE = "https://www.googleapis.com/auth/devstorage.read_write";
     TOKEN_URL = "https://oauth2.googleapis.com/token";
     RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
@@ -915,7 +915,7 @@ var init_gcs = __esm({
 var CONSTRUCTION_MAX_BYTES, CONSTRUCTION_MAX_MB, KV_CONSTRUCTION_SINGLE_MAX_BYTES, KV_CONSTRUCTION_CHUNK_BYTES, CONSTRUCTION_INGEST_MAX_BYTES;
 var init_construction_limits = __esm({
   "_lib/construction/construction-limits.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     CONSTRUCTION_MAX_BYTES = 16 * 1024 * 1024;
     CONSTRUCTION_MAX_MB = 15;
     KV_CONSTRUCTION_SINGLE_MAX_BYTES = 3 * 1024 * 1024;
@@ -942,7 +942,7 @@ function base64ToUint8(b64) {
 }
 var init_construction_binary = __esm({
   "_lib/construction/construction-binary.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(uint8ToBase64, "uint8ToBase64");
     __name(base64ToUint8, "base64ToUint8");
   }
@@ -1037,7 +1037,7 @@ function docIdFromKvPath(path) {
 var KV_CONSTRUCTION_PREFIX;
 var init_construction_doc_kv = __esm({
   "_lib/construction/construction-doc-kv.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_construction_limits();
     init_construction_binary();
     KV_CONSTRUCTION_PREFIX = "construction:file:";
@@ -1126,7 +1126,7 @@ async function deleteConstructionFile(env, storagePath) {
 var CONSTRUCTION_ALLOWED_MIME;
 var init_construction_doc_store = __esm({
   "_lib/construction/construction-doc-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gcs();
     init_construction_limits();
     init_construction_doc_kv();
@@ -1172,7 +1172,7 @@ function peekCached(env, key) {
 var CACHE, READ_STATS;
 var init_request_cache = __esm({
   "_lib/request-cache.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     CACHE = /* @__PURE__ */ Symbol("uml.storeCache");
     READ_STATS = /* @__PURE__ */ Symbol("uml.readStats");
     __name(box, "box");
@@ -1253,7 +1253,7 @@ function newId(prefix) {
 var StorageReadError, LEDGER_KEYS;
 var init_kv_json = __esm({
   "_lib/kv-json.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_request_cache();
     StorageReadError = class extends Error {
       static {
@@ -1347,7 +1347,7 @@ function buildDocumentDigest(docs) {
 var MAX_CATALOG_CHARS, LINE_SUMMARY_MAX;
 var init_document_catalog = __esm({
   "_lib/construction/document-catalog.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     MAX_CATALOG_CHARS = 1e4;
     LINE_SUMMARY_MAX = 120;
     __name(oneLineSummary, "oneLineSummary");
@@ -1427,7 +1427,7 @@ function sumInvoicedAmount(docs) {
 var INVOICE_FILE_RE, QUOTE_ONLY_RE;
 var init_construction_invoice = __esm({
   "_lib/construction/construction-invoice.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     INVOICE_FILE_RE = /\b(inv(oice)?|bill)\b|inv\s*#|invoice[_\s-]|inv[_\s-]\d|from_.*construction/i;
     QUOTE_ONLY_RE = /\b(quote|estimate|proposal)\b/i;
     __name(looksLikeInvoiceFileName, "looksLikeInvoiceFileName");
@@ -1449,7 +1449,7 @@ function parseConstructionStage(value) {
 var DEFAULT_CONSTRUCTION_STAGES;
 var init_types = __esm({
   "_lib/construction/types.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     DEFAULT_CONSTRUCTION_STAGES = [
       "Planning",
       "Permits",
@@ -1566,7 +1566,7 @@ async function saveConstructionSession(env, sessionId, messages) {
 var KV_PROJECT, KV_DOCS, KV_DECISIONS, KV_RECOMMENDATIONS, KV_SESSIONS, KV_DOC_DIGEST, DEFAULT_PROJECT;
 var init_construction_store = __esm({
   "_lib/construction/construction-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     init_document_catalog();
     init_construction_invoice();
@@ -1646,7 +1646,7 @@ function pausedResponse(request, what = "Saved records") {
 }
 var init_read_guard = __esm({
   "_lib/read-guard.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_kv_json();
     __name(readOrRefuse, "readOrRefuse");
@@ -1659,7 +1659,7 @@ var init_read_guard = __esm({
 var onRequestGet;
 var init_file = __esm({
   "api/construction/documents/[id]/file.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_construction_doc_store();
     init_construction_store();
@@ -1770,7 +1770,7 @@ async function generateGeminiJson(apiKey, parts) {
 var GEMINI_MODELS, RETRYABLE_STATUS;
 var init_gemini_call = __esm({
   "_lib/gemini-call.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     GEMINI_MODELS = ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"];
     RETRYABLE_STATUS = /* @__PURE__ */ new Set([408, 429, 500, 502, 503, 529]);
     __name(sleep, "sleep");
@@ -1854,7 +1854,7 @@ File name: ${fileName ?? "document"}`;
 }
 var init_construction_ingest = __esm({
   "_lib/construction/construction-ingest.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gemini_call();
     init_construction_invoice();
     __name(ingestConstructionDocument, "ingestConstructionDocument");
@@ -1865,7 +1865,7 @@ var init_construction_ingest = __esm({
 var onRequestPost, onRequestOptions;
 var init_reanalyze = __esm({
   "api/construction/documents/[id]/reanalyze.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_construction_binary();
@@ -2006,7 +2006,7 @@ function isSessionOpen(session) {
 var KV_DOCS2, KV_SESSION_PREFIX, KV_TOKEN_PREFIX, SESSION_DAYS;
 var init_esign_store = __esm({
   "_lib/esign/esign-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_DOCS2 = "esignDocuments";
     KV_SESSION_PREFIX = "esign:session:";
@@ -2114,7 +2114,7 @@ function esignIdFromKvPath(path) {
 var ESIGN_MAX_BYTES, ESIGN_MAX_MB, KV_ESIGN_SINGLE_MAX_BYTES, PREFIX;
 var init_esign_file_kv = __esm({
   "_lib/esign/esign-file-kv.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_construction_limits();
     init_construction_binary();
     ESIGN_MAX_BYTES = CONSTRUCTION_MAX_BYTES;
@@ -2206,7 +2206,7 @@ async function deleteEsignStoredFile(env, storagePath) {
 var ALLOWED;
 var init_esign_file_store = __esm({
   "_lib/esign/esign-file-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gcs();
     init_esign_file_kv();
     ALLOWED = /* @__PURE__ */ new Set([...RECEIPT_ALLOWED_MIME]);
@@ -2223,7 +2223,7 @@ var init_esign_file_store = __esm({
 var onRequestGet2;
 var init_file2 = __esm({
   "api/esign/documents/[id]/file.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_esign_store();
     init_esign_file_store();
@@ -2580,7 +2580,7 @@ ${text2}`.trim(),
 var KV_GMAIL;
 var init_gmail_store = __esm({
   "_lib/gmail-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_GMAIL = "gmailTokens";
     __name(loadGmailTokens, "loadGmailTokens");
@@ -2651,7 +2651,7 @@ async function sendTwilioSms(env, to, body) {
 }
 var init_twilio_sms = __esm({
   "_lib/twilio-sms.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(twilioFromNumber, "twilioFromNumber");
     __name(isTwilioConfigured, "isTwilioConfigured");
     __name(digitsPhone, "digitsPhone");
@@ -2689,7 +2689,7 @@ function esignSmsBody(input) {
 }
 var init_esign_copy = __esm({
   "_lib/esign/esign-copy.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(esignEmailSubject, "esignEmailSubject");
     __name(esignEmailBody, "esignEmailBody");
     __name(esignSmsBody, "esignSmsBody");
@@ -2770,7 +2770,7 @@ async function startSigningSession(env, doc, origin, input) {
 }
 var init_send_session = __esm({
   "_lib/esign/send-session.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gmail_store();
     init_twilio_sms();
     init_esign_copy();
@@ -2783,7 +2783,7 @@ var init_send_session = __esm({
 var onRequestPost2, onRequestOptions2;
 var init_send = __esm({
   "api/esign/documents/[id]/send.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_esign_store();
@@ -2837,7 +2837,7 @@ async function readJsonBody(request, message2 = "That request could not be read.
 }
 var init_json_body = __esm({
   "_lib/json-body.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     __name(readJsonBody, "readJsonBody");
   }
@@ -2846,7 +2846,7 @@ var init_json_body = __esm({
 // ../../node_modules/pdf-lib/node_modules/tslib/tslib.js
 var require_tslib = __commonJS({
   "../../node_modules/pdf-lib/node_modules/tslib/tslib.js"(exports, module) {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var __extends2;
     var __assign2;
     var __rest2;
@@ -3230,7 +3230,7 @@ var require_tslib = __commonJS({
 var import_tslib, __extends, __assign, __rest, __decorate, __param, __metadata, __awaiter, __generator, __exportStar, __createBinding, __values, __read, __spread, __spreadArrays, __await, __asyncGenerator, __asyncDelegator, __asyncValues, __makeTemplateObject, __importStar, __importDefault, __classPrivateFieldGet, __classPrivateFieldSet;
 var init_modules = __esm({
   "../../node_modules/pdf-lib/node_modules/tslib/modules/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     import_tslib = __toESM(require_tslib(), 1);
     ({
       __extends,
@@ -3264,7 +3264,7 @@ var init_modules = __esm({
 var chars, lookup, i, encodeToBase64, decodeFromBase64, DATA_URI_PREFIX_REGEX, decodeFromBase64DataUri;
 var init_base64 = __esm({
   "../../node_modules/pdf-lib/es/utils/base64.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     lookup = new Uint8Array(256);
     for (i = 0; i < chars.length; i++) {
@@ -3331,7 +3331,7 @@ var init_base64 = __esm({
 var toCharCode, toCodePoint, toHexStringOfMinLength, toHexString, charFromCode, charFromHexCode, padStart, copyStringIntoBuffer, escapeRegExp, cleanText, escapedNewlineChars, isNewlineChar, lineSplit, mergeLines, charAtIndex, charSplit, buildWordBreakRegex, breakTextIntoLines, dateRegex, parseDate, findLastMatch;
 var init_strings = __esm({
   "../../node_modules/pdf-lib/es/utils/strings.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     toCharCode = /* @__PURE__ */ __name(function(character) {
       return character.charCodeAt(0);
     }, "toCharCode");
@@ -3475,7 +3475,7 @@ var init_strings = __esm({
 var last, typedArrayFor, mergeIntoTypedArray, mergeUint8Arrays, arrayAsString, byAscendingId, sortedUniq, reverseArray, sum, range, pluckIndices, canBeConvertedToUint8Array, toUint8Array;
 var init_arrays = __esm({
   "../../node_modules/pdf-lib/es/utils/arrays.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_base64();
     init_strings();
     last = /* @__PURE__ */ __name(function(array) {
@@ -3604,7 +3604,7 @@ var init_arrays = __esm({
 var waitForTick;
 var init_async = __esm({
   "../../node_modules/pdf-lib/es/utils/async.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     waitForTick = /* @__PURE__ */ __name(function() {
       return new Promise(function(resolve) {
         setTimeout(function() {
@@ -3619,7 +3619,7 @@ var init_async = __esm({
 var utf16Encode, isWithinBMP, hasSurrogates, highSurrogate, lowSurrogate, ByteOrder, REPLACEMENT, utf16Decode, isHighSurrogate, isLowSurrogate, decodeValues, readBOM, hasUtf16BigEndianBOM, hasUtf16LittleEndianBOM, hasUtf16BOM;
 var init_unicode = __esm({
   "../../node_modules/pdf-lib/es/utils/unicode.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_strings();
     utf16Encode = /* @__PURE__ */ __name(function(input, byteOrderMark) {
       if (byteOrderMark === void 0) {
@@ -3723,7 +3723,7 @@ var init_unicode = __esm({
 var numberToString, sizeInBytes, bytesFor;
 var init_numbers = __esm({
   "../../node_modules/pdf-lib/es/utils/numbers.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     numberToString = /* @__PURE__ */ __name(function(num) {
       var numStr = String(num);
       if (Math.abs(num) < 1) {
@@ -3764,7 +3764,7 @@ var init_numbers = __esm({
 var error;
 var init_errors = __esm({
   "../../node_modules/pdf-lib/es/utils/errors.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     error = /* @__PURE__ */ __name(function(msg) {
       throw new Error(msg);
     }, "error");
@@ -3775,7 +3775,7 @@ var init_errors = __esm({
 var require_common = __commonJS({
   "../../node_modules/pako/lib/utils/common.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var TYPED_OK = typeof Uint8Array !== "undefined" && typeof Uint16Array !== "undefined" && typeof Int32Array !== "undefined";
     function _has(obj, key) {
       return Object.prototype.hasOwnProperty.call(obj, key);
@@ -3868,7 +3868,7 @@ var require_common = __commonJS({
 var require_trees = __commonJS({
   "../../node_modules/pako/lib/zlib/trees.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var utils = require_common();
     var Z_FIXED = 4;
     var Z_BINARY = 0;
@@ -4540,7 +4540,7 @@ var require_trees = __commonJS({
 var require_adler32 = __commonJS({
   "../../node_modules/pako/lib/zlib/adler32.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     function adler32(adler, buf, len, pos) {
       var s1 = adler & 65535 | 0, s2 = adler >>> 16 & 65535 | 0, n = 0;
       while (len !== 0) {
@@ -4564,7 +4564,7 @@ var require_adler32 = __commonJS({
 var require_crc32 = __commonJS({
   "../../node_modules/pako/lib/zlib/crc32.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     function makeTable() {
       var c, table2 = [];
       for (var n = 0; n < 256; n++) {
@@ -4595,7 +4595,7 @@ var require_crc32 = __commonJS({
 var require_messages = __commonJS({
   "../../node_modules/pako/lib/zlib/messages.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     module.exports = {
       2: "need dictionary",
       /* Z_NEED_DICT       2  */
@@ -4623,7 +4623,7 @@ var require_messages = __commonJS({
 var require_deflate = __commonJS({
   "../../node_modules/pako/lib/zlib/deflate.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var utils = require_common();
     var trees = require_trees();
     var adler32 = require_adler32();
@@ -5699,7 +5699,7 @@ var require_deflate = __commonJS({
 var require_strings = __commonJS({
   "../../node_modules/pako/lib/utils/strings.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var utils = require_common();
     var STR_APPLY_OK = true;
     var STR_APPLY_UIA_OK = true;
@@ -5843,7 +5843,7 @@ var require_strings = __commonJS({
 var require_zstream = __commonJS({
   "../../node_modules/pako/lib/zlib/zstream.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     function ZStream() {
       this.input = null;
       this.next_in = 0;
@@ -5867,7 +5867,7 @@ var require_zstream = __commonJS({
 var require_deflate2 = __commonJS({
   "../../node_modules/pako/lib/deflate.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var zlib_deflate = require_deflate();
     var utils = require_common();
     var strings = require_strings();
@@ -6033,7 +6033,7 @@ var require_deflate2 = __commonJS({
 var require_inffast = __commonJS({
   "../../node_modules/pako/lib/zlib/inffast.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var BAD = 30;
     var TYPE = 12;
     module.exports = /* @__PURE__ */ __name(function inflate_fast(strm, start) {
@@ -6263,7 +6263,7 @@ var require_inffast = __commonJS({
 var require_inftrees = __commonJS({
   "../../node_modules/pako/lib/zlib/inftrees.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var utils = require_common();
     var MAXBITS = 15;
     var ENOUGH_LENS = 852;
@@ -6580,7 +6580,7 @@ var require_inftrees = __commonJS({
 var require_inflate = __commonJS({
   "../../node_modules/pako/lib/zlib/inflate.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var utils = require_common();
     var adler32 = require_adler32();
     var crc32 = require_crc32();
@@ -7833,7 +7833,7 @@ var require_inflate = __commonJS({
 var require_constants = __commonJS({
   "../../node_modules/pako/lib/zlib/constants.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     module.exports = {
       /* Allowed flush values; see deflate() and inflate() below for details */
       Z_NO_FLUSH: 0,
@@ -7881,7 +7881,7 @@ var require_constants = __commonJS({
 var require_gzheader = __commonJS({
   "../../node_modules/pako/lib/zlib/gzheader.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     function GZheader() {
       this.text = 0;
       this.time = 0;
@@ -7903,7 +7903,7 @@ var require_gzheader = __commonJS({
 var require_inflate2 = __commonJS({
   "../../node_modules/pako/lib/inflate.js"(exports) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var zlib_inflate = require_inflate();
     var utils = require_common();
     var strings = require_strings();
@@ -8081,7 +8081,7 @@ var require_inflate2 = __commonJS({
 var require_pako = __commonJS({
   "../../node_modules/pako/index.js"(exports, module) {
     "use strict";
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     var assign = require_common().assign;
     var deflate = require_deflate2();
     var inflate = require_inflate2();
@@ -8096,7 +8096,7 @@ var require_pako = __commonJS({
 var import_pako, chars2, lookup2, i, decodeFromBase642, arrayToString, decompressJson, padStart2;
 var init_utils = __esm({
   "../../node_modules/@pdf-lib/standard-fonts/es/utils.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     import_pako = __toESM(require_pako());
     chars2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     lookup2 = new Uint8Array(256);
@@ -8266,7 +8266,7 @@ var init_ZapfDingbats_compressed = __esm({
 var compressedJsonForFontName, FontNames, fontCache, Font;
 var init_Font = __esm({
   "../../node_modules/@pdf-lib/standard-fonts/es/Font.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_utils();
     init_Courier_Bold_compressed();
     init_Courier_BoldOblique_compressed();
@@ -8364,7 +8364,7 @@ var init_all_encodings_compressed = __esm({
 var decompressedEncodings, allUnicodeMappings, Encoding, Encodings;
 var init_Encoding = __esm({
   "../../node_modules/@pdf-lib/standard-fonts/es/Encoding.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_utils();
     init_all_encodings_compressed();
     decompressedEncodings = decompressJson(all_encodings_compressed_default);
@@ -8406,7 +8406,7 @@ var init_Encoding = __esm({
 // ../../node_modules/@pdf-lib/standard-fonts/es/index.js
 var init_es = __esm({
   "../../node_modules/@pdf-lib/standard-fonts/es/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_Font();
     init_Encoding();
   }
@@ -8416,7 +8416,7 @@ var init_es = __esm({
 var values, StandardFontValues, isStandardFont, rectanglesAreEqual;
 var init_objects = __esm({
   "../../node_modules/pdf-lib/es/utils/objects.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_es();
     values = /* @__PURE__ */ __name(function(obj) {
       return Object.keys(obj).map(function(k) {
@@ -8437,7 +8437,7 @@ var init_objects = __esm({
 var backtick, singleQuote, formatValue, createValueErrorMsg, assertIsOneOf, assertIsOneOfOrUndefined, assertIsSubset, getType, isType, createTypeErrorMsg, assertIs, assertOrUndefined, assertEachIs, assertRange, assertRangeOrUndefined, assertMultiple, assertInteger, assertPositive;
 var init_validators = __esm({
   "../../node_modules/pdf-lib/es/utils/validators.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_objects();
     backtick = /* @__PURE__ */ __name(function(val) {
       return "`" + val + "`";
@@ -8621,7 +8621,7 @@ var init_validators = __esm({
 var pdfDocEncodingToUnicode, idx, pdfDocEncodingDecode;
 var init_pdfDocEncoding = __esm({
   "../../node_modules/pdf-lib/es/utils/pdfDocEncoding.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_strings();
     pdfDocEncodingToUnicode = new Uint16Array(256);
     for (idx = 0; idx < 256; idx++) {
@@ -8685,7 +8685,7 @@ var init_pdfDocEncoding = __esm({
 var Cache, Cache_default;
 var init_Cache = __esm({
   "../../node_modules/pdf-lib/es/utils/Cache.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     Cache = /** @class */
     (function() {
       function Cache2(populate) {
@@ -8716,7 +8716,7 @@ var init_Cache = __esm({
 // ../../node_modules/pdf-lib/es/utils/index.js
 var init_utils2 = __esm({
   "../../node_modules/pdf-lib/es/utils/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_arrays();
     init_async();
     init_strings();
@@ -8735,7 +8735,7 @@ var init_utils2 = __esm({
 var MethodNotImplementedError, PrivateConstructorError, UnexpectedObjectTypeError, UnsupportedEncodingError, ReparseError, MissingCatalogError, MissingPageContentsEmbeddingError, UnrecognizedStreamTypeError, PageEmbeddingMismatchedContextError, PDFArrayIsNotRectangleError, InvalidPDFDateStringError, InvalidTargetIndexError, CorruptPageTreeError, IndexOutOfBoundsError, InvalidAcroFieldValueError, MultiSelectValueError, MissingDAEntryError, MissingTfOperatorError, NumberParsingError, PDFParsingError, NextByteAssertionError, PDFObjectParsingError, PDFInvalidObjectParsingError, PDFStreamParsingError, UnbalancedParenthesisError, StalledParserError, MissingPDFHeaderError, MissingKeywordError;
 var init_errors2 = __esm({
   "../../node_modules/pdf-lib/es/core/errors.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_utils2();
     MethodNotImplementedError = /** @class */
@@ -9088,7 +9088,7 @@ var init_errors2 = __esm({
 var CharCodes, CharCodes_default;
 var init_CharCodes = __esm({
   "../../node_modules/pdf-lib/es/core/syntax/CharCodes.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     (function(CharCodes2) {
       CharCodes2[CharCodes2["Null"] = 0] = "Null";
       CharCodes2[CharCodes2["Backspace"] = 8] = "Backspace";
@@ -9157,7 +9157,7 @@ var init_CharCodes = __esm({
 var PDFHeader, PDFHeader_default;
 var init_PDFHeader = __esm({
   "../../node_modules/pdf-lib/es/core/document/PDFHeader.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_CharCodes();
     init_utils2();
     PDFHeader = /** @class */
@@ -9205,7 +9205,7 @@ var init_PDFHeader = __esm({
 var PDFObject, PDFObject_default;
 var init_PDFObject = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFObject.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors2();
     PDFObject = /** @class */
     (function() {
@@ -9234,7 +9234,7 @@ var init_PDFObject = __esm({
 var PDFNumber, PDFNumber_default;
 var init_PDFNumber = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFNumber.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_utils2();
     init_PDFObject();
@@ -9280,7 +9280,7 @@ var init_PDFNumber = __esm({
 var PDFArray, PDFArray_default;
 var init_PDFArray = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFArray.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFNumber();
     init_PDFObject();
@@ -9406,7 +9406,7 @@ var init_PDFArray = __esm({
 var ENFORCER, PDFBool, PDFBool_default;
 var init_PDFBool = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFBool.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_errors2();
     init_PDFObject();
@@ -9464,7 +9464,7 @@ var init_PDFBool = __esm({
 var IsDelimiter;
 var init_Delimiters = __esm({
   "../../node_modules/pdf-lib/es/core/syntax/Delimiters.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_CharCodes();
     IsDelimiter = new Uint8Array(256);
     IsDelimiter[CharCodes_default.LeftParen] = 1;
@@ -9484,7 +9484,7 @@ var init_Delimiters = __esm({
 var IsWhitespace;
 var init_Whitespace = __esm({
   "../../node_modules/pdf-lib/es/core/syntax/Whitespace.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_CharCodes();
     IsWhitespace = new Uint8Array(256);
     IsWhitespace[CharCodes_default.Null] = 1;
@@ -9500,7 +9500,7 @@ var init_Whitespace = __esm({
 var IsIrregular, idx, len;
 var init_Irregular = __esm({
   "../../node_modules/pdf-lib/es/core/syntax/Irregular.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_CharCodes();
     init_Delimiters();
     init_Whitespace();
@@ -9516,7 +9516,7 @@ var init_Irregular = __esm({
 var decodeName, isRegularChar, ENFORCER2, pool, PDFName, PDFName_default;
 var init_PDFName = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFName.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_errors2();
     init_PDFObject();
@@ -9650,7 +9650,7 @@ var init_PDFName = __esm({
 var PDFNull, PDFNull_default;
 var init_PDFNull = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFNull.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFObject();
     init_CharCodes();
@@ -9690,7 +9690,7 @@ var init_PDFNull = __esm({
 var PDFDict, PDFDict_default;
 var init_PDFDict = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFDict.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFName();
     init_PDFNull();
@@ -9833,7 +9833,7 @@ var init_PDFDict = __esm({
 var PDFStream, PDFStream_default;
 var init_PDFStream = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_errors2();
     init_PDFName();
@@ -9915,7 +9915,7 @@ var init_PDFStream = __esm({
 var PDFRawStream, PDFRawStream_default;
 var init_PDFRawStream = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFRawStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFStream();
     init_utils2();
@@ -9956,7 +9956,7 @@ var init_PDFRawStream = __esm({
 var ENFORCER3, pool2, PDFRef, PDFRef_default;
 var init_PDFRef = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFRef.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_errors2();
     init_PDFObject();
@@ -10012,7 +10012,7 @@ var init_PDFRef = __esm({
 var PDFOperator, PDFOperator_default;
 var init_PDFOperator = __esm({
   "../../node_modules/pdf-lib/es/core/operators/PDFOperator.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFObject();
     init_CharCodes();
     init_utils2();
@@ -10075,7 +10075,7 @@ var init_PDFOperator = __esm({
 var PDFOperatorNames, PDFOperatorNames_default;
 var init_PDFOperatorNames = __esm({
   "../../node_modules/pdf-lib/es/core/operators/PDFOperatorNames.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     (function(PDFOperatorNames2) {
       PDFOperatorNames2["NonStrokingColor"] = "sc";
       PDFOperatorNames2["NonStrokingColorN"] = "scn";
@@ -10159,7 +10159,7 @@ var init_PDFOperatorNames = __esm({
 var import_pako2, PDFFlateStream, PDFFlateStream_default;
 var init_PDFFlateStream = __esm({
   "../../node_modules/pdf-lib/es/core/structures/PDFFlateStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     import_pako2 = __toESM(require_pako());
     init_errors2();
@@ -10201,7 +10201,7 @@ var init_PDFFlateStream = __esm({
 var PDFContentStream, PDFContentStream_default;
 var init_PDFContentStream = __esm({
   "../../node_modules/pdf-lib/es/core/structures/PDFContentStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFFlateStream();
     init_CharCodes();
@@ -10272,7 +10272,7 @@ var init_PDFContentStream = __esm({
 var SimpleRNG;
 var init_rng = __esm({
   "../../node_modules/pdf-lib/es/utils/rng.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     SimpleRNG = /** @class */
     (function() {
       function SimpleRNG2(seed) {
@@ -10295,7 +10295,7 @@ var init_rng = __esm({
 var import_pako3, byAscendingObjectNumber, PDFContext, PDFContext_default;
 var init_PDFContext = __esm({
   "../../node_modules/pdf-lib/es/core/PDFContext.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     import_pako3 = __toESM(require_pako());
     init_PDFHeader();
@@ -10493,7 +10493,7 @@ var init_PDFContext = __esm({
 var PDFPageLeaf, PDFPageLeaf_default;
 var init_PDFPageLeaf = __esm({
   "../../node_modules/pdf-lib/es/core/structures/PDFPageLeaf.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFArray();
     init_PDFDict();
@@ -10706,7 +10706,7 @@ var init_PDFPageLeaf = __esm({
 var PDFObjectCopier, PDFObjectCopier_default;
 var init_PDFObjectCopier = __esm({
   "../../node_modules/pdf-lib/es/core/PDFObjectCopier.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFArray();
     init_PDFDict();
     init_PDFName();
@@ -10801,7 +10801,7 @@ var init_PDFObjectCopier = __esm({
 var PDFCrossRefSection, PDFCrossRefSection_default;
 var init_PDFCrossRefSection = __esm({
   "../../node_modules/pdf-lib/es/core/document/PDFCrossRefSection.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFRef();
     init_CharCodes();
     init_utils2();
@@ -10928,7 +10928,7 @@ var init_PDFCrossRefSection = __esm({
 var PDFTrailer, PDFTrailer_default;
 var init_PDFTrailer = __esm({
   "../../node_modules/pdf-lib/es/core/document/PDFTrailer.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_CharCodes();
     init_utils2();
     PDFTrailer = /** @class */
@@ -10977,7 +10977,7 @@ var init_PDFTrailer = __esm({
 var PDFTrailerDict, PDFTrailerDict_default;
 var init_PDFTrailerDict = __esm({
   "../../node_modules/pdf-lib/es/core/document/PDFTrailerDict.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_CharCodes();
     PDFTrailerDict = /** @class */
     (function() {
@@ -11017,7 +11017,7 @@ var init_PDFTrailerDict = __esm({
 var PDFObjectStream, PDFObjectStream_default;
 var init_PDFObjectStream = __esm({
   "../../node_modules/pdf-lib/es/core/structures/PDFObjectStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFName();
     init_PDFNumber();
@@ -11102,7 +11102,7 @@ var init_PDFObjectStream = __esm({
 var PDFWriter, PDFWriter_default;
 var init_PDFWriter = __esm({
   "../../node_modules/pdf-lib/es/core/writers/PDFWriter.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFCrossRefSection();
     init_PDFHeader();
@@ -11254,7 +11254,7 @@ var init_PDFWriter = __esm({
 var PDFInvalidObject, PDFInvalidObject_default;
 var init_PDFInvalidObject = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFInvalidObject.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFObject();
     PDFInvalidObject = /** @class */
@@ -11295,7 +11295,7 @@ var init_PDFInvalidObject = __esm({
 var EntryType, PDFCrossRefStream, PDFCrossRefStream_default;
 var init_PDFCrossRefStream = __esm({
   "../../node_modules/pdf-lib/es/core/structures/PDFCrossRefStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFName();
     init_PDFRef();
@@ -11484,7 +11484,7 @@ var init_PDFCrossRefStream = __esm({
 var PDFStreamWriter, PDFStreamWriter_default;
 var init_PDFStreamWriter = __esm({
   "../../node_modules/pdf-lib/es/core/writers/PDFStreamWriter.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFHeader();
     init_PDFTrailer();
@@ -11606,7 +11606,7 @@ var init_PDFStreamWriter = __esm({
 var PDFHexString, PDFHexString_default;
 var init_PDFHexString = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFHexString.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFObject();
     init_CharCodes();
@@ -11687,7 +11687,7 @@ var init_PDFHexString = __esm({
 var StandardFontEmbedder, StandardFontEmbedder_default;
 var init_StandardFontEmbedder = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/StandardFontEmbedder.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_es();
     init_PDFHexString();
     init_utils2();
@@ -11778,7 +11778,7 @@ var init_StandardFontEmbedder = __esm({
 var createCmap, fillCmapTemplate, cmapHexFormat, cmapHexString, cmapCodePointFormat;
 var init_CMap = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/CMap.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_utils2();
     init_unicode();
     createCmap = /* @__PURE__ */ __name(function(glyphs, glyphId) {
@@ -11826,7 +11826,7 @@ var init_CMap = __esm({
 var makeFontFlags, deriveFontFlags;
 var init_FontFlags = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/FontFlags.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     makeFontFlags = /* @__PURE__ */ __name(function(options) {
       var flags2 = 0;
       var flipBit = /* @__PURE__ */ __name(function(bit) {
@@ -11870,7 +11870,7 @@ var init_FontFlags = __esm({
 var PDFString, PDFString_default;
 var init_PDFString = __esm({
   "../../node_modules/pdf-lib/es/core/objects/PDFString.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFObject();
     init_CharCodes();
@@ -11990,7 +11990,7 @@ var init_PDFString = __esm({
 var CustomFontEmbedder, CustomFontEmbedder_default;
 var init_CustomFontEmbedder = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/CustomFontEmbedder.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_CMap();
     init_FontFlags();
@@ -12232,7 +12232,7 @@ var init_CustomFontEmbedder = __esm({
 var CustomFontSubsetEmbedder, CustomFontSubsetEmbedder_default;
 var init_CustomFontSubsetEmbedder = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/CustomFontSubsetEmbedder.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_CustomFontEmbedder();
     init_PDFHexString();
@@ -12307,7 +12307,7 @@ var init_CustomFontSubsetEmbedder = __esm({
 var AFRelationship, FileEmbedder, FileEmbedder_default;
 var init_FileEmbedder = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/FileEmbedder.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFString();
     init_PDFHexString();
@@ -12384,7 +12384,7 @@ var init_FileEmbedder = __esm({
 var MARKERS, ColorSpace, ChannelToColorSpace, JpegEmbedder, JpegEmbedder_default;
 var init_JpegEmbedder = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/JpegEmbedder.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     MARKERS = [
       65472,
@@ -12501,7 +12501,7 @@ var init_JpegEmbedder = __esm({
 var import_pako4, UPNG, UPNG_default;
 var init_UPNG = __esm({
   "../../node_modules/@pdf-lib/upng/UPNG.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     import_pako4 = __toESM(require_pako());
     UPNG = {};
     UPNG.toRGBA8 = function(out) {
@@ -13864,7 +13864,7 @@ var init_UPNG = __esm({
 var getImageType, splitAlphaChannel, PngType, PNG;
 var init_png = __esm({
   "../../node_modules/pdf-lib/es/utils/png.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_UPNG();
     getImageType = /* @__PURE__ */ __name(function(ctype) {
       if (ctype === 0)
@@ -13934,7 +13934,7 @@ var init_png = __esm({
 var PngEmbedder, PngEmbedder_default;
 var init_PngEmbedder = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/PngEmbedder.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_png();
     PngEmbedder = /** @class */
@@ -14007,7 +14007,7 @@ var init_PngEmbedder = __esm({
 var Stream, Stream_default;
 var init_Stream = __esm({
   "../../node_modules/pdf-lib/es/core/streams/Stream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     Stream = /** @class */
     (function() {
       function Stream2(buffer, start, length) {
@@ -14113,7 +14113,7 @@ var init_Stream = __esm({
 var emptyBuffer, DecodeStream, DecodeStream_default;
 var init_DecodeStream = __esm({
   "../../node_modules/pdf-lib/es/core/streams/DecodeStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors2();
     init_Stream();
     emptyBuffer = new Uint8Array(0);
@@ -14258,7 +14258,7 @@ var init_DecodeStream = __esm({
 var isSpace, Ascii85Stream, Ascii85Stream_default;
 var init_Ascii85Stream = __esm({
   "../../node_modules/pdf-lib/es/core/streams/Ascii85Stream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_DecodeStream();
     isSpace = /* @__PURE__ */ __name(function(ch) {
@@ -14340,7 +14340,7 @@ var init_Ascii85Stream = __esm({
 var AsciiHexStream, AsciiHexStream_default;
 var init_AsciiHexStream = __esm({
   "../../node_modules/pdf-lib/es/core/streams/AsciiHexStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_DecodeStream();
     AsciiHexStream = /** @class */
@@ -14404,7 +14404,7 @@ var init_AsciiHexStream = __esm({
 var codeLenCodeMap, lengthDecode, distDecode, fixedLitCodeTab, fixedDistCodeTab, FlateStream, FlateStream_default;
 var init_FlateStream = __esm({
   "../../node_modules/pdf-lib/es/core/streams/FlateStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_DecodeStream();
     codeLenCodeMap = new Int32Array([
@@ -15290,7 +15290,7 @@ var init_FlateStream = __esm({
 var LZWStream, LZWStream_default;
 var init_LZWStream = __esm({
   "../../node_modules/pdf-lib/es/core/streams/LZWStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_DecodeStream();
     LZWStream = /** @class */
@@ -15420,7 +15420,7 @@ var init_LZWStream = __esm({
 var RunLengthStream, RunLengthStream_default;
 var init_RunLengthStream = __esm({
   "../../node_modules/pdf-lib/es/core/streams/RunLengthStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_DecodeStream();
     RunLengthStream = /** @class */
@@ -15469,7 +15469,7 @@ var init_RunLengthStream = __esm({
 var decodeStream, decodePDFRawStream;
 var init_decode = __esm({
   "../../node_modules/pdf-lib/es/core/streams/decode.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors2();
     init_PDFArray();
     init_PDFDict();
@@ -15529,7 +15529,7 @@ var init_decode = __esm({
 var fullPageBoundingBox, boundingBoxAdjustedMatrix, PDFPageEmbedder, PDFPageEmbedder_default;
 var init_PDFPageEmbedder = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/PDFPageEmbedder.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_errors2();
     init_PDFNumber();
@@ -15623,7 +15623,7 @@ var init_PDFPageEmbedder = __esm({
 var asEnum, NonFullScreenPageMode, ReadingDirection, PrintScaling, Duplex, ViewerPreferences, ViewerPreferences_default;
 var init_ViewerPreferences = __esm({
   "../../node_modules/pdf-lib/es/core/interactive/ViewerPreferences.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFArray();
     init_PDFBool();
     init_PDFName();
@@ -15863,7 +15863,7 @@ var init_ViewerPreferences = __esm({
 var tfRegex, PDFAcroField, PDFAcroField_default;
 var init_PDFAcroField = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroField.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFDict();
     init_PDFString();
     init_PDFHexString();
@@ -16008,7 +16008,7 @@ var init_PDFAcroField = __esm({
 var BorderStyle, BorderStyle_default;
 var init_BorderStyle = __esm({
   "../../node_modules/pdf-lib/es/core/annotation/BorderStyle.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFName();
     init_PDFNumber();
     BorderStyle = /** @class */
@@ -16044,7 +16044,7 @@ var init_BorderStyle = __esm({
 var PDFAnnotation, PDFAnnotation_default;
 var init_PDFAnnotation = __esm({
   "../../node_modules/pdf-lib/es/core/annotation/PDFAnnotation.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFDict();
     init_PDFName();
     init_PDFStream();
@@ -16171,7 +16171,7 @@ var init_PDFAnnotation = __esm({
 var AppearanceCharacteristics, AppearanceCharacteristics_default;
 var init_AppearanceCharacteristics = __esm({
   "../../node_modules/pdf-lib/es/core/annotation/AppearanceCharacteristics.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFName();
     init_PDFNumber();
     init_PDFArray();
@@ -16298,7 +16298,7 @@ var init_AppearanceCharacteristics = __esm({
 var PDFWidgetAnnotation, PDFWidgetAnnotation_default;
 var init_PDFWidgetAnnotation = __esm({
   "../../node_modules/pdf-lib/es/core/annotation/PDFWidgetAnnotation.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFDict();
     init_PDFName();
@@ -16415,7 +16415,7 @@ var init_PDFWidgetAnnotation = __esm({
 var PDFAcroTerminal, PDFAcroTerminal_default;
 var init_PDFAcroTerminal = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroTerminal.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFDict();
     init_PDFName();
@@ -16482,7 +16482,7 @@ var init_PDFAcroTerminal = __esm({
 var PDFAcroButton, PDFAcroButton_default;
 var init_PDFAcroButton = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroButton.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFString();
     init_PDFHexString();
@@ -16579,7 +16579,7 @@ var init_PDFAcroButton = __esm({
 var PDFAcroCheckBox, PDFAcroCheckBox_default;
 var init_PDFAcroCheckBox = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroCheckBox.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFName();
     init_PDFAcroButton();
@@ -16636,7 +16636,7 @@ var init_PDFAcroCheckBox = __esm({
 var flag, AcroFieldFlags, AcroButtonFlags, AcroTextFlags, AcroChoiceFlags;
 var init_flags = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/flags.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     flag = /* @__PURE__ */ __name(function(bitIndex) {
       return 1 << bitIndex;
     }, "flag");
@@ -16675,7 +16675,7 @@ var init_flags = __esm({
 var PDFAcroChoice, PDFAcroChoice_default;
 var init_PDFAcroChoice = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroChoice.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFAcroTerminal();
     init_PDFHexString();
@@ -16805,7 +16805,7 @@ var init_PDFAcroChoice = __esm({
 var PDFAcroComboBox, PDFAcroComboBox_default;
 var init_PDFAcroComboBox = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroComboBox.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFAcroChoice();
     init_flags();
@@ -16838,7 +16838,7 @@ var init_PDFAcroComboBox = __esm({
 var PDFAcroNonTerminal, PDFAcroNonTerminal_default;
 var init_PDFAcroNonTerminal = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroNonTerminal.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFName();
     init_PDFAcroField();
@@ -16879,7 +16879,7 @@ var init_PDFAcroNonTerminal = __esm({
 var PDFAcroSignature, PDFAcroSignature_default;
 var init_PDFAcroSignature = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroSignature.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFAcroTerminal();
     PDFAcroSignature = /** @class */
@@ -16902,7 +16902,7 @@ var init_PDFAcroSignature = __esm({
 var PDFAcroText, PDFAcroText_default;
 var init_PDFAcroText = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroText.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFNumber();
     init_PDFString();
@@ -16978,7 +16978,7 @@ var init_PDFAcroText = __esm({
 var PDFAcroPushButton, PDFAcroPushButton_default;
 var init_PDFAcroPushButton = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroPushButton.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFAcroButton();
     init_flags();
@@ -17011,7 +17011,7 @@ var init_PDFAcroPushButton = __esm({
 var PDFAcroRadioButton, PDFAcroRadioButton_default;
 var init_PDFAcroRadioButton = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroRadioButton.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFName();
     init_PDFAcroButton();
@@ -17075,7 +17075,7 @@ var init_PDFAcroRadioButton = __esm({
 var PDFAcroListBox, PDFAcroListBox_default;
 var init_PDFAcroListBox = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroListBox.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFAcroChoice();
     PDFAcroListBox = /** @class */
@@ -17106,7 +17106,7 @@ var init_PDFAcroListBox = __esm({
 var createPDFAcroFields, createPDFAcroField, isNonTerminalAcroField, createPDFAcroTerminal, createPDFAcroButton, createPDFAcroChoice, flagIsSet, getInheritableAttribute, ascend;
 var init_utils3 = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/utils.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFNumber();
     init_PDFDict();
     init_PDFName();
@@ -17214,7 +17214,7 @@ var init_utils3 = __esm({
 var PDFAcroForm, PDFAcroForm_default;
 var init_PDFAcroForm = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/PDFAcroForm.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFDict();
     init_PDFArray();
     init_PDFName();
@@ -17299,7 +17299,7 @@ var init_PDFAcroForm = __esm({
 // ../../node_modules/pdf-lib/es/core/acroform/index.js
 var init_acroform = __esm({
   "../../node_modules/pdf-lib/es/core/acroform/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFAcroButton();
     init_PDFAcroCheckBox();
     init_PDFAcroChoice();
@@ -17322,7 +17322,7 @@ var init_acroform = __esm({
 var PDFCatalog, PDFCatalog_default;
 var init_PDFCatalog = __esm({
   "../../node_modules/pdf-lib/es/core/structures/PDFCatalog.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFDict();
     init_PDFName();
@@ -17401,7 +17401,7 @@ var init_PDFCatalog = __esm({
 var PDFPageTree, PDFPageTree_default;
 var init_PDFPageTree = __esm({
   "../../node_modules/pdf-lib/es/core/structures/PDFPageTree.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFArray();
     init_PDFDict();
@@ -17555,7 +17555,7 @@ var init_PDFPageTree = __esm({
 var IsDigit, IsNumericPrefix, IsNumeric, idx, len;
 var init_Numeric = __esm({
   "../../node_modules/pdf-lib/es/core/syntax/Numeric.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_CharCodes();
     IsDigit = new Uint8Array(256);
     IsDigit[CharCodes_default.Zero] = 1;
@@ -17583,7 +17583,7 @@ var init_Numeric = __esm({
 var Newline, CarriageReturn, BaseParser, BaseParser_default;
 var init_BaseParser = __esm({
   "../../node_modules/pdf-lib/es/core/parser/BaseParser.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors2();
     init_CharCodes();
     init_Numeric();
@@ -17696,7 +17696,7 @@ var init_BaseParser = __esm({
 var ByteStream, ByteStream_default;
 var init_ByteStream = __esm({
   "../../node_modules/pdf-lib/es/core/parser/ByteStream.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors2();
     init_decode();
     init_CharCodes();
@@ -17766,7 +17766,7 @@ var init_ByteStream = __esm({
 var Space, CarriageReturn2, Newline2, stream, endstream, Keywords;
 var init_Keywords = __esm({
   "../../node_modules/pdf-lib/es/core/syntax/Keywords.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_CharCodes();
     Space = CharCodes_default.Space;
@@ -17856,7 +17856,7 @@ var init_Keywords = __esm({
 var PDFObjectParser, PDFObjectParser_default;
 var init_PDFObjectParser = __esm({
   "../../node_modules/pdf-lib/es/core/parser/PDFObjectParser.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_errors2();
     init_PDFArray();
@@ -18075,7 +18075,7 @@ var init_PDFObjectParser = __esm({
 var PDFObjectStreamParser, PDFObjectStreamParser_default;
 var init_PDFObjectStreamParser = __esm({
   "../../node_modules/pdf-lib/es/core/parser/PDFObjectStreamParser.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_errors2();
     init_PDFName();
@@ -18160,7 +18160,7 @@ var init_PDFObjectStreamParser = __esm({
 var PDFXRefStreamParser, PDFXRefStreamParser_default;
 var init_PDFXRefStreamParser = __esm({
   "../../node_modules/pdf-lib/es/core/parser/PDFXRefStreamParser.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors2();
     init_PDFArray();
     init_PDFName();
@@ -18252,7 +18252,7 @@ var init_PDFXRefStreamParser = __esm({
 var PDFParser, PDFParser_default;
 var init_PDFParser = __esm({
   "../../node_modules/pdf-lib/es/core/parser/PDFParser.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFCrossRefSection();
     init_PDFHeader();
@@ -18592,7 +18592,7 @@ var init_PDFParser = __esm({
 var flag2, AnnotationFlags;
 var init_flags2 = __esm({
   "../../node_modules/pdf-lib/es/core/annotation/flags.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     flag2 = /* @__PURE__ */ __name(function(bitIndex) {
       return 1 << bitIndex;
     }, "flag");
@@ -18614,7 +18614,7 @@ var init_flags2 = __esm({
 // ../../node_modules/pdf-lib/es/core/annotation/index.js
 var init_annotation = __esm({
   "../../node_modules/pdf-lib/es/core/annotation/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_PDFAnnotation();
     init_PDFWidgetAnnotation();
     init_AppearanceCharacteristics();
@@ -18625,7 +18625,7 @@ var init_annotation = __esm({
 // ../../node_modules/pdf-lib/es/core/index.js
 var init_core = __esm({
   "../../node_modules/pdf-lib/es/core/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors2();
     init_CharCodes();
     init_PDFContext();
@@ -18680,7 +18680,7 @@ var init_core = __esm({
 var asPDFName, asPDFNumber, asNumber;
 var init_objects2 = __esm({
   "../../node_modules/pdf-lib/es/api/objects.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_core();
     asPDFName = /* @__PURE__ */ __name(function(name) {
       return name instanceof PDFName_default ? name : PDFName_default.of(name);
@@ -18698,7 +18698,7 @@ var init_objects2 = __esm({
 var RotationTypes, degrees, Radians, Degrees, degreesToRadians, radiansToDegrees, toRadians, toDegrees, reduceRotation, adjustDimsForRotation, rotateRectangle;
 var init_rotations = __esm({
   "../../node_modules/pdf-lib/es/api/rotations.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_utils2();
     (function(RotationTypes2) {
       RotationTypes2["Degrees"] = "degrees";
@@ -18772,7 +18772,7 @@ var init_rotations = __esm({
 var clip, cos, sin, tan, concatTransformationMatrix, translate, scale, rotateRadians, rotateDegrees, skewRadians, setDashPattern, LineCapStyle, setLineCap, LineJoinStyle, setGraphicsState, pushGraphicsState, popGraphicsState, setLineWidth, appendBezierCurve, appendQuadraticCurve, closePath, moveTo, lineTo, stroke, fill, fillAndStroke, endPath, nextLine, showText, beginText, endText, setFontAndSize, setLineHeight, TextRenderingMode, setTextMatrix, rotateAndSkewTextRadiansAndTranslate, drawObject, setFillingGrayscaleColor, setStrokingGrayscaleColor, setFillingRgbColor, setStrokingRgbColor, setFillingCmykColor, setStrokingCmykColor, beginMarkedContent, endMarkedContent;
 var init_operators = __esm({
   "../../node_modules/pdf-lib/es/api/operators.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_objects2();
     init_rotations();
     init_core();
@@ -18970,7 +18970,7 @@ var init_operators = __esm({
 var ColorTypes, grayscale, rgb, cmyk, Grayscale, RGB, CMYK, setFillingColor, setStrokingColor, componentsToColor, colorToComponents;
 var init_colors = __esm({
   "../../node_modules/pdf-lib/es/api/colors.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_operators();
     init_utils2();
     (function(ColorTypes2) {
@@ -19020,7 +19020,7 @@ var init_colors = __esm({
 var cx, cy, px, py, sx, sy, parameters, parse, apply, runners, solveArc, arcToSegments, segmentToBezier, svgPathToOperators;
 var init_svgPath = __esm({
   "../../node_modules/pdf-lib/es/api/svgPath.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_operators();
     cx = 0;
     cy = 0;
@@ -19381,7 +19381,7 @@ var init_svgPath = __esm({
 var drawLinesOfText, drawImage, drawPage, drawLine, drawRectangle, KAPPA, drawEllipsePath, drawEllipseCurves, drawEllipse, drawSvgPath, drawCheckMark, rotateInPlace, drawCheckBox, drawRadioButton, drawButton, drawTextLines, drawTextField, drawOptionList;
 var init_operations = __esm({
   "../../node_modules/pdf-lib/es/api/operations.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_colors();
     init_operators();
@@ -19819,7 +19819,7 @@ var init_operations = __esm({
 var EncryptedPDFError, FontkitNotRegisteredError, ForeignPageError, RemovePageFromEmptyDocumentError, NoSuchFieldError, UnexpectedFieldTypeError, MissingOnValueCheckError, FieldAlreadyExistsError, InvalidFieldNamePartError, FieldExistsAsNonTerminalError, RichTextFieldReadError, CombedTextLayoutError, ExceededMaxLengthError, InvalidMaxLengthError;
 var init_errors3 = __esm({
   "../../node_modules/pdf-lib/es/api/errors.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     EncryptedPDFError = /** @class */
     (function(_super) {
@@ -19999,7 +19999,7 @@ var init_errors3 = __esm({
 var TextAlignment;
 var init_alignment = __esm({
   "../../node_modules/pdf-lib/es/api/text/alignment.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     (function(TextAlignment2) {
       TextAlignment2[TextAlignment2["Left"] = 0] = "Left";
       TextAlignment2[TextAlignment2["Center"] = 1] = "Center";
@@ -20012,7 +20012,7 @@ var init_alignment = __esm({
 var MIN_FONT_SIZE, MAX_FONT_SIZE, computeFontSize, computeCombedFontSize, lastIndexOfWhitespace, splitOutLines, layoutMultilineText, layoutCombedText, layoutSinglelineText;
 var init_layout = __esm({
   "../../node_modules/pdf-lib/es/api/text/layout.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors3();
     init_alignment();
     init_utils2();
@@ -20214,7 +20214,7 @@ var init_layout = __esm({
 var normalizeAppearance, tfRegex2, getDefaultFontSize, colorRegex, getDefaultColor, updateDefaultAppearance, defaultCheckBoxAppearanceProvider, defaultRadioGroupAppearanceProvider, defaultButtonAppearanceProvider, defaultTextFieldAppearanceProvider, defaultDropdownAppearanceProvider, defaultOptionListAppearanceProvider;
 var init_appearances = __esm({
   "../../node_modules/pdf-lib/es/api/form/appearances.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_operations();
     init_colors();
@@ -20613,7 +20613,7 @@ var init_appearances = __esm({
 var PDFEmbeddedPage, PDFEmbeddedPage_default;
 var init_PDFEmbeddedPage = __esm({
   "../../node_modules/pdf-lib/es/api/PDFEmbeddedPage.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFDocument();
     init_core();
@@ -20672,7 +20672,7 @@ var init_PDFEmbeddedPage = __esm({
 var PDFFont, PDFFont_default;
 var init_PDFFont = __esm({
   "../../node_modules/pdf-lib/es/api/PDFFont.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFDocument();
     init_core();
@@ -20755,7 +20755,7 @@ var init_PDFFont = __esm({
 var PDFImage, PDFImage_default;
 var init_PDFImage = __esm({
   "../../node_modules/pdf-lib/es/api/PDFImage.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFDocument();
     init_core();
@@ -20831,7 +20831,7 @@ var init_PDFImage = __esm({
 var ImageAlignment;
 var init_alignment2 = __esm({
   "../../node_modules/pdf-lib/es/api/image/alignment.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     (function(ImageAlignment2) {
       ImageAlignment2[ImageAlignment2["Left"] = 0] = "Left";
       ImageAlignment2[ImageAlignment2["Center"] = 1] = "Center";
@@ -20843,7 +20843,7 @@ var init_alignment2 = __esm({
 // ../../node_modules/pdf-lib/es/api/image/index.js
 var init_image = __esm({
   "../../node_modules/pdf-lib/es/api/image/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_alignment2();
   }
 });
@@ -20852,7 +20852,7 @@ var init_image = __esm({
 var assertFieldAppearanceOptions, PDFField, PDFField_default;
 var init_PDFField = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFField.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFDocument();
     init_colors();
@@ -21078,7 +21078,7 @@ var init_PDFField = __esm({
 var PDFCheckBox, PDFCheckBox_default;
 var init_PDFCheckBox = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFCheckBox.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFPage();
     init_appearances();
@@ -21194,7 +21194,7 @@ var init_PDFCheckBox = __esm({
 var PDFDropdown, PDFDropdown_default;
 var init_PDFDropdown = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFDropdown.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFPage();
     init_PDFFont();
@@ -21411,7 +21411,7 @@ var init_PDFDropdown = __esm({
 var PDFOptionList, PDFOptionList_default;
 var init_PDFOptionList = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFOptionList.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFPage();
     init_PDFFont();
@@ -21606,7 +21606,7 @@ var init_PDFOptionList = __esm({
 var PDFRadioGroup, PDFRadioGroup_default;
 var init_PDFRadioGroup = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFRadioGroup.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFPage();
     init_PDFField();
@@ -21770,7 +21770,7 @@ var init_PDFRadioGroup = __esm({
 var PDFSignature, PDFSignature_default;
 var init_PDFSignature = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFSignature.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFField();
     init_core();
@@ -21803,7 +21803,7 @@ var init_PDFSignature = __esm({
 var PDFTextField, PDFTextField_default;
 var init_PDFTextField = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFTextField.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFPage();
     init_PDFFont();
@@ -22044,7 +22044,7 @@ var init_PDFTextField = __esm({
 var StandardFonts;
 var init_StandardFonts = __esm({
   "../../node_modules/pdf-lib/es/api/StandardFonts.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     (function(StandardFonts2) {
       StandardFonts2["Courier"] = "Courier";
       StandardFonts2["CourierBold"] = "Courier-Bold";
@@ -22068,7 +22068,7 @@ var init_StandardFonts = __esm({
 var PDFForm, PDFForm_default, convertToPDFField, splitFieldName, addFieldToParent;
 var init_PDFForm = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFForm.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFDocument();
     init_PDFButton();
@@ -22446,7 +22446,7 @@ var init_PDFForm = __esm({
 var PageSizes;
 var init_sizes = __esm({
   "../../node_modules/pdf-lib/es/api/sizes.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     PageSizes = {
       "4A0": [4767.87, 6740.79],
       "2A0": [3370.39, 4767.87],
@@ -22506,7 +22506,7 @@ var init_sizes = __esm({
 var ParseSpeeds;
 var init_PDFDocumentOptions = __esm({
   "../../node_modules/pdf-lib/es/api/PDFDocumentOptions.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     (function(ParseSpeeds2) {
       ParseSpeeds2[ParseSpeeds2["Fastest"] = Infinity] = "Fastest";
       ParseSpeeds2[ParseSpeeds2["Fast"] = 1500] = "Fast";
@@ -22520,7 +22520,7 @@ var init_PDFDocumentOptions = __esm({
 var PDFEmbeddedFile, PDFEmbeddedFile_default;
 var init_PDFEmbeddedFile = __esm({
   "../../node_modules/pdf-lib/es/api/PDFEmbeddedFile.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_core();
     PDFEmbeddedFile = /** @class */
@@ -22585,7 +22585,7 @@ var init_PDFEmbeddedFile = __esm({
 var PDFJavaScript, PDFJavaScript_default;
 var init_PDFJavaScript = __esm({
   "../../node_modules/pdf-lib/es/api/PDFJavaScript.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_core();
     PDFJavaScript = /** @class */
@@ -22646,7 +22646,7 @@ var init_PDFJavaScript = __esm({
 var JavaScriptEmbedder, JavaScriptEmbedder_default;
 var init_JavaScriptEmbedder = __esm({
   "../../node_modules/pdf-lib/es/core/embedders/JavaScriptEmbedder.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFHexString();
     JavaScriptEmbedder = /** @class */
@@ -22696,7 +22696,7 @@ function assertIsLiteralOrHexString(pdfObject) {
 var PDFDocument, PDFDocument_default;
 var init_PDFDocument = __esm({
   "../../node_modules/pdf-lib/es/api/PDFDocument.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_errors3();
     init_PDFEmbeddedPage();
@@ -23398,7 +23398,7 @@ var init_PDFDocument = __esm({
 var BlendMode;
 var init_PDFPageOptions = __esm({
   "../../node_modules/pdf-lib/es/api/PDFPageOptions.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     (function(BlendMode2) {
       BlendMode2["Normal"] = "Normal";
       BlendMode2["Multiply"] = "Multiply";
@@ -23420,7 +23420,7 @@ var init_PDFPageOptions = __esm({
 var PDFPage, PDFPage_default;
 var init_PDFPage = __esm({
   "../../node_modules/pdf-lib/es/api/PDFPage.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_colors();
     init_operations();
@@ -24090,7 +24090,7 @@ var init_PDFPage = __esm({
 var PDFButton, PDFButton_default;
 var init_PDFButton = __esm({
   "../../node_modules/pdf-lib/es/api/form/PDFButton.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_modules();
     init_PDFPage();
     init_PDFFont();
@@ -24198,7 +24198,7 @@ var init_PDFButton = __esm({
 // ../../node_modules/pdf-lib/es/api/form/index.js
 var init_form = __esm({
   "../../node_modules/pdf-lib/es/api/form/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_appearances();
     init_PDFButton();
     init_PDFCheckBox();
@@ -24215,7 +24215,7 @@ var init_form = __esm({
 // ../../node_modules/pdf-lib/es/api/text/index.js
 var init_text = __esm({
   "../../node_modules/pdf-lib/es/api/text/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_alignment();
     init_layout();
   }
@@ -24224,7 +24224,7 @@ var init_text = __esm({
 // ../../node_modules/pdf-lib/es/api/index.js
 var init_api = __esm({
   "../../node_modules/pdf-lib/es/api/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_form();
     init_text();
     init_colors();
@@ -24250,14 +24250,14 @@ var init_api = __esm({
 // ../../node_modules/pdf-lib/es/types/index.js
 var init_types2 = __esm({
   "../../node_modules/pdf-lib/es/types/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
   }
 });
 
 // ../../node_modules/pdf-lib/es/index.js
 var init_es2 = __esm({
   "../../node_modules/pdf-lib/es/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_api();
     init_core();
     init_types2();
@@ -24493,7 +24493,7 @@ function decodeDataUrlPng(dataUrl) {
 }
 var init_certificate = __esm({
   "_lib/esign/certificate.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_es2();
     __name(textOrDash, "textOrDash");
     __name(formatWhen, "formatWhen");
@@ -24520,7 +24520,7 @@ function isPropertyScope(value) {
 var VAULT_FOLDERS, SIGNER_ROLES, PROPERTY_SCOPES, FOLDER_LABELS, FORM_CATEGORY_LABELS;
 var init_types3 = __esm({
   "_lib/esign/types.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     VAULT_FOLDERS = ["esign", "contractor", "important"];
     SIGNER_ROLES = ["contractor", "owner", "staff", "vendor", "other"];
     PROPERTY_SCOPES = ["all", "ranch", "lindon", "river", "construction"];
@@ -24612,7 +24612,7 @@ async function markSessionCompleted(env, sessionId, completedAt) {
 var PROPERTY_LABELS;
 var init_complete_esign = __esm({
   "_lib/esign/complete-esign.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_certificate();
     init_esign_file_store();
     init_esign_store();
@@ -24633,7 +24633,7 @@ var init_complete_esign = __esm({
 var onRequestPost3, onRequestOptions3;
 var init_sign_now = __esm({
   "api/esign/documents/[id]/sign-now.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -24714,7 +24714,7 @@ async function signFile(_request, env, params) {
 var onRequestGet3;
 var init_file3 = __esm({
   "api/esign/sign/[token]/file.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_esign_store();
     init_esign_file_store();
     init_read_guard();
@@ -24797,7 +24797,7 @@ function resolveExpenseMonth(rawMonth, note, context = {}) {
 var PAID_DATE_RE, NOTE_PAID, YM_RE, MONTH_NAMES, MONTH_ASSIGNMENT_PROMPT;
 var init_expense_month = __esm({
   "_lib/expense-month.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     PAID_DATE_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
     __name(parsePaidDate, "parsePaidDate");
     NOTE_PAID = /\bPaid (\d{4}-\d{2}-\d{2})\b/;
@@ -24854,7 +24854,7 @@ function ledgerSafeToSave(previous, next) {
 }
 var init_ledger_guard = __esm({
   "_lib/ledger-guard.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(ledgerSafeToSave, "ledgerSafeToSave");
   }
 });
@@ -24973,7 +24973,7 @@ async function ensureTurnoverCleaningExpenses(env, reservations) {
 var KV_KEY, CLEAN_PREFIX;
 var init_expenses = __esm({
   "_lib/expenses.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_kv_json();
     init_expense_month();
@@ -25040,7 +25040,7 @@ function expenseIdFromKvPath(storagePath) {
 var KV_RECEIPT_PREFIX, KV_RECEIPT_MAX_BYTES;
 var init_receipt_kv = __esm({
   "_lib/receipt-kv.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     KV_RECEIPT_PREFIX = "receipt:";
     KV_RECEIPT_MAX_BYTES = 4 * 1024 * 1024;
     __name(isKvReceiptPath, "isKvReceiptPath");
@@ -25142,7 +25142,7 @@ function appendReceiptWarning(note, warning) {
 var EMPTY_META;
 var init_receipt_store = __esm({
   "_lib/receipt-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gcs();
     init_receipt_kv();
     EMPTY_META = {
@@ -25164,7 +25164,7 @@ function findPhoto(envExpense, photoId) {
 var onRequestGet4, onRequestDelete, onRequestOptions4;
 var init_photoId = __esm({
   "api/expenses/[id]/photos/[photoId].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -25300,7 +25300,7 @@ function toolResults(results) {
 var GEMINI_MODELS2;
 var init_gemini_agent = __esm({
   "_lib/agent/gemini-agent.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     GEMINI_MODELS2 = ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"];
     __name(callOnce, "callOnce");
     __name(generateAgentTurn, "generateAgentTurn");
@@ -25365,7 +25365,7 @@ async function generateConstructionTurn(apiKey, systemPrompt, contents, tools) {
 var CONSTRUCTION_MODELS;
 var init_gemini_construction = __esm({
   "_lib/agent/construction/gemini-construction.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gemini_agent();
     CONSTRUCTION_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"];
     __name(callOnce2, "callOnce");
@@ -25377,7 +25377,7 @@ var init_gemini_construction = __esm({
 var CONSTRUCTION_TOOLS;
 var init_tool_registry = __esm({
   "_lib/agent/construction/tool-registry.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     CONSTRUCTION_TOOLS = [
       {
         name: "manage_construction",
@@ -25456,7 +25456,7 @@ var init_tool_registry = __esm({
 var PLAYBOOK_CHUNKS;
 var init_playbooks = __esm({
   "_lib/construction/knowledge/playbooks.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     PLAYBOOK_CHUNKS = [
       {
         id: "arch-plans",
@@ -25614,7 +25614,7 @@ function getChunkById(id) {
 var MASTER_INDEX;
 var init_master_index = __esm({
   "_lib/construction/knowledge/master-index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_playbooks();
     MASTER_INDEX = PLAYBOOK_CHUNKS.map((c) => ({
       chunkId: c.id,
@@ -25679,7 +25679,7 @@ ${c.content}`).join("\n\n");
 }
 var init_knowledge_retrieval = __esm({
   "_lib/construction/knowledge/knowledge-retrieval.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_master_index();
     init_playbooks();
     __name(scoreEntry, "scoreEntry");
@@ -25727,7 +25727,7 @@ ${knowledgeBlock}`,
 var CONSTRUCTION_PERSONA;
 var init_system_prompt = __esm({
   "_lib/agent/construction/system-prompt.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_construction_store();
     init_document_catalog();
     init_knowledge_retrieval();
@@ -26032,7 +26032,7 @@ ${formatChunksForPrompt(chunks).slice(0, 1500)}`
 }
 var init_execute_tool = __esm({
   "_lib/agent/construction/execute-tool.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_construction_store();
     init_document_catalog();
     init_knowledge_retrieval();
@@ -26113,7 +26113,7 @@ ${context}`;
 var MAX_TURNS;
 var init_run_agent = __esm({
   "_lib/agent/construction/run-agent.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gemini_construction();
     init_tool_registry();
     init_system_prompt();
@@ -26128,7 +26128,7 @@ var init_run_agent = __esm({
 var onRequestPost4, onRequestOptions5;
 var init_chat = __esm({
   "api/agent/construction/chat.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_run_agent();
@@ -26166,7 +26166,7 @@ var init_chat = __esm({
 var onRequestGet5;
 var init_callback = __esm({
   "api/integrations/gmail/callback.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_gmail_store();
     onRequestGet5 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -26192,7 +26192,7 @@ var init_callback = __esm({
 var onRequestGet6;
 var init_connect = __esm({
   "api/integrations/gmail/connect.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_gmail_store();
@@ -26214,7 +26214,7 @@ var init_connect = __esm({
 var onRequestGet7, onRequestOptions6;
 var init_status = __esm({
   "api/integrations/gmail/status.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_gmail_store();
@@ -26268,7 +26268,7 @@ function monthFactor(iso) {
 var ISO_DAY;
 var init_dates = __esm({
   "../src/lib/market/dates.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
     __name(isRealDay, "isRealDay");
     __name(addDays, "addDays");
@@ -26314,7 +26314,7 @@ function housesForRequest(propertyId, alsoPropertyId = "") {
 }
 var init_availability = __esm({
   "../src/lib/availability.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     __name(isHouseId, "isHouseId");
     __name(occupiedNights, "occupiedNights");
@@ -26370,7 +26370,7 @@ function holdConflictLine(house) {
 var HOLD_MINUTES, DATE, NAME;
 var init_booking_hold = __esm({
   "../src/lib/booking-hold.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_availability();
     init_dates();
     HOLD_MINUTES = 30;
@@ -26429,7 +26429,7 @@ async function loadActiveHolds(env, now = /* @__PURE__ */ new Date()) {
 var KV_HOLDS, KEEP;
 var init_hold_store = __esm({
   "_lib/hold-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     init_booking_hold();
     KV_HOLDS = "bookingHolds";
@@ -26519,7 +26519,7 @@ function resolveIcalPayout(ev, guestName, existing) {
 }
 var init_reservation_match = __esm({
   "_lib/reservation-match.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     __name(datesOverlap, "datesOverlap");
     __name(namesSimilar, "namesSimilar");
@@ -26685,7 +26685,7 @@ function getOccupancySummary(list2, today) {
 var KV_RES, KV_OVERRIDES, DAY, HOUSES;
 var init_reservations_store = __esm({
   "_lib/reservations-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_kv_json();
     init_reservation_match();
@@ -26790,7 +26790,7 @@ function declineTally(records, from) {
 var DECLINE_REASONS, LABEL, GUEST_REASON, TALLY_LABEL;
 var init_booking_decline = __esm({
   "../src/lib/booking-decline.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_availability();
     init_dates();
     DECLINE_REASONS = [
@@ -26929,7 +26929,7 @@ function holdLine(view) {
 var GUEST_REASON2, HOUSE_LABEL;
 var init_request_status = __esm({
   "../src/lib/request-status.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_booking_decline();
     init_dates();
     GUEST_REASON2 = {
@@ -26958,7 +26958,7 @@ var init_request_status = __esm({
 var DECLINE_KEY, onRequestGet8, onRequestOptions7;
 var init_token = __esm({
   "api/book/request/[token].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_kv_json();
     init_hold_store();
@@ -27059,7 +27059,7 @@ var init_token = __esm({
 var VALID_TYPES, onRequestGet9, onRequestPatch, onRequestDelete2, onRequestOptions8;
 var init_id = __esm({
   "api/construction/documents/[id].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -27120,7 +27120,7 @@ var init_id = __esm({
 var onRequestPatch2, onRequestOptions9;
 var init_id2 = __esm({
   "api/construction/recommendations/[id].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -27146,7 +27146,7 @@ var init_id2 = __esm({
 var onRequestGet10, onRequestPatch3, onRequestDelete3, onRequestOptions10;
 var init_id3 = __esm({
   "api/esign/documents/[id].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -27231,7 +27231,7 @@ async function signSessionView(request, env, params) {
 var onRequestGet11, onRequestPost5, onRequestOptions11;
 var init_token2 = __esm({
   "api/esign/sign/[token].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_json_body();
     init_complete_esign();
@@ -27439,7 +27439,7 @@ async function buildLienReleasePdf(fields) {
 var RIVER_LIEN_PROPERTY, ONES, TENS, JM_LT_LIEN_RELEASE;
 var init_lien_release = __esm({
   "_lib/esign/lien-release.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_es2();
     RIVER_LIEN_PROPERTY = {
       propertyId: "river",
@@ -27536,7 +27536,7 @@ function validateFormValues(template, raw) {
 var UML_SITES, CONTACT, PROPERTY_FIELD, FORM_TEMPLATES;
 var init_form_library = __esm({
   "_lib/esign/form-library.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_lien_release();
     UML_SITES = {
       ranch: {
@@ -28259,7 +28259,7 @@ async function buildFormPdf(templateId, values2) {
 var INK, MUTED, RULE, PAGE, MARGIN, WIDTH, BODIES;
 var init_form_pdf = __esm({
   "_lib/esign/form-pdf.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_es2();
     init_lien_release();
     init_form_library();
@@ -28404,7 +28404,7 @@ var init_form_pdf = __esm({
 var onRequestPost6, onRequestOptions12;
 var init_id4 = __esm({
   "api/esign/templates/[id].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_esign_file_store();
@@ -28546,7 +28546,7 @@ function isCleanPhotoPath(path) {
 var PHOTO_MAX_BYTES, PHOTOS_PER_TURN, DATE2, ALLOWED2;
 var init_clean_photos = __esm({
   "../src/lib/clean-photos.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     PHOTO_MAX_BYTES = 4 * 1024 * 1024;
     PHOTOS_PER_TURN = 12;
     DATE2 = /^\d{4}-\d{2}-\d{2}$/;
@@ -28578,7 +28578,7 @@ function quoteLeave(slot, lateOpen) {
 var DEPARTURE_SLOTS, LINES;
 var init_departure = __esm({
   "../src/lib/departure.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     DEPARTURE_SLOTS = ["11:00 AM", "2:00 PM"];
     LINES = {
@@ -28659,7 +28659,7 @@ function confirmationAgreement() {
 }
 var init_stay_agreement = __esm({
   "../src/lib/stay-agreement.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(agreementTopics, "agreementTopics");
     __name(agreementTopicLine, "agreementTopicLine");
     __name(confirmationAgreement, "confirmationAgreement");
@@ -28680,7 +28680,7 @@ function stayNightFlags(paused, nightBeforeFree, checkoutNightFree) {
 }
 var init_journey = __esm({
   "../src/lib/journey.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_departure();
     init_dates();
     init_stay_agreement();
@@ -28731,7 +28731,7 @@ function partyNote(guests, children) {
 var SLEEPS, SLEEPS_TOGETHER, LABEL2, KIND_LABEL, KIND_ORDER, STAY_EMERGENCY, RIVER_NEARBY, VALLEY_NEARBY, STAY_CHECKOUT, EXTRA_CHECKOUT, STAY;
 var init_house_stay = __esm({
   "../src/lib/house-stay.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_journey();
     SLEEPS = { river: 24, ranch: 20, lindon: 12 };
@@ -28925,7 +28925,7 @@ function sortCleanJobs(jobs) {
 var TOKEN, NAME2;
 var init_clean_link = __esm({
   "../src/lib/clean-link.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_house_stay();
     init_dates();
     TOKEN = /^[a-f0-9]{32}$/;
@@ -28986,7 +28986,7 @@ async function revokeCleanLink(env, token) {
 var KV_KEY2;
 var init_clean_link_store = __esm({
   "_lib/clean-link-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_KEY2 = "cleanLinks";
     __name(loadCleanLinks, "loadCleanLinks");
@@ -29026,7 +29026,7 @@ function noteChildCount(note) {
 }
 var init_note_party = __esm({
   "../src/lib/note-party.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     __name(noteGuestCount, "noteGuestCount");
     __name(noteChildCount, "noteChildCount");
@@ -29042,7 +29042,7 @@ function noteLeavesAt2(note) {
 }
 var init_turn_clock = __esm({
   "../src/lib/turn-clock.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(noteArrivesAt1, "noteArrivesAt1");
     __name(noteLeavesAt2, "noteLeavesAt2");
   }
@@ -29091,7 +29091,7 @@ function buildTurnovers(reservations, asOf, horizonDays = 14) {
 var HOUSE_NAME;
 var init_today = __esm({
   "../src/lib/today.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_note_party();
     init_turn_clock();
@@ -29116,7 +29116,7 @@ async function cleanerHouses(env) {
 var onRequestGet12, onRequestOptions13;
 var init_photo = __esm({
   "api/clean/[token]/photo.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_clean_photos();
     init_clean_link();
@@ -29182,7 +29182,7 @@ async function photosSince(env, from) {
 var KV_KEY3, KEEP2;
 var init_clean_photo_store = __esm({
   "_lib/clean-photo-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_KEY3 = "cleanPhotos";
     KEEP2 = 600;
@@ -29209,7 +29209,7 @@ async function turnOnList(env, house, checkout) {
 var HOUSES2, onRequestGet13, onRequestPost7, onRequestDelete4, onRequestOptions14;
 var init_photos = __esm({
   "api/clean/[token]/photos.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_clean_photos();
     init_clean_link();
@@ -29355,7 +29355,7 @@ var init_photos = __esm({
 var onRequestPost8, onRequestOptions15;
 var init_attach_receipt = __esm({
   "api/expenses/[id]/attach-receipt.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -29419,7 +29419,7 @@ var init_attach_receipt = __esm({
 var MAX_PHOTOS, onRequestPost9, onRequestOptions16;
 var init_photos2 = __esm({
   "api/expenses/[id]/photos/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -29487,7 +29487,7 @@ var init_photos2 = __esm({
 var onRequestGet14, onRequestOptions17;
 var init_receipt = __esm({
   "api/expenses/[id]/receipt.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -29554,7 +29554,7 @@ function confirmationCodeInHaystack(haystack, code) {
 var RIVER_VIP_ARRIVAL_DEFAULTS;
 var init_survey_fields = __esm({
   "_lib/survey-fields.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(surveyVariantForProperty, "surveyVariantForProperty");
     RIVER_VIP_ARRIVAL_DEFAULTS = [
       "Kitchen flowers",
@@ -29675,7 +29675,7 @@ async function saveSurveyAnswers(env, token, answers) {
 var KV_KEY4;
 var init_survey_store = __esm({
   "_lib/survey-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     init_survey_fields();
     KV_KEY4 = "guestSurveys";
@@ -29741,7 +29741,7 @@ function staffNotifyRecipients(env) {
 var SURVEY_FROM_NAME, SURVEY_REPLY_EMAIL, SURVEY_PHONE, SURVEY_STAFF_NOTIFY_EMAILS;
 var init_survey_copy = __esm({
   "_lib/survey-copy.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     SURVEY_FROM_NAME = "Utah Mountain Luxury";
     SURVEY_REPLY_EMAIL = "utahmountainluxury@gmail.com";
     SURVEY_PHONE = "801-787-4722";
@@ -29876,7 +29876,7 @@ function accessWindow(checkIn, checkOut, now = /* @__PURE__ */ new Date()) {
 var GUIDE_HOUSE_IDS, KV_KEY5, VALLEY_PLACES, CANYON_PLACES;
 var init_guest_guide = __esm({
   "_lib/guest-guide.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     init_data();
     init_survey_copy();
@@ -29952,7 +29952,7 @@ function conciergePlaceBrief(address, arrival) {
 var SECRET, CANYON;
 var init_concierge_place = __esm({
   "../src/lib/concierge-place.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     SECRET = /door\s*code|wi-?fi|password/i;
     CANYON = /provo canyon|vivian park/i;
     __name(conciergePlaceBrief, "conciergePlaceBrief");
@@ -29984,7 +29984,7 @@ function conciergeAccessLine(opensOn) {
 }
 var init_stay_rules = __esm({
   "../src/lib/stay-rules.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(stayAccessSecrets, "stayAccessSecrets");
     __name(conciergeAccessLine, "conciergeAccessLine");
   }
@@ -30546,7 +30546,7 @@ function geminiError(status, body) {
 var CONCIERGE_NAME, CONCIERGE_VOICE, SESSIONS_PER_DAY, TEXTS_PER_DAY, MESSAGES_PER_DAY, SEARCH_MODELS, MAREN_FUNCTIONS, MAPS_URL;
 var init_guest_concierge = __esm({
   "_lib/guest-concierge.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_survey_store();
     init_reservations_store();
@@ -30639,7 +30639,7 @@ var init_guest_concierge = __esm({
 var onRequestGet15, onRequestPost10, onRequestOptions18;
 var init_chat2 = __esm({
   "api/stay-guide/[token]/chat.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_guest_concierge();
     init_read_guard();
@@ -30681,7 +30681,7 @@ var init_chat2 = __esm({
 var onRequestPost11, onRequestOptions19;
 var init_control = __esm({
   "api/stay-guide/[token]/control.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_guest_concierge();
     init_read_guard();
@@ -30709,7 +30709,7 @@ var init_control = __esm({
 var onRequestGet16;
 var init_manifest = __esm({
   "api/stay-guide/[token]/manifest.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_survey_store();
     init_read_guard();
@@ -30747,7 +30747,7 @@ var init_manifest = __esm({
 var onRequestPost12, onRequestOptions20;
 var init_message = __esm({
   "api/stay-guide/[token]/message.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_guest_concierge();
     init_read_guard();
@@ -30783,7 +30783,7 @@ function resolveApiUrl() {
 var API_URL, PROPERTIES2;
 var init_api2 = __esm({
   "../src/lib/api.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(resolveApiUrl, "resolveApiUrl");
     API_URL = resolveApiUrl();
     PROPERTIES2 = {
@@ -30869,7 +30869,7 @@ function riverSeasonOn(iso) {
 var RIVER_HOLIDAYS;
 var init_seasons = __esm({
   "../src/lib/market/seasons.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     RIVER_HOLIDAYS = [
       { start: "2026-11-24", end: "2026-11-30", name: "Thanksgiving", holiday: true, weekendHostNet: 2900, weekdayHostNet: 2900, minWeekend: 4, minWeekday: 4 },
       { start: "2026-12-19", end: "2027-01-03", name: "Christmas through New Year", holiday: true, weekendHostNet: 3400, weekdayHostNet: 3400, minWeekend: 5, minWeekday: 5 },
@@ -30940,7 +30940,7 @@ function promotionForNight(input) {
 }
 var init_fill = __esm({
   "../src/lib/market/fill.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     __name(leadDays, "leadDays");
     __name(weekWeekend, "weekWeekend");
@@ -30965,9 +30965,11 @@ function toApprovedRate(value) {
   if (Number.isNaN(Date.parse(approvedAt))) return null;
   return { house, date, guest, approvedAt };
 }
-function approvalBase(card, approved) {
+function approvalBase(card, approved, date) {
   if (approved.length === 0) return card;
-  const highest = Math.max(...approved.map((row) => Math.round(row.guest)));
+  const relevant = date ? approved.filter((row) => row.date === date) : approved;
+  if (relevant.length === 0) return card;
+  const highest = Math.max(...relevant.map((row) => Math.round(row.guest)));
   return Number.isFinite(highest) && highest > 0 ? highest : card;
 }
 function approvedGuestRate(sheet, date, base) {
@@ -31022,7 +31024,7 @@ function sheetLine(sheet, house) {
 var PROMOTION_OFF, MAX_DAILY_MOVE, MAX_SHEET_NIGHTS;
 var init_rate_sheet = __esm({
   "../src/lib/market/rate-sheet.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     PROMOTION_OFF = 0.2;
     MAX_DAILY_MOVE = 0.08;
@@ -31067,7 +31069,7 @@ function listPriceForHostNet(hostNet) {
 }
 var init_stats = __esm({
   "../src/lib/market/stats.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(median, "median");
     __name(percentileValue, "percentileValue");
     __name(percentileRank, "percentileRank");
@@ -31136,7 +31138,7 @@ function grossPace(propertyId, reservations, asOf) {
 var AIRBNB_KEEP, ANNUAL_GROSS_GOAL;
 var init_revenue_goals = __esm({
   "../src/lib/revenue-goals.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     AIRBNB_KEEP = 0.845;
     ANNUAL_GROSS_GOAL = {
       lindon: 4e4,
@@ -31184,7 +31186,7 @@ function nightAsk(house, iso) {
 var PUBLISHED;
 var init_rates = __esm({
   "../src/lib/market/rates.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_seasons();
     init_stats();
@@ -31206,7 +31208,7 @@ function guestPromoLine(count) {
 }
 function directNight(house, iso, taken, asOf, pace, sheet = []) {
   const ask = nightAsk(house, iso);
-  const approved = sheet.length === 0 || taken.includes(iso) || ask.closed ? null : approvedGuestRate(sheet, iso, { guest: approvalBase(ask.guest, sheet), floorGuest: ask.floorGuest });
+  const approved = sheet.length === 0 || taken.includes(iso) || ask.closed ? null : approvedGuestRate(sheet, iso, { guest: approvalBase(ask.guest, sheet, iso), floorGuest: ask.floorGuest });
   if (approved !== null) {
     return {
       date: iso,
@@ -31330,7 +31332,7 @@ function leadDays2(asOf, iso) {
 var CLEANING, MAX_NIGHTS;
 var init_quote = __esm({
   "../src/lib/quote.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_house_stay();
     init_dates();
     init_fill();
@@ -31358,7 +31360,7 @@ function bookingRules(house) {
 var WEEKEND;
 var init_booking_rules = __esm({
   "../src/lib/booking-rules.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_seasons();
     init_quote();
     WEEKEND = "A Friday or Saturday by itself waits until it is inside 7 days. Otherwise book both weekend nights.";
@@ -31380,7 +31382,7 @@ function addonMenuLine(house) {
 var UPSELLS;
 var init_upsells = __esm({
   "../src/lib/upsells.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_journey();
     init_quote();
     UPSELLS = [
@@ -31425,7 +31427,7 @@ function houseRules(house) {
 var RULES;
 var init_house_rules = __esm({
   "../src/lib/house-rules.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     RULES = {
       river: [
         {
@@ -31487,7 +31489,7 @@ function arriveReady(house) {
 var SECRET2;
 var init_arrive_ready = __esm({
   "../src/lib/arrive-ready.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_house_rules();
     init_house_stay();
     SECRET2 = /door\s*code|wi-?fi|password|\$/i;
@@ -31514,7 +31516,7 @@ function stayEventLine(checkIn, checkOut) {
 var NAMED_EVENTS;
 var init_events = __esm({
   "../src/lib/market/events.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     NAMED_EVENTS = [
       { start: "2026-05-22", end: "2026-05-25", name: "Memorial Day weekend" },
@@ -31541,7 +31543,7 @@ var init_events = __esm({
 var LISTING_TITLE;
 var init_listing = __esm({
   "../src/lib/listing.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_upsells();
     LISTING_TITLE = {
       river: "Sleeps 24 \xB7 On the Provo River \xB7 7 King Suites",
@@ -31569,7 +31571,7 @@ function guestArrivalLine(value) {
 var ARRIVAL_SLOTS, LEGACY_WINDOWS;
 var init_arrival = __esm({
   "../src/lib/arrival.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     ARRIVAL_SLOTS = ["4:00 PM", "5:00 PM", "6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "After 9:00 PM"];
     __name(isArrivalSlot, "isArrivalSlot");
@@ -31720,7 +31722,7 @@ function quotePublicBody(body) {
 var TIMELINE_IDS, WHEN;
 var init_guest_timeline = __esm({
   "../src/lib/guest-timeline.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_api2();
     init_booking_rules();
     init_upsells();
@@ -31834,7 +31836,7 @@ function sendableLine(messages, alreadySent) {
 var WINDOW;
 var init_stay_message_send = __esm({
   "../src/lib/stay-message-send.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_guest_timeline();
     WINDOW = {
@@ -31898,7 +31900,7 @@ async function recordSent(env, token, row) {
 var onRequestGet17, onRequestPost13, onRequestOptions21;
 var init_stay_message = __esm({
   "api/stay-guide/[token]/stay-message.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_gmail_store();
@@ -32013,7 +32015,7 @@ var init_stay_message = __esm({
 var onRequestGet18, onRequestPost14, onRequestOptions22;
 var init_thread = __esm({
   "api/stay-guide/[token]/thread.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_guest_concierge();
@@ -32084,7 +32086,7 @@ async function mintClientSecret(key, session) {
 var onRequestPost15, onRequestOptions23;
 var init_voice = __esm({
   "api/stay-guide/[token]/voice.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_guest_concierge();
     init_read_guard();
@@ -32146,7 +32148,7 @@ async function saveExtraCleaningFees(env, fees) {
 var KEY;
 var init_kv = __esm({
   "_lib/kv.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_kv_json();
     init_request_cache();
@@ -32171,7 +32173,7 @@ function monthRange(endMonth, count) {
 }
 var init_months = __esm({
   "_lib/months.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(currentYearMonth, "currentYearMonth");
     __name(addMonths, "addMonths");
     __name(monthRange, "monthRange");
@@ -32187,7 +32189,7 @@ function money2(value) {
 var onRequestGet19, onRequestOptions24;
 var init_briefing = __esm({
   "api/agent/briefing.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -32267,7 +32269,7 @@ var init_briefing = __esm({
 var AGENT_TOOLS;
 var init_tool_registry2 = __esm({
   "_lib/agent/tool-registry.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     AGENT_TOOLS = [
       {
         name: "manage_finances",
@@ -32404,7 +32406,7 @@ var init_tool_registry2 = __esm({
       },
       {
         name: "manage_pricing",
-        description: "Yield pricing. yield_plan is the daily to-do list for all three houses: pace to goal, next 8 weekends, and the Airbnb and VRBO moves to make. suggest_rate_adjustment prices one house and date range. Do not lower the base. Do not set anything in Hospitable. Also comps, snapshots, and alerts.",
+        description: "Yield pricing. yield_plan is the daily to-do list for all three houses: pace to goal, next 8 weekends, and the Airbnb and VRBO moves to make. suggest_rate_adjustment prices one house and date range. A night the host has already approved comes back with approved:true, held at that price and with no promotion \u2014 that number is the decision, so do not propose a different one for it. Do not lower the base. Do not set anything in Hospitable. Also comps, snapshots, and alerts.",
         parameters: {
           type: "object",
           properties: {
@@ -32675,7 +32677,7 @@ async function annotateYieldPlan(env, plan) {
 var KV_WORK, CLAIM_HOLD_MS, KEEP_DONE_MS, MAX_ITEMS, OWNER_NAME;
 var init_agent_work = __esm({
   "_lib/agent-work.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_WORK = "agentWork";
     CLAIM_HOLD_MS = 3 * 60 * 60 * 1e3;
@@ -32733,7 +32735,7 @@ function resolveIcalSource(summary, description, existing, seedSource) {
 }
 var init_ical_summary = __esm({
   "_lib/ical-summary.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(channelFromText, "channelFromText");
     __name(parseIcalSummary, "parseIcalSummary");
     __name(isExplicitChannel, "isExplicitChannel");
@@ -32868,7 +32870,7 @@ async function syncReservationsFromIcal(env, events) {
 }
 var init_ical_reservation_sync = __esm({
   "_lib/ical-reservation-sync.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_reservation_match();
     init_ical_summary();
@@ -33002,7 +33004,7 @@ async function checkCalendarDiscrepancies(env) {
 var KV_BLOCKS, KV_FEEDS, KV_CACHE, STALE_SYNC_MS;
 var init_calendar_store = __esm({
   "_lib/calendar-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     init_ical_reservation_sync();
     init_reservations_store();
@@ -33047,7 +33049,7 @@ function isCompHouse(value) {
 }
 var init_comp_house = __esm({
   "../src/lib/market/comp-house.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(compHouses, "compHouses");
     __name(compIsForHouse, "compIsForHouse");
     __name(compsForHouse, "compsForHouse");
@@ -33141,7 +33143,7 @@ function liveCompFits(house, sleeps, distanceMi, isOwn = false, minNights = 1) {
 var MAX_ASK_NIGHTS, MAX_COMP_MIN_NIGHTS;
 var init_live = __esm({
   "../src/lib/market/live.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_house_stay();
     MAX_ASK_NIGHTS = 120;
@@ -33387,7 +33389,7 @@ async function runPricingAlertCheck(env) {
 var KV_LISTINGS, KV_COMP, KV_SNAPSHOTS, KV_ALERTS, KV_SHEET;
 var init_pricing_store = __esm({
   "_lib/pricing-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     init_dates();
     init_comp_house();
@@ -33564,10 +33566,24 @@ function applyPromotion(night, percent, floor) {
     promotionHostNightly: promo
   };
 }
-function quoteNight(iso, today, propertyId, median3, target) {
+function quoteNight(iso, today, propertyId, median3, target, approvedGuest = null) {
   const leadDays4 = daysBetween2(today, iso);
   const event = eventOn(iso);
   const base = Math.max(median3, target);
+  if (approvedGuest != null && approvedGuest > 0) {
+    const guest = Math.round(approvedGuest);
+    return {
+      date: iso,
+      leadDays: leadDays4,
+      event: event?.name ?? null,
+      stance: "hold",
+      listingHostNightly: guest,
+      promotionPercent: null,
+      promotionHostNightly: null,
+      directOfferHostNightly: guest,
+      approved: true
+    };
+  }
   if (propertyId === "river" && iso < "2026-11-01") {
     return bare({
       date: iso,
@@ -33637,6 +33653,7 @@ function weekendIsBooked(iso, booked) {
 function applyGoalPremium(quotes, paceFor) {
   for (const night of quotes) {
     if (night.stance === "do-not-sell") continue;
+    if (night.approved) continue;
     const sellOut = paceFor(night.date).sellOutHostNightly;
     if (!sellOut) continue;
     const aim = Math.round(sellOut * 1.2);
@@ -33649,6 +33666,7 @@ function applyGoalPremium(quotes, paceFor) {
 function applyFillPromotions(quotes, booked, floor, paceFor) {
   for (const night of quotes) {
     if (night.stance === "do-not-sell" || night.listingHostNightly == null) continue;
+    if (night.approved) continue;
     if (paceFor(night.date).stillNeeded <= 0) continue;
     if (night.event && night.leadDays > 14) continue;
     const weekdayPush = !isWeekendNight2(night.date) && weekendIsBooked(night.date, booked);
@@ -33672,7 +33690,7 @@ function applyGapOffers(quotes, taken, median3, target, floor) {
     const bounded = taken.has(before) && taken.has(after);
     if (bounded && run.length <= 2 && median3 > 0 && run.every((night) => !night.event)) {
       for (const night of run) {
-        if (night.leadDays <= 45 && night.stance !== "do-not-sell" && night.listingHostNightly) {
+        if (night.leadDays <= 45 && night.stance !== "do-not-sell" && night.listingHostNightly && !night.approved) {
           const baseRate = Math.max(night.listingHostNightly, Math.round(Math.max(median3, target)));
           night.listingHostNightly = baseRate;
           const next = applyPromotion({ ...night, listingHostNightly: baseRate }, 0.2, floor);
@@ -33839,7 +33857,17 @@ async function suggestRateAdjustment(env, propertyId, fromInput, toInput) {
   const config = await loadListingConfig(env);
   const target = config[propertyId]?.targetMinNightly ?? 0;
   const open = eachNight2(from, to).filter((iso) => !taken.has(iso));
-  const nights = open.map((iso) => quoteNight(iso, today, propertyId, hostNetMedian, target));
+  let approvedSheet2 = [];
+  try {
+    approvedSheet2 = (await loadApprovedRates(env)).map((row) => ({ house: row.house, date: row.date, guest: row.guest }));
+  } catch {
+    approvedSheet2 = [];
+  }
+  const approvedOn = /* @__PURE__ */ __name((iso) => {
+    const row = approvedSheet2.find((entry) => entry.house === propertyId && entry.date === iso);
+    return row ? row.guest : null;
+  }, "approvedOn");
+  const nights = open.map((iso) => quoteNight(iso, today, propertyId, hostNetMedian, target, approvedOn(iso)));
   const pace = grossGoalSnapshot(propertyId, stays, today, blocks);
   const booked = nightsInRange(
     [
@@ -33921,7 +33949,7 @@ async function suggestRateAdjustment(env, propertyId, fromInput, toInput) {
 var PRICING_DOCTRINE, AIRBNB_HOST_FEE, AIRBNB_KEEP2, VRBO_KEEP, ANNUAL_GROSS_GOAL2, RIVER_FLOOR_HOST_NET, RIVER_HOLIDAYS2, EVENTS;
 var init_pricing_doctrine = __esm({
   "_lib/pricing-doctrine.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_reservations_store();
     init_calendar_store();
@@ -34138,6 +34166,22 @@ async function buildAgentContext(env, uiContext = {}) {
     pricingSummary = "Pricing comps: not configured yet.";
   }
   const shared = await listSharedWork(env).catch(() => ({ open: [], done: [] }));
+  let approvedLine = "Approved prices: none. Every night uses the published card.";
+  try {
+    const sheet = await loadApprovedRates(env);
+    if (sheet.length > 0) {
+      const rows = [...sheet].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 40);
+      const byHouse = /* @__PURE__ */ new Map();
+      for (const row of rows) {
+        const list2 = byHouse.get(row.house) ?? [];
+        list2.push(`${row.date} $${row.guest}`);
+        byHouse.set(row.house, list2);
+      }
+      approvedLine = `Approved prices (the host's decision \u2014 quote these, and apply no promotion to them): ${[...byHouse.entries()].map(([house, list2]) => `${house} \u2014 ${list2.join(", ")}`).join("; ")}`;
+    }
+  } catch {
+    approvedLine = "Approved prices: could not be read, so treat every night as the published card and say so.";
+  }
   const sharedLine = [
     ...shared.done.slice(0, 8).map((item) => `${item.ownerName} finished ${item.title} ${item.atDenver}. ${item.result}`),
     ...shared.open.slice(0, 5).map(
@@ -34153,6 +34197,7 @@ async function buildAgentContext(env, uiContext = {}) {
     `- Lindon House (lindon): ${lindonAddr}`,
     `- River House (river): ${riverAddr} \u2014 Provo Riverhouse, sleeps 24, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
     `Occupancy: Ranch \u2014 ${occupancy.ranch}; Lindon \u2014 ${occupancy.lindon}; River \u2014 ${occupancy.river}`,
+    approvedLine,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : "",
     uiContext.activeTab ? `Active tab: ${uiContext.activeTab}` : "",
     `Gross booking goals (host payout, before mortgage and bills): ${["lindon", "ranch", "river"].map((id) => {
@@ -34170,7 +34215,7 @@ async function buildAgentContext(env, uiContext = {}) {
 var AGENT_PERSONA;
 var init_system_prompt2 = __esm({
   "_lib/agent/system-prompt.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_agent_work();
     init_pricing_doctrine();
     init_data();
@@ -34248,7 +34293,7 @@ function summarizePartnerContributions(expenses, propertyId, month) {
 }
 var init_paid_by = __esm({
   "_lib/paid-by.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(isPaidBy, "isPaidBy");
     __name(parsePaidBy, "parsePaidBy");
     __name(tracksPartnerContributions, "tracksPartnerContributions");
@@ -34325,7 +34370,7 @@ function draftCleanerNotification(propertyName2, checkoutDate, config) {
 var KV_TASKS, KV_CONFIG, KV_DRAFTS, DEFAULT_PROPERTY_CONFIG;
 var init_operations_store = __esm({
   "_lib/operations-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_TASKS = "operationsTasks";
     KV_CONFIG = "propertyConfig";
@@ -34461,7 +34506,7 @@ function inboxSummary(rows, more = 0) {
 var NAME3, REPLY_DAYS;
 var init_booking_inbox = __esm({
   "../src/lib/booking-inbox.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     NAME3 = {
       river: "The River House",
@@ -34568,7 +34613,7 @@ function houseShort(house) {
 }
 var init_payout_suggest = __esm({
   "../src/lib/payout-suggest.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_quote();
     init_dates();
     init_house_stay();
@@ -34695,7 +34740,7 @@ function acceptedLine(plan) {
 var DATE3;
 var init_booking_accept = __esm({
   "../src/lib/booking-accept.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     DATE3 = /^\d{4}-\d{2}-\d{2}$/;
     __name(stayPlans, "stayPlans");
@@ -34780,7 +34825,7 @@ function sentLine(kind, to) {
 var DATE4;
 var init_booking_mail = __esm({
   "../src/lib/booking-mail.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_api2();
     DATE4 = /^\d{4}-\d{2}-\d{2}$/;
     __name(longDate2, "longDate");
@@ -34833,7 +34878,7 @@ function holdWarning(holds, now) {
 var onRequestPost16, onRequestOptions25;
 var init_accept = __esm({
   "api/book/accept.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_kv_json();
@@ -35036,7 +35081,7 @@ function retryLink(house, checkIn, checkOut, guests) {
 var DECLINE_KEY2, onRequestPost17, onRequestOptions26;
 var init_decline = __esm({
   "api/book/decline.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_kv_json();
@@ -35700,12 +35745,22 @@ async function handlePricing(env, action, args) {
   }
   if (action === "suggest_rate_adjustment") {
     const propertyId = args.propertyId || "ranch";
-    return suggestRateAdjustment(
-      env,
-      propertyId,
-      args.from ? String(args.from) : void 0,
-      args.to ? String(args.to) : void 0
-    );
+    try {
+      return await suggestRateAdjustment(
+        env,
+        propertyId,
+        args.from ? String(args.from) : void 0,
+        args.to ? String(args.to) : void 0
+      );
+    } catch (err) {
+      if (storageReadPaused(err)) {
+        return {
+          error: "Saved prices, comps, and bookings could not be read just now, so no rate is suggested. Nothing was written over them. Try again shortly.",
+          refused: true
+        };
+      }
+      throw err;
+    }
   }
   if (action === "yield_plan") {
     const days = Math.min(365, Math.max(14, Number(args.days) || 90));
@@ -35719,7 +35774,7 @@ async function handlePricing(env, action, args) {
 }
 var init_execute_tool2 = __esm({
   "_lib/agent/execute-tool.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_expenses();
     init_paid_by();
@@ -35775,7 +35830,7 @@ async function saveSession(env, sessionId, messages) {
 var KV_SESSIONS2, MAX_MESSAGES;
 var init_sessions = __esm({
   "_lib/agent/sessions.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_SESSIONS2 = "agentSessions";
     MAX_MESSAGES = 40;
@@ -35855,7 +35910,7 @@ ${contextBlock}`;
 var ANSWER_NOW, MAX_TURNS2;
 var init_run_agent2 = __esm({
   "_lib/agent/run-agent.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gemini_agent();
     init_tool_registry2();
     init_system_prompt2();
@@ -35871,7 +35926,7 @@ var init_run_agent2 = __esm({
 var onRequestPost18, onRequestOptions27;
 var init_chat3 = __esm({
   "api/agent/chat.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_run_agent2();
@@ -35909,7 +35964,7 @@ var init_chat3 = __esm({
 var AGENT_SITE_MAP;
 var init_site_map = __esm({
   "_lib/agent/site-map.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     AGENT_SITE_MAP = {
       name: "Utah Mountain Luxury Management",
       live: "https://wilhite-portfolio.pages.dev",
@@ -36039,7 +36094,7 @@ function botRoutePaths() {
 var ok, guarded, written, READ_ROUTES, WRITE_ROUTES, SORTED, PUBLIC_TOKEN_ROUTES;
 var init_routes = __esm({
   "_lib/muse/routes.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     ok = { "200": { description: "OK" } };
     guarded = {
       "200": { description: "OK" },
@@ -36326,7 +36381,7 @@ var init_routes = __esm({
 var onRequestGet20, onRequestOptions28;
 var init_map = __esm({
   "api/agent/map.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_site_map();
     init_routes();
@@ -36343,7 +36398,7 @@ var init_map = __esm({
 var onRequestPost19, onRequestOptions29;
 var init_transcribe = __esm({
   "api/agent/transcribe.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     onRequestPost19 = /* @__PURE__ */ __name(async ({ request, env }) => {
@@ -36390,7 +36445,7 @@ var init_transcribe = __esm({
 var onRequestGet21, onRequestPost20, onRequestOptions30;
 var init_work = __esm({
   "api/agent/work.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_agent_work();
@@ -36432,7 +36487,7 @@ var init_work = __esm({
 var onRequestPost21, onRequestOptions31;
 var init_do = __esm({
   "api/muse/do.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_run_agent2();
     init_data();
     init_auth();
@@ -36476,7 +36531,7 @@ ${message2}`,
 // api/amanda/do.ts
 var init_do2 = __esm({
   "api/amanda/do.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_do();
   }
 });
@@ -36490,7 +36545,7 @@ function safeNext(raw) {
 var onRequestGet22;
 var init_enter = __esm({
   "api/muse/enter.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_auth();
     __name(safeNext, "safeNext");
@@ -36516,7 +36571,7 @@ var init_enter = __esm({
 // api/amanda/enter.ts
 var init_enter2 = __esm({
   "api/amanda/enter.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_enter();
   }
 });
@@ -36621,7 +36676,7 @@ The other house portals are Rocky Mountain Power (csapps.rockymountainpower.net)
 }
 var init_instructions = __esm({
   "_lib/muse/instructions.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_pricing_doctrine();
     __name(museUmlInstructions, "museUmlInstructions");
   }
@@ -36631,7 +36686,7 @@ var init_instructions = __esm({
 var onRequestGet23, onRequestOptions32;
 var init_instructions2 = __esm({
   "api/muse/instructions.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_instructions();
     init_data();
     onRequestGet23 = /* @__PURE__ */ __name(async ({ request }) => new Response(museUmlInstructions(), {
@@ -36658,7 +36713,7 @@ var init_instructions2 = __esm({
 // api/amanda/instructions.ts
 var init_instructions3 = __esm({
   "api/amanda/instructions.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_instructions2();
   }
 });
@@ -36742,7 +36797,7 @@ async function runMuseTool(env, name, args = {}, request) {
 var DASHBOARD_REQUEST, COHOST_NAMES, BUILD_NAMES;
 var init_catalog = __esm({
   "_lib/muse/catalog.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_tool_registry2();
     init_tool_registry();
     init_execute_tool2();
@@ -36925,7 +36980,7 @@ function museUmlOpenApiSpec() {
 }
 var init_openapi = __esm({
   "_lib/muse/openapi.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_catalog();
     init_routes();
     __name(pathItem, "pathItem");
@@ -36938,7 +36993,7 @@ var init_openapi = __esm({
 var onRequestGet24, onRequestOptions33;
 var init_openapi2 = __esm({
   "api/muse/openapi.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_openapi();
     onRequestGet24 = /* @__PURE__ */ __name(async ({ request }) => corsJson(request, museUmlOpenApiSpec()), "onRequestGet");
@@ -36949,7 +37004,7 @@ var init_openapi2 = __esm({
 // api/amanda/openapi.ts
 var init_openapi3 = __esm({
   "api/amanda/openapi.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_openapi2();
   }
 });
@@ -36957,7 +37012,7 @@ var init_openapi3 = __esm({
 // api/amanda/openapi.json.ts
 var init_openapi_json = __esm({
   "api/amanda/openapi.json.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_openapi3();
   }
 });
@@ -36971,7 +37026,7 @@ function requireMuse(request, env) {
 var onRequestGet25, onRequestPost22, onRequestOptions34;
 var init_tools = __esm({
   "api/muse/tools.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth();
     init_catalog();
@@ -37009,7 +37064,7 @@ var init_tools = __esm({
 // api/amanda/tools.ts
 var init_tools2 = __esm({
   "api/amanda/tools.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_tools();
   }
 });
@@ -37053,7 +37108,7 @@ function decodeBase64(encoded, url = false) {
 var encoder2, decoder, strictDecoder, UINT32_RANGE, NON_ASCII;
 var init_buffer_utils = __esm({
   "../../node_modules/jose/dist/webapi/lib/buffer_utils.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     encoder2 = new TextEncoder();
     decoder = new TextDecoder();
     strictDecoder = new TextDecoder("utf-8", { fatal: true });
@@ -37069,7 +37124,7 @@ var init_buffer_utils = __esm({
 var JOSEError, JWTClaimValidationFailed, JWTExpired, JOSEAlgNotAllowed, JOSENotSupported, JWSInvalid, JWTInvalid, JWKSInvalid, JWKSNoMatchingKey, JWKSMultipleMatchingKeys, JWKSTimeout, JWSSignatureVerificationFailed;
 var init_errors4 = __esm({
   "../../node_modules/jose/dist/webapi/util/errors.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     JOSEError = class extends Error {
       static {
         __name(this, "JOSEError");
@@ -37197,7 +37252,7 @@ function decode(input) {
 var invalid;
 var init_base64url = __esm({
   "../../node_modules/jose/dist/webapi/util/base64url.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_buffer_utils();
     invalid = "The input to be decoded is not correctly encoded.";
     __name(decode, "decode");
@@ -37285,7 +37340,7 @@ function validateB64(protectedHeader, extensions) {
 var JWS_RECOGNIZED;
 var init_validate = __esm({
   "../../node_modules/jose/dist/webapi/lib/validate.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors4();
     init_base64url();
     init_buffer_utils();
@@ -37400,7 +37455,7 @@ async function rawKey(key, expected, usage, extractable = false) {
 var tag, jwkMatchesOp, cache, nist, isCryptoKey, isKeyObject, isKeyLike, unusable;
 var init_key = __esm({
   "../../node_modules/jose/dist/webapi/lib/key.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_validate();
     init_base64url();
     init_errors4();
@@ -37460,7 +37515,7 @@ function table(entries) {
 }
 var init_key_descriptor = __esm({
   "../../node_modules/jose/dist/webapi/lib/key_descriptor.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(table, "table");
   }
 });
@@ -37517,7 +37572,7 @@ function jwsAlgorithm(alg) {
 var sig, JWS;
 var init_jws_algorithms = __esm({
   "../../node_modules/jose/dist/webapi/lib/jws_algorithms.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors4();
     init_key_descriptor();
     sig = [["verify"], ["sign"]];
@@ -37605,7 +37660,7 @@ async function verifyCompact(jws, shared, key) {
 }
 var init_jws_verify = __esm({
   "../../node_modules/jose/dist/webapi/lib/jws_verify.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_jws_algorithms();
     init_errors4();
     init_buffer_utils();
@@ -37693,7 +37748,7 @@ function validateClaimsSet(protectedHeader, claimsSetBytes, options = {}) {
 var epoch, multipliers, REGEX, checkFailed, normalizeTyp, checkAudiencePresence;
 var init_jwt_claims_set = __esm({
   "../../node_modules/jose/dist/webapi/lib/jwt_claims_set.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors4();
     init_buffer_utils();
     init_validate();
@@ -37732,7 +37787,7 @@ async function jwtVerify(jwt, key, options) {
 }
 var init_verify = __esm({
   "../../node_modules/jose/dist/webapi/jwt/verify.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_jws_verify();
     init_jwt_claims_set();
     init_errors4();
@@ -37796,7 +37851,7 @@ function createLocalJWKSet(jwks) {
 }
 var init_local = __esm({
   "../../node_modules/jose/dist/webapi/jwks/local.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_key();
     init_jws_algorithms();
     init_errors4();
@@ -37902,7 +37957,7 @@ function createRemoteJWKSet(url, options) {
 var USER_AGENT, customFetch, jwksCache;
 var init_remote = __esm({
   "../../node_modules/jose/dist/webapi/jwks/remote.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_errors4();
     init_local();
     init_validate();
@@ -37920,7 +37975,7 @@ var init_remote = __esm({
 // ../../node_modules/jose/dist/webapi/index.js
 var init_webapi = __esm({
   "../../node_modules/jose/dist/webapi/index.js"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_verify();
     init_remote();
   }
@@ -37981,7 +38036,7 @@ async function verifyGoogleSignIn(token, input) {
 var GOOGLE_JWKS, ISSUERS;
 var init_google_token = __esm({
   "_lib/google-token.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_webapi();
     init_email_allowlist();
     GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
@@ -37994,7 +38049,7 @@ var init_google_token = __esm({
 var onRequestPost23, onRequestGet26, onRequestDelete5, onRequestOptions35;
 var init_login = __esm({
   "api/auth/login.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_auth();
@@ -38084,7 +38139,7 @@ var init_login = __esm({
 var onRequestGet27, onRequestOptions36;
 var init_session = __esm({
   "api/auth/session.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_email_allowlist();
@@ -38282,7 +38337,7 @@ Utah Mountain Luxury`
 var DEFAULT_AUTOMATION, SETTINGS_KEY, PREP_DAY_KEY, LETTER_MONTH_KEY, THANKED_KEY;
 var init_automation = __esm({
   "_lib/automation.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_expenses();
     init_gmail_store();
@@ -38319,7 +38374,7 @@ var init_automation = __esm({
 var onRequestPost24, onRequestOptions37;
 var init_run = __esm({
   "api/automation/run.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_automation();
     init_data();
@@ -38437,7 +38492,7 @@ function checkoutTurns(stays, asOf) {
 var HOUSES3, UNKNOWN;
 var init_public_calendar = __esm({
   "../src/lib/public-calendar.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_availability();
     init_dates();
     init_revenue_goals();
@@ -38457,7 +38512,7 @@ var init_public_calendar = __esm({
 var onRequestGet28, onRequestOptions38;
 var init_availability2 = __esm({
   "api/book/availability.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_public_calendar();
     init_calendar_store();
@@ -38509,7 +38564,7 @@ var init_availability2 = __esm({
 var onRequestPost25, onRequestOptions39;
 var init_discard = __esm({
   "api/book/discard.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_kv_json();
@@ -38601,7 +38656,7 @@ var init_discard = __esm({
 var onRequestGet29, onRequestPost26, onRequestOptions40;
 var init_holds = __esm({
   "api/book/holds.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_hold_store();
@@ -38663,7 +38718,7 @@ var init_holds = __esm({
 var HOUSES4, onRequestGet30, onRequestOptions41;
 var init_requests = __esm({
   "api/book/requests.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_kv_json();
@@ -38791,7 +38846,7 @@ var init_requests = __esm({
 var onRequestGet31, onRequestPost27, onRequestDelete6, onRequestOptions42;
 var init_blocks = __esm({
   "api/calendar/blocks.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -38848,7 +38903,7 @@ var init_blocks = __esm({
 var onRequestPost28, onRequestOptions43;
 var init_sync = __esm({
   "api/calendar/sync.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_calendar_store();
@@ -38877,7 +38932,7 @@ var init_sync = __esm({
 var onRequestGet32, onRequestPost29, onRequestDelete7, onRequestOptions44;
 var init_links = __esm({
   "api/clean/links.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_clean_link_store();
@@ -38959,7 +39014,7 @@ var init_links = __esm({
 var onRequestGet33, onRequestOptions45;
 var init_photo2 = __esm({
   "api/clean/photo.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_clean_photos();
@@ -38990,7 +39045,7 @@ function isHouse8(id) {
 var HOUSES5, onRequestGet34, onRequestOptions46;
 var init_photos3 = __esm({
   "api/clean/photos.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_clean_photos();
@@ -39090,7 +39145,7 @@ function progressSummary(turns, progress) {
 }
 var init_clean_progress = __esm({
   "../src/lib/clean-progress.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_clean_link();
     init_dates();
     __name(stepIds, "stepIds");
@@ -39120,7 +39175,7 @@ async function progressSince(env, from) {
 var KV_KEY6, KEEP3;
 var init_clean_progress_store = __esm({
   "_lib/clean-progress-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     init_clean_progress();
     KV_KEY6 = "cleanProgress";
@@ -39139,7 +39194,7 @@ function isHouse9(id) {
 var HOUSES6, onRequestGet35, onRequestOptions47;
 var init_progress = __esm({
   "api/clean/progress.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_clean_progress_store();
@@ -39312,7 +39367,7 @@ async function handleConstructionDocumentPost(request, env) {
 var VALID_TYPES2, onRequestGet36, onRequestPost30, onRequestOptions48;
 var init_documents = __esm({
   "api/construction/documents/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -39384,7 +39439,7 @@ var init_documents = __esm({
 var onRequestGet37, onRequestPut, onRequestOptions49;
 var init_project = __esm({
   "api/construction/project.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -39426,7 +39481,7 @@ var init_project = __esm({
 var onRequestGet38, onRequestOptions50;
 var init_recommendations = __esm({
   "api/construction/recommendations/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_construction_store();
@@ -39445,7 +39500,7 @@ var init_recommendations = __esm({
 var onRequestGet39, onRequestPost31, onRequestOptions51;
 var init_documents2 = __esm({
   "api/esign/documents/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_gcs();
@@ -39539,7 +39594,7 @@ var init_documents2 = __esm({
 var onRequestGet40, onRequestPost32, onRequestOptions52;
 var init_lien_release2 = __esm({
   "api/esign/lien-release.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_lien_release();
@@ -39765,7 +39820,7 @@ function resolveParseTemplate(templateId) {
 var PROMPT;
 var init_parse_invoice = __esm({
   "_lib/esign/parse-invoice.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_gemini_call();
     init_form_library();
     PROMPT = `You extract contractor invoice data for a Utah construction / property lien waiver.
@@ -39819,7 +39874,7 @@ Rules:
 var DEFAULT_GMAIL_QUERY, onRequestPost33, onRequestOptions53;
 var init_parse_invoice2 = __esm({
   "api/esign/parse-invoice.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -39903,7 +39958,7 @@ function publicTemplate(template) {
 var onRequestGet41, onRequestOptions54;
 var init_templates = __esm({
   "api/esign/templates/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_types3();
@@ -39964,7 +40019,7 @@ function archiveLine(rows) {
 var KV_KEY7, KEEP4;
 var init_expense_archive = __esm({
   "_lib/expense-archive.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_KEY7 = "expenseArchive";
     KEEP4 = 200;
@@ -39980,7 +40035,7 @@ var init_expense_archive = __esm({
 var onRequestGet42, onRequestPost34, onRequestDelete8, onRequestOptions55;
 var init_archive = __esm({
   "api/expenses/archive.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -40120,7 +40175,7 @@ function expenseKey(e) {
 var onRequestPost35, onRequestOptions56;
 var init_bulk = __esm({
   "api/expenses/bulk.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_types();
@@ -40278,7 +40333,7 @@ function filterPortfolioExpenses(expenses) {
 var PORTFOLIO_ADDRESSES, ADDRESS_RULES_PROMPT, EXCLUDED_SERVICE_RE, RANCH_SERVICE_RE, LINDON_SERVICE_RE;
 var init_expense_address = __esm({
   "_lib/expense-address.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     PORTFOLIO_ADDRESSES = {
       ranch: "270 East Center Street, Lindon, Utah 84042",
       lindon: "143 Harcliff Circle, Lindon, Utah 84042"
@@ -40341,7 +40396,7 @@ function applyPortfolioVendorNormalization(expense, context) {
 var ROCKY_MOUNTAIN_POWER, VENDOR_RULES, RMP_VENDOR_RE;
 var init_expense_vendors = __esm({
   "_lib/expense-vendors.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     ROCKY_MOUNTAIN_POWER = "Rocky Mountain Power";
     VENDOR_RULES = [
       {
@@ -40459,7 +40514,7 @@ Extract expense from this receipt image.` },
 var PROMPT2, SINGLE_PROMPT;
 var init_gemini = __esm({
   "_lib/gemini.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_expense_address();
     init_expense_month();
     init_expense_vendors();
@@ -40560,7 +40615,7 @@ Extract the purchase from this screenshot or receipt.` },
 var HOUSEHOLD_CATEGORIES, HOUSEHOLD_PROMPT;
 var init_gemini_household = __esm({
   "_lib/gemini-household.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_expense_month();
     init_gemini_call();
     HOUSEHOLD_CATEGORIES = ["Furnishings", "Decor", "Supplies", "Other"];
@@ -40594,7 +40649,7 @@ Rules:
 var onRequestPost36, onRequestOptions57;
 var init_scan = __esm({
   "api/expenses/scan.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -40648,7 +40703,7 @@ var init_scan = __esm({
 var onRequestPost37, onRequestOptions58;
 var init_scan_batch = __esm({
   "api/expenses/scan-batch.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -40705,7 +40760,7 @@ function bandComps(house, comps) {
 }
 var init_comp_fit = __esm({
   "../src/lib/market/comp-fit.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_house_stay();
     __name(isCloseSleep, "isCloseSleep");
     __name(isNearby, "isNearby");
@@ -40721,7 +40776,7 @@ function compsFor(house) {
 var SAMPLE_COMPS;
 var init_fixtures = __esm({
   "../src/lib/market/fixtures.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     SAMPLE_COMPS = [
       { id: "river-1", house: "river", name: "Sample \xB7 Canyon lodge", area: "Sundance", beds: 6, sleeps: 16, rating: 4.93, reviews: 86, guestFavorite: true, distanceMi: 2.4, baseGuest: 2100, occupancy: 0.62 },
       { id: "river-2", house: "river", name: "Sample \xB7 River bench home", area: "Vivian Park", beds: 7, sleeps: 18, rating: 4.89, reviews: 41, guestFavorite: true, distanceMi: 0.8, baseGuest: 2400, occupancy: 0.58 },
@@ -40812,7 +40867,7 @@ function proposeGuestRate(input) {
 }
 var init_propose = __esm({
   "../src/lib/market/propose.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_stats();
     __name(proposeGuestRate, "proposeGuestRate");
   }
@@ -40838,7 +40893,7 @@ function compAsk(comp, iso) {
 function ourGuest(house, iso, sheet = []) {
   const ask = nightAsk(house, iso);
   const approved = approvedGuestRate(sheet, iso, {
-    guest: approvalBase(ask.guest, sheet),
+    guest: approvalBase(ask.guest, sheet, iso),
     floorGuest: ask.floorGuest
   });
   return {
@@ -40846,7 +40901,14 @@ function ourGuest(house, iso, sheet = []) {
     floorGuest: ask.floorGuest,
     season: ask.season,
     lock: ask.lock,
-    minNights: ask.minNights
+    minNights: ask.minNights,
+    /*
+     * Whether the host set this night on purpose. The engine must not then describe it as a promotion: the quote
+     * charges an approved night at the approved price with **no discount**, so a board row reading "20% off" beside
+     * a guest paying full price is a claim about a discount that does not exist. Found by approving a night the
+     * engine thought was above its band; the board said `promote` and `promoteNights` counted it.
+     */
+    approved: approved !== null
   };
 }
 function scoreComp(comp, house) {
@@ -40884,7 +40946,15 @@ function buildMarketBoard(house, from, days = 90, selected, live, sheet = []) {
     const p75 = Math.round(percentileValue(band2, 75));
     const invented = liveAsks.length === 0;
     const floorAboveMarket = !invented && band2.length >= 3 && ours.floorGuest > p75;
-    const action = ours.lock ? "locked" : invented ? "hold" : floorAboveMarket && move.action === "promote" ? "hold" : move.action;
+    const action = ours.lock ? "locked" : invented ? "hold" : (
+      /*
+               * An approved night may still be **raised** — that is the 8% ladder working from the host's own
+               * price. What it may never be is a *promotion*: the quote charges an approved night at the
+               * approved price with no discount, so a board row reading "20% off" beside a guest paying full
+               * price is a claim about a discount that does not exist.
+               */
+      ours.approved && move.action === "promote" ? "hold" : floorAboveMarket && move.action === "promote" ? "hold" : move.action
+    );
     const proposedGuest = invented || ours.lock ? ours.guest : move.proposedGuest;
     return {
       date: iso,
@@ -40901,7 +40971,7 @@ function buildMarketBoard(house, from, days = 90, selected, live, sheet = []) {
       promotionPercent: 0,
       offerGuest: proposedGuest,
       action,
-      reason: ours.lock ? "Holiday rate stays on the season table." : invented ? `No saved comp ask covers this night, so the band is the invented sample set. No rate move is recommended until a real comp watches this date. The published rate stays.` : floorAboveMarket ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.` : move.reason,
+      reason: ours.lock ? "Holiday rate stays on the season table." : invented ? `No saved comp ask covers this night, so the band is the invented sample set. No rate move is recommended until a real comp watches this date. The published rate stays.` : ours.approved && move.action === "promote" ? `This night carries the host's approved price of $${ours.guest}, and an approved night is quoted at that price with no discount. No promotion is applied.` : floorAboveMarket ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.` : move.reason,
       minNights: ours.minNights,
       compBookedShare: Math.round((sampleRows.length - observed.length) / sampleRows.length * 100),
       source
@@ -40992,7 +41062,7 @@ function buildMarketBoard(house, from, days = 90, selected, live, sheet = []) {
 var TARGET, MAX_MOVE;
 var init_board = __esm({
   "../src/lib/market/board.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_comp_fit();
     init_dates();
     init_fixtures();
@@ -41020,7 +41090,7 @@ function houseFrom3(value) {
 var onRequestGet43, onRequestOptions59;
 var init_overview = __esm({
   "api/market/overview.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_board();
     init_dates();
@@ -41064,7 +41134,7 @@ var init_overview = __esm({
 // api/muse/openapi.json.ts
 var init_openapi_json2 = __esm({
   "api/muse/openapi.json.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_openapi2();
   }
 });
@@ -41093,7 +41163,7 @@ function phone(value) {
 var MAX_FIELD, onRequestGet44, onRequestPost38, onRequestOptions60;
 var init_config = __esm({
   "api/operations/config.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_operations_store();
@@ -41166,7 +41236,7 @@ var init_config = __esm({
 var onRequestGet45, onRequestPost39, onRequestPatch4, onRequestOptions61;
 var init_tasks = __esm({
   "api/operations/tasks.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -41253,7 +41323,7 @@ async function stampOwnerView(env, token) {
 var KV_KEY8;
 var init_owner_store = __esm({
   "_lib/owner-store.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_kv_json();
     KV_KEY8 = "ownerAccess";
     __name(loadOwnerLinks, "loadOwnerLinks");
@@ -41311,7 +41381,7 @@ function ownerPortalEmpty(view) {
 var TOKEN2, OWNER_PORTAL_NOTES;
 var init_owner_portal = __esm({
   "../src/lib/owner-portal.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     TOKEN2 = /^[a-f0-9]{32}$/;
     __name(isOwnerToken, "isOwnerToken");
     __name(ownerPortalPath, "ownerPortalPath");
@@ -41333,7 +41403,7 @@ var init_owner_portal = __esm({
 var onRequestGet46, onRequestPost40, onRequestOptions62;
 var init_links2 = __esm({
   "api/owner/links.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_owner_store();
@@ -41392,7 +41462,7 @@ var init_links2 = __esm({
 var onRequestPut2, onRequestOptions63;
 var init_extra_cleaning = __esm({
   "api/portfolio/extra-cleaning.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -41433,7 +41503,7 @@ var init_extra_cleaning = __esm({
 var onRequestGet47, onRequestOptions64;
 var init_history = __esm({
   "api/portfolio/history.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -41529,7 +41599,7 @@ var init_history = __esm({
 var onRequestGet48, onRequestOptions65;
 var init_metrics = __esm({
   "api/portfolio/metrics.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -41622,7 +41692,7 @@ var init_metrics = __esm({
 var onRequestGet49, onRequestPatch5, onRequestOptions66;
 var init_alerts = __esm({
   "api/pricing/alerts.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -41688,7 +41758,7 @@ function batchRows(plan, approvedAt) {
 }
 var init_rate_batch = __esm({
   "../src/lib/market/rate-batch.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_rate_sheet();
     __name(decideBatch, "decideBatch");
@@ -41709,7 +41779,7 @@ function addDaysLocal(iso, days) {
 var onRequestGet50, onRequestPost41, onRequestPut3, onRequestDelete9, onRequestOptions67;
 var init_approved_rates = __esm({
   "api/pricing/approved-rates.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_calendar_store();
@@ -42000,7 +42070,7 @@ var init_approved_rates = __esm({
 var onRequestPost42, onRequestOptions68;
 var init_comp_own = __esm({
   "api/pricing/comp-own.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -42040,7 +42110,7 @@ var init_comp_own = __esm({
 var onRequestGet51, onRequestPost43, onRequestDelete10, onRequestOptions69;
 var init_comp_set = __esm({
   "api/pricing/comp-set.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -42102,7 +42172,7 @@ var init_comp_set = __esm({
 var onRequestGet52, onRequestPut4, onRequestOptions70;
 var init_listings = __esm({
   "api/pricing/listings.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -42137,7 +42207,7 @@ var init_listings = __esm({
 // ../src/lib/shortest-stay.ts
 var init_shortest_stay = __esm({
   "../src/lib/shortest-stay.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_rates();
     init_quote();
@@ -42147,7 +42217,7 @@ var init_shortest_stay = __esm({
 // ../src/lib/longest-stay.ts
 var init_longest_stay = __esm({
   "../src/lib/longest-stay.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_quote();
     init_shortest_stay();
@@ -42157,7 +42227,7 @@ var init_longest_stay = __esm({
 // ../src/lib/stay-lengths.ts
 var init_stay_lengths = __esm({
   "../src/lib/stay-lengths.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_quote();
     init_longest_stay();
     init_shortest_stay();
@@ -42168,7 +42238,7 @@ var init_stay_lengths = __esm({
 // ../src/lib/open-arrivals.ts
 var init_open_arrivals = __esm({
   "../src/lib/open-arrivals.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_rates();
     init_house_stay();
@@ -42181,7 +42251,7 @@ var init_open_arrivals = __esm({
 // ../src/lib/also-open.ts
 var init_also_open = __esm({
   "../src/lib/also-open.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_house_stay();
     init_open_arrivals();
     init_quote();
@@ -42192,7 +42262,7 @@ var init_also_open = __esm({
 // ../src/lib/booking-starts.ts
 var init_booking_starts = __esm({
   "../src/lib/booking-starts.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_rates();
     init_shortest_stay();
@@ -42203,7 +42273,7 @@ var init_booking_starts = __esm({
 var RIVER_FIRST_STAY;
 var init_brand = __esm({
   "../src/lib/brand.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     RIVER_FIRST_STAY = "2026-11-01";
   }
 });
@@ -42211,7 +42281,7 @@ var init_brand = __esm({
 // ../src/lib/stay-rhythm.ts
 var init_stay_rhythm = __esm({
   "../src/lib/stay-rhythm.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_house_stay();
     init_events();
   }
@@ -42221,7 +42291,7 @@ var init_stay_rhythm = __esm({
 var SHARED_CHECKOUT;
 var init_clean = __esm({
   "../src/lib/clean.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_api2();
     init_arrival();
     init_departure();
@@ -42268,7 +42338,7 @@ function mergeSavedShadowDay(days, next) {
 var SHADOW_DAYS_REQUIRED, DATE5, SHADOW_UNREAD;
 var init_shadow_log = __esm({
   "../src/lib/market/shadow-log.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     SHADOW_DAYS_REQUIRED = 7;
     DATE5 = /^\d{4}-\d{2}-\d{2}$/;
     SHADOW_UNREAD = "The calendar could not be read. No night is raised or promoted.";
@@ -42322,7 +42392,7 @@ function bookableNights(house, dates, taken, asOf, pace, closed = []) {
 }
 var init_bookable = __esm({
   "../src/lib/market/bookable.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_dates();
     init_rates();
     init_quote();
@@ -42460,7 +42530,7 @@ function applyFill(night, taken, asOf, pace, bookable) {
 var LABEL3;
 var init_shadow = __esm({
   "../src/lib/market/shadow.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_also_open();
     init_arrival();
     init_booking_starts();
@@ -42630,7 +42700,7 @@ function planProvenance(plan) {
 var DATE6, BLOCKED, MIN_LEAD_DAYS;
 var init_push = __esm({
   "../src/lib/market/push.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_stats();
     DATE6 = /^\d{4}-\d{2}-\d{2}$/;
     BLOCKED = /* @__PURE__ */ new Set(["booked", "closed", "paused", "locked", "hold"]);
@@ -42653,7 +42723,7 @@ var init_push = __esm({
 var HOUSES7, onRequestGet53, onRequestOptions71;
 var init_push_plan = __esm({
   "api/pricing/push-plan.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_board();
@@ -42771,7 +42841,7 @@ var init_push_plan = __esm({
 var onRequestPost44, onRequestOptions72;
 var init_refresh = __esm({
   "api/pricing/refresh.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_pricing_store();
@@ -42804,7 +42874,7 @@ function safeDays(value) {
 var KV_KEY9, DATE7, onRequestGet54, onRequestPost45, onRequestOptions73;
 var init_shadow_days = __esm({
   "api/pricing/shadow-days.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_kv_json();
@@ -42889,7 +42959,7 @@ function houseFrom6(value) {
 var onRequestGet55, MAX_ASKS, onRequestPost46, onRequestOptions74;
 var init_snapshots = __esm({
   "api/pricing/snapshots.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_pricing_store();
@@ -42987,7 +43057,7 @@ var init_snapshots = __esm({
 var onRequestGet56, onRequestOptions75;
 var init_yield_plan = __esm({
   "api/pricing/yield-plan.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_agent_work();
@@ -43012,7 +43082,7 @@ var init_yield_plan = __esm({
 var onRequestPost47, onRequestOptions76;
 var init_mint_links = __esm({
   "api/surveys/mint-links.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_reservations_store();
@@ -43204,7 +43274,7 @@ async function resolveStayForSurvey(env, input) {
 var KNOWN_CONFIRMATION_STAYS;
 var init_survey_bind = __esm({
   "_lib/survey-bind.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_survey_fields();
     init_reservations_store();
     KNOWN_CONFIRMATION_STAYS = [
@@ -43236,7 +43306,7 @@ function isSurveyChannel(value) {
 var onRequestPost48, onRequestOptions77;
 var init_send2 = __esm({
   "api/surveys/send.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -43341,7 +43411,7 @@ function isHouse10(id) {
 var HOUSES8, onRequestGet57, onRequestPost49, onRequestOptions78;
 var init_token3 = __esm({
   "api/clean/[token].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_clean_link();
     init_clean_link_store();
@@ -43466,7 +43536,7 @@ var init_token3 = __esm({
 var onRequestPatch6, onRequestDelete11, onRequestOptions79;
 var init_id5 = __esm({
   "api/expenses/[id].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_expenses();
@@ -43599,7 +43669,7 @@ function formatMonthLabel(ym) {
 }
 var init_months2 = __esm({
   "../src/lib/months.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(addMonths2, "addMonths");
     __name(formatMonthLabel, "formatMonthLabel");
   }
@@ -44038,7 +44108,7 @@ function buildPortfolioReport(endMonth, period, reservations, expenses, extraCle
 var REPORT_PROPERTY_IDS, RIVER_OPEN_MONTH2, EMPTY_CHANNEL;
 var init_report = __esm({
   "../src/lib/report.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_api2();
     init_months2();
     REPORT_PROPERTY_IDS = ["ranch", "lindon", "river"];
@@ -44156,7 +44226,7 @@ function buildOwnerStatement(endMonth, period, reservations, expenses, extraClea
 }
 var init_owner_statement = __esm({
   "../src/lib/owner-statement.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_months2();
     init_report();
     __name(cents3, "cents");
@@ -44171,7 +44241,7 @@ var init_owner_statement = __esm({
 var onRequestGet58, onRequestOptions80;
 var init_token4 = __esm({
   "api/owner/[token].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_owner_portal();
     init_owner_statement();
@@ -44242,7 +44312,7 @@ var init_token4 = __esm({
 var onRequestPatch7, onRequestGet59, onRequestOptions81;
 var init_id6 = __esm({
   "api/reservations/[id].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -44373,7 +44443,7 @@ function preferenceCardLines(house, answers) {
 }
 var init_preference_choices = __esm({
   "../src/lib/preference-choices.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_arrival();
     init_departure();
     init_house_stay();
@@ -44406,7 +44476,7 @@ function stayPartyFromAnswers(answers) {
 var onRequestGet60, onRequestOptions82;
 var init_token5 = __esm({
   "api/stay-guide/[token]/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_survey_store();
     init_reservations_store();
@@ -44702,7 +44772,7 @@ function formatStayCardText(card) {
 }
 var init_survey_stay_card = __esm({
   "_lib/survey-stay-card.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_arrival();
     init_departure();
     init_survey_fields();
@@ -44720,7 +44790,7 @@ var init_survey_stay_card = __esm({
 var onRequestGet61, onRequestPost50, onRequestOptions83;
 var init_token6 = __esm({
   "api/stay-preferences/[token].ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_data();
     init_survey_store();
@@ -44800,7 +44870,7 @@ var init_token6 = __esm({
 var onRequestGet62, onRequestPut5, onRequestOptions84;
 var init_automation2 = __esm({
   "api/automation/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -44835,7 +44905,7 @@ function formatWhole(value) {
 }
 var init_luxury = __esm({
   "../src/lib/luxury.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_api2();
     init_months2();
     __name(formatWhole, "formatWhole");
@@ -44912,7 +44982,7 @@ function labelReason(name, reason) {
 var TOGETHER;
 var init_compound = __esm({
   "../src/lib/compound.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_api2();
     init_house_rules();
     init_house_stay();
@@ -44982,7 +45052,7 @@ function bookingRequestHold(input) {
 var NAME4;
 var init_booking_request = __esm({
   "../src/lib/booking-request.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_availability();
     init_compound();
     init_house_stay();
@@ -45034,7 +45104,7 @@ function returningLine(check) {
 }
 var init_returning_guest = __esm({
   "../src/lib/returning-guest.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     __name(phoneKey, "phoneKey");
     __name(emailKey, "emailKey");
     __name(returningGuest, "returningGuest");
@@ -45049,7 +45119,7 @@ function wholeCount(value) {
 var onRequestPost51, onRequestOptions85;
 var init_book = __esm({
   "api/book/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_gmail_store();
     init_kv_json();
@@ -45238,7 +45308,7 @@ var init_book = __esm({
 var PAUSED, onRequestGet63, onRequestPost52, onRequestOptions86;
 var init_expenses2 = __esm({
   "api/expenses/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_types();
@@ -45357,7 +45427,7 @@ function enableHold(guide) {
 var REQUIRED;
 var init_guest_app_ready = __esm({
   "../src/lib/guest-app-ready.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     REQUIRED = [
       { key: "headline", label: "a headline" },
       { key: "address", label: "the street address" },
@@ -45376,7 +45446,7 @@ var init_guest_app_ready = __esm({
 var SECRET_FIELDS, onRequestGet64, onRequestPost53, onRequestOptions87;
 var init_guest_guide2 = __esm({
   "api/guest-guide.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     init_auth2();
     init_read_guard();
@@ -45461,7 +45531,7 @@ function refreshIcalInBackground(env, ctx) {
 var SYNCING;
 var init_ical_refresh = __esm({
   "_lib/ical-refresh.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_calendar_store();
     init_kv_json();
     SYNCING = /* @__PURE__ */ Symbol("uml.icalSyncing");
@@ -45473,7 +45543,7 @@ var init_ical_refresh = __esm({
 var onRequestGet65, onRequestPost54, onRequestOptions88;
 var init_reservations = __esm({
   "api/reservations/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_json_body();
@@ -45548,7 +45618,7 @@ var init_reservations = __esm({
 var onRequestGet66, onRequestOptions89;
 var init_surveys = __esm({
   "api/surveys/index.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_data();
     init_survey_store();
@@ -45608,7 +45678,7 @@ var init_surveys = __esm({
 var onRequestGet67;
 var init_health = __esm({
   "health.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_data();
     onRequestGet67 = /* @__PURE__ */ __name(async ({ request }) => corsJson(request, { status: "ok" }), "onRequestGet");
   }
@@ -45618,7 +45688,7 @@ var init_health = __esm({
 var OWNER_PAGE, CLEAN_PAGE, PUBLIC_BOOK, BOOK_REQUEST_PAGE, onRequest;
 var init_middleware = __esm({
   "_middleware.ts"() {
-    init_functionsRoutes_0_6857605966860796();
+    init_functionsRoutes_0_15838867577122517();
     init_auth2();
     init_auth();
     OWNER_PAGE = /^\/api\/owner\/[a-f0-9]{32}\/?$/;
@@ -45647,10 +45717,10 @@ var init_middleware = __esm({
   }
 });
 
-// ../.wrangler/tmp/pages-IKaTCv/functionsRoutes-0.6857605966860796.mjs
+// ../.wrangler/tmp/pages-z03dIH/functionsRoutes-0.15838867577122517.mjs
 var routes;
-var init_functionsRoutes_0_6857605966860796 = __esm({
-  "../.wrangler/tmp/pages-IKaTCv/functionsRoutes-0.6857605966860796.mjs"() {
+var init_functionsRoutes_0_15838867577122517 = __esm({
+  "../.wrangler/tmp/pages-z03dIH/functionsRoutes-0.15838867577122517.mjs"() {
     init_file();
     init_reanalyze();
     init_reanalyze();
@@ -47641,10 +47711,10 @@ var init_functionsRoutes_0_6857605966860796 = __esm({
 });
 
 // ../../node_modules/wrangler/templates/pages-template-worker.ts
-init_functionsRoutes_0_6857605966860796();
+init_functionsRoutes_0_15838867577122517();
 
 // ../../node_modules/path-to-regexp/dist.es2015/index.js
-init_functionsRoutes_0_6857605966860796();
+init_functionsRoutes_0_15838867577122517();
 function lexer(str2) {
   var tokens = [];
   var i = 0;

@@ -376,6 +376,32 @@ function applyPromotion(night: NightQuote, percent: number, floor: number): Nigh
   };
 }
 
+/**
+ * The nights the host has already priced, as the first thing in the tool's answer.
+ *
+ * The flags were already correct and buried: a model handed a large JSON object read the prominent `revenueGoal`
+ * block, computed the goal formula, and told a host "$527, and this night is not currently approved" about a night
+ * the host had approved at $193. Data being present is not the same as being read, so the decision leads and is
+ * stated in a sentence.
+ */
+function approvedLead(propertyId: PropertyId, nights: readonly NightQuote[]): Record<string, unknown> {
+  const approved = nights.filter((night) => night.approved === true);
+  if (approved.length === 0) {
+    return { approvedNights: 0, approvedMeans: 'No night in this window carries a host-approved price.' };
+  }
+  const nights_ = approved.map((night) => ({ date: night.date, approvedGuestPrice: night.listingHostNightly }));
+  const list = nights_.map((night) => `${night.date} at $${night.approvedGuestPrice}`).join(', ');
+  return {
+    approvedNights: approved.length,
+    approvedList: nights_,
+    approvedMeans:
+      `READ THIS FIRST. The host has already set the price on ${approved.length === 1 ? 'this night' : 'these nights'} for ${propertyId}: ${list}. ` +
+      'Those numbers are the decision, not a suggestion. Report them as the price. Do not apply a promotion to them, ' +
+      'do not recompute them from the revenue goal, and do not say they are unapproved. Any other night below is a ' +
+      'genuine suggestion.',
+  };
+}
+
 function quoteNight(
   iso: string,
   today: string,
@@ -828,32 +854,60 @@ export async function suggestRateAdjustment(
     return rate > (best?.listingHostNightly ?? 0) ? night : best;
   }, priced[0] ?? null);
 
+  const anyUnapproved = nights.some((night) => night.approved !== true);
+  /*
+   * The goal-derived figure is only a suggestion for a night nobody has priced.
+   *
+   * With every night in the window approved, this block was still the loudest thing in the JSON — and a model
+   * reading it recomputed $527 from the goal and offered a promotion on a night the host had set at $193, no matter
+   * how plainly the approved list was stated. So when the whole window is decided, the suggestion is withheld
+   * outright and the block says why. A guard the model cannot talk itself past is worth more than a better prompt.
+   */
+  const goal = anyUnapproved
+    ? {
+        grossMeans: 'Host payout before mortgage, cleaning, and utilities. Not profit. Not the guest price.',
+        target: pace.target,
+        window: pace.label,
+        booked: pace.booked,
+        stillNeeded: pace.stillNeeded,
+        openNightsLeft: pace.openNightsLeft,
+        sellOutHostNightly: pace.sellOutHostNightly,
+        askHostNightly: pace.sellOutHostNightly == null ? null : Math.round(pace.sellOutHostNightly * 1.2),
+        askAirbnbListNightly:
+          pace.sellOutHostNightly == null
+            ? null
+            : listPriceForHostNet(Math.round(pace.sellOutHostNightly * 1.2), AIRBNB_KEEP),
+        askVrboListNightly:
+          pace.sellOutHostNightly == null
+            ? null
+            : listPriceForHostNet(Math.round(pace.sellOutHostNightly * 1.2), VRBO_KEEP),
+        sellOutMeans:
+          'Host net if every remaining night sells at the bare goal. The base to publish is 20% above that. A 20% promotion is the fill price, not a new base.',
+      }
+    : {
+        withheld: true,
+        why:
+          'Every night in this window already carries a price the host approved, so there is no suggested rate to give. ' +
+          'Report the approved prices above and apply no promotion. Do not compute a price from the goal for these nights.',
+      };
+
   return {
     propertyId,
+    /*
+     * The approved nights come first, and the sentence says what they mean.
+     *
+     * A host asked the co-host what to charge for a night they had approved at $193 and were told "$527, and a 20%
+     * promotion — this night is not currently approved." The tool had already returned `approved: true` with $193;
+     * the model read the much more prominent `revenueGoal` block above it, computed the goal formula, and ignored
+     * the night. Leading with the decision, and naming it in a sentence rather than a flag buried in an array, is
+     * what makes the answer hard to get wrong.
+     */
+    ...approvedLead(propertyId, nights),
     house: house.name,
     from,
     to,
     openNightCount: nights.length,
-    revenueGoal: {
-      grossMeans: 'Host payout before mortgage, cleaning, and utilities. Not profit. Not the guest price.',
-      target: pace.target,
-      window: pace.label,
-      booked: pace.booked,
-      stillNeeded: pace.stillNeeded,
-      openNightsLeft: pace.openNightsLeft,
-      sellOutHostNightly: pace.sellOutHostNightly,
-      askHostNightly: pace.sellOutHostNightly == null ? null : Math.round(pace.sellOutHostNightly * 1.2),
-      askAirbnbListNightly:
-        pace.sellOutHostNightly == null
-          ? null
-          : listPriceForHostNet(Math.round(pace.sellOutHostNightly * 1.2), AIRBNB_KEEP),
-      askVrboListNightly:
-        pace.sellOutHostNightly == null
-          ? null
-          : listPriceForHostNet(Math.round(pace.sellOutHostNightly * 1.2), VRBO_KEEP),
-      sellOutMeans:
-        'Host net if every remaining night sells at the bare goal. The base to publish is 20% above that. A 20% promotion is the fill price, not a new base.',
-    },
+    revenueGoal: goal,
     channelFees: {
       airbnb: '15.5% host-only fee on the nightly rate and the cleaning fee. List price is the host net divided by 0.845, rounded up.',
       vrbo: '5% commission plus 3% payment processing. List price is the host net divided by 0.92, rounded up.',

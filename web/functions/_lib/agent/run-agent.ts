@@ -29,6 +29,29 @@ const ANSWER_NOW =
   'Now answer the question in plain language using the tool result above. State the figures you found ' +
   'and do not reply with a single word. If the tool returned nothing useful, say what was missing.';
 
+const MAX_TOOL_CHARS = 12000;
+
+/**
+ * A tool result as the model sees it.
+ *
+ * Sized rather than sliced: a result at or under the budget is sent whole, so the model always reads a complete
+ * answer. A larger one is sent with its counts and a plain statement that it was shortened — never silently cut,
+ * because a model handed half an array cannot tell the difference and will fill the gap from the doctrine.
+ */
+export function toolResultForModel(out: Record<string, unknown>): string {
+  const json = JSON.stringify(out);
+  if (json.length <= MAX_TOOL_CHARS) return json;
+  const shape: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(out)) {
+    shape[key] = Array.isArray(value)
+      ? `[${value.length} items, omitted for length]`
+      : typeof value === 'object' && value !== null
+        ? '[object, omitted for length]'
+        : value;
+  }
+  return `${JSON.stringify(shape)}\n\nThis result was too large to send in full (${json.length} characters). The counts above are accurate; the item lists were omitted. Ask for a narrower date range to see the details.`;
+}
+
 const MAX_TURNS = 8;
 
 export async function runAgentChat(
@@ -70,9 +93,18 @@ export async function runAgentChat(
         const { result: toolOut, step } = await executeAgentTool(env, call.name, call.args);
         toolSteps.push(step);
         toolResultParts.push({ name: call.name, response: toolOut });
+        /*
+         * The whole result, not the first 2000 characters.
+         *
+         * A hard slice cut a pricing answer off mid-array, so the model answered from the doctrine formula using a
+         * result that had been silently truncated — and a host was told $527 for a night they had approved at $193.
+         * Truncation is the same defect as a label with nothing behind it: the model cannot tell a short answer
+         * from a cut one. If a result is genuinely too large to send, it is summarised with a note saying so rather
+         * than cut at an arbitrary boundary.
+         */
         messages.push({
           role: 'tool',
-          content: JSON.stringify(toolOut).slice(0, 2000),
+          content: toolResultForModel(toolOut),
           toolName: call.name,
           timestamp: new Date().toISOString(),
         });
