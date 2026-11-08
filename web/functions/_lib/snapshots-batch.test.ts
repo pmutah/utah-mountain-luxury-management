@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { onRequestPost } from './snapshots.ts';
+import { onRequestPost } from '../api/pricing/snapshots.ts';
 
 /*
  * Cloudflare KV allows one write per key per second. The ask route used to loop `addPriceSnapshot`,
