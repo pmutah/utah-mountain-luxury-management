@@ -15,11 +15,12 @@ Properties:
 - household — Brandon & Stephanie furnishings (Our expenses). Not a Todd split. Off rental P&L.
 
 ## Authority
-Brandon already approved full control of this website for both of you. That includes money, stays, calendars, guest surveys, pricing, documents, e-sign, construction, household bills, automation, and the morning briefing.
-Use the live API. Partner spend stays on construction. Lindon profit stays with Brandon.
+Brandon already approved full control of this API for both of you. That includes money, stays, calendars, guest surveys, pricing, documents, e-sign, construction, household bills, automation, and the morning briefing.
+Use the API below. Do not open the website. Do not log in. Do not click through screens. Do not use /api/muse/enter or /api/amanda/enter.
+Partner spend stays on construction. Lindon profit stays with Brandon.
 
 ## One job list
-Muse, Amanda, and the in-app co-host share one job list. The login decides who is writing. You do not pick the name.
+Muse, Amanda, and the in-app co-host share one job list. The bearer decides who is writing. You do not pick the name.
 Before you start a job Brandon asked for, or any yield move, guest reply, bill, or calendar change:
 1. Call shared_work action list. Or GET /api/agent/work.
 2. If that job is done, stop. Tell Brandon who finished it, when, and what they did. Do not do it again.
@@ -32,30 +33,29 @@ Keys both of you will recognize:
 - Anything else: a short slug, like review-reply:ranch:2026-09-20
 A finished job stays on the list for 45 days. The other agent reads it and leaves it alone.
 
-## How to operate the site
+## Direct request
 Muse and Amanda share this API. Either bearer works: MUSE_BOT_SECRET or AMANDA_BOT_SECRET.
 Header: Authorization: Bearer <secret>
 Also accepted: x-muse-bot-secret or x-amanda-bot-secret
 
-1. GET /api/muse/tools or GET /api/amanda/tools — catalog + JSON-schema parameters
-2. POST /api/muse/tools or POST /api/amanda/tools
-   { "name": "<tool>", "arguments": { "action": "...", ... } }
-3. Any other /api route:
-   { "name": "dashboard_request", "arguments": { "method": "GET", "path": "/api/portfolio/metrics", "query": { "month": "2026-09" } } }
-   Writes use method POST, PUT, PATCH, or DELETE and a body object.
-4. The same bearer also authenticates every /api/* REST call directly.
+POST https://wilhite-portfolio.pages.dev/api/muse/do
+POST https://wilhite-portfolio.pages.dev/api/amanda/do
+Content-Type: application/json
+
+{ "message": "What Brandon asked, in plain language." }
+
+The site looks up the records, runs the tools, and returns JSON: text (what happened) and steps (each tool and its result). Pass the returned runId on the next message to continue the same conversation.
+
+Named tool, only when you already know the name:
+POST /api/muse/tools or POST /api/amanda/tools
+{ "name": "<tool>", "arguments": { "action": "...", ... } }
+Any other /api route:
+{ "name": "dashboard_request", "arguments": { "method": "GET", "path": "/api/portfolio/metrics", "query": { "month": "2026-09" } } }
+The same bearer also authenticates every /api/* REST call directly.
 
 OpenAPI:
 - https://wilhite-portfolio.pages.dev/api/muse/openapi.json
 - https://wilhite-portfolio.pages.dev/api/amanda/openapi.json
-
-## Website login (no dashboard password)
-Open once, then use the hash routes:
-https://wilhite-portfolio.pages.dev/api/muse/enter?token=<secret>
-https://wilhite-portfolio.pages.dev/api/amanda/enter?token=<secret>
-Optional next page: &next=/  or  &next=/#/river/launch
-That sets a 30-day signed-in cookie. Routes: #/overview #/report #/report/documents #/guests #/ranch #/lindon #/river #/river/launch #/river/build #/ours
-You can also type the API key into the Sign in box, or open https://wilhite-portfolio.pages.dev/?muse=<secret>
 
 ## Named tools
 Co-host: manage_finances, manage_reservations, manage_calendar, manage_operations, gmail_service, manage_pricing, shared_work
