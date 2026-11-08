@@ -292,12 +292,24 @@ export function ConstructionProjectView({
                 {constructionDocsUnreadLine()}
               </p>
             ) : (
-              <p className="text-2xl font-black text-amber-400 mt-1">{formatCurrency(invoiced)}</p>
+              /*
+               * Say "at least" when a real invoice has no amount.
+               *
+               * Measured on production: 51 documents, 30 invoice-like, and **4 with no amount** — including three
+               * named `Inv # 6494`, `Inv # 6628` and `Inv # 6645`. The headline read "$1,213,240.48" as a settled
+               * figure while excluding those four, with only a 10px amber note beneath. Against a $1.65M budget that
+               * shortfall is the difference between "under budget" and "over" — so the figure is a floor, and the
+               * headline has to say so rather than leaving it to a caption.
+               */
+              <p className="text-2xl font-black text-amber-400 mt-1" data-bot="construction-invoiced" data-partial={invoiceAttentionCount > 0 ? 'yes' : 'no'}>
+                {invoiceAttentionCount > 0 ? 'at least ' : ''}
+                {formatCurrency(invoiced)}
+              </p>
             )}
             {invoiceAttentionCount > 0 && (
-              <p className="text-[10px] text-amber-500/90 mt-1 font-bold">
+              <p className="text-[10px] text-amber-500/90 mt-1 font-bold" data-bot="construction-invoice-attention">
                 {invoiceAttentionCount} invoice{invoiceAttentionCount > 1 ? 's' : ''} need type or
-                amount — use Re-analyze below
+                amount — use Re-analyze below. The total above is short by whatever those are worth.
               </p>
             )}
           </div>
