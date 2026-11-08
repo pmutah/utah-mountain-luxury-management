@@ -21,10 +21,15 @@ const withToken = (stays.reservations ?? []).filter((s) => s.surveyToken && s.pr
 function scan(label, value) {
   const text = JSON.stringify(value);
   const findings = [];
-  // Shapes that would be a leak if they appeared on the wrong house's payload.
-  if (/provoriver6802/i.test(text)) findings.push('River Wi-Fi password');
+  /*
+   * Shape-based only. An earlier version of this script hardcoded the River House's real Wi-Fi password as
+   * the thing to look for, which put a live secret in the repo — and the project's own secret-scanning test
+   * caught it. Any non-empty value in these fields is the leak; the actual string never needs to be written
+   * down.
+   */
   if (/"doorCode"\s*:\s*"[^"]+"/i.test(text)) findings.push('a door code value');
   if (/"wifiPassword"\s*:\s*"[^"]+"/i.test(text)) findings.push('a Wi-Fi password value');
+  if (/"wifiName"\s*:\s*"[^"]+"/i.test(text)) findings.push('a Wi-Fi network name');
   if (findings.length) return `${label}: LEAK — ${findings.join(', ')}`;
   return `${label}: clean`;
 }
