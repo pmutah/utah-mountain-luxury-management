@@ -77,7 +77,7 @@ export const AGENT_SITE_MAP = {
     approvedRates:
       'GET/POST/DELETE /api/pricing/approved-rates — host only. POST { house, date, guest } approves one night, and that night is then quoted at that price on our own booking page and in the guest month grid. It is the only path from the pricing engine to a guest. Refused on a booked, closed, held, or paused night, and outside the floor, the ceiling, the 8% raise cap, and the published 20% promotion. DELETE ?house=&date= returns the night to the published card. It sends nothing to Airbnb, VRBO, or Hospitable.',
     ratePushPlan:
-      'GET /api/pricing/push-plan — host only. What a rate push would change, built from the shadow run: booked, closed, paused, locked, and held nights are never in it. It answers sends:false and has no writer, so no price can leave from it. GET/POST /api/pricing/shadow-days is the durable seven-day clock; the write token is never returned.',
+      'GET /api/pricing/push-plan — host only. What a rate push would change, built from the shadow run: booked, closed, paused, locked, and held nights are never in it. It answers sends:false and has no writer, so no price can leave from it. **Setting HOSPITABLE_WRITE_TOKEN does not change that**: the token is only read to compute the gate, and no Hospitable client or outbound price call exists in this codebase, so a fully open gate still stops at a payload. `gate.send` names this. GET/POST /api/pricing/shadow-days is the durable seven-day clock; the write token is never returned.',
     sharedWork:
       'GET/POST /api/agent/work — the job list Muse, Amanda, and the co-host share. list, claim, done, release. A done job is not done again.',
     houseSettings:

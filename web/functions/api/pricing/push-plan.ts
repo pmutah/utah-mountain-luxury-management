@@ -2,7 +2,7 @@ import { corsJson } from '../../_lib/data';
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { buildMarketBoard } from '../../../src/lib/market/board';
 import { runShadow } from '../../../src/lib/market/shadow';
-import { planLines, pushPayload, pushPlanAll, pushSummaryLine, type PushGate } from '../../../src/lib/market/push';
+import { planLines, pushPayload, pushPlanAll, pushSendState, pushSummaryLine, type PushGate } from '../../../src/lib/market/push';
 import { shadowClockFromSaved, type SavedShadowDay } from '../../../src/lib/market/shadow-log';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
@@ -109,7 +109,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
         payload: pushPayload(plan),
       })),
       summary: pushSummaryLine(plans),
-      gate,
+      gate: { ...gate, send: pushSendState(gate) },
       shadowDays: { days: clock.days, required: clock.required, ready: clock.ready },
       storageReads: 'ok',
       /** True on every response: this route has no writer, so no price can leave from it. */

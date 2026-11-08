@@ -16,7 +16,14 @@ type ApprovedNight = { house: string; date: string; guest: number; approvedAt: s
 type Loaded = {
   plans: Plan[] | null;
   summary: string | null;
-  gate: { shadowReady: boolean; hasToken: boolean; paused: boolean; calendarReady: boolean };
+  gate: {
+    shadowReady: boolean;
+    hasToken: boolean;
+    paused: boolean;
+    calendarReady: boolean;
+    /** Whether a rate could leave this app at all. False both with and without a token today. */
+    send?: { sends: boolean; line: string };
+  };
   shadowDays: { days: number; required: number; ready: boolean };
   storageReads?: 'ok' | 'paused';
 };
@@ -177,9 +184,13 @@ export function PushPlanPanel() {
             {data.summary}
           </p>
           <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="push-plan-gate">
-            {data.gate.hasToken
-              ? 'A write token exists on this deployment.'
-              : 'There is no Hospitable write token, so a rate stays closed.'}{' '}
+            {/*
+              The old text said "A write token exists on this deployment" once the env var was set, which a
+              host reads as *it will now push*. It would not: `HOSPITABLE_WRITE_TOKEN` is only ever read to
+              compute this boolean, and there is no Hospitable client or outbound price call in the code.
+              The sentence now comes from `pushSendState`, so the page cannot claim a send the code lacks.
+            */}
+            {data.gate.send?.line ?? 'A rate would not leave this app: no sender is built yet.'}{' '}
             {data.shadowDays.ready
               ? `Shadow days ${data.shadowDays.days} of ${data.shadowDays.required}.`
               : `Shadow day ${data.shadowDays.days} of ${data.shadowDays.required}.`}

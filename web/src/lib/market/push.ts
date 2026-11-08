@@ -83,6 +83,29 @@ export function pushHold(gate: PushGate): string | null {
   return null;
 }
 
+/**
+ * Whether a rate could actually leave this app, which is a different question from whether the plan is
+ * allowed.
+ *
+ * A plan can be fully computed and still not send: `HOSPITABLE_WRITE_TOKEN` is only ever read to compute
+ * the gate, and there is no Hospitable client and no outbound price call anywhere in this codebase. That
+ * is **not** a hold, because a hold drops the nights and the desk would lose sight of what would change —
+ * which is the one thing this page is good for. So the plan stays allowed and this flag says plainly
+ * whether sending exists, and why not.
+ */
+export function pushSendState(gate: PushGate): { sends: boolean; line: string } {
+  if (!gate.hasToken) {
+    return {
+      sends: false,
+      line: 'A rate would not leave this app: there is no write token, and no sender is built yet either.',
+    };
+  }
+  return {
+    sends: false,
+    line: 'A rate still would not leave this app: the write token is set, but no sender is built yet. What you see is a plan, not a send.',
+  };
+}
+
 /** A plan for one house. It never sends anything; it only says what would change. */
 export function pushPlanFor(house: HouseId, run: ShadowRun, gate: PushGate): PushPlan {
   const hold = pushHold({ ...gate, paused: gate.paused || run.paused });
