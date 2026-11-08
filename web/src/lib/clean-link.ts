@@ -118,7 +118,26 @@ export function cleanJobLine(job: CleanJobView): string {
 }
 
 /** The top of the cleaner page. */
-export function cleanPageNote(jobs: readonly CleanJobView[], unread: boolean): string {
+export function cleanPageNote(
+  jobs: readonly CleanJobView[],
+  unread: boolean,
+  lang: 'en' | 'es' = 'en',
+): string {
+  /*
+   * The steps already translate, so an English sentence under Spanish tasks reads as a half-finished
+   * page to the person who has to use it. Every line a cleaner reads is in their language.
+   */
+  if (lang === 'es') {
+    if (unread) {
+      return 'No se pudieron leer las reservas guardadas, así que esta lista no muestra nada. No se escribió nada encima.';
+    }
+    if (jobs.length === 0) return 'No hay limpieza en las próximas dos semanas. No se reservó ni se envió nada.';
+    const sameEs = jobs.filter((job) => job.sameDay).length;
+    const countEs = jobs.length === 1 ? '1 limpieza' : `${jobs.length} limpiezas`;
+    const tailEs =
+      sameEs === 0 ? '' : ` ${sameEs === 1 ? '1 es el mismo día de entrada.' : `${sameEs} son el mismo día de entrada.`}`;
+    return `${countEs} en las próximas dos semanas.${tailEs} El código de la puerta queda en el teléfono del huésped, no en esta página.`;
+  }
   if (unread) {
     return 'Saved bookings could not be read, so this list is not showing anything. Nothing was written over them.';
   }

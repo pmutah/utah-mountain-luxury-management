@@ -74,7 +74,7 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env, p
     {
       jobs,
       progress,
-      note: cleanPageNote(jobs, unread),
+      note: cleanPageNote(jobs, unread, lang),
       lang,
       storageReads: unread ? 'paused' : 'ok',
       // The label is the host's note to themselves, so it stays off the cleaner's page.
