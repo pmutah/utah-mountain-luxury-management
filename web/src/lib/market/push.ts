@@ -282,8 +282,11 @@ export function pushPayload(plan: PushPlan): PushPayload | null {
  * was 50 of 60 lines. Those lines name the change and the source instead of a figure to type, because a price
  * with nothing behind it is exactly the defect this whole surface exists to avoid.
  */
+export const PLAN_LINE_CAP = 14;
+
 export function planLines(plan: PushPlan): string[] {
-  return plan.nights.slice(0, 14).map((night) => {
+  const shown = plan.nights.slice(0, PLAN_LINE_CAP);
+  const lines = shown.map((night) => {
     const when = new Date(`${night.date}T12:00:00Z`).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -308,6 +311,19 @@ export function planLines(plan: PushPlan): string[] {
           : '';
     return `${when}: ${label}, $${night.from} to $${night.to}.${place}`;
   });
+  /*
+   * Say when the list is short. `planLines` has always capped at 14, and the panel's copy button reads "Copy these
+   * prices" — so a house with 34 changing nights would copy 14, report "Copied 14 nights", and leave twenty prices
+   * unmentioned. Today no house reaches the cap (the largest is 7), which makes this latent rather than live: exactly
+   * the kind of silence that only shows up on the day it matters.
+   */
+  const hidden = plan.nights.length - shown.length;
+  if (hidden > 0) {
+    lines.push(
+      `(${hidden} more ${hidden === 1 ? 'night is' : 'nights are'} in this plan and not listed here. Approve them from the buttons below, or narrow the window.)`,
+    );
+  }
+  return lines;
 }
 
 /**
@@ -348,7 +364,7 @@ export function planClimb(plan: PushPlan): string | null {
  * the floor — the same "label with nothing behind it" shape this whole change exists to remove.
  */
 export function planProvenance(plan: PushPlan): { liveLines: number; sampleLines: number; sampleNote: string | null } {
-  const shown = plan.nights.slice(0, 14);
+  const shown = plan.nights.slice(0, PLAN_LINE_CAP);
   const sampleLines = shown.filter((night) => night.source === 'sample').length;
   const liveLines = shown.length - sampleLines;
   const sampleNote =
