@@ -66,6 +66,14 @@ if (!isProduction) {
 if (!args.includes('--skip-checks')) {
   console.log('→ route guards');
   run('node', ['scripts/check-route-guards.cjs']);
+  /*
+   * A branch that is behind can still be a live preview alias running old code against the same store.
+   * `elite-rebuild` sat 57 commits back on 2026-11-08 and went unnoticed because production and the tests
+   * were both healthy. This refuses a deploy from a tree that has drifted, rather than discovering it weeks
+   * later at a URL nobody was checking.
+   */
+  console.log('→ branch drift');
+  run('node', ['scripts/check-branches.mjs']);
   console.log('→ functions typecheck');
   run('npx', ['tsc', '-p', 'tsconfig.functions.json']);
   console.log('→ tests');
