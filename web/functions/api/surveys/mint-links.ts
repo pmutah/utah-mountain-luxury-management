@@ -1,7 +1,7 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
-import { getAllReservations, updateReservation } from '../../_lib/reservations-store';
-import { loadSurveys, upsertSurveyForStay } from '../../_lib/survey-store';
+import { getAllReservations, updateReservations } from '../../_lib/reservations-store';
+import { loadSurveys, upsertSurveysForStays } from '../../_lib/survey-store';
 import { surveyPublicUrl } from '../../_lib/survey-copy';
 import { guideEnabled } from '../../_lib/guest-guide';
 import { storageReadPaused } from '../../_lib/kv-json';
@@ -64,33 +64,56 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
   /** Stays whose reservation row still needs the token written back to it. */
   const needingToken = new Set<string>();
 
-  for (const stay of candidates) {
+  const pending = candidates.filter((stay) => {
     if (stay.surveyToken && alreadyMinted.has(stay.id)) {
       skipped.push({ reservationId: stay.id, reason: 'already has a link' });
+      return false;
+    }
+    return true;
+  });
+
+  /*
+   * One survey write for the whole batch, not one per stay.
+   *
+   * The per-stay `upsertSurveyForStay` saves the entire survey list whenever it changes anything, so
+   * looping it is one write to the same KV key per stay — and Cloudflare allows one write per key per
+   * second. The first production run tried 25 stays and 14 of them died with
+   * `KV PUT failed: 429 Too Many Requests`, which is this bug, not a storage outage.
+   */
+  let created: Awaited<ReturnType<typeof upsertSurveysForStays>> = [];
+  if (pending.length > 0) {
+    try {
+      created = await upsertSurveysForStays(
+        env,
+        pending.map((stay) => ({
+          id: stay.id,
+          propertyId: stay.propertyId as PropertyId,
+          guestName: stay.guestName ?? 'Guest',
+          checkIn: stay.checkIn,
+          checkOut: stay.checkOut,
+          confirmationCode: stay.confirmationCode,
+        })),
+      );
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'the links could not be made';
+      return corsJson(request, { error: reason, minted: 0, sent: 0, skipped: skipped.length }, 503);
+    }
+  }
+
+  const surveyByStay = new Map(created.map((survey) => [survey.reservationId, survey]));
+  for (const stay of pending) {
+    const survey = surveyByStay.get(stay.id);
+    if (!survey) {
+      skipped.push({ reservationId: stay.id, reason: 'no survey was made' });
       continue;
     }
-    try {
-      const survey = await upsertSurveyForStay(env, {
-        id: stay.id,
-        propertyId: stay.propertyId as PropertyId,
-        guestName: stay.guestName ?? 'Guest',
-        checkIn: stay.checkIn,
-        checkOut: stay.checkOut,
-        confirmationCode: stay.confirmationCode,
-      });
-      minted.push({
-        reservationId: stay.id,
-        propertyId: stay.propertyId,
-        checkIn: stay.checkIn,
-        link: surveyPublicUrl(origin, survey.token),
-      });
-      if (stay.surveyToken !== survey.token) needingToken.add(stay.id);
-    } catch (err) {
-      skipped.push({
-        reservationId: stay.id,
-        reason: err instanceof Error ? err.message : 'the link could not be made',
-      });
-    }
+    minted.push({
+      reservationId: stay.id,
+      propertyId: stay.propertyId,
+      checkIn: stay.checkIn,
+      link: surveyPublicUrl(origin, survey.token),
+    });
+    if (stay.surveyToken !== survey.token) needingToken.add(stay.id);
   }
 
   /*
@@ -109,9 +132,11 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
       for (const survey of fresh) {
         if (needingToken.has(survey.reservationId)) tokenByStay.set(survey.reservationId, survey.token);
       }
-      for (const [id, token] of tokenByStay) {
-        await updateReservation(env, id, { surveyToken: token, surveyChannel: 'none' });
-      }
+      const batch = [...tokenByStay].map(([id, token]) => ({
+        id,
+        patch: { surveyToken: token, surveyChannel: 'none' as const },
+      }));
+      await updateReservations(env, batch);
     } catch {
       // The links above still open. The row patch only saves the guest list a lookup.
     }

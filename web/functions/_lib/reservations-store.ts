@@ -186,6 +186,53 @@ export async function updateReservation(
   };
 }
 
+/**
+ * Patch many stays in at most **two** writes — one for the custom list, one for the seed overrides.
+ *
+ * `updateReservation` reads and writes the whole list it touches, so calling it per stay is one write
+ * per stay to the same key. Cloudflare allows one write per key per second, which is how the first
+ * portal backfill lost 14 of 25 stays to `KV PUT failed: 429`.
+ *
+ * Every patch is a merge into the existing row, so a payout, note, or date is never dropped: only the
+ * fields named in the patch change.
+ */
+export async function updateReservations(
+  env: SettingsEnv,
+  patches: ReadonlyArray<{ id: string; patch: Partial<ReservationRecord> }>,
+): Promise<number> {
+  if (patches.length === 0) return 0;
+  let touched = 0;
+
+  const custom = await loadCustomReservations(env);
+  const customById = new Map(custom.map((row, index) => [row.id, index]));
+  let customDirty = false;
+  const seedPatches: Array<{ id: string; patch: Partial<ReservationRecord> }> = [];
+
+  for (const { id, patch } of patches) {
+    const idx = customById.get(id);
+    if (idx !== undefined) {
+      custom[idx] = { ...custom[idx]!, ...patch };
+      customDirty = true;
+      touched += 1;
+    } else if (RESERVATIONS.some((row) => row.id === id)) {
+      seedPatches.push({ id, patch });
+    }
+  }
+
+  if (customDirty) await kvPut(env, KV_RES, custom);
+
+  if (seedPatches.length > 0) {
+    const overrides = await loadReservationOverrides(env);
+    for (const { id, patch } of seedPatches) {
+      overrides[id] = { ...overrides[id], ...patch };
+      touched += 1;
+    }
+    await kvPut(env, KV_OVERRIDES, overrides);
+  }
+
+  return touched;
+}
+
 export function filterReservations(
   list: ReservationRecord[],
   opts: {

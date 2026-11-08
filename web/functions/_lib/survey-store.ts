@@ -148,6 +148,70 @@ export async function upsertSurveyForStay(
   return item;
 }
 
+/**
+ * Make surveys for many stays in **one** write.
+ *
+ * `upsertSurveyForStay` saves the whole survey list every time it changes anything, so calling it in a
+ * loop is one write to the same KV key per stay. Cloudflare allows one write per key per second: on
+ * 2026-11-08 the first production backfill tried 25 stays, minted 11, and the other 14 failed with
+ * `KV PUT failed: 429 Too Many Requests`. The loop was the bug, not the storage.
+ *
+ * This does the same work against a single loaded list and saves once. Existing surveys keep their
+ * token, which is what makes a repeat run safe: a guest's live link is never moved.
+ */
+export async function upsertSurveysForStays(
+  env: SettingsEnv,
+  stays: ReadonlyArray<{
+    id: string;
+    propertyId: PropertyId;
+    guestName: string;
+    checkIn: string;
+    checkOut: string;
+    confirmationCode?: string;
+  }>,
+): Promise<GuestSurveyRecord[]> {
+  if (stays.length === 0) return [];
+  const list = await loadSurveys(env);
+  const byStay = new Map(list.map((survey) => [survey.reservationId, survey]));
+  const out: GuestSurveyRecord[] = [];
+  let dirty = false;
+
+  for (const stay of stays) {
+    const existing = byStay.get(stay.id);
+    if (existing) {
+      const variant = existing.variant ?? surveyVariantForProperty(stay.propertyId);
+      const confirmationCode = stay.confirmationCode || existing.confirmationCode;
+      if (variant !== existing.variant || confirmationCode !== existing.confirmationCode) {
+        const idx = list.findIndex((survey) => survey.token === existing.token);
+        list[idx] = { ...existing, variant, confirmationCode };
+        dirty = true;
+        out.push(list[idx]!);
+      } else {
+        out.push(existing);
+      }
+      continue;
+    }
+    const item: GuestSurveyRecord = {
+      token: crypto.randomUUID().replace(/-/g, ''),
+      reservationId: stay.id,
+      propertyId: stay.propertyId,
+      guestName: stay.guestName,
+      checkIn: stay.checkIn,
+      checkOut: stay.checkOut,
+      createdAt: new Date().toISOString(),
+      variant: surveyVariantForProperty(stay.propertyId),
+      confirmationCode: stay.confirmationCode,
+    };
+    list.push(item);
+    byStay.set(stay.id, item);
+    dirty = true;
+    out.push(item);
+  }
+
+  if (dirty) await saveSurveys(env, list);
+  return out;
+}
+
 export async function markSurveySent(
   env: SettingsEnv,
   token: string,

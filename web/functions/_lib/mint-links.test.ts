@@ -19,14 +19,23 @@ const COOKIE = `wpm_auth=${btoa(`wpm:${PASSWORD}`).replace(/=+$/, '')}`;
 type Store = Map<string, string>;
 
 function fakeKv(store: Store) {
-  return {
+  const puts: string[] = [];
+  const kv = {
+    /** Every put, by key, so a test can assert how many writes one batch took. */
+    puts,
     async get(key: string) {
       return store.get(key) ?? null;
     },
     async put(key: string, value: string) {
+      puts.push(key);
       store.set(key, value);
     },
   };
+  return kv;
+}
+
+function writesTo(kv: { puts: string[] }, key: string): number {
+  return kv.puts.filter((k) => k === key).length;
 }
 
 function res(id: string, checkIn: string, checkOut: string, extra: Record<string, unknown> = {}) {
@@ -53,8 +62,16 @@ function ours<T extends { reservationId: string }>(rows: T[]): T[] {
   return rows.filter((row) => row.reservationId.startsWith('t-'));
 }
 
+/** The last fake KV made by `envWith`, so a test can count writes without changing call sites. */
+let lastKv: ReturnType<typeof fakeKv> | null = null;
+
 function envWith(store: Store) {
-  return { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD };
+  lastKv = fakeKv(store);
+  return { SETTINGS: lastKv, DASHBOARD_PASSWORD: PASSWORD };
+}
+
+function putsTo(key: string): number {
+  return lastKv ? writesTo(lastKv, key) : 0;
 }
 
 function call(env: unknown, url = 'https://x/api/surveys/mint-links') {
@@ -185,4 +202,37 @@ test('an empty reservation store is not a wipe: nothing is written over it', asy
    * with. The invariant is that no list appears where the store had none.
    */
   assert.equal(store.has('reservations'), false, 'a read-only run wrote a reservation list');
+});
+
+test('many stays are minted in a handful of writes, not one per stay', async () => {
+  /*
+   * This is the bug that cost 14 of the first 25 real stays. `upsertSurveyForStay` saves the whole
+   * survey list every time it changes, so looping it is one write per stay to the same key — and
+   * Cloudflare allows one write per key per second, so the later ones came back
+   * `KV PUT failed: 429 Too Many Requests` and were skipped.
+   *
+   * The contract is writes that do not scale with the number of stays: at most one for the survey
+   * list, one for the custom reservation rows, and one for the seed overrides.
+   */
+  const store: Store = new Map();
+  const stays = Array.from({ length: 20 }, (_, i) =>
+    res(`many-${i}`, '2026-12-01', '2026-12-04'),
+  );
+  store.set('reservations', JSON.stringify(stays));
+
+  const body = (await (await call(envWith(store))).json()) as {
+    minted: number;
+    links: Array<{ reservationId: string }>;
+  };
+
+  assert.equal(ours(body.links).length, 20, 'not every fixture stay was minted');
+
+  const surveyWrites = putsTo('guestSurveys');
+  const resWrites = putsTo('reservations');
+  assert.equal(surveyWrites, 1, `the survey list was written ${surveyWrites} times for 20 stays`);
+  assert.ok(resWrites <= 1, `the custom booking list was written ${resWrites} times for 20 stays`);
+  assert.ok(
+    surveyWrites + resWrites <= 3,
+    `20 stays took ${surveyWrites + resWrites} writes; that is one per stay and will 429 on KV`,
+  );
 });
