@@ -66,6 +66,8 @@ export function DirectBook() {
   checkInNow.current = checkIn;
   checkOutNow.current = typedOut;
   const [sent, setSent] = useState(false);
+  /** True when the request saved but the guest's receipt could not be emailed. */
+  const [receiptFailed, setReceiptFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [holdLine, setHoldLine] = useState<string | null>(null);
   /** The guest's own link to this request, once it is saved. */
@@ -475,9 +477,17 @@ export function DirectBook() {
         held?: boolean;
         heldUntil?: string;
         statusPath?: string | null;
+        /**
+         * Whether the guest's receipt actually went out. The route has always reported this and the page never read
+         * it, so a guest whose email failed saw a clean success screen and then waited for a receipt that was never
+         * coming — with no status link either, because that link only lived in the email.
+         */
+        guestEmailed?: boolean;
+        guestEmailError?: string | null;
       };
       if (!res.ok) throw new Error(body.error || 'Could not send the request');
       setSent(true);
+      setReceiptFailed(body.guestEmailed === false);
       setStatusPath(typeof body.statusPath === 'string' ? body.statusPath : null);
       setHoldLine(
         body.heldUntil
@@ -1715,6 +1725,18 @@ export function DirectBook() {
             {sent ? (
               <>
                 <p className="mt-8 font-display text-3xl">We have the request. Someone will write back.</p>
+                {/*
+                  The route has always reported `guestEmailed`, and the page never read it. So when email failed — as it
+                  does on every request on this deployment, because the Gmail secret is invalid — the guest saw a clean
+                  success screen and waited for a receipt that was never sent. The status link below is the part that
+                  still works, so it becomes the instruction rather than a footnote.
+                */}
+                {receiptFailed && (
+                  <p className="mt-2 text-sm" data-bot="stay-receipt-failed">
+                    The confirmation email could not be sent, so do not wait for it. Your request is saved and the
+                    link below opens it — keep that link.
+                  </p>
+                )}
                 {holdLine && (
                   <p className="mt-2 text-sm" data-bot="stay-hold-confirmed">
                     {holdLine}
@@ -1723,7 +1745,9 @@ export function DirectBook() {
                 {statusPath && (
                   <div className="mt-5" data-bot="stay-status-link">
                     <p className="text-sm text-[var(--uml-muted)]">
-                      Keep this link to check on the request yourself. No sign-in, and it shows only these dates.
+                      {receiptFailed
+                        ? 'This link is the only copy you will get. Keep it somewhere you can find it — no sign-in, and it shows only these dates.'
+                        : 'Keep this link to check on the request yourself. No sign-in, and it shows only these dates.'}
                     </p>
                     <a
                       href={statusPath}
