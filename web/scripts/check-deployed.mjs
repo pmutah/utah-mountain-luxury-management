@@ -131,8 +131,17 @@ if (llms.status !== 200) {
 //    false-positive on whitespace.
 try {
   const { readFileSync } = await import('node:fs');
-  const { join } = await import('node:path');
-  const localIndex = readFileSync(join(process.cwd(), 'dist', 'index.html'), 'utf8');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  /*
+   * Resolved from the script's own location, not the caller's cwd.
+   *
+   * Run from the repo root this looked for `<root>/dist/index.html`, did not find it, and excused itself — so the
+   * same command gave weaker assurance depending on which directory it was invoked from. A check whose strength
+   * depends on cwd is a check that will be run the weak way.
+   */
+  const distIndex = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'index.html');
+  const localIndex = readFileSync(distIndex, 'utf8');
   const localScript = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(localIndex)?.[0] ?? null;
   const liveScript = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(home.body)?.[0] ?? null;
   if (!localScript) {
@@ -147,8 +156,23 @@ try {
     notes.push(`/ : serving this build's bundle (${localScript.split('/').pop()})`);
   }
 } catch (err) {
-  // No dist on disk (a check run before a build) is not a deploy problem; say so without failing.
-  notes.push(`/ : could not compare the bundle (${err instanceof Error ? err.message : String(err)})`);
+  /*
+   * Not being able to compare is not the same as passing.
+   *
+   * The first version of this check recorded "could not compare the bundle" as a note and still printed
+   * "The deployed site matches this branch on every check" — the exact soft-failure shape it was written to
+   * remove. It has to be a problem when a dist exists and cannot be read, and only excused when there is
+   * genuinely no build to compare against (a check run before `npm run build`).
+   */
+  const missingDist =
+    err instanceof Error && /ENOENT/.test(err.message) && /dist[\\/]index\.html/.test(err.message);
+  if (missingDist) {
+    notes.push('/ : no dist/index.html yet, so the bundle was not compared (run the build first)');
+  } else {
+    problems.push(
+      `/ : the built index.html could not be read (${err instanceof Error ? err.message : String(err)}), so this check cannot prove the static deploy matches this branch.`,
+    );
+  }
 }
 
 // 5. A public route must answer JSON, so a deployment with no KV or no Functions is caught here.
