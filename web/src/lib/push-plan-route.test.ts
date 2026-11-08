@@ -64,7 +64,7 @@ test('the plan route is host only', async () => {
   assert.equal(res.status, 401);
 });
 
-test('with no write token the plan is blocked and carries no nights or payload', async () => {
+test('with no write token the plan previews its nights and still carries no payload', async () => {
   const store: Store = new Map();
   store.set('shadowDays', JSON.stringify(sevenDays()));
   const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD };
@@ -75,9 +75,12 @@ test('with no write token the plan is blocked and carries no nights or payload',
   assert.equal(body.gate.hasToken, false);
   assert.equal(body.gate.shadowReady, true);
   for (const plan of body.plans) {
+    /*
+     * No token is a permission gate, not a data gate: the nights stay visible so the desk can see what
+     * would change, but `payload` is null so nothing could ever be sent from a preview.
+     */
     assert.equal(plan.allowed, false);
-    assert.equal(plan.nights.length, 0);
-    assert.equal(plan.payload, null);
+    assert.equal(plan.payload, null, 'a plan without a token must carry no payload');
   }
   assert.match(body.summary, /No rate is sent/);
   assert.equal(body.summary.includes('$'), false);

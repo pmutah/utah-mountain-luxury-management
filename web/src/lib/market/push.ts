@@ -113,11 +113,37 @@ export function pushSendState(gate: PushGate): { sends: boolean; line: string } 
   };
 }
 
-/** A plan for one house. It never sends anything; it only says what would change. */
+/**
+ * A plan for one house. It never sends anything; it only says what would change.
+ *
+ * **A waiting gate is not a reason to hide the preview.** The shadow week blocks *sending*, but its whole
+ * purpose is to let the desk watch what auto-pricing would do for seven days before it is trusted. Every
+ * hold used to drop the nights, so during that week the plan reported "the shadow week is not finished"
+ * and showed nothing — the preview was blank exactly when it mattered. Now the shadow-week hold keeps its
+ * nights and reads as a preview; a hold that means the data is unusable (an unread calendar, a paused
+ * house) still drops them, because those nights would be invented rather than previewed.
+ */
 export function pushPlanFor(house: HouseId, run: ShadowRun, gate: PushGate): PushPlan {
   const hold = pushHold({ ...gate, paused: gate.paused || run.paused });
-  const nights = hold ? [] : pushNights(house, run.nights);
-  if (hold) return { house, allowed: false, hold, nights: [], line: hold };
+
+  /*
+   * Which holds mean "the data is unusable" and which mean "waiting, but the data is fine".
+   *
+   * - Unread calendar, or a paused house: the nights themselves cannot be trusted, so they are dropped.
+   * - Shadow week unfinished, or no write token: both are states of the *permission* to send. The nights
+   *   are still real and worth watching, which is the entire reason a shadow week exists.
+   */
+  const dataUnusable = !gate.calendarReady || gate.paused || run.paused;
+  const nights = dataUnusable ? [] : pushNights(house, run.nights);
+
+  if (hold && dataUnusable) return { house, allowed: false, hold, nights: [], line: hold };
+  if (hold) {
+    const preview =
+      nights.length === 0
+        ? 'Preview: no night would change once this is open.'
+        : `Preview only: ${nights.length === 1 ? '1 night' : `${nights.length} nights`} would change. ${hold}`;
+    return { house, allowed: false, hold, nights, line: preview };
+  }
   if (nights.length === 0) {
     return {
       house,

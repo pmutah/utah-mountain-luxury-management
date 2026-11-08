@@ -89,13 +89,29 @@ test('the gate refuses each reason it should and names it', () => {
   assert.equal(pushHold(READY), null);
 });
 
-test('a blocked gate produces no nights and no payload', () => {
+test('a waiting gate previews the nights but still produces no payload', () => {
+  /*
+   * The missing write token is a state of *permission*, not of data. The nights are real and are exactly
+   * what the desk needs to watch during the shadow week, so they are shown — but `allowed` stays false and
+   * `pushPayload` still returns null, so a preview can never become a send. Hiding the nights made the
+   * seven-day watching period show nothing at all, which is the one thing it exists for.
+   */
   const r = run('river', [night()]);
   const plan = pushPlanFor('river', r, { ...READY, hasToken: false });
-  assert.equal(plan.allowed, false);
-  assert.deepEqual(plan.nights, []);
-  assert.equal(pushPayload(plan), null);
+  assert.equal(plan.allowed, false, 'a plan without a token must never be allowed');
+  assert.ok(plan.nights.length > 0, 'the preview dropped the nights it should be showing');
+  assert.equal(pushPayload(plan), null, 'a preview must never produce a payload');
+  assert.match(plan.line, /Preview only/);
   assert.match(plan.line, /write token/);
+});
+
+test('an unusable gate drops the nights, because those nights would be invented', () => {
+  // An unread calendar is different from a permission gate: the night data itself cannot be trusted.
+  const r = run('river', [night()]);
+  const plan = pushPlanFor('river', r, { ...READY, calendarReady: false });
+  assert.equal(plan.allowed, false);
+  assert.deepEqual(plan.nights, [], 'a night from an unread calendar must not be previewed');
+  assert.equal(pushPayload(plan), null);
 });
 
 test('a paused run blocks even when the gate says otherwise', () => {
