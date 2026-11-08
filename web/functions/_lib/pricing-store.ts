@@ -1,6 +1,7 @@
 import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import { addDays } from '../../src/lib/market/dates';
+import { compsForHouse } from '../../src/lib/market/comp-house';
 import { indexSnaps, liveCompFits, toLiveComp, toLiveSnaps, type LiveComp, type SnapIndex } from '../../src/lib/market/live';
 import {
   toApprovedRate,
@@ -153,9 +154,11 @@ export async function loadLiveNights(
   from: string,
   days: number,
 ): Promise<{ comps: LiveComp[]; index: SnapIndex }> {
-  const comps = (await loadCompSet(env)).filter(
-    (comp) => !comp.propertyId || comp.propertyId === 'both' || comp.propertyId === house,
-  );
+  /*
+   * Only this house's comps. A comp saved without a house used to count for every house, which put
+   * the River House's canyon lodge in the Lindon House's band beside a $210 rambler.
+   */
+  const comps = compsForHouse(await loadCompSet(env), house);
   const live = comps
     .map((comp) => toLiveComp(comp))
     .filter((comp): comp is LiveComp => comp !== null)
@@ -183,7 +186,7 @@ export async function compareMarket(
   const snaps = await loadPriceSnapshots(env);
   const comps = await loadCompSet(env);
   const relevantCompIds = new Set(
-    comps.filter((c) => !c.propertyId || c.propertyId === propertyId || c.propertyId === 'both').map((c) => c.id),
+    compsForHouse(comps, propertyId as 'ranch' | 'lindon' | 'river').map((c) => c.id),
   );
   const rates = snaps
     .filter((s) => relevantCompIds.has(s.compId) && s.date >= from && s.date <= to)

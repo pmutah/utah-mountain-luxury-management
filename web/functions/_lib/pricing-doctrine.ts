@@ -2,6 +2,7 @@ import { PROPERTIES } from './data';
 import { getAllReservations } from './reservations-store';
 import { loadCalendarBlocks } from './calendar-store';
 import { compareMarket, loadCompSet, loadListingConfig, loadPriceSnapshots, median } from './pricing-store';
+import { compsForHouse } from '../../src/lib/market/comp-house';
 import type { SettingsEnv } from './kv';
 import type { PropertyId } from './agent/types';
 
@@ -534,9 +535,7 @@ async function compHostNetMedian(env: SettingsEnv, propertyId: PropertyId, from:
   const comps = await loadCompSet(env);
   const snaps = await loadPriceSnapshots(env);
   const relevant = new Map(
-    comps
-      .filter((comp) => !comp.propertyId || comp.propertyId === propertyId || comp.propertyId === 'both')
-      .map((comp) => [comp.id, comp.platform]),
+    compsForHouse(comps, propertyId).map((comp) => [comp.id, comp.platform]),
   );
   const hostNets: number[] = [];
   for (const snap of snaps) {

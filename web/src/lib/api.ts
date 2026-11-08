@@ -823,12 +823,14 @@ export const api = {
       liveComps: LiveComp[] | null;
       snaps: LiveSnap[] | null;
       storageReads?: 'ok' | 'paused';
+      /** Comps saved before a house was required. They set no band until a house is set. */
+      needsHouse?: number;
     }>(`/api/pricing/snapshots${house ? `?house=${house}` : ''}`),
   saveComp: (body: {
     platform: 'airbnb' | 'vrbo';
     url: string;
     label: string;
-    propertyId?: 'ranch' | 'lindon' | 'both';
+    propertyId?: 'ranch' | 'lindon' | 'river' | 'both';
     sleeps: number;
     distanceMi: number;
     area?: string;

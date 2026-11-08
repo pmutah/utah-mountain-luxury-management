@@ -1,7 +1,8 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { addPriceSnapshot, loadCompSet, loadPriceSnapshots } from '../../_lib/pricing-store';
-import { toLiveComp, toLiveSnaps, MAX_ASK_NIGHTS, type LiveComp } from '../../../src/lib/market/live';
+import { toLiveComps, toLiveSnaps, MAX_ASK_NIGHTS, type LiveComp } from '../../../src/lib/market/live';
+import { compsForHouse, compNeedsHouse } from '../../../src/lib/market/comp-house';
 import { storageReadPaused } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
 
@@ -32,17 +33,24 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     const message = err instanceof Error ? err.message : 'Comps failed';
     return corsJson(request, { error: message }, 500);
   }
-  const liveComps: LiveComp[] = comps
-    .filter((comp) => !house || !comp.propertyId || comp.propertyId === 'both' || comp.propertyId === house)
-    .map((comp) => toLiveComp(comp))
-    .filter((comp): comp is LiveComp => comp !== null);
+  /*
+   * With a house, only that house's comps: a comp saved for the River must not price Lindon. Without
+   * one, every comp is listed so the desk can still show the ones that have no house yet.
+   */
+  const liveComps: LiveComp[] = toLiveComps(house ? compsForHouse(comps, house) : comps);
   const ids = new Set(liveComps.map((comp) => comp.id));
   const filtered = toLiveSnaps(snaps).filter(
     (snap) => ids.has(snap.compId) && (!compId || snap.compId === compId),
   );
+  /*
+   * Comps saved before the house was required. They are not in any band now, which is the point, but
+   * a host who entered them has to be able to see that and set a house rather than wonder why the
+   * band never moved. Counted here so the desk can say it in words.
+   */
+  const needsHouse = comps.filter((comp) => compNeedsHouse(comp)).length;
   return corsJson(
     request,
-    { liveComps, snaps: filtered.slice(-500), storageReads: 'ok' },
+    { liveComps, snaps: filtered.slice(-500), storageReads: 'ok', needsHouse },
     200,
     { 'Cache-Control': 'no-store' },
   );

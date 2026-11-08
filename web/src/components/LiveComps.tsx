@@ -16,12 +16,19 @@ export function LiveComps({ house, from, days = 90 }: { house: HouseId; from: st
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({ url: '', label: '', sleeps: '', distanceMi: '', area: '' });
+  /**
+   * The channel the comp asks on. Airbnb and VRBO leave the host a different share (84.5% vs 92%),
+   * and this value is what converts an observed guest ask to host net. It used to be hardcoded to
+   * airbnb, so every VRBO comp was read as if Airbnb had taken 15.5% of it.
+   */
+  const [platform, setPlatform] = useState<'airbnb' | 'vrbo'>('airbnb');
   const [saved, setSaved] = useState<string | null>(null);
   const [askNotice, setAskNotice] = useState<string | null>(null);
   /** One night and one guest ask per comp, so a host can record what a listing actually shows. */
   const [askForm, setAskForm] = useState<Record<string, { date?: string; rate?: string }>>({});
   const [askBusy, setAskBusy] = useState<string | null>(null);
   const [nights, setNights] = useState<Record<string, number>>({});
+  const [needsHouse, setNeedsHouse] = useState(0);
 
   /** The nights one save covers. A listing shows one rate for a run, so a run is what gets recorded. */
   function askNights(compId: string): number {
@@ -83,6 +90,7 @@ export function LiveComps({ house, from, days = 90 }: { house: HouseId; from: st
         }
         setPaused(false);
         setError(null);
+        setNeedsHouse(result.needsHouse ?? 0);
         setCards(liveCardRows(result.liveComps, result.snaps, eachNight(from, days), house));
       })
       .catch(() => {
@@ -110,9 +118,14 @@ export function LiveComps({ house, from, days = 90 }: { house: HouseId; from: st
     setError(null);
     try {
       const created = await api.saveComp({
-        platform: 'airbnb',
+        platform,
         url: form.url.trim(),
         label: form.label.trim(),
+        /*
+         * The house this tab is showing. Without it the comp counted for every house, and the save
+         * route now refuses a comp that does not name one.
+         */
+        propertyId: house,
         sleeps,
         distanceMi,
         ...(form.area.trim() ? { area: form.area.trim() } : {}),
@@ -163,6 +176,14 @@ export function LiveComps({ house, from, days = 90 }: { house: HouseId; from: st
           <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="market-live-count">
             {mergedCompCount(0, cards.length)}
           </p>
+          {needsHouse > 0 && (
+            <p className="mt-2 text-sm" data-bot="market-live-needs-house">
+              {needsHouse === 1 ? '1 saved comp has' : `${needsHouse} saved comps have`} no house, so{' '}
+              {needsHouse === 1 ? 'it sets' : 'they set'} no rate band. A comp is only compared with the house it
+              was entered for. Save {needsHouse === 1 ? 'it' : 'them'} again on the right house tab to use{' '}
+              {needsHouse === 1 ? 'it' : 'them'}.
+            </p>
+          )}
           {cards.length === 0 ? (
             <p className="mt-2 text-sm" data-bot="market-live-empty">
               No saved comp yet. The band is the sample set.
@@ -304,6 +325,18 @@ export function LiveComps({ house, from, days = 90 }: { house: HouseId; from: st
           value={form.area}
           onChange={(event) => setForm({ ...form, area: event.target.value })}
         />
+        <label className="text-xs uppercase tracking-[0.16em] text-[var(--uml-muted)]">
+          Channel
+          <select
+            data-bot="market-live-platform"
+            value={platform}
+            onChange={(event) => setPlatform(event.target.value === 'vrbo' ? 'vrbo' : 'airbnb')}
+            className={`${input} mt-1`}
+          >
+            <option value="airbnb">Airbnb</option>
+            <option value="vrbo">VRBO</option>
+          </select>
+        </label>
         <button
           type="submit"
           disabled={busy || paused}

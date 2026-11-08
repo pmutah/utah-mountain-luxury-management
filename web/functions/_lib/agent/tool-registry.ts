@@ -160,10 +160,24 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
           ],
         },
         days: { type: 'number', description: 'yield_plan horizon in days (default 90)' },
-        propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river'] },
+        /**
+         * The house. One field for the whole tool: it is the house to price, and for add_comp it is
+         * the house the comp competes with. A comp with no house sets no band, so add_comp requires it.
+         */
+        propertyId: {
+          type: 'string',
+          enum: ['ranch', 'lindon', 'river', 'both'],
+          description:
+            'The house. For add_comp this is the house the comp competes with and is required; use both for a house that competes with the Ranch and River together.',
+        },
         platform: { type: 'string', enum: ['airbnb', 'vrbo'] },
         url: { type: 'string' },
         label: { type: 'string' },
+        /** How many the listing sleeps. The band cannot compare a comp without it. */
+        sleeps: { type: 'number', description: 'How many guests the listing sleeps. Required for add_comp.' },
+        /** Miles from our house. The band cannot compare a comp without it. */
+        distanceMi: { type: 'number', description: 'Miles from our house. Required for add_comp.' },
+        area: { type: 'string', description: 'Neighbourhood or town the listing is in.' },
         compId: { type: 'string' },
         date: { type: 'string' },
         nightlyRate: { type: 'number' },

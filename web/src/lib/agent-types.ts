@@ -33,5 +33,5 @@ export interface CompListing {
   platform: 'airbnb' | 'vrbo';
   url: string;
   label: string;
-  propertyId?: 'ranch' | 'lindon' | 'both';
+  propertyId?: 'ranch' | 'lindon' | 'river' | 'both';
 }

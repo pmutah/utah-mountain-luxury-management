@@ -43,6 +43,54 @@ function get(url: string) {
   return new Request(url, { headers: { Cookie: COOKIE } });
 }
 
+test('a comp must name a house, because a house-less comp sets no band', async () => {
+  const store: Store = new Map();
+  const env = { SETTINGS: fakeKv(store), ...ENV_PASS };
+  const { compSet } = await routes();
+
+  const refused = await compSet.onRequestPost!({
+    request: post({
+      platform: 'airbnb',
+      url: 'https://airbnb.com/rooms/9',
+      label: 'No house',
+      sleeps: 18,
+      distanceMi: 2,
+    }),
+    env,
+    params: {},
+  });
+  assert.equal(refused.status, 400, 'a comp with no house used to be counted for every house');
+  assert.equal(store.has('compSet'), false, 'a refused save wrote something');
+
+  const bogus = await compSet.onRequestPost!({
+    request: post({
+      platform: 'airbnb',
+      url: 'https://airbnb.com/rooms/9',
+      label: 'Bogus house',
+      propertyId: 'all',
+      sleeps: 18,
+      distanceMi: 2,
+    }),
+    env,
+    params: {},
+  });
+  assert.equal(bogus.status, 400, 'a house value that is not a house has to be refused');
+
+  const river = await compSet.onRequestPost!({
+    request: post({
+      platform: 'airbnb',
+      url: 'https://airbnb.com/rooms/9',
+      label: 'River lodge',
+      propertyId: 'river',
+      sleeps: 18,
+      distanceMi: 2,
+    }),
+    env,
+    params: {},
+  });
+  assert.equal(river.status, 201, 'a comp that does name its house still saves');
+});
+
 test('a comp without a sleep count or a distance is refused', async () => {
   const store: Store = new Map();
   const env = { SETTINGS: fakeKv(store), ...ENV_PASS };
@@ -137,7 +185,7 @@ test('a saved ask is returned with its comp and a paused read is named', async (
   const store: Store = new Map();
   store.set(
     'compSet',
-    JSON.stringify([{ id: 'r1', platform: 'airbnb', url: 'https://a/1', label: 'River one', sleeps: 18, distanceMi: 2 }]),
+    JSON.stringify([{ id: 'r1', platform: 'airbnb', url: 'https://a/1', label: 'River one', propertyId: 'river', sleeps: 18, distanceMi: 2 }]),
   );
   store.set(
     'priceSnapshots',
@@ -197,7 +245,7 @@ test('recording an ask needs the host and a real comp', async () => {
 
 test('a bad night refuses the whole save rather than half-saving it', async () => {
   const store: Store = new Map();
-  store.set('compSet', JSON.stringify([{ id: 'c1', platform: 'airbnb', url: 'https://a/1', label: 'One', sleeps: 18, distanceMi: 2 }]));
+  store.set('compSet', JSON.stringify([{ id: 'c1', platform: 'airbnb', url: 'https://a/1', label: 'One', propertyId: 'river', sleeps: 18, distanceMi: 2 }]));
   const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD };
   const { snaps } = await routes();
   const res = await snaps.onRequestPost!({
@@ -222,9 +270,9 @@ test('a bad night refuses the whole save rather than half-saving it', async () =
 test('a recorded ask activates the live band', async () => {
   const store: Store = new Map();
   store.set('compSet', JSON.stringify([
-    { id: 'c1', platform: 'airbnb', url: 'https://a/1', label: 'One', sleeps: 18, distanceMi: 2 },
-    { id: 'c2', platform: 'airbnb', url: 'https://a/2', label: 'Two', sleeps: 18, distanceMi: 3 },
-    { id: 'c3', platform: 'airbnb', url: 'https://a/3', label: 'Three', sleeps: 18, distanceMi: 4 },
+    { id: 'c1', platform: 'airbnb', url: 'https://a/1', label: 'One', propertyId: 'river', sleeps: 18, distanceMi: 2 },
+    { id: 'c2', platform: 'airbnb', url: 'https://a/2', label: 'Two', propertyId: 'river', sleeps: 18, distanceMi: 3 },
+    { id: 'c3', platform: 'airbnb', url: 'https://a/3', label: 'Three', propertyId: 'river', sleeps: 18, distanceMi: 4 },
   ]));
   const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD };
   const { snaps } = await routes();
@@ -253,7 +301,7 @@ test('a recorded ask activates the live band', async () => {
 
 test('a run of nights saves in one call and covers every night in it', async () => {
   const store: Store = new Map();
-  store.set('compSet', JSON.stringify([{ id: 'c1', platform: 'airbnb', url: 'https://a/1', label: 'One', sleeps: 18, distanceMi: 2 }]));
+  store.set('compSet', JSON.stringify([{ id: 'c1', platform: 'airbnb', url: 'https://a/1', label: 'One', propertyId: 'river', sleeps: 18, distanceMi: 2 }]));
   const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD };
   const { snaps } = await routes();
   const { eachNight } = await import('./market/dates.ts');
@@ -281,7 +329,7 @@ test('a run of nights saves in one call and covers every night in it', async () 
 
 test('a run longer than the cap is refused whole', async () => {
   const store: Store = new Map();
-  store.set('compSet', JSON.stringify([{ id: 'c1', platform: 'airbnb', url: 'https://a/1', label: 'One', sleeps: 18, distanceMi: 2 }]));
+  store.set('compSet', JSON.stringify([{ id: 'c1', platform: 'airbnb', url: 'https://a/1', label: 'One', propertyId: 'river', sleeps: 18, distanceMi: 2 }]));
   const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD };
   const { snaps } = await routes();
   const { MAX_ASK_NIGHTS } = await import('./market/live.ts');

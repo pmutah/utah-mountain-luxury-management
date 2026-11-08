@@ -47,6 +47,7 @@ import { bookingInbox } from '../../../src/lib/booking-inbox';
 import { suggestedPayoutLine, suggestedPayouts } from '../../../src/lib/payout-suggest';
 import { isDeclineReason } from '../../../src/lib/booking-decline';
 import { denverToday } from '../../../src/lib/market/dates';
+import { isCompHouse } from '../../../src/lib/market/comp-house';
 import type { StaySpan } from '../../../src/lib/availability';
 import { onRequestPost as acceptRoute } from '../../api/book/accept';
 import { onRequestPost as declineRoute } from '../../api/book/decline';
@@ -662,11 +663,33 @@ async function handlePricing(
   }
 
   if (action === 'add_comp') {
+    /*
+     * A comp is only usable when it names a house and carries the two facts the band compares:
+     * how many it sleeps and how far it sits. This handler used to pass only the URL and a label,
+     * so every comp the agent added was house-less and had no size or distance — it could never
+     * enter a band, and a house-less comp also used to count for every house. Refusing here means
+     * the agent is told what is missing instead of quietly saving a comp that prices nothing.
+     */
+    const propertyId = String(args.propertyId ?? '');
+    if (!isCompHouse(propertyId)) {
+      return { ok: false, error: 'Choose the house this comp competes with: ranch, lindon, river, or both.' };
+    }
+    const sleeps = Number(args.sleeps);
+    const distanceMi = Number(args.distanceMi);
+    if (!Number.isInteger(sleeps) || sleeps < 1) {
+      return { ok: false, error: 'Say how many guests the comp sleeps. The rate band cannot use it without that.' };
+    }
+    if (!Number.isFinite(distanceMi) || distanceMi < 0) {
+      return { ok: false, error: 'Say how many miles the comp sits from our house.' };
+    }
     const comp = await addCompListing(env, {
-      platform: args.platform as 'airbnb' | 'vrbo',
+      platform: args.platform === 'vrbo' ? 'vrbo' : 'airbnb',
       url: String(args.url),
       label: String(args.label ?? 'Comp'),
-      propertyId: args.propertyId as PropertyId | undefined,
+      propertyId,
+      sleeps,
+      distanceMi,
+      ...(args.area ? { area: String(args.area) } : {}),
     });
     return { ok: true, comp };
   }
