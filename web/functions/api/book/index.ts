@@ -136,22 +136,36 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
   await kvPut(env, 'booking-requests', list.slice(0, 100));
 
   const house = houses.map((id) => PROPERTIES[id].name).join(' and ') || propertyName(propertyId);
-  const sent = await gmailSend(
-    env,
-    'utahmountainluxury@gmail.com',
-    `Direct request · ${house} · ${name}`,
-    [
-      `${name} asked to book ${house}.`,
-      returningLine(returning),
-      `Email: ${email}`,
-      entry.phone ? `Phone: ${entry.phone}` : '',
-      entry.checkIn ? `Dates: ${entry.checkIn} to ${entry.checkOut}` : '',
-      party,
-      entry.note,
-    ]
-      .filter(Boolean)
-      .join('\n'),
-  );
+  /*
+   * `gmailSend` is not guaranteed to return an error object — it can throw (a token refresh that fails,
+   * a network fault inside the Workers runtime). Unguarded, that throw replaced the whole response with a
+   * Cloudflare 500 **after** the request had already been saved: the guest saw a crash page, the team got
+   * no email, and the inbox row existed but the guest was never told. This is reachable only when a party
+   * is given, because every request without `guests` returns 409 earlier in the function.
+   *
+   * The request is the thing that matters, so a mail failure is caught and reported beside it.
+   */
+  let sent: { error?: string };
+  try {
+    sent = await gmailSend(
+      env,
+      'utahmountainluxury@gmail.com',
+      `Direct request · ${house} · ${name}`,
+      [
+        `${name} asked to book ${house}.`,
+        returningLine(returning),
+        `Email: ${email}`,
+        entry.phone ? `Phone: ${entry.phone}` : '',
+        entry.checkIn ? `Dates: ${entry.checkIn} to ${entry.checkOut}` : '',
+        party,
+        entry.note,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    );
+  } catch (err) {
+    sent = { error: err instanceof Error ? err.message : 'The team email could not be sent.' };
+  }
   /*
    * Everything from here on writes. `kvPut` above already saved the request, and `addHolds` below reads
    * and writes the hold list — three KV writes across two keys in one request. That is the shape that
