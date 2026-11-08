@@ -89,20 +89,27 @@ test('the brief says how to advance the shadow week, not just where it is', () =
   };
 
   const empty = shadowLine(0);
-  assert.match(empty, /Open the market page once today/i, 'the brief does not say how to save the first day');
+  assert.match(empty, /market page/i, 'the brief does not say how to save the first day');
   assert.ok(
-    empty.includes(`${SHADOW_DAYS_REQUIRED} are needed`),
+    empty.includes(`${SHADOW_DAYS_REQUIRED} days are needed`),
     'the brief does not say how many days the week takes',
   );
   assert.match(empty, /Hospitable write closed/, 'the brief stopped saying the write is closed');
 
   const partial = shadowLine(3);
   assert.match(partial, /4 more days/i, 'the brief does not say how many days are left');
-  assert.match(partial, /Reading this brief does not count/i, 'the brief implies reading it advances the clock');
+  /*
+   * This assertion used to require "Reading this brief does not count". That was false: `AgentsHub`
+   * posts `/api/pricing/shadow-days` on load, so opening the brief is one of the two ways a day is
+   * saved. The old wording sent a host somewhere else to do a thing the page had just done, which is
+   * part of why the week sat at zero.
+   */
+  assert.match(partial, /this brief or the market page/i, 'the brief does not name a surface that saves the day');
+  assert.doesNotMatch(partial, /does not count/i, 'the brief again claims opening it does not record the day');
 
   const ready = shadowLine(SHADOW_DAYS_REQUIRED);
   assert.match(ready, /write token/i, 'the finished week does not say what still blocks a send');
-  assert.equal(/open the market page|more days/i.test(ready), false, 'a finished week still asks for more days');
+  assert.equal(/more days/i.test(ready), false, 'a finished week still asks for more days');
 });
 
 test('the brief and the market page build the digest the same way', () => {

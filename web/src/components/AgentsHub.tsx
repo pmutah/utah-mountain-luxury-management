@@ -112,7 +112,13 @@ export function AgentsHub({
         },
         rateCalendar,
       }),
-    [today, reservations, workState, open.length, calendar, booksPaused, fixes, houseFixes, closed, blocksReady, arrivalWindows, departureWindows, compChoices, rateCalendar],
+    /*
+     * `shadowSaved` belongs here. The brief reads it to say "Shadow day N of 7", but it was missing
+     * from this list, so the memo never recomputed when the day was recorded: the save succeeded (the
+     * server held 2026-11-08) and the page still said "Shadow day 0 of 7". A host reading that concludes
+     * the day did not save, presses again, and the week never appears to advance.
+     */
+    [today, reservations, workState, open.length, calendar, booksPaused, fixes, houseFixes, closed, blocksReady, arrivalWindows, departureWindows, compChoices, rateCalendar, shadowSaved],
   );
 
   useEffect(() => {

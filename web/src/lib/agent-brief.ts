@@ -131,8 +131,8 @@ export function agentBrief(input: {
         days >= SHADOW_DAYS_REQUIRED
           ? `Shadow days ${days} of ${SHADOW_DAYS_REQUIRED} are saved. Hospitable write closed until a write token exists.`
           : days === 0
-            ? `Shadow day 0 of ${SHADOW_DAYS_REQUIRED}. Hospitable write closed. Open the market page once today to save the first day: a day is only saved while that page is open, and ${SHADOW_DAYS_REQUIRED} are needed. Reading this brief does not count. Nothing is sent.`
-            : `Shadow day ${days} of ${SHADOW_DAYS_REQUIRED}. Hospitable write closed. Open the market page once a day for ${SHADOW_DAYS_REQUIRED - days} more ${SHADOW_DAYS_REQUIRED - days === 1 ? 'day' : 'days'} to finish the week. Reading this brief does not count. Nothing is sent.`,
+            ? `Shadow day 0 of ${SHADOW_DAYS_REQUIRED}. Hospitable write closed. Opening this brief or the market page today saves the first day; ${SHADOW_DAYS_REQUIRED} days are needed. Nothing is sent.`
+            : `Shadow day ${days} of ${SHADOW_DAYS_REQUIRED}. Hospitable write closed. Open this brief or the market page once a day for ${SHADOW_DAYS_REQUIRED - days} more ${SHADOW_DAYS_REQUIRED - days === 1 ? 'day' : 'days'} to finish the week. Nothing is sent.`,
     },
     ...amenityBriefLines(input.hiddenComps, input.pinnedComps),
     {
