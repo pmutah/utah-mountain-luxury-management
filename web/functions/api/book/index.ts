@@ -33,7 +33,21 @@ interface BookingRequest {
 }
 
 export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }) => {
-  const body = (await request.json()) as Partial<BookingRequest>;
+  /*
+   * A body that will not parse is a bad request, not a server fault. `await request.json()` throws on
+   * malformed input, and with no guard that throw reached the runtime: `POST /api/book` answered a
+   * Cloudflare **500 "Worker threw exception"** page instead of a 400. A guest whose request body is
+   * cut off by a flaky connection would see a crash page for a form they could simply resend.
+   */
+  let body: Partial<BookingRequest>;
+  try {
+    body = (await request.json()) as Partial<BookingRequest>;
+  } catch {
+    return corsJson(request, { error: 'That request could not be read. Send the form again.' }, 400);
+  }
+  if (!body || typeof body !== 'object') {
+    return corsJson(request, { error: 'That request could not be read. Send the form again.' }, 400);
+  }
   const name = body.name?.trim() ?? '';
   const email = body.email?.trim() ?? '';
   const propertyId = body.propertyId?.trim() ?? '';

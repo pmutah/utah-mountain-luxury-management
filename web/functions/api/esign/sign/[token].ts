@@ -1,4 +1,5 @@
 import { corsJson } from '../../../_lib/data';
+import { readJsonBody } from '../../../_lib/json-body';
 import { completeEsignPackage, markSessionCompleted } from '../../../_lib/esign/complete-esign';
 import {
   findSessionByToken,
@@ -53,11 +54,18 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     return corsJson(request, { error: 'This signing link has expired or was cancelled.' }, 410);
   }
 
-  const body = (await request.json()) as {
+  /*
+   * A body that will not parse is a bad request. Unguarded, `await request.json()` threw and the
+   * signer — a guest on a public link, halfway through signing a document — got a Cloudflare 500 page
+   * instead of a message telling them to try again.
+   */
+  const read = await readJsonBody<{
     signerName?: string;
     signatureDataUrl?: string;
     consentAccepted?: boolean;
-  };
+  }>(request, 'That signing request could not be read. Try again.');
+  if (!read.ok) return read.response;
+  const body = read.body;
 
   const signerName = (body.signerName ?? session.signerName ?? '').trim();
   if (!signerName) return corsJson(request, { error: 'Type your full name.' }, 400);
