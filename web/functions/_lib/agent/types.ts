@@ -30,7 +30,7 @@ export interface ReservationRecord {
   surveyToken?: string;
   surveySentAt?: string;
   surveyChannel?: 'email' | 'sms' | 'none';
-  surveyCompletedAt?: string;
+  surveyCompletedAt?: string | null;
 }
 
 export interface CalendarBlock {

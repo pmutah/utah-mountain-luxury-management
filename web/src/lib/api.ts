@@ -80,7 +80,13 @@ export interface Reservation {
   surveyToken?: string;
   surveySentAt?: string;
   surveyChannel?: 'email' | 'sms' | 'none';
-  surveyCompletedAt?: string;
+  /**
+   * When the host marked the preference card done on the stay itself.
+   *
+   * `null` is meaningful: it clears the stamp so the guests page stops calling the card "Completed". `undefined` would
+   * be dropped by JSON and the stamp would survive, which is exactly the bug a reset button would otherwise have.
+   */
+  surveyCompletedAt?: string | null;
 }
 
 export type SurveyVariant = 'vip' | 'classic';

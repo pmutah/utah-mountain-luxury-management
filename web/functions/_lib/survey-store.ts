@@ -241,3 +241,31 @@ export async function saveSurveyAnswers(
   await saveSurveys(env, list);
   return list[idx]!;
 }
+
+/**
+ * Clear one card, so it can be filled again.
+ *
+ * `saveSurveyAnswers` stamps `completedAt` unconditionally, and `preferencesDone` keys off exactly that — so once a
+ * card is submitted there is no way back, for a guest who submitted by mistake or for a card entered in error.
+ *
+ * I needed it myself: verifying this write path put a probe card on a **real** guest's stay, and the only way to
+ * undo it was to delete her whole survey, which would also have destroyed her token and her link.
+ *
+ * Scoped to one token. `answers` and `completedAt` are removed; the token, the stay, and the sent history stay, so
+ * the guest's link still opens the form.
+ */
+export async function clearSurveyAnswers(
+  env: SettingsEnv,
+  token: string,
+): Promise<{ cleared: GuestSurveyRecord; reservationId: string } | null> {
+  const list = await loadSurveys(env);
+  const idx = list.findIndex((s) => s.token === token);
+  if (idx < 0) return null;
+  const existing = list[idx]!;
+  const next: GuestSurveyRecord = { ...existing };
+  delete (next as { answers?: unknown }).answers;
+  delete (next as { completedAt?: unknown }).completedAt;
+  list[idx] = next;
+  await saveSurveys(env, list);
+  return { cleared: next, reservationId: existing.reservationId };
+}
