@@ -11,6 +11,7 @@ import { GuestDossier } from './GuestDossier';
 import { GuestAppEditor } from './GuestAppEditor';
 import { GuestTimeline } from './GuestTimeline';
 import { StayMessageSender } from './StayMessageSender';
+import { GuestLinkBackfill } from './GuestLinkBackfill';
 import { RequestInbox } from './RequestInbox';
 import { earlyStayOpen, hostAccessPhrase, hostEarlyPhrase } from '../lib/house-stay';
 import { hostArrivalPhrase } from '../lib/arrival';
@@ -255,6 +256,7 @@ export function GuestsPanel({
           The door code stays hidden on the guest phone until they tap that they read the house rules. That tap stays on the phone. It does not sign the stay agreement. Checkout steps can be checked off on that same phone, and those checks stay there too.
         </p>
       </section>
+      <GuestLinkBackfill />
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-sm text-slate-400">
         {listUnreadable ? (
           <p className="mt-3 text-slate-300" data-bot="guests-mail-unread">

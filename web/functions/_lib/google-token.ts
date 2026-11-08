@@ -41,7 +41,8 @@ export type VerifyFailure =
 
 export type VerifyResult =
   | { ok: true; person: VerifiedEmail }
-  | { ok: false; reason: VerifyFailure; message: string };
+  /** `refusedEmail` is set only for `not-allowed`: the address Google vouched for but we declined. */
+  | { ok: false; reason: VerifyFailure; message: string; refusedEmail?: string };
 
 /**
  * Verify a Google ID token and require an allowlisted, verified email.
@@ -94,11 +95,14 @@ export async function verifyGoogleSignIn(
     };
   }
   if (!isAllowedEmail(email, emailAllowlist(input.env))) {
-    // The same wording the DMS uses, so the login screen can key off it.
+    // The same wording the DMS uses, so the login screen can key off it. The refused address comes
+    // back with it: that is the one detail that tells a person to switch accounts rather than
+    // conclude Google is broken.
     return {
       ok: false,
       reason: 'not-allowed',
       message: 'That email address does not have access to this dashboard.',
+      refusedEmail: email,
     };
   }
 

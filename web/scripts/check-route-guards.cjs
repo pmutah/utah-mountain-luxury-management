@@ -33,6 +33,7 @@ const HOST_ROUTES = [
   'expenses/[id]/photos/[photoId].ts',
   'surveys/index.ts',
   'surveys/send.ts',
+  'surveys/mint-links.ts',
   'esign/documents/index.ts',
   'esign/documents/[id].ts',
   'esign/documents/[id]/file.ts',

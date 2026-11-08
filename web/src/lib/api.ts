@@ -1152,6 +1152,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  /**
+   * Give every upcoming stay a portal link. Sends nothing — `sent` comes back 0 on purpose.
+   * Safe to press twice: a stay that already has a link keeps the one it has.
+   */
+  mintGuestLinks: () =>
+    request<{
+      ok: boolean;
+      sent: number;
+      minted: number;
+      skipped: number;
+      byHouse: Record<string, number>;
+      guideOff: string[];
+      links: Array<{ reservationId: string; propertyId: string; checkIn: string; link: string }>;
+    }>('/api/surveys/mint-links', { method: 'POST' }),
   getStayGuide: (token: string, preview = false, ready = false) => {
     const params = new URLSearchParams();
     if (preview) params.set('preview', '1');

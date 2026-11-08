@@ -59,7 +59,25 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     });
     if (!result.ok) {
       const status = result.reason === 'not-configured' ? 503 : 401;
-      return corsJson(request, { error: result.message, code: result.reason, authenticated: false }, status);
+      /*
+       * `not-allowed` is the one failure a person can fix themselves, so it has to say which account
+       * was refused. Without the address the screen reads "Google is not allowing me" when Google
+       * did its job and this dashboard declined the account — which is exactly the confusion this
+       * caused on 2026-11-08, when the browser was signed in as a different address.
+       */
+      const refused = result.reason === 'not-allowed' ? result.refusedEmail ?? null : null;
+      return corsJson(
+        request,
+        {
+          error: refused
+            ? `Signed in as ${refused}, which is not on this dashboard's allowlist. Use one of the approved addresses, or ask Brandon to add it.`
+            : result.message,
+          code: result.reason,
+          ...(refused ? { email: refused } : {}),
+          authenticated: false,
+        },
+        status,
+      );
     }
     return corsJson(
       request,
