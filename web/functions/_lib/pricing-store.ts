@@ -60,6 +60,26 @@ export async function removeCompListing(env: SettingsEnv, id: string): Promise<b
   return true;
 }
 
+/**
+ * Correct the facts on a saved comp that decide whether it may set a nightly band.
+ *
+ * Only the fields passed are changed, so marking a comp as ours does not clear its minimum stay and
+ * setting a minimum stay does not unmark it. Every other row, and every saved ask, is left alone.
+ */
+export async function setCompFlags(
+  env: SettingsEnv,
+  id: string,
+  patch: { isOwn?: boolean; minNights?: number },
+): Promise<CompListing | null> {
+  const list = await loadCompSet(env);
+  const index = list.findIndex((c) => c.id === id);
+  if (index < 0) return null;
+  const next = [...list];
+  next[index] = { ...list[index]!, ...patch };
+  await kvPut(env, KV_COMP, next);
+  return next[index]!;
+}
+
 export async function loadPriceSnapshots(env: SettingsEnv): Promise<PriceSnapshot[]> {
   return kvGet(env, KV_SNAPSHOTS, []);
 }
@@ -190,7 +210,7 @@ export async function loadLiveNights(
   const live = comps
     .map((comp) => toLiveComp(comp))
     .filter((comp): comp is LiveComp => comp !== null)
-    .filter((comp) => liveCompFits(house, comp.sleeps, comp.distanceMi));
+    .filter((comp) => liveCompFits(house, comp.sleeps, comp.distanceMi, comp.isOwn, comp.minNights));
   if (live.length === 0) return { comps: [], index: new Map() };
   const ids = new Set(live.map((comp) => comp.id));
   const until = addDays(from, days);

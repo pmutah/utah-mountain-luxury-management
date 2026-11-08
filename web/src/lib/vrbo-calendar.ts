@@ -28,7 +28,11 @@ export function readVrboCalendarPrices(text: string, year: number): Record<strin
   let month: number | null = null;
   let cursorYear = year;
 
-  for (const token of tokens) {
+  // Walk by position, not by value. A two-month picker repeats every day number, so looking a token up
+  // with `indexOf` finds the first month's day and reads its price for the second month too.
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+
     const monthHit = months.find((name) => token.startsWith(name));
     if (monthHit) {
       const monthIndex = months.indexOf(monthHit) + 1;
@@ -45,7 +49,6 @@ export function readVrboCalendarPrices(text: string, year: number): Record<strin
     const dayNumber = Number(day[1]);
     if (dayNumber < 1 || dayNumber > 31) continue;
 
-    const index = tokens.indexOf(token);
     const next = tokens[index + 1] ?? '';
     const price = /^\$([\d,]+)$/.exec(next);
     if (!price) continue;

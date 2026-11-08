@@ -143,6 +143,41 @@ test('a comp fits the band only when it sleeps close and sits near', () => {
   assert.equal(liveCompFits('lindon', 4, 3), false);
 });
 
+test('our own listing never sets the band, however well it fits', () => {
+  // The Ranch's highest-weight comp was our own Ranch House: 20 sleeps, 1 mile, so it passed every
+  // fit rule and our published ask became a "market" observation. Lindon had the same thing.
+  assert.equal(liveCompFits('ranch', 20, 1), true, 'the shape still fits on size and distance');
+  assert.equal(liveCompFits('ranch', 20, 1, true), false, 'but our own listing must not count');
+  assert.equal(liveCompFits('lindon', 12, 0, true), false);
+  assert.equal(liveCompFits('river', 16, 4, false), true, 'someone else keeps counting');
+});
+
+test('a comp we own is named as ours instead of shown as an observed ask', () => {
+  const mine = toLiveComp({ ...savedComp, isOwn: true, distanceMi: 1, sleeps: 20 })!;
+  const line = liveCompLine(mine, 4, 'ranch');
+  assert.match(line, /our own listing/);
+  assert.equal(line.includes('$'), false, 'an own-listing line must not quote a rate');
+  assert.match(line, /cannot set the band/);
+});
+
+test('a listing that only books month-long stays cannot set a nightly band', () => {
+  // The Vineyard comp required 28 nights, so its rate prices a month, not a night of the market we sell.
+  assert.equal(liveCompFits('lindon', 16, 4, false, 28), false);
+  assert.equal(liveCompFits('lindon', 16, 4, false, 2), true, 'a two-night minimum is a nightly listing');
+  assert.equal(liveCompFits('lindon', 16, 4, false, 7), true, 'a week is the longest minimum we still read');
+
+  const monthly = toLiveComp({ ...savedComp, minNights: 28, sleeps: 16, distanceMi: 4 })!;
+  const line = liveCompLine(monthly, 6, 'lindon');
+  assert.match(line, /28-night stays/);
+  assert.equal(line.includes('$'), false);
+});
+
+test('a comp that names no minimum stay is treated as a nightly listing', () => {
+  const nightly = toLiveComp({ ...savedComp, minNights: undefined })!;
+  assert.equal(nightly.minNights, 1);
+  assert.equal(liveCompFits('river', 16, 4, false, nightly.minNights), true);
+});
+
 test('a comp line says when there is no saved ask and never invents a rate', () => {
   const live = toLiveComp(savedComp)!;
   const none = liveCompLine(live, 0, 'river');

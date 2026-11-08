@@ -16,6 +16,8 @@ export type LiveComp = {
   rating: number;
   reviews: number;
   guestFavorite: boolean;
+  isOwn: boolean;
+  minNights: number;
 };
 
 /** One observed guest ask on one night for one comp. */
@@ -77,6 +79,8 @@ export function toLiveComp(value: unknown): LiveComp | null {
     rating: typeof raw.rating === 'number' && raw.rating >= 0 && raw.rating <= 5 ? raw.rating : 0,
     reviews: whole(raw.reviews, 0, 100_000) ?? 0,
     guestFavorite: raw.guestFavorite === true,
+    isOwn: raw.isOwn === true,
+    minNights: whole(raw.minNights, 1, 365) ?? 1,
   };
 }
 
@@ -141,15 +145,44 @@ export function liveCoverage(
   };
 }
 
-/** True when this comp sleeps at least 60% of the house and sits within 10 miles. */
-export function liveCompFits(house: HouseId, sleeps: number, distanceMi: number): boolean {
+/**
+ * The most nights a listing may require before it still counts as a nightly competitor. A house that
+ * only books 28-night stays competes for month-long guests, not for the two- and seven-night stays this
+ * desk prices, so its nightly rate is not an ask we can compare against.
+ */
+export const MAX_COMP_MIN_NIGHTS = 7;
+
+/**
+ * True when this comp can set a band for the house.
+ *
+ * A comp that sleeps at least 60% of the house and sits within 10 miles fits — **unless it is our own
+ * listing**. Comparing the house with itself turns our published ask into a "market" observation, so the
+ * engine reads its own rate as the median and recommends a move against it. Two saved comps were our own
+ * Lindon and Ranch listings before this guard existed.
+ *
+ * A listing with a long minimum stay also stays out: the Vineyard comp required 28 nights, so its rate
+ * describes a month-long booking, not a night of the market this desk sells into.
+ */
+export function liveCompFits(
+  house: HouseId,
+  sleeps: number,
+  distanceMi: number,
+  isOwn = false,
+  minNights = 1,
+): boolean {
+  if (isOwn) return false;
+  if (minNights > MAX_COMP_MIN_NIGHTS) return false;
   return sleeps * 5 >= SLEEPS[house] * 3 && distanceMi <= 10;
 }
 
 /** A card line for a saved comp. It names whether the ask is observed, and never invents a rate. */
 export function liveCompLine(comp: LiveComp, coverage: number, house: HouseId): string {
-  const fits = liveCompFits(house, comp.sleeps, comp.distanceMi);
+  const fits = liveCompFits(house, comp.sleeps, comp.distanceMi, comp.isOwn, comp.minNights);
   const place = `Sleeps ${comp.sleeps}, ${comp.distanceMi} mi.`;
+  if (comp.isOwn) return `${place} This is our own listing, so it cannot set the band.`;
+  if (comp.minNights > MAX_COMP_MIN_NIGHTS) {
+    return `${place} Requires ${comp.minNights}-night stays, so its rate is not a nightly ask.`;
+  }
   if (!fits) return `${place} Not used in the rate band.`;
   if (coverage === 0) return `${place} No saved ask yet, so it does not set the band.`;
   return `${place} ${coverage === 1 ? '1 night has a saved ask.' : `${coverage} nights have a saved ask.`}`;

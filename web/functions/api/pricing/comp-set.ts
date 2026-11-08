@@ -26,6 +26,10 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     rating?: number;
     reviews?: number;
     guestFavorite?: boolean;
+    /** True when this listing is one of our own houses, which can never set its own band. */
+    isOwn?: boolean;
+    /** The shortest stay the listing books. Above a week it is a mid-term rental, not a nightly comp. */
+    minNights?: number;
   }>(request);
   if (!parsed.ok) return parsed.response;
   const body = parsed.body;

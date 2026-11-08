@@ -64,6 +64,7 @@ const HOST_ROUTES = [
   'pricing/alerts.ts',
   'pricing/snapshots.ts',
   'pricing/comp-set.ts',
+  'pricing/comp-own.ts',
   'pricing/listings.ts',
   'pricing/refresh.ts',
   'pricing/snapshots.ts',

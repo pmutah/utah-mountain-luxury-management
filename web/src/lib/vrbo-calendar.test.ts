@@ -58,3 +58,16 @@ test('a picker that runs into January rolls the year forward', () => {
 test('text with no month heading yields nothing rather than guessing', () => {
   assert.deepEqual(readVrboCalendarPrices('8 | $1,545 | 9 | $1,545', 2026), {});
 });
+
+test('a repeated day number takes its own month\'s price, not the first one found', () => {
+  // A two-month picker repeats every day number. Walking the tokens by value meant `indexOf` found
+  // November's "8" again while reading December, so December's nights inherited November's prices.
+  const nights = readVrboCalendarPrices(
+    `November 2026\n8 | $200\n9 | $210\nDecember 2026\n8 | $400\n9 | $410`,
+    2026,
+  );
+
+  assert.equal(nights['2026-11-09'], 210, 'the November night is wrong');
+  assert.equal(nights['2026-12-08'], 400, 'December 8 took November 8\'s price');
+  assert.equal(nights['2026-12-09'], 410, 'December 9 took November 9\'s price');
+});

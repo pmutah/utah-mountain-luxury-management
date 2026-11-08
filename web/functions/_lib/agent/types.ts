@@ -120,6 +120,16 @@ export interface CompListing {
   rating?: number;
   reviews?: number;
   guestFavorite?: boolean;
+  /**
+   * True when this listing is one of our own houses. A house must never be compared with itself: our
+   * published ask would count as a market observation and the engine would read its own rate as the median.
+   */
+  isOwn?: boolean;
+  /**
+   * The shortest stay the listing will book. A listing with a 28-night minimum is a mid-term rental,
+   * not a nightly competitor, so its rate is not an ask for a two- or seven-night stay.
+   */
+  minNights?: number;
 }
 
 export interface PriceSnapshot {
