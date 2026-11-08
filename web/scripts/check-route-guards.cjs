@@ -34,6 +34,7 @@ const HOST_ROUTES = [
   'surveys/index.ts',
   'surveys/send.ts',
   'surveys/mint-links.ts',
+  'surveys/reset.ts',
   'esign/documents/index.ts',
   'esign/documents/[id].ts',
   'esign/documents/[id]/file.ts',
