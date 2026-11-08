@@ -1,7 +1,7 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { readJsonBody } from '../../_lib/json-body';
-import { loadCompSet, addCompListing, removeCompListing } from '../../_lib/pricing-store';
+import { loadCompSet, addCompListing, removeCompListing, findSameHouse } from '../../_lib/pricing-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import { isCompHouse } from '../../../src/lib/market/comp-house';
 import type { AgentEnv } from '../../_lib/agent/types';
@@ -49,6 +49,24 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
       request,
       { error: 'Choose the house this comp belongs to: ranch, lindon, river, or both.' },
       400,
+    );
+  }
+  /*
+   * One house, one comp. The same property is listed on Airbnb and VRBO at slightly different guest
+   * prices, and saving both would let a single landlord supply every observation on a night — the band
+   * would look like a market while measuring one competitor. A duplicate is refused with the existing
+   * comp named, so the desk can add asks to the row it already has.
+   */
+  const same = await findSameHouse(env, body);
+  if (same) {
+    return corsJson(
+      request,
+      {
+        error: `This is the same house as "${same.label}", already saved as a comp. Add asks to that comp instead of saving it twice; two platforms for one house would count as two observations.`,
+        existingId: same.id,
+        existingUrl: same.url,
+      },
+      409,
     );
   }
   const comp = await addCompListing(env, body);

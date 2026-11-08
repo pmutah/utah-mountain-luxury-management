@@ -41,6 +41,38 @@ export async function loadCompSet(env: SettingsEnv): Promise<CompListing[]> {
   return kvGet(env, KV_COMP, []);
 }
 
+/**
+ * A comparable is a **house**, not a URL — and the same house is listed on Airbnb and on VRBO at slightly
+ * different guest prices. The Orem 7000 SQFT home quotes $527 on VRBO and $537 on Airbnb for the same
+ * nights; the Orem Oasis appears on both too. Saving both would let **one landlord supply every observation
+ * on a night**, so the band would read as a market while measuring one competitor.
+ *
+ * What this key can and cannot do, stated plainly because it matters:
+ *
+ * - It **does** catch a second save of the same URL, and two platform names that share the house's own
+ *   words (both Oasis titles contain "Orem Oasis", for instance).
+ * - It **does not** catch two platforms that describe one house with different words. The real pair proves
+ *   it: VRBO calls it `Luxury 7000 SQFT · Sleeps 20 · Orem` and Airbnb calls it `Luxury -7000 SQFT-Sleeps 20-
+ *   Bball VBall 1 Acre`, which reduce to `luxury orem` and `luxury bball vball 1 acre`. A title comparison
+ *   cannot know those are one home.
+ *
+ * So this is a duplicate *discourager*, not proof. The reliable check is the host plus the street address,
+ * which the listings carry but this store does not yet capture. Until it does, a wrong second save is
+ * caught by the ask data (two comps on identical nights at near-identical rates are worth a look), and the
+ * honest statement is that URL equality is guaranteed while cross-platform identity is best-effort.
+ */
+export function compHouseKey(comp: { label?: string; sleeps?: number }): string {
+  const title = String(comp.label ?? '')
+    .toLowerCase()
+    // Platform-specific decoration: our own suffix, sizing claims, and punctuation.
+    .replace(/\b(sleeps?|slps?)\s*\d+\+?/g, ' ')
+    .replace(/\b\d+\s*(sq\.?\s*ft|sqft|bd|br|bedrooms?|bath|baths?)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+  return `${title}|${comp.sleeps ?? ''}`;
+}
+
 export async function addCompListing(
   env: SettingsEnv,
   comp: Omit<CompListing, 'id' | 'createdAt'>,
@@ -50,6 +82,20 @@ export async function addCompListing(
   list.push(item);
   await kvPut(env, KV_COMP, list);
   return item;
+}
+
+/** The saved comp that is the same house as this one, if any. Different url, same property. */
+export async function findSameHouse(
+  env: SettingsEnv,
+  comp: { label?: string; sleeps?: number; url?: string },
+): Promise<CompListing | null> {
+  const list = await loadCompSet(env);
+  const url = String(comp.url ?? '');
+  const exact = list.find((row) => row.url === url);
+  if (exact) return exact;
+  const key = compHouseKey(comp);
+  if (!key || key.endsWith('|')) return null;
+  return list.find((row) => compHouseKey(row) === key) ?? null;
 }
 
 export async function removeCompListing(env: SettingsEnv, id: string): Promise<boolean> {
