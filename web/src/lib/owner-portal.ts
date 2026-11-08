@@ -27,7 +27,23 @@ export type OwnerPortalView = {
   rangeLabel: string;
   todd: number;
   fee: number;
-  houses: Array<{ id: 'ranch' | 'river'; name: string; revenue: number; costs: number; todd: number; stays: number }>;
+  /**
+   * The fee expressed on the rent it was charged against, so the page can say "$11,469 of $57,345"
+   * instead of leaving the owner to divide by the host payout and find the fee looks short. The basis
+   * is rent after cleaning; cleaning is also inside `costs`, and the two cancel exactly.
+   */
+  feeBasis: number;
+  houses: Array<{
+    id: 'ranch' | 'river';
+    name: string;
+    revenue: number;
+    costs: number;
+    cleaning: number;
+    fee: number;
+    leftover: number;
+    todd: number;
+    stays: number;
+  }>;
   months: OwnerMonthLine[];
   /** Fixed sentences the page shows. They have no price. */
   notes: string[];
@@ -35,6 +51,7 @@ export type OwnerPortalView = {
 
 export const OWNER_PORTAL_NOTES: string[] = [
   'Ranch and River pay a 20% management fee to Brandon first.',
+  'The 20% is charged on rent after cleaning, not on the whole guest payout, so the fee is smaller than a fifth of the host payout line.',
   'What remains splits in half. Todd takes one half. Brandon and Stephanie take the other half.',
   'A loss after the fee splits the same way.',
   'Lindon, household purchases, and construction bills are not on this page.',
@@ -57,9 +74,13 @@ export function ownerPortalView(statement: OwnerStatement, period: 'month' | 'yt
       name: house.name,
       revenue: money(house.revenue),
       costs: money(house.costs),
+      cleaning: money(house.cleaning),
+      fee: money(house.fee),
+      leftover: money(house.leftover),
       todd: money(house.todd),
       stays: house.stays,
     }));
+  const feeBasis = money(houses.reduce((total, house) => total + (house.revenue - house.cleaning), 0));
   const months = statement.months.map((row) => ({
     month: row.month,
     label: row.label,
@@ -71,6 +92,7 @@ export function ownerPortalView(statement: OwnerStatement, period: 'month' | 'yt
     rangeLabel: statement.rangeLabel,
     todd: money(statement.todd),
     fee: money(statement.fee),
+    feeBasis,
     houses,
     months: period === 'month' ? months.slice(-1) : months,
     notes: OWNER_PORTAL_NOTES,

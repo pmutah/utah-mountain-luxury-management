@@ -107,8 +107,9 @@ export function OwnerPortal({ token }: { token: string }) {
             <p className="mt-2 font-display text-4xl text-[#1d1a15]" data-bot="owner-portal-todd">
               {money(data.todd)}
             </p>
-            <p className="mt-1 text-sm text-[#5d564b]">
-              Todd’s share after the management fee. The fee was {money(data.fee)}.
+            <p className="mt-1 text-sm text-[#5d564b]" data-bot="owner-portal-fee">
+              Todd’s share after the management fee. The fee was {money(data.fee)} of {money(data.feeBasis)} of rent after
+              cleaning.
             </p>
           </section>
 
@@ -134,11 +135,21 @@ export function OwnerPortal({ token }: { token: string }) {
                 <tbody>
                   {data.houses.map((house) => (
                     <tr key={house.id} data-bot="owner-portal-house" data-house={house.id} className="border-t border-[#efe9dd]">
-                      <td className="py-2">{house.name}</td>
-                      <td className="py-2">{house.stays}</td>
-                      <td className="py-2">{money(house.revenue)}</td>
-                      <td className="py-2">{money(house.costs)}</td>
-                      <td className="py-2">{money(house.todd)}</td>
+                      <td className="py-2 align-top">
+                        {house.name}
+                        {/*
+                          The working, so the share can be checked by hand. Cleaning sits inside the
+                          costs column and is also taken off before the fee; showing both is what makes
+                          the row add up instead of looking a few thousand light.
+                        */}
+                        <span className="mt-1 block text-xs text-[#7a7264]" data-bot="owner-portal-working">
+                          {money(house.leftover)} after the {money(house.fee)} fee and costs. Half is {money(house.todd)}.
+                        </span>
+                      </td>
+                      <td className="py-2 align-top">{house.stays}</td>
+                      <td className="py-2 align-top">{money(house.revenue)}</td>
+                      <td className="py-2 align-top">{money(house.costs)}</td>
+                      <td className="py-2 align-top">{money(house.todd)}</td>
                     </tr>
                   ))}
                 </tbody>
