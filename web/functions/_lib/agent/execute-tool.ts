@@ -814,12 +814,28 @@ async function handlePricing(
 
   if (action === 'suggest_rate_adjustment') {
     const propertyId = (args.propertyId as PropertyId) || 'ranch';
-    return suggestRateAdjustment(
-      env,
-      propertyId,
-      args.from ? String(args.from) : undefined,
-      args.to ? String(args.to) : undefined,
-    );
+    try {
+      return await suggestRateAdjustment(
+        env,
+        propertyId,
+        args.from ? String(args.from) : undefined,
+        args.to ? String(args.to) : undefined,
+      );
+    } catch (err) {
+      /*
+       * A paused KV read used to reach the model as a thrown error, so a host asking "what should I charge for
+       * this night" got a stack trace instead of an answer. Every other tool here refuses with a named reason and
+       * the co-host can say it out loud; this one now matches. It never falls back to a made-up price.
+       */
+      if (storageReadPaused(err)) {
+        return {
+          error:
+            'Saved prices, comps, and bookings could not be read just now, so no rate is suggested. Nothing was written over them. Try again shortly.',
+          refused: true,
+        };
+      }
+      throw err;
+    }
   }
 
   if (action === 'yield_plan') {

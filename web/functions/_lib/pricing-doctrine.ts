@@ -1,7 +1,7 @@
 import { PROPERTIES } from './data';
 import { getAllReservations } from './reservations-store';
 import { loadCalendarBlocks } from './calendar-store';
-import { compareMarket, loadBandComps, loadCompSet, loadListingConfig, loadPriceSnapshots, median } from './pricing-store';
+import { compareMarket, loadApprovedRates, loadBandComps, loadCompSet, loadListingConfig, loadPriceSnapshots, median } from './pricing-store';
 import { compsForHouse } from '../../src/lib/market/comp-house';
 import type { SettingsEnv } from './kv';
 import type { PropertyId } from './agent/types';
@@ -352,6 +352,11 @@ type NightQuote = {
   directOfferHostNightly: number | null;
   season?: string | null;
   minStayNights?: number | null;
+  /**
+   * True when the host has already approved a price for this night. The number then comes from the sheet, and the
+   * engine must not present its own guess as if it were the published rate.
+   */
+  approved?: boolean;
 };
 
 function bare(night: Omit<NightQuote, 'promotionPercent' | 'promotionHostNightly'>): NightQuote {
@@ -377,10 +382,34 @@ function quoteNight(
   propertyId: PropertyId,
   median: number,
   target: number,
+  /** The host's approved guest price for this night, when one exists. */
+  approvedGuest: number | null = null,
 ): NightQuote {
   const leadDays = daysBetween(today, iso);
   const event = eventOn(iso);
   const base = Math.max(median, target);
+  /*
+   * A night the host has priced is **the answer**, not a proposal.
+   *
+   * This engine never read the approved sheet, so it recommended the card price for a night the host had already
+   * set — and the co-host repeated it, because this is the function behind `suggest_rate_adjustment`. A host
+   * asking "what should I price this night at" after approving $193 was told the old figure. There is nothing to
+   * hold or promote on an approved night: the price is decided, so the engine reports it and stops.
+   */
+  if (approvedGuest != null && approvedGuest > 0) {
+    const guest = Math.round(approvedGuest);
+    return {
+      date: iso,
+      leadDays,
+      event: event?.name ?? null,
+      stance: 'hold',
+      listingHostNightly: guest,
+      promotionPercent: null,
+      promotionHostNightly: null,
+      directOfferHostNightly: guest,
+      approved: true,
+    };
+  }
   if (propertyId === 'river' && iso < '2026-11-01') {
     return bare({
       date: iso,
@@ -457,6 +486,8 @@ type GoalPace = ReturnType<typeof grossGoalSnapshot>;
 function applyGoalPremium(quotes: NightQuote[], paceFor: (iso: string) => GoalPace) {
   for (const night of quotes) {
     if (night.stance === 'do-not-sell') continue;
+    // The host has priced this night. A goal premium is the engine's opinion; the approval is the decision.
+    if (night.approved) continue;
     const sellOut = paceFor(night.date).sellOutHostNightly;
     if (!sellOut) continue;
     const aim = Math.round(sellOut * 1.2);
@@ -475,6 +506,9 @@ function applyFillPromotions(
 ) {
   for (const night of quotes) {
     if (night.stance === 'do-not-sell' || night.listingHostNightly == null) continue;
+    // A promotion on a night the host priced would discount a number the host chose. The same rule the board and
+    // the quote already follow.
+    if (night.approved) continue;
     if (paceFor(night.date).stillNeeded <= 0) continue;
     if (night.event && night.leadDays > 14) continue;
     const weekdayPush = !isWeekendNight(night.date) && weekendIsBooked(night.date, booked);
@@ -499,7 +533,7 @@ function applyGapOffers(quotes: NightQuote[], taken: Set<string>, median: number
     const bounded = taken.has(before) && taken.has(after);
     if (bounded && run.length <= 2 && median > 0 && run.every((night) => !night.event)) {
       for (const night of run) {
-        if (night.leadDays <= 45 && night.stance !== 'do-not-sell' && night.listingHostNightly) {
+        if (night.leadDays <= 45 && night.stance !== 'do-not-sell' && night.listingHostNightly && !night.approved) {
           const baseRate = Math.max(night.listingHostNightly, Math.round(Math.max(median, target)));
           night.listingHostNightly = baseRate;
           const next = applyPromotion({ ...night, listingHostNightly: baseRate }, 0.2, floor);
@@ -746,7 +780,26 @@ export async function suggestRateAdjustment(
   const config = await loadListingConfig(env);
   const target = config[propertyId]?.targetMinNightly ?? 0;
   const open = eachNight(from, to).filter((iso) => !taken.has(iso));
-  const nights = open.map((iso) => quoteNight(iso, today, propertyId, hostNetMedian, target));
+  /*
+   * The host's approved prices, so this engine starts where the host left off.
+   *
+   * It did not read them at all, which meant `suggest_rate_adjustment` — the function behind the co-host's pricing
+   * answer — recommended the card price for a night the host had already set, and after the 8% ladder began
+   * working it would have recommended a *lower* number than the one already published. The sheet is read once for
+   * the whole window rather than per night.
+   */
+  let approvedSheet: Array<{ house: string; date: string; guest: number }> = [];
+  try {
+    approvedSheet = (await loadApprovedRates(env)).map((row) => ({ house: row.house, date: row.date, guest: row.guest }));
+  } catch {
+    // A failed read leaves the engine on the card, which is what it did before. It must not invent a price.
+    approvedSheet = [];
+  }
+  const approvedOn = (iso: string): number | null => {
+    const row = approvedSheet.find((entry) => entry.house === propertyId && entry.date === iso);
+    return row ? row.guest : null;
+  };
+  const nights = open.map((iso) => quoteNight(iso, today, propertyId, hostNetMedian, target, approvedOn(iso)));
   const pace = grossGoalSnapshot(propertyId, stays, today, blocks);
   const booked = nightsInRange(
     [
