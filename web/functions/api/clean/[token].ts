@@ -27,11 +27,30 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env, p
   try {
     link = await findCleanLink(env, token);
   } catch (err) {
+    /*
+     * A failed read is **not** an invalid link.
+     *
+     * This used to be `.catch(() => null)`, so any storage hiccup became "This clean link is not valid." Measured on
+     * production on a token minted seconds earlier: `404, 404, 404, 200, 404, 200, 404, 404` across eight identical
+     * reads. A cleaner standing in a driveway was told their link was bad most of the time, when the link was fine and
+     * the read had failed.
+     *
+     * The two cases are now separate: 503 says "try again", 404 says "this link does not exist". Telling a person
+     * their credential is invalid when the store was merely slow is the kind of error that makes them stop trusting
+     * the whole page.
+     */
     if (storageReadPaused(err)) {
-      return corsJson(request, { error: 'The clean links could not be read. Nothing was written.', storageReads: 'paused' }, 503);
+      return corsJson(
+        request,
+        { error: 'The clean links could not be read just now. This is not a bad link — try again in a moment.', storageReads: 'paused' },
+        503,
+      );
     }
-    const message = err instanceof Error ? err.message : 'Clean link failed';
-    return corsJson(request, { error: message }, 500);
+    return corsJson(
+      request,
+      { error: 'The clean links could not be read just now. This is not a bad link — try again in a moment.' },
+      503,
+    );
   }
   if (!link) return corsJson(request, { error: 'This clean link is not valid.' }, 404);
 

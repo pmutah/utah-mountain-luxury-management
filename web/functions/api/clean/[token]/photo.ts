@@ -1,7 +1,7 @@
 ﻿import { corsJson } from '../../../_lib/data';
 import { isCleanPhotoPath } from '../../../../src/lib/clean-photos';
 import { isCleanToken } from '../../../../src/lib/clean-link';
-import { findCleanLink } from '../../../_lib/clean-link-store';
+import { resolveCleanLink } from '../../../_lib/clean-auth';
 import { downloadReceipt, storageConfigured } from '../../../_lib/gcs';
 import { getAllReservations } from '../../../_lib/reservations-store';
 import { buildTurnovers } from '../../../../src/lib/today';
@@ -30,8 +30,8 @@ async function cleanerHouses(env: SettingsEnv): Promise<HouseId[]> {
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   const token = String(params.token ?? '');
   if (!isCleanToken(token)) return corsJson(request, { error: 'This clean link is not valid.' }, 404);
-  const link = await findCleanLink(env, token).catch(() => null);
-  if (!link) return corsJson(request, { error: 'This clean link is not valid.' }, 404);
+  const resolved = await resolveCleanLink(env, token, request);
+  if ('response' in resolved) return resolved.response;
 
   const path = new URL(request.url).searchParams.get('path') ?? '';
   if (!isCleanPhotoPath(path)) return corsJson(request, { error: 'That photo is not one of ours.' }, 400);
