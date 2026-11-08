@@ -96,7 +96,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       `${today.slice(0, 4)}-12-31`,
     );
     const run = runShadow(board, taken, false, today, 'unknown', closed);
-    plans.push(pushPlanAll([run], gate)[0]!);
+    plans.push(pushPlanAll([run], gate, today)[0]!);
   }
 
   return corsJson(

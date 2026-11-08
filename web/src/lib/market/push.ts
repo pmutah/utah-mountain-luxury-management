@@ -42,18 +42,40 @@ export type PushGate = {
 const BLOCKED = new Set(['booked', 'closed', 'paused', 'locked', 'hold']);
 
 /**
+ * The shortest lead time at which changing a rate is worth doing. A night that is already here, or
+ * arriving tomorrow, is not repriced: the guests who would book it have already decided, and a rate typed
+ * in on the day is work that cannot pay for itself. The shadow preview was proposing to raise **tonight's**
+ * Ranch rate from $640 to $662 — a real, if small, waste of a step.
+ */
+export const MIN_LEAD_DAYS = 2;
+
+/** Whole nights between two YYYY-MM-DD dates. Null when either is not a date. */
+export function leadDays(asOf: string, iso: string): number | null {
+  if (!DATE.test(asOf) || !DATE.test(iso)) return null;
+  const from = Date.UTC(Number(asOf.slice(0, 4)), Number(asOf.slice(5, 7)) - 1, Number(asOf.slice(8, 10)));
+  const to = Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+  return Math.round((to - from) / 86_400_000);
+}
+
+/**
  * The nights a push would change, taken from a shadow run.
  *
  * Every guard the shadow run already applied is respected: a booked, closed, paused, or holiday-
  * locked night is never in the plan, and neither is a night the engine left on `hold`. A night
  * whose price would not actually move is dropped, so the plan is the real difference and not a
  * restatement of the board.
+ *
+ * A night inside `MIN_LEAD_DAYS` is also dropped: repricing tonight changes nothing a guest can act on.
  */
-export function pushNights(house: HouseId, nights: readonly ShadowNight[]): PushNight[] {
+export function pushNights(house: HouseId, nights: readonly ShadowNight[], asOf?: string): PushNight[] {
   const out: PushNight[] = [];
   for (const night of nights) {
     if (!DATE.test(night.date)) continue;
     if (BLOCKED.has(night.action)) continue;
+    if (asOf) {
+      const lead = leadDays(asOf, night.date);
+      if (lead !== null && lead < MIN_LEAD_DAYS) continue;
+    }
     const from = Math.round(night.ourGuest);
     const to = Math.round(night.offerGuest);
     if (!Number.isFinite(from) || !Number.isFinite(to)) continue;
@@ -123,7 +145,7 @@ export function pushSendState(gate: PushGate): { sends: boolean; line: string } 
  * nights and reads as a preview; a hold that means the data is unusable (an unread calendar, a paused
  * house) still drops them, because those nights would be invented rather than previewed.
  */
-export function pushPlanFor(house: HouseId, run: ShadowRun, gate: PushGate): PushPlan {
+export function pushPlanFor(house: HouseId, run: ShadowRun, gate: PushGate, asOf?: string): PushPlan {
   const hold = pushHold({ ...gate, paused: gate.paused || run.paused });
 
   /*
@@ -134,7 +156,7 @@ export function pushPlanFor(house: HouseId, run: ShadowRun, gate: PushGate): Pus
    *   are still real and worth watching, which is the entire reason a shadow week exists.
    */
   const dataUnusable = !gate.calendarReady || gate.paused || run.paused;
-  const nights = dataUnusable ? [] : pushNights(house, run.nights);
+  const nights = dataUnusable ? [] : pushNights(house, run.nights, asOf);
 
   if (hold && dataUnusable) return { house, allowed: false, hold, nights: [], line: hold };
   if (hold) {
@@ -166,8 +188,8 @@ export function pushPlanFor(house: HouseId, run: ShadowRun, gate: PushGate): Pus
 }
 
 /** The plan across all three houses, for a gate that applies to the whole board. */
-export function pushPlanAll(runs: readonly ShadowRun[], gate: PushGate): PushPlan[] {
-  return runs.map((run) => pushPlanFor(run.house, run, gate));
+export function pushPlanAll(runs: readonly ShadowRun[], gate: PushGate, asOf?: string): PushPlan[] {
+  return runs.map((run) => pushPlanFor(run.house, run, gate, asOf));
 }
 
 /** One line for the desk. It does not quote a rate. */
