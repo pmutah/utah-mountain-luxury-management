@@ -62,29 +62,46 @@ test('no source file links to /book or /houses without the slash', () => {
   const offenders: string[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name === 'node_modules') continue;
+      if (entry.name === 'node_modules' || entry.name === 'dist') continue;
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(full);
         continue;
       }
       if (!/\.(ts|tsx)$/.test(entry.name) || /\.test\./.test(entry.name)) continue;
-      const rel = relative(root, full).split(sep).join('/');
-      if (rel === 'lib/public-paths.ts') continue;
+      const rel = relative(process.cwd(), full).split(sep).join('/');
+      if (rel === 'src/lib/public-paths.ts') continue;
       const text = readFileSync(full, 'utf8');
       for (const line of text.split(/\r?\n/)) {
         if (/^\s*(\*|\/\/)/.test(line)) continue; // a comment is not a link
+        if (/^\s*\/\*/.test(line)) continue; // a block comment, one line or many
+        // `/api/book*` is a JSON endpoint, not the page that 308s. `servedPath('/book', …)` is the helper
+        // that ADDS the slash — a call into it is the fix, not the bug.
+        if (/\/api\/book/.test(line) || /servedPath\(/.test(line)) continue;
         if (/pathname|parseHousePath|startsWith\(|=== '\/(book|houses)/.test(line)) continue; // a received path
         // A URL handed to the browser: an href, a URL built from ORIGIN, or a template assigned to a
         // path/href field. The last form is how `quoteHref: \`/book?house=...\`` regressed.
         const href = /href="\/(book|houses)(\?|")/.exec(line);
-        const built = /\$\{ORIGIN\}\/(book|houses)(\?|`|'|")/.exec(line);
+        const built = /\$\{(ORIGIN|origin)\}\/(book|houses)(\?|`|'|"|\\n)/.exec(line);
+        /*
+         * A `/book` inside a template literal, followed by the query marker, the closing backtick, a quote,
+         * or an escaped newline. The escaped-newline case is what the thank-you email used — `${origin}/book\n`
+         * — and the first version of this rule missed it, so the guard stayed green while the link 308'd.
+         */
+        const rawTemplate = /\/book(\?|`|'|"|\\n)/.exec(line);
         const assigned = /(href|url|link|path|Href)\s*[:=]\s*[`'"]\/(book|houses)(\?|`|'|")/i.exec(line);
-        if (href || built || assigned) offenders.push(`${rel}: ${line.trim().slice(0, 90)}`);
+        if (href || built || rawTemplate || assigned) offenders.push(`${rel}: ${line.trim().slice(0, 100)}`);
       }
     }
   };
   walk(root);
+  /*
+   * `functions/` too. The first version walked only `src/`, so a link built in a Pages Function was
+   * invisible to it — and that is exactly where one was hiding: the post-checkout thank-you email in
+   * `functions/_lib/automation.ts` sent a past guest to `${origin}/book`, which 308s to the dashboard
+   * login. Found by grepping the whole repo after this guard had been green.
+   */
+  walk(join(process.cwd(), 'functions'));
   assert.deepEqual(offenders, [], `these build a URL that redirects to the login:\n${offenders.join('\n')}`);
 });
 

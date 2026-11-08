@@ -155,7 +155,7 @@ export async function runAutomation(env: SettingsEnv, origin: string) {
           env,
           stay.guestEmail,
           `Thank you for staying at ${houseName}`,
-          `Dear ${stay.guestName},\n\nThank you for staying at ${houseName}. When you want the house again, tell us the dates: ${origin}/book\n\nWith care,\nUtah Mountain Luxury`,
+          `Dear ${stay.guestName},\n\nThank you for staying at ${houseName}. When you want the house again, tell us the dates: ${origin}/book/\n\nWith care,\nUtah Mountain Luxury`,
         );
         if (!sent.error) {
           thanked.push(stay.id);
