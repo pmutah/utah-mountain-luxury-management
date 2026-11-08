@@ -17,6 +17,7 @@
     "deploy:skip-checks": "node scripts/deploy.mjs --skip-checks"
   },
   "dependencies": {
+    "jose": "^6.2.15",
     "lucide-react": "^1.16.0",
     "pdf-lib": "^1.17.1",
     "react": "^19.2.6",

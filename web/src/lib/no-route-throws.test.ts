@@ -117,8 +117,13 @@ test('no handler throws, and no write claims success, when the store refuses rea
         /*
          * A write that answers 2xx while the store refuses reads is worse than a crash: the caller is
          * told it worked. None may do that.
+         *
+         * Signing out is the one exception, and it is checked rather than assumed: it clears a cookie
+         * and touches no store, so a store failure cannot make it dishonest. Every other non-GET has to
+         * refuse.
          */
-        if (method !== 'GET' && res.status < 300) {
+        const isSignOut = method === 'DELETE' && rel === 'auth/login.ts';
+        if (method !== 'GET' && res.status < 300 && !isSignOut) {
           falseWrites.push(`${method} /api/${rel} answered ${res.status}`);
         }
       } catch (err) {

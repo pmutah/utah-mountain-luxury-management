@@ -302,6 +302,10 @@ export interface HistoryData {
 export interface SessionInfo {
   authenticated: boolean;
   authRequired: boolean;
+  /** The verified address, when signed in by email rather than password. */
+  email?: string;
+  name?: string | null;
+  code?: string;
 }
 
 export interface AgentMessage {
@@ -634,6 +638,27 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ password }),
     }),
+  /**
+   * Sign in with a Google ID token from the browser.
+   *
+   * The token is verified on the server against Google's published keys, then the address is checked
+   * against the allowlist. Nothing about access is decided here.
+   */
+  loginWithGoogle: (credential: string) =>
+    request<SessionInfo>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    }),
+  /** What the login screen needs: whether Google sign-in exists, and the client id for the button. */
+  getLoginOptions: () =>
+    request<{
+      emailSignIn: boolean;
+      passwordSignIn: boolean;
+      googleClientId: string | null;
+      summary: string;
+      allowedCount: number;
+    }>('/api/auth/login'),
+  signOut: () => request<{ ok: boolean }>('/api/auth/login', { method: 'DELETE' }),
   syncCalendar: () =>
     request<{
       eventCount: number;

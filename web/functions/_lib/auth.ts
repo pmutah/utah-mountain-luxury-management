@@ -2,6 +2,8 @@ const COOKIE = 'wpm_auth';
 
 import { isMuseAuthorized } from './muse/auth';
 import { corsHeaders } from './data';
+import { emailAllowlist, isAllowedEmail } from './email-allowlist';
+import { readSession, sessionSecret } from './email-session';
 
 export function isAuthConfigured(env: { DASHBOARD_PASSWORD?: string }): boolean {
   return Boolean(env.DASHBOARD_PASSWORD && env.DASHBOARD_PASSWORD.length > 0);
@@ -20,6 +22,9 @@ export type HostEnv = {
   DASHBOARD_PASSWORD?: string;
   MUSE_BOT_SECRET?: string;
   AMANDA_BOT_SECRET?: string;
+  SESSION_SECRET?: string;
+  ALLOWED_EMAILS?: string;
+  VITE_ALLOWED_EMAILS?: string;
 };
 
 /** Read one env field from an env object of any shape, without widening the caller's type. */
@@ -48,6 +53,20 @@ export function hostOnly(request: Request, env: unknown): boolean {
   const password = field(env, 'DASHBOARD_PASSWORD');
   const secrets = { MUSE_BOT_SECRET: field(env, 'MUSE_BOT_SECRET'), AMANDA_BOT_SECRET: field(env, 'AMANDA_BOT_SECRET') };
   if (isMuseAuthorized(request, secrets)) return true;
+  /*
+   * An email sign-in is checked first when a session secret exists, because that is the way in now.
+   * The signature is verified before the address is read, and the address then has to be on the
+   * allowlist — a valid session for an address that was later removed from the list stops working,
+   * which is what "put the emails we want to have access" has to mean.
+   */
+  const secret = sessionSecret({ SESSION_SECRET: field(env, 'SESSION_SECRET') });
+  if (secret) {
+    const session = readSession(request, secret);
+    if (session.ok && isAllowedEmail(session.email, emailAllowlist({ ALLOWED_EMAILS: field(env, 'ALLOWED_EMAILS'), VITE_ALLOWED_EMAILS: field(env, 'VITE_ALLOWED_EMAILS') }))) {
+      return true;
+    }
+  }
+  // The password still works, so a deployment that has not moved to email sign-in keeps running.
   if (!password || password.length === 0) return false;
   return isAuthenticated(request, { DASHBOARD_PASSWORD: password });
 }
@@ -55,6 +74,15 @@ export function hostOnly(request: Request, env: unknown): boolean {
 /** The reason a host route refused, so a caller can tell "sign in" from "this site is not protected yet". */
 export function hostDeniedBody(env: unknown): { error: string; authRequired: boolean; code: string } {
   const password = field(env, 'DASHBOARD_PASSWORD');
+  /*
+   * Email sign-in counts as protection. A deployment with an allowlist and a session secret but no
+   * password is *not* an unprotected site, and telling the caller to "set DASHBOARD_PASSWORD" would be
+   * both wrong and a hint about how the deployment is configured.
+   */
+  const emailSignIn = Boolean(sessionSecret({ SESSION_SECRET: field(env, 'SESSION_SECRET') }));
+  if (emailSignIn) {
+    return { error: 'Sign in with an approved email address to continue.', authRequired: true, code: 'sign-in' };
+  }
   if (!password || password.length === 0) {
     return {
       error: 'This site has no dashboard password set, so private data stays closed. Set DASHBOARD_PASSWORD.',
