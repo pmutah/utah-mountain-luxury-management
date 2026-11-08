@@ -511,9 +511,11 @@ export function DirectBook() {
           </div>
         </div>
         <p className="mb-8 max-w-2xl text-sm text-[var(--uml-muted)]">
-          This is a preview of our own booking page. The quote uses the season rates already on the books.
-          It does not charge a card, and it does not take a booking by itself: a request holds the dates for 30
-          minutes while a person replies. Live direct booking still runs on the Hospitable site.{' '}
+          Book direct with us. The quote uses the season rates already on the books, and a request holds the
+          dates for 30 minutes while a person replies — you will get a link to check where your request
+          stands. It does not charge a card: we confirm by hand, then send the door code to your phone before
+          you arrive. <strong className="text-[var(--uml-text)]">Direct requests are being trialled</strong>,
+          so if you need a confirmed booking today, book through our listing on Airbnb or VRBO.{' '}
           <a href="/houses/" className="underline" data-bot="stay-houses-page">
             The houses
           </a>
