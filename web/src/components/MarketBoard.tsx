@@ -245,6 +245,30 @@ export function MarketBoard() {
   );
   const clock = shadowClock(shadowLog, today);
   const [serverClock, setServerClock] = useState<{ clock: ShadowClock; remote: boolean } | null>(null);
+  /*
+   * Read the durable clock on load, not only after a save.
+   *
+   * `getShadowDays` has always existed and its own comment says "a cleared tab cannot reset the week", but
+   * nothing called it until something had been saved from *this* browser. So the gate a host saw was
+   * whatever this tab had accumulated locally: a second device showed "0 of 7" while the server held real
+   * days, and clearing site data looked like it reset the week. The server count is the one that decides
+   * whether a rate may move, so it is the one the page shows from the first paint.
+   */
+  useEffect(() => {
+    let cancel = false;
+    void api
+      .getShadowDays()
+      .then((result) => {
+        if (cancel || !result?.clock) return;
+        setServerClock({ clock: result.clock as unknown as ShadowClock, remote: true });
+      })
+      .catch(() => {
+        // A failed read stays local and says so; it must not present an empty server clock as zero days.
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
   useEffect(() => {
     if (!settled || !allBoardsLive) return;
     let cancel = false;
@@ -406,9 +430,19 @@ export function MarketBoard() {
           {settled ? shadowClockLine(shownClock) : 'This Denver day is counted once the calendar check finishes.'}
         </p>
         <p className="mt-1 text-sm text-[var(--uml-muted)]" data-bot="market-shadow-dates">
-          {clock.dates.length === 0
-            ? 'No shadow day is saved on this browser yet.'
-            : `Saved on this browser: ${clock.dates.map(shortDate).join(', ')}.`}
+          {/*
+            The date list has to describe the same clock as the line above it.
+            `shownClock` is the **server** count once today's day has saved; `clock` is this browser's own log.
+            The two are different stores, and this line named only the local one — so a host opening the page on
+            a second device read "Shadow day 4 of 7" above "No shadow day is saved on this browser yet", two
+            sentences about two different ledgers. When the server answered, that is the count the gate uses, so
+            that is the one the dates must describe.
+          */}
+          {shownClock.dates.length === 0
+            ? serverClock
+              ? 'No shadow day is saved on the server yet.'
+              : 'No shadow day is saved on this browser yet.'
+            : `${serverClock ? 'Saved on the server' : 'Saved on this browser'}: ${shownClock.dates.map(shortDate).join(', ')}.`}
         </p>
         <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="market-shadow-push">
           {pushOpen ? 'Hospitable write open.' : 'Hospitable write closed.'}
