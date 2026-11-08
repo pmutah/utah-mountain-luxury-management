@@ -14,14 +14,17 @@
  *
  * The HMAC covers `email|issuedAt`, so an old cookie cannot be edited into a fresh one either.
  *
- * `node:crypto` is used rather than WebCrypto because the host guard is **synchronous** and is called
- * from 68 routes. Making it async to reach `crypto.subtle` would have meant editing every one of them
- * for no security gain; `createHmac` is available in the Workers runtime and keeps the guard sync.
+ * `node:crypto` was the obvious choice and it passed every local test — then the deploy failed with
+ * `No such module "node:crypto"`, because this runtime has no Node built-ins unless `nodejs_compat` is
+ * enabled. Rather than change module resolution for all 98 routes to fix one file, the algorithm is in
+ * `sha256.ts`, which is checked against Node's own implementation in the tests.
  */
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { hmacSha256 } from './sha256';
 
 const COOKIE = 'wpm_auth';
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+
+const encoder = new TextEncoder();
 
 function b64url(value: string): string {
   return Buffer.from(value, 'utf8').toString('base64url');
@@ -32,15 +35,15 @@ function fromB64url(value: string): string {
 }
 
 function sign(secret: string, payload: string): string {
-  return createHmac('sha256', secret).update(payload, 'utf8').digest('base64url');
+  return Buffer.from(hmacSha256(encoder.encode(secret), encoder.encode(payload))).toString('base64url');
 }
 
 /** Constant-time compare, so a wrong signature cannot be found one byte at a time. */
 function sameSignature(a: string, b: string): boolean {
-  const left = Buffer.from(a, 'utf8');
-  const right = Buffer.from(b, 'utf8');
-  if (left.length !== right.length) return false;
-  return timingSafeEqual(left, right);
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 /** The secret that signs the cookie. It must be set, or no email session can be trusted. */

@@ -1,7 +1,7 @@
-/**
+﻿/**
  * Who can get into the dashboard, and what proves it.
  *
- * This follows the Performance Motors DMS pattern — a comma-separated email allowlist — but the proof
+ * This follows the Performance Motors DMS pattern â€” a comma-separated email allowlist â€” but the proof
  * differs on purpose. The DMS uses Firebase ID tokens; this app uses Google Identity Services, so the
  * credential is a Google ID token. The properties that matter are the same, and each is pinned here
  * because a mistake in any one of them is a total bypass:
@@ -19,6 +19,8 @@ import { allowlistSummary, emailAllowlist, isAllowedEmail, parseEmailList } from
 import { readSession, sessionSecret, signSession } from '../../functions/_lib/email-session.ts';
 import { verifyGoogleSignIn } from '../../functions/_lib/google-token.ts';
 import { hostOnly } from '../../functions/_lib/auth.ts';
+import { hmacSha256, sha256 } from '../../functions/_lib/sha256.ts';
+import { createHash, createHmac } from 'node:crypto';
 
 const CLIENT = '1234567890-fixture.apps.googleusercontent.com';
 const SECRET = 'a-really-long-session-secret-value';
@@ -63,8 +65,8 @@ test('the list parses commas, semicolons, spaces, and duplicates', () => {
 
 test('a token signed by anyone but Google is refused', async () => {
   /*
-   * The single most important check. A token whose payload *looks* exactly right — right email, right
-   * audience, right issuer, unexpired — is worthless if the signature is not Google's, because
+   * The single most important check. A token whose payload *looks* exactly right â€” right email, right
+   * audience, right issuer, unexpired â€” is worthless if the signature is not Google's, because
    * anyone can write that JSON.
    */
   const { privateKey } = await generateKeyPair('RS256');
@@ -153,3 +155,41 @@ test('removing an address from the list revokes it, even with a valid cookie', (
     'a removed address kept access with an old cookie',
   );
 });
+
+test('the hand-written SHA-256 matches Node exactly, including block boundaries', () => {
+  /*
+   * `node:crypto` is not available at runtime, so the algorithm is written out in `sha256.ts`. A hash
+   * that is subtly wrong would still "work" â€” cookies would be signed and verified â€” until the day a
+   * cookie from another deployment stopped matching. The padding and the 64-byte block boundary are
+   * where a hand-written SHA-256 usually breaks, so those lengths are checked explicitly.
+   */
+  const cases = [
+    '',
+    'abc',
+    'a'.repeat(55), // one byte short of the boundary
+    'a'.repeat(56), // past it: forces an extra block
+    'a'.repeat(64), // exactly one block
+    'a'.repeat(1000),
+    'stephlouw@gmail.com|1700000000',
+  ];
+  for (const input of cases) {
+    const want = createHash('sha256').update(input, 'utf8').digest('hex');
+    const got = Buffer.from(sha256(new TextEncoder().encode(input))).toString('hex');
+    assert.equal(got, want, `sha256 differs for a ${input.length}-byte input`);
+  }
+});
+
+test('the hand-written HMAC matches Node, including a key longer than one block', () => {
+  const cases: Array<[string, string]> = [
+    ['secret', 'abc'],
+    ['a-really-long-session-secret-value', 'stephlouw@gmail.com|1700000000'],
+    // A key longer than the 64-byte block is hashed first; getting that wrong is a silent forgery hole.
+    ['k'.repeat(100), 'message'],
+  ];
+  for (const [key, message] of cases) {
+    const want = createHmac('sha256', key).update(message, 'utf8').digest('hex');
+    const got = Buffer.from(hmacSha256(new TextEncoder().encode(key), new TextEncoder().encode(message))).toString('hex');
+    assert.equal(got, want, `hmac differs for key length ${key.length}`);
+  }
+});
+
