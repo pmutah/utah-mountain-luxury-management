@@ -178,13 +178,20 @@ function daySpan(from: string, to: string): number | null {
   return Math.round((Date.UTC(by!, bm! - 1, bd!) - Date.UTC(ay!, am! - 1, ad!)) / 86_400_000);
 }
 
-/** How long until check-in or checkout. A quote does not say the house is open. Nothing is sent. */
+/**
+ * How long until check-in or checkout.
+ *
+ * `where: 'quote'` keeps "This does not say the house is open", because a quote beside dates must not
+ * read as a confirmation. The old line also ended "Nothing is sent." on every variant, which told a
+ * guest about our plumbing on a countdown; the guest phone showed that phrase **20 times** on one stay.
+ * What the phone does or does not transmit belongs on the agreement topics, not on "check-in is in 32
+ * nights".
+ */
 export function stayCountdown(asOf: string, checkIn: string, checkOut: string, where: 'quote' | 'phone' = 'quote'): string {
   const untilIn = daySpan(asOf, checkIn);
   const untilOut = daySpan(asOf, checkOut);
   if (untilIn === null || untilOut === null || untilOut <= untilIn) return '';
-  const hold = where === 'quote' ? ' This does not say the house is open.' : '';
-  const tail = `${hold} Nothing is sent.`;
+  const tail = where === 'quote' ? ' This does not say the house is open.' : '';
   let line = '';
   if (untilIn > 1) line = `Check-in is in ${untilIn} nights.${tail}`;
   else if (untilIn === 1) line = `Check-in is tomorrow at 4:00 PM.${tail}`;

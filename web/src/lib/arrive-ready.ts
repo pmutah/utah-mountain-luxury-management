@@ -50,9 +50,15 @@ export function writeArriveChecks(raw: string | null, where: ArriveWhere, house:
   return JSON.stringify(parsed);
 }
 
-/** Caption for the before-arrival list. The quote does not call the house open. */
+/**
+ * Caption for the before-arrival list.
+ *
+ * "A check stays on this page" is useful: it tells a guest their tick is saved locally. The old line
+ * also said "Nothing is sent.", which is about our plumbing rather than their arrival — and it was one
+ * of twenty such phrases on a single stay. `where: 'quote'` still refuses to imply the house is open.
+ */
 export function arriveReadyNote(where: ArriveWhere): string {
-  const base = 'From the published guide. A check stays on this page. Nothing is sent.';
+  const base = 'From the published guide. A check stays on this page.';
   if (where === 'quote') return `${base} This does not say the house is open.`;
   return base;
 }

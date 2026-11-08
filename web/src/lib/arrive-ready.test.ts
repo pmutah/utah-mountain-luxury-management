@@ -32,7 +32,10 @@ test('the quote arrival list does not call the house open', () => {
   const quote = arriveReadyNote('quote');
   const phone = arriveReadyNote('phone');
   assert.match(quote, /does not say the house is open/);
-  assert.match(quote, /Nothing is sent/);
+  // A check staying on the page is useful to the guest, so it must survive; the plumbing note that
+  // used to follow it does not belong on an arrival list.
+  assert.match(quote, /A check stays on this page/);
+  assert.equal(/Nothing is sent/.test(quote), false);
   assert.equal(quote.includes('$'), false);
   assert.equal(phone.includes('house is open'), false);
   assert.match(phone, /A check stays on this page/);

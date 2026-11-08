@@ -27,7 +27,7 @@ test('a day is composed from the published guide', () => {
 test('a quoted day does not call the house open', () => {
   const note = houseDayNote('quote');
   const paper = houseDayPaper(houseDay('river', 'ski'), 'quote');
-  assert.match(note, /no price is quoted/);
+  assert.match(note, /No price is quoted/);
   assert.match(note, /does not say the house is open/);
   assert.match(paper[paper.length - 1] ?? '', /It has no price/);
   assert.equal(paper.join('\n').includes('$'), false);

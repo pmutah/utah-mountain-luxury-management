@@ -91,7 +91,6 @@ test('the phone names one current step and leaves the code off', () => {
   const before = rightNow(arrivalJourney(stay));
   assert.match(before, /Right now: Stay agreement/);
   assert.match(before, /Two other steps are also open/);
-  assert.match(before, /Nothing is sent/);
   assert.equal(before.includes('$'), false);
   assert.equal(/password|code\s*\d/i.test(before), false);
   const group = rightNow(arrivalJourney({ ...stay, agreementRead: true }));
@@ -112,7 +111,6 @@ test('a quote counts the nights until check-in and does not call the house open'
   const ahead = stayCountdown('2026-10-30', '2026-11-13', '2026-11-15', 'quote');
   assert.match(ahead, /Check-in is in 14 nights/);
   assert.match(ahead, /does not say the house is open/);
-  assert.match(ahead, /Nothing is sent/);
   assert.equal(ahead.includes('$'), false);
   assert.equal(/door\s*code|wi-?fi|password/i.test(ahead), false);
   assert.match(stayCountdown('2026-10-30', '2026-10-31', '2026-11-02', 'quote'), /Check-in is tomorrow at 4:00 PM/);

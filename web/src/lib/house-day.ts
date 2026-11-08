@@ -17,9 +17,12 @@ function safe(places: Array<NearbyPlace | undefined>): string[] {
     .filter((text) => text.trim().length > 0 && !SECRET.test(text));
 }
 
-/** Caption for the day picker. The quote does not call the house open. */
+/**
+ * Caption for the day picker. "Composed from the published guide" and "no price is quoted" both tell
+ * the guest something about what they are reading; "Nothing is sent" only described our plumbing.
+ */
 export function houseDayNote(where: 'house' | 'quote' | 'phone'): string {
-  const base = 'Composed from the published guide. Nothing is sent, and no price is quoted.';
+  const base = 'Composed from the published guide. No price is quoted.';
   if (where === 'quote') return `${base} This does not say the house is open.`;
   return base;
 }
