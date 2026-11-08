@@ -78,7 +78,14 @@ export function DirectBook() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
   const [guests, setGuests] = useState(linked.guests ?? '');
   const [children, setChildren] = useState(linked.children ?? '');
-  const [rulesRead, setRulesRead] = useState(false);
+  /*
+   * Per house, because the house rules differ. A single flag meant ticking "I have read the house rules" on the
+   * Lindon tab also opened River's request form, on rules the guest never saw. The agreement topics were already
+   * keyed by house; this was the one half that leaked.
+   */
+  const [rulesReadByHouse, setRulesReadByHouse] = useState<Partial<Record<HouseId, boolean>>>({});
+  const rulesRead = rulesReadByHouse[house] === true;
+  const setRulesRead = (value: boolean) => setRulesReadByHouse((current) => ({ ...current, [house]: value }));
   const [eventStay, setEventStay] = useState(linked.event === true);
   const [openedTopics, setOpenedTopics] = useState<Partial<Record<HouseId, string[]>>>({});
   const [addons, setAddons] = useState<UpsellId[]>(linked.addons ?? []);
