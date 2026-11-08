@@ -2,7 +2,7 @@ import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { loadSurveys } from '../../_lib/survey-store';
 import { getAllReservations } from '../../_lib/reservations-store';
-import { loadGmailTokens } from '../../_lib/gmail-store';
+import { gmailHealth, loadGmailTokens } from '../../_lib/gmail-store';
 import { isTwilioConfigured, twilioFromNumber } from '../../_lib/twilio-sms';
 import { storageReadPaused } from '../../_lib/kv-json';
 import type { AgentEnv } from '../../_lib/agent/types';
@@ -40,11 +40,14 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
     surveys,
     reservations: upcoming,
     storageReads: 'ok',
-    gmail: {
-      connected: Boolean(gmail),
-      email: gmail?.email ?? null,
-      oauthConfigured: Boolean(env.GOOGLE_OAUTH_CLIENT_ID?.trim() && env.GOOGLE_OAUTH_CLIENT_SECRET?.trim()),
-    },
+    /*
+     * This is the shape the guests page renders, and it used to say `connected: Boolean(gmail)` — an
+     * email string on file, not a working mailbox. The dashboard showed a connected account while every
+     * send failed, so a request would arrive with no email and nothing said why.
+     *
+     * `getValidGmailToken` is the same call a real send makes, so this cannot disagree with one.
+     */
+    gmail: await gmailHealth(env, gmail),
     sms: { configured: isTwilioConfigured(env), from: twilioFromNumber(env) },
   });
 };

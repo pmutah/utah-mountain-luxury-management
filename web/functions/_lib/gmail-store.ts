@@ -141,6 +141,40 @@ export async function getValidGmailToken(env: SettingsEnv): Promise<GmailTokens 
   return tokens;
 }
 
+/**
+ * Whether this deployment can actually send mail, and why not when it cannot.
+ *
+ * Two routes report mailbox state — `/api/integrations/gmail/status` and `/api/surveys` — and both used
+ * to answer `connected` from the presence of an email string. That is not a working mailbox: on
+ * 2026-11-08 the dashboard read "Gmail: pmutah@gmail.com, connected" while every send failed with
+ * `invalid_client`, so guest requests arrived with no email and nothing on screen said why.
+ *
+ * One function, used by both, calling the same token path a real send takes — so the report cannot
+ * disagree with reality.
+ */
+export async function gmailHealth(
+  env: SettingsEnv,
+  tokens: GmailTokens | null,
+): Promise<{ connected: boolean; email: string | null; problem: string | null; oauthConfigured: boolean }> {
+  const oauthConfigured = Boolean(env.GOOGLE_OAUTH_CLIENT_ID?.trim() && env.GOOGLE_OAUTH_CLIENT_SECRET?.trim());
+  const email = tokens?.email ?? null;
+  if (!email) {
+    return { connected: false, email: null, problem: 'No mailbox is connected.', oauthConfigured };
+  }
+  try {
+    const valid = await getValidGmailToken(env);
+    if (valid?.accessToken) return { connected: true, email, problem: null, oauthConfigured };
+    return { connected: false, email, problem: 'The mailbox has no refresh token, so mail cannot be sent.', oauthConfigured };
+  } catch (err) {
+    return {
+      connected: false,
+      email,
+      problem: err instanceof Error ? err.message : 'The mailbox could not be reached.',
+      oauthConfigured,
+    };
+  }
+}
+
 export async function gmailSearch(env: SettingsEnv, query: string, max = 5): Promise<unknown[]> {
   const tokens = await getValidGmailToken(env);
   if (!tokens) return [{ error: 'Gmail not connected. Use Settings to connect.' }];
