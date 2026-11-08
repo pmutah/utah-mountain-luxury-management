@@ -47,7 +47,7 @@ function ourGuest(
   house: HouseId,
   iso: string,
   sheet: readonly QuotedSheetNight[] = [],
-): { guest: number; floorGuest: number; season: string | null; lock: boolean; minNights: number } {
+): { guest: number; floorGuest: number; season: string | null; lock: boolean; minNights: number; approved: boolean } {
   const ask = nightAsk(house, iso);
   const approved = approvedGuestRate(sheet, iso, {
     guest: approvalBase(ask.guest, sheet, iso),
@@ -59,6 +59,13 @@ function ourGuest(
     season: ask.season,
     lock: ask.lock,
     minNights: ask.minNights,
+    /*
+     * Whether the host set this night on purpose. The engine must not then describe it as a promotion: the quote
+     * charges an approved night at the approved price with **no discount**, so a board row reading "20% off" beside
+     * a guest paying full price is a claim about a discount that does not exist. Found by approving a night the
+     * engine thought was above its band; the board said `promote` and `promoteNights` counted it.
+     */
+    approved: approved !== null,
   };
 }
 
@@ -147,9 +154,17 @@ export function buildMarketBoard(
       ? 'locked'
       : invented
         ? 'hold'
-        : floorAboveMarket && move.action === 'promote'
+        : /*
+                   * An approved night may still be **raised** — that is the 8% ladder working from the host's own
+                   * price. What it may never be is a *promotion*: the quote charges an approved night at the
+                   * approved price with no discount, so a board row reading "20% off" beside a guest paying full
+                   * price is a claim about a discount that does not exist.
+                   */
+                  ours.approved && move.action === 'promote'
           ? 'hold'
-          : move.action;
+          : floorAboveMarket && move.action === 'promote'
+            ? 'hold'
+            : move.action;
     const proposedGuest = invented || ours.lock ? ours.guest : move.proposedGuest;
     return {
       date: iso,
@@ -170,8 +185,10 @@ export function buildMarketBoard(
         ? 'Holiday rate stays on the season table.'
         : invented
           ? `No saved comp ask covers this night, so the band is the invented sample set. No rate move is recommended until a real comp watches this date. The published rate stays.`
-          : floorAboveMarket
-            ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
+          : ours.approved && move.action === 'promote'
+            ? `This night carries the host's approved price of $${ours.guest}, and an approved night is quoted at that price with no discount. No promotion is applied.`
+            : floorAboveMarket
+              ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
             : move.reason,
       minNights: ours.minNights,
       compBookedShare: Math.round(((sampleRows.length - observed.length) / sampleRows.length) * 100),
