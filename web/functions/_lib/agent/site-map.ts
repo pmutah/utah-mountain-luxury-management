@@ -84,6 +84,38 @@ export const AGENT_SITE_MAP = {
       'GET/POST /api/operations/config — host only. The house rules and check-in line the guest and cleaner messages are built from, plus the cleaner contact. It merges rather than replaces, so saving one house leaves the other two alone, and a field left blank keeps what is already saved. A malformed cleaner email is refused. These lines go into the check-in draft a guest receives.',
     operationsTasks:
       'GET/POST/PATCH /api/operations/tasks — host only. The shared operations task list with a due date, a house, and an optional reservation. It records the job; it does not send a text or change a booking.',
+    agentBriefing:
+      'GET /api/agent/briefing — host only. The nightly brief as one line, built from the calendar and the shadow run. It is cached, and a cached answer is marked so a caller can tell a fresh read from a stored one. It never sends and never raises a rate.',
+    agentTranscribe:
+      'POST /api/agent/transcribe — host only. Turns a recorded voice note into text for the chat. It writes no ledger row and books nothing; the text goes back to the caller only.',
+    calendarBlocks:
+      'GET/POST/DELETE /api/calendar/blocks — host only. Calendar blocks: a closed stretch with a reason. A block is not a booked night, so it stays out of the booked count and the rate band, and the booking page refuses a night inside one. Deleting a block reopens those nights, so it is refused while a stay covers them.',
+    pricingAlerts:
+      'GET/PATCH /api/pricing/alerts — host only. Price alerts the engine raised: what moved, why, and whether it has been dismissed. PATCH dismisses one. An alert is a note to the host; it is not a rate change and nothing is sent to Airbnb or VRBO.',
+    pricingListings:
+      'GET/PUT /api/pricing/listings — host only. The per-house listing config the market board reads. PUT merges what it is given, so a caller that sends one house leaves the others alone; a read that cannot be had refuses the write rather than saving defaults over it.',
+    pricingRefresh:
+      'POST /api/pricing/refresh — host only. Re-runs the market snapshot. It records what it observed and returns the result; it does not publish a rate and has no writer to Airbnb or VRBO.',
+    pricingYieldPlan:
+      'GET /api/pricing/yield-plan — host only. The yield plan for the coming nights, house by house: what the engine would move and the guard that would stop it. It is a plan only. Nothing is sent.',
+    constructionRecommendations:
+      'GET /api/construction/recommendations — host only. The build recommendations saved against the construction project. PATCH /api/construction/recommendations/:id updates one. These are build-chat records; they never touch the rental ledger.',
+    esignDocuments:
+      'GET/POST /api/esign/documents — host only. Documents in the signing vault: the title, who it is for, and its state. Detail routes: GET/PATCH /api/esign/documents/:id, GET /api/esign/documents/:id/file, POST /api/esign/documents/:id/send, POST /api/esign/documents/:id/sign-now. A signed copy is served only through the session token.',
+    esignLienRelease:
+      'GET/POST /api/esign/lien-release — host only. Prepares and sends a lien release for a partner payment. It sends through the same signing flow as any other document and stores the signed copy; it does not pay anyone.',
+    cleanPhotosHost:
+      'GET /api/clean/photos — host only; every uploaded cleaner room photo grouped by turn, listing only turns that are on the desk. GET /api/clean/photo?path= — host only; one photo, by a path this app would have written, so a guessed path cannot reach the receipt folder.',
+    museDo:
+      'POST /api/muse/do — bearer only (MUSE_BOT_SECRET or AMANDA_BOT_SECRET). Runs one Muse turn and returns its messages. Refuses 503 when no bot secret is set and 401 on a bad one. It takes only the actions the tools allow, so every rule in manage_operations and the booking desk applies.',
+    amandaOpenapi:
+      'GET /api/amanda/openapi.json (and /api/amanda/openapi) — public. The tool description Amanda reads. It names routes and refusals; it carries no secret and no guest data.',
+    amandaDo:
+      'POST /api/amanda/do — the same handler as /api/muse/do, reached under Amanda name so her bearer works there. Bearer only; 503 with no secret, 401 on a bad one.',
+    esignSign:
+      'GET/POST /api/esign/sign/:token — public, and the token is the whole credential. The signer reads the document and signs it; nothing else is exposed. GET /api/esign/sign/:token/file serves the PDF for that session only, so one token cannot read another document. A cancelled or completed session stops accepting a signature.',
+    extraCleaning:
+      'PUT /api/portfolio/extra-cleaning — host only. The per-house, per-month extra cleaning fee the P&L uses. It merges what it is given and returns the saved map. There is no GET: the fees arrive with the metrics payload, so the desk never reads them twice.',
     automation:
       'GET/PUT /api/automation — host only. The automation switches: which scheduled chores are on, and their settings. POST /api/automation/run — host only; runs the due chores now. It records what it did; it does not send a rate to Airbnb or VRBO.',
     gmail:

@@ -93,10 +93,32 @@ test('every route is covered by the map, so a whole feature cannot ship undocume
   };
   walk(ROOT, '');
 
+  /*
+   * Compare normalised paths.
+   *
+   * The map and the route files spell a parameter differently: the map writes
+   * `/api/stay-guide/:token`, the file is `stay-guide/[token]/index.ts`. Comparing the raw strings
+   * flagged every token route as undocumented, which buried the one real gap in the noise.
+   *
+   * A plain `includes` was wrong the other way: `/api/portfolio` appears inside
+   * `/api/portfolio/metrics`, so one documented route made every sibling look documented — which is
+   * exactly how `/api/portfolio/extra-cleaning` stayed unlisted while this test passed.
+   */
+  const normalise = (path: string): string =>
+    path
+      .replace(/\?.*$/, '')
+      .split('/')
+      .map((segment) => (/^[:[].*[\]]?$/.test(segment) ? ':param' : segment))
+      .join('/');
+
+  const named = new Set(
+    (all.match(/\/api\/[A-Za-z0-9\-:[\]/_.]*/g) ?? []).map((path) => normalise(path)),
+  );
+
   const uncovered = routes.filter((route) => {
     const segments = route.split('/');
     for (let depth = segments.length; depth >= 2; depth -= 1) {
-      if (all.includes(`/${segments.slice(0, depth).join('/')}`)) return false;
+      if (named.has(normalise(`/${segments.slice(0, depth).join('/')}`))) return false;
     }
     return true;
   });
