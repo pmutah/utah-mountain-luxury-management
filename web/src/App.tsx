@@ -150,6 +150,20 @@ function Dashboard() {
     syncDocumentView({ tab: activeTab, reportView, riverView }, currentMonth);
   }, [activeTab, reportView, riverView, currentMonth]);
 
+  /*
+   * The overview is the page anyone checks daily, and it recorded nothing toward the seven-day shadow gate — so a
+   * host with that habit advanced auto-pricing by zero days forever. Verified on production: a full overview visit
+   * left the clock at 1 of 7.
+   *
+   * `/api/pricing/push-plan` now saves the day itself (it already loads all three live boards), so this one call is
+   * what turns the daily habit into a counted day. It is deliberately fire-and-forget and only when the portfolio
+   * tab is open: the response is not needed here, and a failed save must not interrupt the dashboard.
+   */
+  useEffect(() => {
+    if (activeTab !== 'portfolio' || booksPaused) return;
+    void api.getPushPlan().catch(() => undefined);
+  }, [activeTab, booksPaused]);
+
   useEffect(() => {
     installUmlBridge({
       getState: () => ({ tab: activeTab, reportView, riverView, month: currentMonth }),
