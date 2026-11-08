@@ -142,12 +142,17 @@ export function preferenceCardNote(count: number): string {
  *
  * No house currently publishes a pet rule, so the old line said "The published guide does not name a
  * pet rule" — true, but useless to a guest deciding whether to bring a dog, and it reads as a gap in the
- * product. The honest and useful answer is that pets are not covered by the guide and the guest should
- * ask before booking. It invents no policy; it points at a person.
+ * product. The honest and useful answer is that pets are not covered by the guide and the guest should ask a
+ * person. It invents no policy; it points at someone who can answer.
+ *
+ * **This form only exists after a booking.** It said "ask us before you book", which is advice the guest reading
+ * it can no longer take — found by opening a real stay 11 nights out and reading the line on the phone. My first
+ * rewrite said "tell us here", which was the same mistake in a new tense: there is no pet field, so it pointed at
+ * a control that does not exist. It now names the field that does exist, the free-text note at the end.
  */
 export function preferencePetLine(): string {
   const line =
-    'Pets are not covered in the published guide. Ask us before you book and we will tell you what this house allows. Nothing is sent.';
+    'Pets are not covered in the published guide. Say so in the last note on this card and we will tell you what this house allows for your stay. Nothing is sent until you press send.';
   if (line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) return 'Nothing is sent.';
   return line;
 }

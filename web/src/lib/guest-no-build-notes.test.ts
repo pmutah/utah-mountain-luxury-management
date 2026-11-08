@@ -93,7 +93,10 @@ test('a gap in the guide points at a person, it does not narrate the gap', () =>
   // our gap, and a guest with a dog cannot act on it.
   const pets = preferencePetLine();
   assert.equal(/does not name/i.test(pets), false);
-  assert.match(pets, /ask us before you book/i);
+  // This form is post-booking, so it cannot tell the guest to ask before booking, and it must name a field that is
+  // actually on the card.
+  assert.equal(/before you book/i.test(pets), false);
+  assert.match(pets, /last note on this card/i);
 });
 
 test('the guest app still refuses to claim it sends or signs', () => {

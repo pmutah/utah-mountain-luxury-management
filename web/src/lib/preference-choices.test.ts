@@ -53,9 +53,17 @@ test('preference choices follow the published guide for that house', () => {
   assert.match(preferenceCardNote(0), /no preference card yet/);
   assert.equal(preferenceCardLines('ranch', null).length, 0);
   const pets = preferencePetLine();
-  // No house publishes a pet rule, so the phone points the guest at a person instead of narrating the gap.
+  /*
+   * No house publishes a pet rule, so the phone points the guest at a person instead of narrating the gap.
+   *
+   * This form only exists **after** a booking, so "ask us before you book" was advice the reader could no longer
+   * take — found by opening a real stay 11 nights out. It must also name a control that exists: there is no pet
+   * field, so it points at the free-text note. And it keeps the assurance that nothing leaves the phone until the
+   * guest presses send, which the old line carried and my first rewrite dropped.
+   */
   assert.match(pets, /not covered in the published guide/i);
-  assert.match(pets, /ask us before you book/i);
+  assert.match(pets, /last note on this card/i, 'the pet line does not name a field that exists');
+  assert.equal(/before you book/i.test(pets), false, 'a post-booking form still says to ask before booking');
   assert.match(pets, /Nothing is sent/);
   assert.equal(pets.includes('$'), false);
 });
