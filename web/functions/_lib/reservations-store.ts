@@ -101,10 +101,43 @@ export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {
   return n + oChanged;
 }
 
+/**
+ * A day that can actually be used: a real calendar date, not `2026-13-45` and not the string
+ * `undefined`.
+ */
+function isRealDay(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year!, month! - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month! - 1 && date.getUTCDate() === day;
+}
+
+const HOUSES = new Set(['ranch', 'lindon', 'river']);
+
+/**
+ * Save a stay, refusing one that cannot be used.
+ *
+ * The store used to write whatever it was handed. One imported stay ended up with no house, no
+ * check-in, and no check-out — it is filtered out of every calendar, so it is invisible, but it still
+ * sits in the saved list and counts toward the total. A stay with no house produces a turnover cleaning
+ * expense for no house, and a missing date can only be a bug upstream.
+ *
+ * The check is here rather than at each caller because the iCal import, the accept route, and the
+ * reservations API all write through this one function.
+ */
 export async function createReservation(
   env: SettingsEnv,
   input: Omit<ReservationRecord, 'id' | 'createdAt'>,
 ): Promise<ReservationRecord> {
+  if (!HOUSES.has(String(input.propertyId ?? ''))) {
+    throw new Error(`A stay needs a real house. Refusing to save one with "${String(input.propertyId)}".`);
+  }
+  if (!isRealDay(input.checkIn) || !isRealDay(input.checkOut)) {
+    throw new Error('A stay needs a real check-in and check-out. Refusing to save a row without them.');
+  }
+  if (input.checkOut <= input.checkIn) {
+    throw new Error('A stay has to check out after it checks in. Refusing to save it.');
+  }
   const item: ReservationRecord = {
     ...input,
     id: newId('res'),
