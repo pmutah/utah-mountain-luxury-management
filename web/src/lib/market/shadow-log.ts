@@ -34,16 +34,35 @@ function browserStore(): ShadowStore | null {
   }
 }
 
+/**
+ * A saved day is a day whose digest could be sent **and** was built from real comps.
+ *
+ * The fit line names its own source, so a digest computed from the sample fixtures says "sample comps". Such
+ * a day is not an observation of the market and must not count toward the seven that decide whether
+ * auto-pricing may act. Applying this here covers both the local log and the saved one, since both read a day
+ * through this guard.
+ */
 function isDay(value: unknown): value is ShadowDay {
   if (!value || typeof value !== 'object') return false;
   const day = value as ShadowDay;
-  return DATE.test(day.date) && typeof day.digest === 'string' && day.digest.includes('Nothing sent to Hospitable.');
+  return (
+    DATE.test(day.date) &&
+    typeof day.digest === 'string' &&
+    day.digest.includes('Nothing sent to Hospitable.') &&
+    !/sample comps?/i.test(day.digest)
+  );
 }
 
-/** Keep one row per Denver day. A digest that could be sent is refused. */
+/** Keep one row per Denver day. A digest that could be sent, or that was built from sample comps, is refused. */
 export function recordShadowDay(log: readonly ShadowDay[], date: string, digest: string): ShadowDay[] {
   if (!DATE.test(date) || !digest.includes('Nothing sent to Hospitable.')) return log.filter(isDay);
   if (digest.includes(SHADOW_UNREAD)) return log.filter((day) => isDay(day) && day.date !== date);
+  /*
+   * A day built from the sample fixtures is refused at the write, not stored and then ignored on read.
+   * Writing it and having `isDay` reject it was the worst of both: the day was silently dropped from the
+   * clock while pretending to be saved, and the log carried a row that could never count.
+   */
+  if (!daySawRealComps(digest)) return log.filter(isDay);
   const kept = log.filter((day) => isDay(day) && day.date !== date);
   return [...kept, { date, digest }].sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
 }
@@ -71,12 +90,26 @@ export function hospitablePushAllowed(ready: boolean, hasWriteToken: boolean): b
  */
 export type SavedShadowDay = { date: string; digest: string; savedAt?: string };
 
+/**
+ * A saved day counts only when its digest was built from **real comps**.
+ *
+ * The recorded digest names its own source in the fit line: a day computed from the sample fixtures says
+ * "sample comps", and one built from the saved comps says "saved comps". A sample day is not an observation
+ * of the market, so it cannot count toward the seven that decide whether auto-pricing may act — otherwise the
+ * gate could be satisfied by a market that does not exist. Any day carrying "sample comps" is skipped rather
+ * than deleted, so the record is kept and only its eligibility is denied.
+ */
+export function daySawRealComps(digest: string): boolean {
+  return !/sample comps?/i.test(digest);
+}
+
 export function shadowClockFromSaved(days: readonly SavedShadowDay[], today: string): ShadowClock {
   const usable = days.filter(
     (day) =>
       DATE.test(day.date) &&
       typeof day.digest === 'string' &&
       day.digest.includes('Nothing sent to Hospitable.') &&
+      daySawRealComps(day.digest) &&
       !day.digest.includes(SHADOW_UNREAD) &&
       DATE.test(today) &&
       day.date <= today,

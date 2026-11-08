@@ -18,6 +18,38 @@ import { join } from 'node:path';
 import { shadowDayDigest, withToday } from './shadow-day-record.ts';
 import { SHADOW_DAYS_REQUIRED, shadowClock } from './market/shadow-log.ts';
 import { agentBrief } from './agent-brief.ts';
+import type { MarketBoard } from './market/types.ts';
+
+/** A board carrying saved comps, so its fit line says "saved comps" and a day recorded from it counts. */
+function liveBoard(house: 'river' | 'ranch' | 'lindon'): MarketBoard {
+  const comp = (n: number) => ({
+    id: `${house}-${n}`,
+    name: `Saved comp ${n}`,
+    area: 'Orem',
+    beds: 6,
+    sleeps: 20,
+    rating: 4.8,
+    reviews: 10,
+    guestFavorite: false,
+    distanceMi: 3,
+    nextWeekendAsk: 500,
+    occupancy: 60,
+    score: 10,
+    fit: 'close' as const,
+    inBand: true,
+  });
+  return {
+    house,
+    source: 'live',
+    from: '2026-11-08',
+    days: 90,
+    targetPercentile: 70,
+    nights: [],
+    comps: [comp(1), comp(2), comp(3), comp(4)],
+    fit: { close: 4, compared: 4, narrowed: false },
+    summary: { medianAsk: 500, ourTypical: 500, ourPercentile: 50, raiseNights: 0, promoteNights: 0, compPace30: 0, liveNights: 0, liveComps: 4 },
+  } as MarketBoard;
+}
 
 const BASE = {
   taken: { river: [], ranch: [], lindon: [] },
@@ -56,19 +88,46 @@ test('a day whose calendar could not be read is not recorded', () => {
   assert.equal(withToday(log, '2026-11-07', record.digest).length, 1, 'an unread day was added to the log');
 });
 
-test('a week of days from the brief reaches the push gate', () => {
+test('a week of days recorded from real comps reaches the push gate', () => {
+  /*
+   * This used to pass days recorded with no boards at all, so every digest was built from the sample
+   * fixtures and still opened the gate — the gate could be satisfied by a market that does not exist. A day
+   * now counts only when its fit line does not say "sample comps", so the week has to be recorded from real
+   * boards. That is the stronger rule, and it is what the test asserts.
+   */
+  const boards = {
+    river: liveBoard('river'),
+    ranch: liveBoard('ranch'),
+    lindon: liveBoard('lindon'),
+  };
+  let log: Array<{ date: string; digest: string }> = [];
+  const start = Date.UTC(2026, 10, 7);
+  for (let i = 0; i < SHADOW_DAYS_REQUIRED; i += 1) {
+    const date = new Date(start + i * 86_400_000).toISOString().slice(0, 10);
+    log = withToday(log, date, shadowDayDigest({ ...BASE, asOf: date, calendarLive: true, boards }).digest);
+  }
+  const clock = shadowClock(log, '2026-11-14');
+  assert.equal(clock.days, SHADOW_DAYS_REQUIRED);
+  assert.equal(clock.ready, true, 'seven saved days did not open the gate');
+  // The same day twice is still one day, so a reload cannot finish the week early.
+  const twice = withToday(
+    log,
+    '2026-11-13',
+    shadowDayDigest({ ...BASE, asOf: '2026-11-13', calendarLive: true, boards }).digest,
+  );
+  assert.equal(shadowClock(twice, '2026-11-14').days, SHADOW_DAYS_REQUIRED);
+});
+
+test('a week recorded from sample comps never opens the gate', () => {
+  // The mirror of the test above: without boards the digests say "sample comps" and must not count.
   let log: Array<{ date: string; digest: string }> = [];
   const start = Date.UTC(2026, 10, 7);
   for (let i = 0; i < SHADOW_DAYS_REQUIRED; i += 1) {
     const date = new Date(start + i * 86_400_000).toISOString().slice(0, 10);
     log = withToday(log, date, shadowDayDigest({ ...BASE, asOf: date, calendarLive: true }).digest);
   }
-  const clock = shadowClock(log, '2026-11-14');
-  assert.equal(clock.days, SHADOW_DAYS_REQUIRED);
-  assert.equal(clock.ready, true, 'seven saved days did not open the gate');
-  // The same day twice is still one day, so a reload cannot finish the week early.
-  const twice = withToday(log, '2026-11-13', shadowDayDigest({ ...BASE, asOf: '2026-11-13', calendarLive: true }).digest);
-  assert.equal(shadowClock(twice, '2026-11-14').days, SHADOW_DAYS_REQUIRED);
+  assert.equal(log.length, 0, 'a sample-comp day was kept in the log at all');
+  assert.equal(shadowClock(log, '2026-11-14').ready, false, 'sample-comp days opened the gate');
 });
 
 test('the brief says how to advance the shadow week, not just where it is', () => {
