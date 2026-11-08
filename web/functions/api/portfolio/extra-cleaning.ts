@@ -1,11 +1,14 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { loadExtraCleaningFees, saveExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { storageReadPaused } from '../../_lib/kv-json';
 
 export const onRequestPut: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as Record<string, number | string>;
+  const parsed = await readJsonBody<Record<string, number | string>>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   /*
    * The current fees have to be read before they can be merged and saved. If that read fails, saving
    * the defaults would overwrite the real fees with stand-in numbers, so the write is refused.

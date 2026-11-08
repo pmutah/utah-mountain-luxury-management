@@ -1,5 +1,6 @@
 ﻿import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { storageReadPaused } from '../../_lib/kv-json';
 import {
   getAllReservations,
@@ -48,7 +49,7 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, wait
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     guestName: string;
     propertyId: 'ranch' | 'lindon' | 'river';
     checkIn: string;
@@ -62,7 +63,9 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     guestEmail?: string;
     guestPhone?: string;
     confirmationCode?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   if (!body.propertyId || !body.checkIn || !body.checkOut) {
     return corsJson(request, { error: 'propertyId, checkIn, checkOut required' }, 400);

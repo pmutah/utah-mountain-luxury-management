@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
+import { readJsonBody } from '../../../_lib/json-body';
 import { readOrRefuse } from '../../../_lib/read-guard';
 import {
   getConstructionDocument,
@@ -31,12 +32,14 @@ export const onRequestGet: PagesFunction<ConstructionEnv> = async ({ request, en
 export const onRequestPatch: PagesFunction<ConstructionEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     type?: string;
     amount?: number;
     title?: string;
     vendor?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const patch: Parameters<typeof updateConstructionDocument>[2] = {};
   if (body.type && VALID_TYPES.includes(body.type as ConstructionDocType)) {

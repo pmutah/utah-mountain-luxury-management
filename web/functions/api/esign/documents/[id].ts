@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
+import { readJsonBody } from '../../../_lib/json-body';
 import { deleteEsignStoredFile } from '../../../_lib/esign/esign-file-store';
 import { readOrRefuse } from '../../../_lib/read-guard';
 import {
@@ -26,7 +27,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
 export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = String(params.id ?? '');
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     title?: string;
     folder?: string;
     notes?: string;
@@ -36,7 +37,9 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
     signerPhone?: string;
     signerRole?: string;
     status?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const patch: Parameters<typeof updateVaultDocument>[2] = {};
   if (body.title !== undefined) patch.title = body.title.trim();

@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { loadAutomation, saveAutomation, type AutomationSettings } from '../../_lib/automation';
 import { readOrRefuse } from '../../_lib/read-guard';
 import type { SettingsEnv } from '../../_lib/kv';
@@ -13,7 +14,9 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
 
 export const onRequestPut: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as Partial<AutomationSettings>;
+  const parsed = await readJsonBody<Partial<AutomationSettings>>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   const read = await readOrRefuse(request, () => saveAutomation(env, body), 'Saved automation settings');
   if (!read.ok) return read.response;
   return corsJson(request, read.value);

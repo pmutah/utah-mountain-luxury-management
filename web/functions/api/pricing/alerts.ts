@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { loadPricingAlerts, dismissPricingAlert } from '../../_lib/pricing-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv } from '../../_lib/agent/types';
@@ -13,7 +14,9 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
 
 export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as { id: string };
+  const parsed = await readJsonBody<{ id: string }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   if (!body.id) return corsJson(request, { error: 'id required' }, 400);
   const saved = await readOrRefuse(request, () => dismissPricingAlert(env, body.id), 'Saved pricing alerts');
   if (!saved.ok) return saved.response;

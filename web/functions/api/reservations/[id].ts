@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { updateReservation, updateReservationStatus, getAllReservations } from '../../_lib/reservations-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv, ReservationRecord, ReservationStatus } from '../../_lib/agent/types';
@@ -7,7 +8,7 @@ import type { AgentEnv, ReservationRecord, ReservationStatus } from '../../_lib/
 export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     status?: ReservationStatus;
     note?: string;
     payout?: number;
@@ -16,7 +17,9 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
     guestPhone?: string;
     confirmationCode?: string;
     source?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const patch: Partial<ReservationRecord> = {};
   if (body.note !== undefined) patch.note = body.note;

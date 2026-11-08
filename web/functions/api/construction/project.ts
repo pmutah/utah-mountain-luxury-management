@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { loadConstructionProject, saveConstructionProject } from '../../_lib/construction/construction-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import type { ConstructionEnv } from '../../_lib/construction/types';
@@ -13,7 +14,9 @@ export const onRequestGet: PagesFunction<ConstructionEnv> = async ({ request, en
 
 export const onRequestPut: PagesFunction<ConstructionEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as Record<string, unknown>;
+  const parsed = await readJsonBody<Record<string, unknown>>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   // The save spreads the current project, so a default here would blank every field the caller omitted.
   const read = await readOrRefuse(request, () => loadConstructionProject(env), 'The construction project');
   if (!read.ok) return read.response;

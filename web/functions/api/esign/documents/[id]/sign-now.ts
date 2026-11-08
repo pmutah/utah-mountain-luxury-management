@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../../../_lib/auth';
 import { corsJson } from '../../../../_lib/data';
+import { readJsonBody } from '../../../../_lib/json-body';
 import { completeEsignPackage, markSessionCompleted } from '../../../../_lib/esign/complete-esign';
 import { readOrRefuse } from '../../../../_lib/read-guard';
 import {
@@ -26,11 +27,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     return corsJson(request, { error: 'This document is already signed.' }, 409);
   }
 
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     signerName?: string;
     signatureDataUrl?: string;
     consentAccepted?: boolean;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const signerName = (body.signerName ?? doc.signerName ?? 'Utah Mountain Luxury staff').trim();
   if (!body.signatureDataUrl) return corsJson(request, { error: 'Signature required.' }, 400);

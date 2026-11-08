@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import {
   applyParsedInvoice,
   parseInvoiceFromParts,
@@ -16,7 +17,7 @@ const DEFAULT_GMAIL_QUERY = 'invoice OR "pay application" OR "pay app" newer_tha
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     type?: 'text' | 'image' | 'gmail' | 'gmail-search';
     text?: string;
     imageBase64?: string;
@@ -24,7 +25,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     templateId?: string;
     query?: string;
     messageId?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   if (body.type === 'gmail-search') {
     try {

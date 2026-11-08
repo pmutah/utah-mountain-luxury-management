@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
+import { readJsonBody } from '../../../_lib/json-body';
 import {
   loadConstructionDocuments,
   addConstructionDocument,
@@ -80,12 +81,14 @@ async function handleConstructionDocumentPost(
 ): Promise<Response> {
   const apiKey = env.GEMINI_API_KEY?.trim();
 
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     fileBase64?: string;
     mimeType?: string;
     fileName?: string;
     type?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   if (!body.fileBase64 || !body.mimeType) {
     return corsJson(request, { error: 'fileBase64 and mimeType required' }, 400);

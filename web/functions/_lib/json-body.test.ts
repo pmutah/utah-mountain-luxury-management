@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { readJsonBody } from './json-body.ts';
 
@@ -64,7 +64,7 @@ test('the public booking route cannot crash on a bad body', async () => {
   );
 });
 
-test('no public guest route parses JSON without a guard', async () => {
+test('no guest route parses JSON without a guard', async () => {
   /*
    * The guest-facing routes are the ones where a crash page is worst: a real person, mid-booking, with
    * no idea what to do. This walks the guest routes and requires each one to guard its body.
@@ -86,3 +86,56 @@ test('no public guest route parses JSON without a guard', async () => {
   }
   assert.deepEqual(naked, [], `guest routes that crash on a bad body:\n${naked.join('\n')}`);
 });
+
+test('no route anywhere parses a JSON body unguarded', async () => {
+  /*
+   * The same hole existed in 20 host and admin routes. A 500 on a host form is less severe than on a
+   * guest booking, but it is the same defect and it was found one route at a time. This is the sweep:
+   * every file under `functions/` that reads a body must go through `readJsonBody` or guard the throw.
+   */
+  const naked: string[] = [];
+  for (const file of walk(join(process.cwd(), 'functions'))) {
+    if (file.endsWith('.test.ts')) continue;
+    const source = readFileSync(file, 'utf8');
+    if (!source.includes('await request.json()')) continue;
+    /*
+     * The guard has to be at the **call site**, not merely imported. The first version of this sweep
+     * passed a deliberately-unguarded route because the file still imported `readJsonBody` while no
+     * longer calling it — so an unused import made a crashing route look safe. A guard test that a
+     * broken file can pass is not a guard.
+     */
+    const guarded =
+      /await readJsonBody[<(]/.test(source) ||
+      // `request.json().catch(() => ({}))` already handles the throw.
+      source.includes('request.json().catch(') ||
+      /try\s*\{[\s\S]{0,400}?await request\.json\(\)/.test(source);
+    if (!guarded) naked.push(file.slice(process.cwd().length + 1).replace(/\\/g, '/'));
+  }
+  assert.deepEqual(naked, [], `routes that crash on a malformed body:\n${naked.join('\n')}`);
+});
+
+function walk(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSafe(dir)) {
+    const path = join(dir, entry);
+    if (statSafe(path) === 'dir') out.push(...walk(path));
+    else if (entry.endsWith('.ts')) out.push(path);
+  }
+  return out;
+}
+
+function readdirSafe(dir: string): string[] {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
+}
+
+function statSafe(path: string): 'dir' | 'file' | 'none' {
+  try {
+    return statSync(path).isDirectory() ? 'dir' : 'file';
+  } catch {
+    return 'none';
+  }
+}

@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson, PROPERTIES } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { updateReservation } from '../../_lib/reservations-store';
 import { upsertSurveyForStay, markSurveySent } from '../../_lib/survey-store';
 import { resolveStayForSurvey } from '../../_lib/survey-bind';
@@ -21,13 +22,15 @@ function isSurveyChannel(value: unknown): value is SurveyChannel {
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     reservationId?: string;
     confirmationCode?: string;
     channel?: SurveyChannel;
     guestEmail?: string;
     guestPhone?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   if (!isSurveyChannel(body.channel)) {
     return corsJson(request, { error: 'channel (email|sms|none) required' }, 400);

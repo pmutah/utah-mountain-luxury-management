@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { loadCalendarBlocks, addCalendarBlock, deleteCalendarBlock } from '../../_lib/calendar-store';
 import { storageReadPaused } from '../../_lib/kv-json';
 import type { AgentEnv } from '../../_lib/agent/types';
@@ -24,13 +25,15 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     propertyId: 'ranch' | 'lindon' | 'river';
     start: string;
     end: string;
     type?: 'maintenance' | 'owner' | 'blocked';
     note?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   if (!body.propertyId || !body.start || !body.end) {
     return corsJson(request, { error: 'propertyId, start, end required' }, 400);
   }

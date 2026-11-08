@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { loadListingConfig, saveListingConfig } from '../../_lib/pricing-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv } from '../../_lib/agent/types';
@@ -13,7 +14,9 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
 
 export const onRequestPut: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as Partial<Record<'ranch' | 'lindon' | 'river', unknown>>;
+  const parsed = await readJsonBody<Partial<Record<'ranch' | 'lindon' | 'river', unknown>>>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   /*
    * Every house is carried through, so this read has to succeed: building the merged config from a
    * default would erase whichever house the caller did not send. A paused store therefore refuses the

@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { parseExpenseFromImage, parseExpenseFromText } from '../../_lib/gemini';
 import {
   parseHouseholdExpenseFromImage,
@@ -18,14 +19,16 @@ export const onRequestPost: PagesFunction<ScanEnv> = async ({ request, env }) =>
     return corsJson(request, { error: 'GEMINI_API_KEY not configured on server' }, 503);
   }
 
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     type: 'text' | 'image';
     text?: string;
     imageBase64?: string;
     mimeType?: string;
     propertyId?: 'ranch' | 'lindon' | 'river' | 'household';
     month?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const household = body.propertyId === 'household';
   const hints = { propertyId: household ? undefined : body.propertyId, month: body.month };

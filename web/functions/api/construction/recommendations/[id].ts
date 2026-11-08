@@ -1,12 +1,15 @@
 import { hostDenied, hostOnly } from '../../../_lib/auth';
 import { corsJson } from '../../../_lib/data';
+import { readJsonBody } from '../../../_lib/json-body';
 import { dismissConstructionRecommendation } from '../../../_lib/construction/construction-store';
 import type { ConstructionEnv } from '../../../_lib/construction/types';
 
 export const onRequestPatch: PagesFunction<ConstructionEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   const id = params.id as string;
-  const body = (await request.json()) as { dismissed?: boolean };
+  const parsed = await readJsonBody<{ dismissed?: boolean }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   if (!body.dismissed) {
     return corsJson(request, { error: 'Set dismissed: true' }, 400);
   }

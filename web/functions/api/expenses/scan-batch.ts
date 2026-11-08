@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { parseExpensesFromDocument } from '../../_lib/gemini';
 import type { SettingsEnv } from '../../_lib/kv';
 
@@ -14,11 +15,13 @@ export const onRequestPost: PagesFunction<ScanBatchEnv> = async ({ request, env 
     return corsJson(request, { error: 'GEMINI_API_KEY not configured on server' }, 503);
   }
 
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     fileBase64?: string;
     mimeType?: string;
     fileName?: string;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   if (!body.fileBase64 || !body.mimeType) {
     return corsJson(request, { error: 'fileBase64 and mimeType required' }, 400);

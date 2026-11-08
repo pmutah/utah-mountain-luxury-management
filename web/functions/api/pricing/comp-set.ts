@@ -1,5 +1,6 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { readJsonBody } from '../../_lib/json-body';
 import { loadCompSet, addCompListing, removeCompListing } from '../../_lib/pricing-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import { isCompHouse } from '../../../src/lib/market/comp-house';
@@ -14,7 +15,7 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
-  const body = (await request.json()) as {
+  const parsed = await readJsonBody<{
     platform: 'airbnb' | 'vrbo';
     url: string;
     label: string;
@@ -25,7 +26,9 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     rating?: number;
     reviews?: number;
     guestFavorite?: boolean;
-  };
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
   if (body.platform !== 'airbnb' && body.platform !== 'vrbo') {
     return corsJson(request, { error: 'platform has to be airbnb or vrbo' }, 400);
   }
