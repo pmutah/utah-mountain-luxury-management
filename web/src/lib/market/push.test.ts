@@ -161,11 +161,18 @@ test('a fully blocked board says why and sends nothing', () => {
   assert.match(pushSummaryLine(plans), /No rate is sent\. The shadow week is not finished/);
 });
 
-test('the plan lines are short and carry no price', () => {
+test('the plan lines carry the price to type, because a plan without one is not actionable', () => {
+  /*
+   * These lines used to omit the price on purpose, so a plan could never read as a published rate. But "Dec 5:
+   * 20% promotion." leaves the host to find the number elsewhere to do the one thing the line exists to
+   * prompt. The panel is host-only and states that nothing is sent, so the figure belongs here — and the
+   * previous price goes with it, so the change is visible rather than implied.
+   */
   const plan = pushPlanFor('river', run('river', [night(), night({ date: '2026-12-05', action: 'promote', offerGuest: 960, promotionPercent: 20 })]), READY);
   const lines = planLines(plan);
   assert.equal(lines.length, 2);
   assert.match(lines[0] ?? '', /raise/);
   assert.match(lines[1] ?? '', /20% promotion/);
-  assert.equal(lines.join(' ').includes('$'), false);
+  assert.match(lines[0] ?? '', /\$\d+ to \$\d+/, 'a raise line must name both prices');
+  assert.match(lines[1] ?? '', /\$1000 to \$960/, 'a promotion line must name the base and the offer');
 });

@@ -221,7 +221,15 @@ export function pushPayload(plan: PushPlan): PushPayload | null {
   };
 }
 
-/** The plan as a night-by-night list for the desk. No price is quoted. */
+/**
+ * The plan as a night-by-night list for the desk, **with the price to type**.
+ *
+ * This used to omit the price deliberately — a plan must never read as a published rate. But a list saying
+ * "Dec 6: raise" with no number is not actionable: the host has to hunt the figure elsewhere to do the one
+ * thing the plan exists to prompt. The panel is host-only, behind the dashboard gate, and says plainly that
+ * nothing is sent, so the number belongs here. The night's `from` is also shown so the change is visible
+ * rather than implied.
+ */
 export function planLines(plan: PushPlan): string[] {
   return plan.nights.slice(0, 14).map((night) => {
     const when = new Date(`${night.date}T12:00:00Z`).toLocaleDateString('en-US', {
@@ -231,6 +239,6 @@ export function planLines(plan: PushPlan): string[] {
       timeZone: 'UTC',
     });
     const label = night.kind === 'promote' ? '20% promotion' : night.kind === 'raise' ? 'raise' : 'back to base';
-    return `${when}: ${label}.`;
+    return `${when}: ${label}, $${night.from} to $${night.to}.`;
   });
 }

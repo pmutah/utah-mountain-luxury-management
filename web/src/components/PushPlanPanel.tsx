@@ -153,8 +153,8 @@ export function PushPlanPanel() {
       <p className="uml-kicker">What a rate push would change</p>
       <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
         A plan, not a send. Booked, closed, paused, locked, and held nights stay put, and a raise never goes under the
-        floor. Nothing here changes a rate on Airbnb or VRBO. Approving a night sets the price this site quotes, and
-        that night only.
+        floor. Nothing here changes a rate on Airbnb or VRBO: <strong>type the listed price into the site yourself.</strong>{' '}
+        Approving a night sets the price this site quotes, and that night only.
       </p>
 
       {state === 'paused' && (
