@@ -119,6 +119,19 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
   const partyChildren = partyFromForm?.children ?? noteChildCount(stay?.note) ?? undefined;
   const window = accessWindow(checkIn, checkOut);
   const unlocked = window.open || preview;
+  /*
+   * Two different things are being checked here, and only one of them can be enforced by this route.
+   *
+   * `unlocked` is the **time window**: the code is withheld until the day before check-in and after checkout.
+   * The server decides that, from the stay's dates, and it cannot be talked around.
+   *
+   * `ready` is the **"read the house rules first" step**, and this route cannot verify it. The guest app keeps
+   * the acknowledgement in `sessionStorage` and asks for it with `?ready=1`, so a caller who holds a valid
+   * token can assert readiness inside the window without having opened a single rule. That is a deliberate
+   * trade — the token is the credential, and a stay agreement is not signed by reading a page — but it must
+   * not be mistaken for server-enforced. Anyone who needs that guarantee has to withhold the code until a
+   * record exists on the server, which this route does not do.
+   */
   const ready = preview || new URL(request.url).searchParams.get('ready') === '1';
   const secrets = stayAccessSecrets({
     unlocked,
