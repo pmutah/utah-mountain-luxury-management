@@ -1014,6 +1014,17 @@ export const api = {
       summary: string | null;
       storageReads?: 'ok' | 'paused';
     }>('/api/clean/progress'),
+  /**
+   * Tick a step from the host's desk, into the **same** store the cleaner writes to.
+   *
+   * The desk's boxes used to write to `sessionStorage`, so ticking one changed nothing that the count or the line
+   * beside it could see — measured on production, `0 of 7` before and after a click.
+   */
+  saveCleanProgress: (body: { house: string; checkout: string; done: string[] }) =>
+    request<{ ok: boolean; progress: CleanProgress[] }>('/api/clean/progress', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   /** Room photos cleaners uploaded from their own links, grouped by turn. Host only. */
   getCleanPhotoTurns: () =>
     request<{

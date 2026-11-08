@@ -212,13 +212,44 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
     });
   }
 
-  function toggle(jobId: string, stepId: string) {
-    if (stepId === 'photos' && (photos[jobId]?.length ?? 0) === 0) return;
+  /**
+   * Tick a step on the host's own desk.
+   *
+   * This wrote to `sessionStorage`, so it was a box that changed nothing the card could see: the count and the line
+   * beside it both read the server. Measured on production — a click left `0 of 7` at `0 of 7`.
+   *
+   * It now writes to the same store the cleaner writes to, so the desk and the phone hold one truth. The local map
+   * stays as the optimistic value for the instant before the round trip lands, and is replaced by the server row when
+   * it does. If the write fails, the tick is reverted rather than left looking saved.
+   */
+  function toggle(job: CleanJob, stepId: string) {
+    if (stepId === 'photos' && (photos[job.id]?.length ?? 0) === 0) return;
+    const key = `${job.id}:${stepId}`;
+    const turningOn = !checks[key];
     setChecks((current) => {
-      const next = { ...current, [`${jobId}:${stepId}`]: !current[`${jobId}:${stepId}`] };
+      const next = { ...current, [key]: turningOn };
       sessionStorage.setItem(CHECKS_KEY, JSON.stringify(next));
       return next;
     });
+
+    const existing = progressRows.find((row) => row.house === job.house && row.checkout === job.checkout);
+    const current = new Set(existing?.done ?? []);
+    if (turningOn) current.add(stepId);
+    else current.delete(stepId);
+
+    void api
+      .saveCleanProgress({ house: job.house, checkout: job.checkout, done: [...current] })
+      .then((result) => {
+        if (result?.progress) setCleanProgress(result.progress);
+      })
+      .catch(() => {
+        // The tick did not reach the server, so it must not keep looking done on this screen.
+        setChecks((now) => {
+          const reverted = { ...now, [key]: !turningOn };
+          sessionStorage.setItem(CHECKS_KEY, JSON.stringify(reverted));
+          return reverted;
+        });
+      });
   }
 
   return (
@@ -311,11 +342,14 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
              * A cleaner works on their phone; the host's browser has none of their ticks, so this count was always
              * zero for real work. It now counts the server row, and falls back to the local checks only when the
              * server read FAILED — in which case the line above already says the ticks could not be read.
+             *
+             * A step the host has just clicked counts at once, because the box beside it already shows ticked and the
+             * number must not lag the box it sits above.
              */
             const done =
               cleanProgress === null
                 ? jobDoneCount(job.steps, checks, job.id, photoCount)
-                : serverDoneCount(job, progressRows, photoCount);
+                : Math.max(serverDoneCount(job, progressRows, photoCount), jobDoneCount(job.steps, checks, job.id, photoCount));
             const clock = turnHours(
               {
                 sameDay: job.priority,
@@ -445,7 +479,18 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                 <ul className="mt-4 space-y-2">
                   {job.steps.map((step) => {
                     const key = `${job.id}:${step.id}`;
-                    const checked = stepDone(step.id, Boolean(checks[key]), photoCount);
+                    /*
+                     * The box reads the **server** row, with the local map as the optimistic value for the instant
+                     * before a write lands. Reading only local state meant a host's own tick vanished on reload,
+                     * and reading only the server would make the box feel unresponsive to the click.
+                     */
+                    const onServer =
+                      cleanProgress === null
+                        ? false
+                        : (progressRows.find((row) => row.house === job.house && row.checkout === job.checkout)?.done ?? []).includes(
+                            step.id,
+                          );
+                    const checked = stepDone(step.id, onServer || Boolean(checks[key]), photoCount);
                     return (
                       <li key={step.id}>
                         <label className="flex items-center gap-3 text-sm">
@@ -453,7 +498,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                             type="checkbox"
                             data-bot={step.id === 'photos' ? 'clean-photo-check' : undefined}
                             checked={checked}
-                            onChange={() => toggle(job.id, step.id)}
+                            onChange={() => toggle(job, step.id)}
                           />
                           {stepText(step.id, cleanLabel(step.id, lang), clock.text)}
                         </label>
@@ -538,3 +583,4 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
     </section>
   );
 }
+
