@@ -37,9 +37,44 @@ export function stayAccessSecrets(input: {
 }
 
 /** What Nora is allowed to know. The code and the password stay on the phone. */
-export function conciergeAccessLine(opensOn: string): string {
+export function conciergeAccessLine(opensOn: string, has?: { doorCode?: boolean; wifi?: boolean }): string {
   const when = /^\d{4}-\d{2}-\d{2}$/.test(opensOn) ? opensOn : 'the day before check-in';
-  const line = `The door code and Wi-Fi stay on the guest phone. They are not in this chat. They appear on ${when} after the house rules are read and each stay-agreement topic is opened. If they ask, say that. Do not invent a code. Do not repeat a code.`;
+  /*
+   * Say what the house actually holds.
+   *
+   * This used to tell Nora, unconditionally, that "the door code and Wi-Fi ... appear on {date} after the house rules
+   * are read". Only the River House has a Wi-Fi password; Ranch and Lindon have none stored. So a Lindon guest asked
+   * for it and was told to read the house rules and open every agreement topic — a promise that would not be kept,
+   * sending them through a checklist to find an empty field.
+   *
+   * When a fact is missing, the honest answer is that it is not in the guide and a person can help. That is a real
+   * answer; "go look" is not.
+   */
+  const door = has?.doorCode !== false;
+  const wifi = has?.wifi !== false;
+  const parts: string[] = [];
+  if (door && wifi) {
+    parts.push(
+      `The door code and Wi-Fi stay on the guest phone. They are not in this chat. They appear on ${when} after the house rules are read and each stay-agreement topic is opened. If they ask, say that. Do not invent a code. Do not repeat a code.`,
+    );
+  } else if (door) {
+    parts.push(
+      `The door code stays on the guest phone and is not in this chat; it appears on ${when} after the house rules are read and each stay-agreement topic is opened. Do not invent or repeat a code.`,
+    );
+    parts.push(
+      'This house has no Wi-Fi name or password saved in its guide. If the guest asks, say the guide does not hold it and offer to have it sent — do not tell them to go looking, and never invent one.',
+    );
+  } else if (wifi) {
+    parts.push(
+      `The Wi-Fi details stay on the guest phone and appear on ${when} after the house rules are read. Do not repeat a password.`,
+    );
+    parts.push('This house has no door code saved in its guide. If the guest asks, say a person will confirm it.');
+  } else {
+    parts.push(
+      'Neither a door code nor Wi-Fi details are saved in this house guide. If the guest asks for either, say the guide does not hold them and a person will help — never invent one.',
+    );
+  }
+  const line = parts.join(' ');
   if (/code\s*\d/.test(line) || line.includes('$')) {
     return 'The door code and Wi-Fi stay on the guest phone. Do not invent a code. Do not repeat a code.';
   }

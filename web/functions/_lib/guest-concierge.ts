@@ -111,7 +111,15 @@ export async function markConciergeSession(env: SettingsEnv, token: string) {
 export function conciergeInstructions(stay: ConciergeStay): string {
   const { guide } = stay;
   const first = stay.guestName.split(' ')[0] || stay.guestName;
-  const codes = conciergeAccessLine(stay.opensOn);
+  /*
+   * What this house actually holds, not what a house usually holds. Ranch and Lindon have no Wi-Fi saved in their
+   * guide, and telling Nora otherwise sent a Lindon guest to read the rules and open every agreement topic for a
+   * password that does not exist.
+   */
+  const codes = conciergeAccessLine(stay.opensOn, {
+    doorCode: Boolean(guide.doorCode),
+    wifi: Boolean(guide.wifiPassword || guide.wifiName),
+  });
   const place = conciergePlaceBrief(guide.address, guide.arrival);
   const sections = guide.sections.map((section) => `${section.title}: ${section.body}`).join('\n');
   const places = guide.places.map((place) => `${place.name}${place.area ? ` (${place.area})` : ''}: ${place.note}`).join('\n');
