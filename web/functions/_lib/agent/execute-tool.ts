@@ -233,6 +233,14 @@ async function handleFinances(
     let totalRevenue = 0;
     let totalProfit = 0;
     const byProperty: Record<string, { revenue: number; profit: number }> = {};
+    /*
+     * The owner share is computed by `calculateMetrics` and returned here, because the model cannot be
+     * trusted to derive it. Asked for Todd's share on the Ranch, the agent took the house profit and
+     * applied "20% fee then 50/50" to *it* — `$5,288.72 × 0.8 × 0.5 = $2,115.49`. The real figure is
+     * **−$3,090.13**, a $5,205 error, because the fee is taken off revenue *before* cleaning and the
+     * mortgage is subtracted after. Arithmetic that looks reasonable is worse than none.
+     */
+    const owner: Record<string, { todd: number | null; brandon: number | null; mgtFee: number | null }> = {};
     for (const month of months) {
       for (const pid of ['ranch', 'lindon', 'river'] as PropertyId[]) {
         const metrics = calculateMetrics(pid, month, fees, allExpenses, reservations);
@@ -241,6 +249,13 @@ async function handleFinances(
         byProperty[pid] = byProperty[pid] ?? { revenue: 0, profit: 0 };
         byProperty[pid]!.revenue += metrics.revenue;
         byProperty[pid]!.profit += metrics.profit;
+        // A house with no split has `dist: null`; that is reported as null, not as zero money.
+        owner[pid] = owner[pid] ?? { todd: null, brandon: null, mgtFee: null };
+        if (metrics.dist) {
+          owner[pid]!.todd = Math.round(((owner[pid]!.todd ?? 0) + metrics.dist.todd) * 100) / 100;
+          owner[pid]!.brandon = Math.round(((owner[pid]!.brandon ?? 0) + metrics.dist.brandon) * 100) / 100;
+          owner[pid]!.mgtFee = Math.round(((owner[pid]!.mgtFee ?? 0) + metrics.dist.mgtFee) * 100) / 100;
+        }
       }
     }
     /*
@@ -260,11 +275,13 @@ async function handleFinances(
       totalProfit,
       byProperty,
       months,
+      /** The owner share, computed here so it is never derived by the model. */
+      ownerShare: owner,
       /** What these figures are, and what they are not. */
       basis:
-        'totalProfit is the house profit: revenue minus mortgage, cleaning, and operating costs. It is not a partner share. An owner share is struck after the 20% management fee and split 50/50, so it differs from this figure — use the owner portal or manage_finances get_profit_summary per house for that.',
+        'totalProfit is the house profit: revenue minus mortgage, cleaning, and operating costs. It is not a partner share. ownerShare carries the real partner split — 20% management fee off revenue less cleaning, then the mortgage and operating costs come out, then what remains is halved.',
       ownerSplitNote:
-        'Ranch and River: 20% management fee to Brandon, then 50/50 Todd vs Brandon & Stephanie. Lindon is Brandon only.',
+        'Ranch and River: 20% management fee to Brandon, then 50/50 Todd vs Brandon & Stephanie. Lindon is Brandon only, so its ownerShare is null. Quote ownerShare for a partner question; never multiply totalProfit by 0.8 and halve it, which is a different and smaller number.',
     };
   }
 

@@ -44,6 +44,8 @@ async function profitSummary() {
     byProperty: Record<string, { revenue: number; profit: number }>;
     basis?: string;
     ownerSplitNote?: string;
+    /** The real partner split, computed by the tool so the model never derives it. */
+    ownerShare?: Record<string, { todd: number | null; brandon: number | null; mgtFee: number | null }>;
   };
 }
 
@@ -109,4 +111,37 @@ test('a house with no owner split says so rather than implying one', async () =>
     /Lindon is Brandon only/i,
     'the split note does not say Lindon has no partner split',
   );
+});
+
+test('the owner share is returned, and it is not the house profit halved', async () => {
+  /*
+   * Asked for Todd's share, the agent took the house profit and applied "20% fee then 50/50" to it:
+   * `$5,288.72 × 0.8 × 0.5 = $2,115.49`. The real figure is **−$3,090.13** — a $5,205 error — because
+   * the fee comes off revenue less cleaning, and the mortgage comes out before the halving. The tool now
+   * returns the computed share so the model never does that arithmetic.
+   */
+  const result = await profitSummary();
+
+  assert.ok(result.ownerShare, 'the response carries no ownerShare at all');
+  const ranch = result.ownerShare!.ranch!;
+  assert.equal(typeof ranch.todd, 'number', 'the Ranch owner share is not a number');
+
+  const halfOfProfit = Math.round(result.totalProfit * 0.5 * 100) / 100;
+  assert.notEqual(
+    ranch.todd,
+    halfOfProfit,
+    'the owner share equals half the house profit, which is the wrong formula',
+  );
+  // The share must also be smaller than the house profit here, because the mortgage bites first.
+  assert.ok(
+    ranch.todd! < result.totalProfit,
+    `owner share ${ranch.todd} is not below house profit ${result.totalProfit}`,
+  );
+});
+
+test('a house with no partner split reports null, not zero money', async () => {
+  const result = await profitSummary();
+  const lindon = result.ownerShare!.lindon!;
+  assert.equal(lindon.todd, null, 'Lindon reports a Todd share, but Lindon is Brandon only');
+  assert.equal(lindon.brandon, null, 'Lindon reports a split it does not have');
 });
