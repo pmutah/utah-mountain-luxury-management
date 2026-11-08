@@ -76,7 +76,7 @@ export function GuestsPanel({
   const [loading, setLoading] = useState(true);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [surveys, setSurveys] = useState<GuestSurveyRecord[]>([]);
-  const [gmail, setGmail] = useState<{ connected: boolean; email: string | null }>({
+  const [gmail, setGmail] = useState<{ connected: boolean; email: string | null; problem?: string | null }>({
     connected: false,
     email: null,
   });
@@ -267,6 +267,16 @@ export function GuestsPanel({
         <p>
           Gmail: {gmail.connected ? gmail.email : 'not connected — sign in as utahmountainluxury@gmail.com'}
         </p>
+        {/*
+          The reason, not just the state. "not connected" leaves a host guessing, and the two causes need
+          opposite fixes: a revoked token means reconnect, a mismatched client secret means the secret must
+          be replaced first. Google's own words are shown so the fix is obvious.
+        */}
+        {!gmail.connected && gmail.problem && (
+          <p className="mt-1 text-xs text-amber-300" data-bot="guests-gmail-problem">
+            {gmail.problem}
+          </p>
+        )}
         <p className="mt-1">
           SMS: {sms.configured ? `Twilio ${sms.from}` : 'waiting on Twilio env'}
         </p>
