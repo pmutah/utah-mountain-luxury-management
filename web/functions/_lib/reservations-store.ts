@@ -25,6 +25,9 @@ export function seedReservations(): ReservationRecord[] {
   }));
 }
 
+/** A real calendar day. The literal string `"undefined"` is not one, and it used to count as a stay. */
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
 export async function getAllReservations(env: SettingsEnv): Promise<ReservationRecord[]> {
   const seed = seedReservations();
   const custom = await loadCustomReservations(env);
@@ -58,7 +61,22 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
 
   return [...activeSeed, ...extraCustom]
     .map((r) => applyHostNetFromSeed(r))
-    .filter((r) => typeof r.checkIn === 'string' && typeof r.checkOut === 'string')
+    /*
+     * A stay needs a real daytime date and a real house. The old test was `typeof === 'string'`, and the
+     * literal string `"undefined"` passes that: production held `res-1790218847843-tei46q` with
+     * checkIn/checkOut of `"undefined"`, no house, and a confirmed status, so it counted toward the
+     * **87 bookings** shown on the dashboard when only 86 were real. `stayNights("undefined", …)` returns
+     * NaN, so anything that did arithmetic on it would poison a total.
+     *
+     * It never reached a P&L because every property report filters by house first, which this row had none
+     * of — but a count that includes a row no calendar can show is still wrong. The row stays in the store
+     * (nothing is deleted); it simply stops being counted as a booking.
+     */
+    .filter((r) => {
+      if (!DAY.test(String(r.checkIn)) || !DAY.test(String(r.checkOut))) return false;
+      if (!(r.propertyId === 'ranch' || r.propertyId === 'lindon' || r.propertyId === 'river')) return false;
+      return r.checkOut > r.checkIn;
+    })
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
 }
 
