@@ -39,7 +39,7 @@ function quoteHref(house: HouseId, checkIn: string, checkOut: string, guests: nu
     guests: String(guests),
   });
   if (children && children > 0) params.set('children', String(children));
-  return `/book?${params.toString()}`;
+  return `/book/?${params.toString()}`;
 }
 
 function withoutPrice(text: string): string {

@@ -17,7 +17,7 @@ test('each public house page uses the published guide and leaves prices and door
     assert.equal(/door\s*code|wi-?fi|password/i.test(text), false);
     assert.equal(house.schema['@type'], 'VacationRental');
     assert.equal(JSON.stringify(house.schema).includes('aggregateRating'), false);
-    assert.equal(house.quoteHref, `/book?house=${house.id}`);
+    assert.equal(house.quoteHref, `/book/?house=${house.id}`);
   }
   const cards = houseCardFacts('river').join('\n');
   assert.match(cards, /Sleeps 25/);
@@ -70,7 +70,7 @@ test('each public house page uses the published guide and leaves prices and door
   assert.equal(groupQuotePending().label, 'Reading the calendar.');
   assert.equal(/\bquote\b/i.test(groupQuotePending().label), false);
   assert.equal(groupQuotePending().label.includes('$'), false);
-  assert.equal(open.href, '/book?house=river&guests=30&in=2026-11-16&out=2026-11-18');
+  assert.equal(open.href, '/book/?house=river&guests=30&in=2026-11-16&out=2026-11-18');
   const booked = groupQuoteLink('2026-11-25', '2026-11-27', [
     { house: 'ranch', line: 'Ranch: Those nights are already booked.' },
   ]);
@@ -148,24 +148,24 @@ test('the public tab uses the house name and does not quote a price', () => {
   assert.equal(/door\s*code|wi-?fi|password|\b801\b/i.test(`${river.title} ${river.description}`), false);
   const quote = bookShare('lindon');
   assert.match(quote.title, /Lindon House/);
-  assert.match(quote.url, /\/book\?house=lindon$/);
+  assert.match(quote.url, /\/book\/\?house=lindon$/);
   assert.equal(quote.description.includes('$'), false);
   const dated = bookShare('river', { checkIn: '2026-11-06', checkOut: '2026-11-08', guests: '36', children: '2' });
-  assert.match(dated.url, /\/book\?house=river&in=2026-11-06&out=2026-11-08&guests=36&children=2$/);
+  assert.match(dated.url, /\/book\/\?house=river&in=2026-11-06&out=2026-11-08&guests=36&children=2$/);
   assert.match(dated.title, /River House/);
   assert.equal(dated.url.includes('$'), false);
-  assert.equal(bookShare('ranch', { guests: '4' }).url.endsWith('/book?house=ranch&guests=4'), true);
+  assert.equal(bookShare('ranch', { guests: '4' }).url.endsWith('/book/?house=ranch&guests=4'), true);
   assert.equal(
-    bookShare('river', { checkIn: '2026-11-08', checkOut: '2026-11-06', guests: '4' }).url.endsWith('/book?house=river&guests=4'),
+    bookShare('river', { checkIn: '2026-11-08', checkOut: '2026-11-06', guests: '4' }).url.endsWith('/book/?house=river&guests=4'),
     true,
   );
 });
 
 test('a house page quote link keeps dates only after both are chosen', () => {
-  assert.equal(houseQuoteHref('ranch', '', ''), '/book?house=ranch');
-  assert.equal(houseQuoteHref('ranch', '2026-11-13', ''), '/book?house=ranch');
-  assert.equal(houseQuoteHref('ranch', '2026-11-15', '2026-11-13'), '/book?house=ranch');
-  assert.equal(houseQuoteHref('ranch', '2026-11-13', '2026-11-15'), '/book?house=ranch&in=2026-11-13&out=2026-11-15');
+  assert.equal(houseQuoteHref('ranch', '', ''), '/book/?house=ranch');
+  assert.equal(houseQuoteHref('ranch', '2026-11-13', ''), '/book/?house=ranch');
+  assert.equal(houseQuoteHref('ranch', '2026-11-15', '2026-11-13'), '/book/?house=ranch');
+  assert.equal(houseQuoteHref('ranch', '2026-11-13', '2026-11-15'), '/book/?house=ranch&in=2026-11-13&out=2026-11-15');
   const hold = houseDateHold('2026-11-13', '');
   assert.match(hold, /Choose the checkout morning/);
   assert.match(hold, /does not say the house is open/);
@@ -178,20 +178,20 @@ test('a house page quote link keeps dates only after both are chosen', () => {
   assert.equal(housePageHref('ranch', '2026-11-13', '2026-11-15', '2'), '/houses/ranch?in=2026-11-13&out=2026-11-15&guests=2');
   assert.equal(
     houseQuoteHref('ranch', '2026-11-13', '2026-11-15', '2', '1'),
-    '/book?house=ranch&in=2026-11-13&out=2026-11-15&guests=2&children=1',
+    '/book/?house=ranch&in=2026-11-13&out=2026-11-15&guests=2&children=1',
   );
   assert.equal(
     houseQuoteHref('ranch', '2026-11-13', '2026-11-15', '30'),
-    '/book?house=river&in=2026-11-13&out=2026-11-15&guests=30',
+    '/book/?house=river&in=2026-11-13&out=2026-11-15&guests=30',
   );
   assert.equal(houseQuoteLabel('ranch', '30'), 'See both houses');
   assert.equal(
     houseQuoteHref('ranch', '2026-11-13', '2026-11-15', '22'),
-    '/book?house=river&in=2026-11-13&out=2026-11-15&guests=22',
+    '/book/?house=river&in=2026-11-13&out=2026-11-15&guests=22',
   );
   assert.equal(houseQuoteLabel('ranch', '22'), 'See the River House');
-  assert.equal(houseQuoteHref('lindon', '2026-11-13', '2026-11-15', '18'), '/book?house=lindon&in=2026-11-13&out=2026-11-15&guests=18');
-  assert.equal(houseQuoteHref('ranch', '2026-11-13', '2026-11-15', '46'), '/book?house=ranch&in=2026-11-13&out=2026-11-15&guests=46');
+  assert.equal(houseQuoteHref('lindon', '2026-11-13', '2026-11-15', '18'), '/book/?house=lindon&in=2026-11-13&out=2026-11-15&guests=18');
+  assert.equal(houseQuoteHref('ranch', '2026-11-13', '2026-11-15', '46'), '/book/?house=ranch&in=2026-11-13&out=2026-11-15&guests=46');
   assert.deepEqual(readHouseParty('?guests=2&children=0'), { guests: '2', children: '' });
   const link = houseDateLinkNote('2026-11-13', '2026-11-15');
   assert.match(link, /keeps these dates/);
@@ -206,5 +206,5 @@ test('the public paths are only the index and the three houses', () => {
   assert.equal(parseHousePath('/houses/ranch/'), 'ranch');
   assert.equal(parseHousePath('/houses/lindon'), 'lindon');
   assert.equal(parseHousePath('/houses/construction'), null);
-  assert.equal(parseHousePath('/book'), null);
+  assert.equal(parseHousePath('/book/'), null);
 });

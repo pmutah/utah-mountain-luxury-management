@@ -39,7 +39,7 @@ export function HouseSite() {
     return (
       <div className="min-h-screen px-4 py-10 sm:px-8">
         <p className="text-sm">That house is not listed.</p>
-        <a className="mt-4 inline-block underline" href="/houses" data-bot="houses-missing">
+        <a className="mt-4 inline-block underline" href="/houses/" data-bot="houses-missing">
           All houses
         </a>
       </div>
@@ -287,7 +287,7 @@ function HouseFinder({
     if (guests) params.set('guests', guests);
     if (children) params.set('children', children);
     const query = params.toString();
-    window.history.replaceState(null, '', query ? `/houses?${query}` : '/houses');
+    window.history.replaceState(null, '', query ? `/houses/?${query}` : '/houses/');
   }
 
   const guestCount = /^\d+$/.test(guests) ? Number(guests) : null;
@@ -614,7 +614,7 @@ function HousePage({ house }: { house: PublicHouse }) {
       <script type="application/ld+json" data-bot="house-schema" dangerouslySetInnerHTML={{ __html: JSON.stringify(house.schema) }} />
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-center justify-between gap-3">
-          <a href="/houses" className="text-sm underline" data-bot="house-back">
+          <a href="/houses/" className="text-sm underline" data-bot="house-back">
             All houses
           </a>
           <BrandMark />

@@ -514,7 +514,7 @@ export function DirectBook() {
           This is a preview of our own booking page. The quote uses the season rates already on the books.
           It does not charge a card, and it does not take a booking by itself: a request holds the dates for 30
           minutes while a person replies. Live direct booking still runs on the Hospitable site.{' '}
-          <a href="/houses" className="underline" data-bot="stay-houses-page">
+          <a href="/houses/" className="underline" data-bot="stay-houses-page">
             The houses
           </a>
         </p>

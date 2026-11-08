@@ -217,7 +217,7 @@ test('a failed stay names the shortest dates and links the house page', () => {
   assert.match(river?.line ?? '', /Nothing is charged yet/);
   assert.match(river?.href ?? '', /^\/houses\/river\?in=2026-11-13&out=2026-11-15&guests=4$/);
   assert.equal(rows.every((row) => row.href.startsWith('/houses/')), true);
-  assert.equal(rows.some((row) => row.href.includes('/book')), false);
+  assert.equal(rows.some((row) => row.href.includes('/book/')), false);
   const text = rows.map((row) => row.line).join('\n');
   assert.equal(text.includes('$'), false);
   assert.equal(text.replace(/does not say the house is open/gi, '').toLowerCase().includes('house is open'), false);
@@ -226,7 +226,7 @@ test('a failed stay names the shortest dates and links the house page', () => {
   const quote = quotedStayHref('ranch', '2026-11-13', '2026-11-14', '4', '', '2026-10-30');
   assert.equal(quote.shortened, true);
   assert.equal(quote.label, 'See the shortest stay');
-  assert.equal(quote.href, '/book?house=ranch&in=2026-11-13&out=2026-11-15&guests=4');
+  assert.equal(quote.href, '/book/?house=ranch&in=2026-11-13&out=2026-11-15&guests=4');
   const both = quotedStayHref('ranch', '2026-11-13', '2026-11-14', '30', '', '2026-10-30');
   assert.equal(both.label, 'See both houses');
   assert.match(both.href, /house=river/);

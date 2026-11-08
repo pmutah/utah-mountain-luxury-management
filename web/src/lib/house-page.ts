@@ -82,7 +82,7 @@ export function publicHouse(house: HouseId): PublicHouse {
     rules,
     nearby,
     emergency: STAY_EMERGENCY,
-    quoteHref: `/book?house=${house}`,
+    quoteHref: `/book/?house=${house}`,
     pageHref: `/houses/${house}`,
     opening: house === 'river' ? 'First stays November 1, 2026' : null,
     schema: vacationRental(house, address, photo.src),
@@ -130,7 +130,7 @@ export function companionStayNote(): string {
 export const GROUP_TRIP =
   'A party larger than the River House can quote Ranch and River together. Twenty-five stay at the River House and the rest stay at the Ranch House. Each house keeps an adult. The booking page does not hold either house.';
 
-export const GROUP_TRIP_HREF = '/book?house=river&guests=30';
+export const GROUP_TRIP_HREF = '/book/?house=river&guests=30';
 
 function groupHref(checkIn: string, checkOut: string, guests: number, children?: number): string {
   const dated = /^\d{4}-\d{2}-\d{2}$/.test(checkIn) && /^\d{4}-\d{2}-\d{2}$/.test(checkOut) && checkOut > checkIn;
@@ -140,7 +140,7 @@ function groupHref(checkIn: string, checkOut: string, guests: number, children?:
     params.set('out', checkOut);
   }
   if (children && children > 0) params.set('children', String(children));
-  return `/book?${params.toString()}`;
+  return `/book/?${params.toString()}`;
 }
 
 function groupLabel(reason: string): string {
@@ -223,7 +223,7 @@ function shareText(title: string, description: string, url: string): PublicShare
 /** Tab and share text for a public house page. No price, and it does not say a house is open. */
 export function publicShare(page: HouseId | 'index'): PublicShare {
   if (page === 'index') {
-    return shareText('The houses · Utah Mountain Luxury', `River, Ranch, and Lindon. ${SHARE_HOLD}`, `${ORIGIN}/houses`);
+    return shareText('The houses · Utah Mountain Luxury', `River, Ranch, and Lindon. ${SHARE_HOLD}`, `${ORIGIN}/houses/`);
   }
   const house = publicHouse(page);
   return shareText(`${house.name} · Utah Mountain Luxury`, `${house.title}. ${SHARE_HOLD}`, `${ORIGIN}${house.pageHref}`);
@@ -265,9 +265,9 @@ export function houseQuoteHref(house: HouseId, checkIn: string, checkOut: string
   const search = housePageSearch(checkIn, checkOut, guests, children);
   if (!search) {
     const party = partyBits(guests, children).replace(/^&/, '');
-    return party ? `/book?house=${target}&${party}` : `/book?house=${target}`;
+    return party ? `/book/?house=${target}&${party}` : `/book/?house=${target}`;
   }
-  return `/book?house=${target}&${search.slice(1)}`;
+  return `/book/?house=${target}&${search.slice(1)}`;
 }
 
 /** A house page for this stay. An unfinished stay stays off the link. Nothing is held. */
@@ -330,10 +330,10 @@ export function bookShare(
   const search = housePageSearch(checkIn, checkOut, guests, children);
   const party = partyBits(guests, children).replace(/^&/, '');
   const url = search
-    ? `${ORIGIN}/book?house=${house}&${search.slice(1)}`
+    ? `${ORIGIN}/book/?house=${house}&${search.slice(1)}`
     : party
-      ? `${ORIGIN}/book?house=${house}&${party}`
-      : `${ORIGIN}/book?house=${house}`;
+      ? `${ORIGIN}/book/?house=${house}&${party}`
+      : `${ORIGIN}/book/?house=${house}`;
   return shareText(page.title, page.description, url);
 }
 
@@ -359,8 +359,13 @@ export function applyPublicShare(share: PublicShare): () => void {
   };
 }
 
-/** `/houses`, `/houses/river`, or null when the path is not a public house page. */
+/** `/houses/`, `/houses/river`, or null when the path is not a public house page. */
 export function parseHousePath(pathname: string): HouseId | 'index' | null {
+  /*
+   * Trailing slashes are stripped first, so the comparison has to be against `/houses` — checking for
+   * `/houses/` after stripping can never match, which is why the index needed a second path to work.
+   * Both forms are accepted because links already sent out use either.
+   */
   const path = pathname.replace(/\/+$/, '') || '/';
   if (path === '/houses') return 'index';
   const match = path.match(/^\/houses\/(river|ranch|lindon)$/);

@@ -89,7 +89,7 @@ export function RequestStatus({ token }: { token: string }) {
             <p className="mt-3 text-sm text-[var(--uml-muted)]">
               If you need an answer, reply to the email we sent you and it comes to the same inbox.
             </p>
-            <a className="uml-gold-btn mt-6 inline-block rounded-full px-5 py-3 text-xs uppercase tracking-[0.16em]" href="/houses">
+            <a className="uml-gold-btn mt-6 inline-block rounded-full px-5 py-3 text-xs uppercase tracking-[0.16em]" href="/houses/">
               The houses
             </a>
           </>
@@ -123,7 +123,7 @@ export function RequestStatus({ token }: { token: string }) {
             {view.status === 'declined' && (
               <a
                 className="uml-gold-btn mt-6 inline-block rounded-full px-5 py-3 text-xs uppercase tracking-[0.16em]"
-                href={`/book?house=${view.houses[0] ?? 'river'}`}
+                href={`/book/?house=${view.houses[0] ?? 'river'}`}
                 data-bot="request-try-again"
               >
                 Look at other dates
@@ -132,7 +132,7 @@ export function RequestStatus({ token }: { token: string }) {
             {view.status === 'cancelled' && (
               <a
                 className="uml-gold-btn mt-6 inline-block rounded-full px-5 py-3 text-xs uppercase tracking-[0.16em]"
-                href={`/book?house=${view.houses[0] ?? 'river'}`}
+                href={`/book/?house=${view.houses[0] ?? 'river'}`}
                 data-bot="request-cancelled-book"
               >
                 Look at other dates
@@ -141,7 +141,7 @@ export function RequestStatus({ token }: { token: string }) {
             {view.status === 'expired' && (
               <a
                 className="uml-gold-btn mt-6 inline-block rounded-full px-5 py-3 text-xs uppercase tracking-[0.16em]"
-                href={`/book?house=${view.houses[0] ?? 'river'}&in=${view.checkIn}&out=${view.checkOut}`}
+                href={`/book/?house=${view.houses[0] ?? 'river'}&in=${view.checkIn}&out=${view.checkOut}`}
                 data-bot="request-check-dates"
               >
                 Check these dates
