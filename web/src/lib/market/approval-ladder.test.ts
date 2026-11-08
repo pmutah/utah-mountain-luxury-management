@@ -33,6 +33,31 @@ test('the base is the approved price once a night has one, and the card before t
   assert.equal(approvalBase(CARD, [{ guest: -5 }]), CARD);
 });
 
+test('a whole house sheet does not let one high night become another night base', () => {
+  /*
+   * The production bug, found by making the deployed route report what it was given: seven Lindon rows at
+   * $193/$291 were reaching the board, and every night still read $179. `approvalBase` took the **maximum across
+   * every row it was handed**, and callers hand it a whole house's sheet — so the $291 weekend nights became the
+   * base for a $179 weekday. $188 then measured against $291, fell outside the 8% band, was refused, and the
+   * board discarded all seven rows and fell back to the card.
+   *
+   * The base belongs to one night, so the date scopes it.
+   */
+  const house = [
+    { date: '2026-12-08', guest: 193 },
+    { date: '2026-12-09', guest: 188 },
+    { date: '2026-12-11', guest: 291 },
+  ];
+  assert.equal(approvalBase(CARD, house, '2026-12-09'), 188, 'a weekday was measured against a weekend');
+  assert.equal(approvalBase(CARD, house, '2026-12-11'), 291);
+  assert.equal(approvalBase(CARD, house, '2026-12-10'), CARD, 'an unapproved night falls back to the card');
+  // With the date given, a $188 approval is accepted instead of being judged against $291.
+  assert.equal(
+    approvedGuestRate(house, '2026-12-09', { guest: approvalBase(CARD, house, '2026-12-09'), floorGuest: FLOOR }),
+    188,
+  );
+});
+
 test('the ladder climbs from $179 to the $421 market in single 8% steps', () => {
   /*
    * The whole point of the cap: it should take many days, and it should actually get there. Before the fix it

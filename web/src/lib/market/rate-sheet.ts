@@ -70,9 +70,22 @@ export type QuotedSheetNight = { date: string; guest: number };
  * rung: a night could be raised once and never again, which put Lindon's $421 market median out of reach by any
  * number of approvals. One function, so the board, the route, and the quote cannot disagree about the base.
  */
-export function approvalBase(card: number, approved: readonly { guest: number }[]): number {
+export function approvalBase(card: number, approved: readonly { guest: number }[], date?: string): number {
   if (approved.length === 0) return card;
-  const highest = Math.max(...approved.map((row) => Math.round(row.guest)));
+  /*
+   * The base belongs to **one night**. This took the maximum across every row it was handed, and callers hand
+   * it a whole house's sheet — so Lindon's $291 weekend nights became the base for a $179 weekday, $188 was
+   * judged against $291, fell outside the 8% band, and was refused. The board then fell all the way back to
+   * the card and read $179 on every night, discarding six rows that were perfectly valid.
+   *
+   * `date` scopes it when the caller knows which night it is asking about. Without one the rows are treated as
+   * belonging to the same night, which is what the approve route and the quote pass.
+   */
+  const relevant = date
+    ? approved.filter((row) => (row as { date?: string }).date === date)
+    : approved;
+  if (relevant.length === 0) return card;
+  const highest = Math.max(...relevant.map((row) => Math.round(row.guest)));
   return Number.isFinite(highest) && highest > 0 ? highest : card;
 }
 

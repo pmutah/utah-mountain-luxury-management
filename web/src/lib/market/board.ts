@@ -50,7 +50,7 @@ function ourGuest(
 ): { guest: number; floorGuest: number; season: string | null; lock: boolean; minNights: number } {
   const ask = nightAsk(house, iso);
   const approved = approvedGuestRate(sheet, iso, {
-    guest: approvalBase(ask.guest, sheet),
+    guest: approvalBase(ask.guest, sheet, iso),
     floorGuest: ask.floorGuest,
   });
   return {

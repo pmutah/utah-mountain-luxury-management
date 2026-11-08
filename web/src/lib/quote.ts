@@ -78,7 +78,7 @@ export function directNight(
   const approved =
     sheet.length === 0 || taken.includes(iso) || ask.closed
       ? null
-      : approvedGuestRate(sheet, iso, { guest: approvalBase(ask.guest, sheet), floorGuest: ask.floorGuest });
+      : approvedGuestRate(sheet, iso, { guest: approvalBase(ask.guest, sheet, iso), floorGuest: ask.floorGuest });
   if (approved !== null) {
     return {
       date: iso,
