@@ -429,9 +429,20 @@ export function guestLeavingLine(): string {
   return line;
 }
 
-/** The photo line counts only after a room photo is attached and the box is checked. */
-export function stepDone(stepId: string, checked: boolean, photoCount: number): boolean {
-  if (stepId === 'photos') return checked && photoCount > 0;
+/**
+ * The photo line counts only after a room photo is attached and the box is checked.
+ *
+ * `photosAvailable` exists because the requirement had no escape hatch. Photo storage is not configured on this
+ * deployment (`storageConfigured: false`), so an upload always answers 503 — which meant `photoCount` could never
+ * exceed zero, the step could never be ticked, and no turnover could ever reach done. Measured on production: a
+ * cleaner ticked all seven steps, the desk summary said "1 turnover is done", and the card beside it could only
+ * count 6.
+ *
+ * When the site cannot accept a photo, demanding one is not a standard; it is a dead end. The tick alone counts, and
+ * the page says why the photo is missing.
+ */
+export function stepDone(stepId: string, checked: boolean, photoCount: number, photosAvailable = true): boolean {
+  if (stepId === 'photos') return checked && (photoCount > 0 || !photosAvailable);
   return checked;
 }
 
@@ -440,8 +451,9 @@ export function jobDoneCount(
   checks: Record<string, boolean>,
   jobId: string,
   photoCount: number,
+  photosAvailable = true,
 ): number {
-  return steps.filter((step) => stepDone(step.id, Boolean(checks[`${jobId}:${step.id}`]), photoCount)).length;
+  return steps.filter((step) => stepDone(step.id, Boolean(checks[`${jobId}:${step.id}`]), photoCount, photosAvailable)).length;
 }
 
 export type CleanJob = Turnover & {

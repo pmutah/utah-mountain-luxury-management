@@ -1013,6 +1013,8 @@ export const api = {
       progress: CleanProgress[] | null;
       summary: string | null;
       storageReads?: 'ok' | 'paused';
+      /** False when this site cannot store a room photo, so the photo step must not demand one. */
+      photosAvailable?: boolean;
     }>('/api/clean/progress'),
   /**
    * Tick a step from the host's desk, into the **same** store the cleaner writes to.

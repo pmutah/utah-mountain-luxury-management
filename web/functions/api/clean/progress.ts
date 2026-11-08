@@ -5,11 +5,13 @@ import { buildTurnovers } from '../../../src/lib/today';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { keepDone, progressSummary } from '../../../src/lib/clean-progress';
 import { storageReadPaused } from '../../_lib/kv-json';
+import { storageConfigured } from '../../_lib/gcs';
+import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import { denverToday } from '../../../src/lib/market/dates';
 import type { HouseId } from '../../../src/lib/market/types';
 import type { SettingsEnv } from '../../_lib/kv';
 
-type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string };
+type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string } & FirebaseStorageEnv;
 
 const HOUSES: string[] = ['river', 'ranch', 'lindon'];
 
@@ -52,7 +54,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
   return corsJson(
     request,
-    { progress, summary: progressSummary(turns, progress), storageReads: 'ok' },
+    {
+      progress,
+      summary: progressSummary(turns, progress),
+      storageReads: 'ok',
+      /*
+       * Whether this site can accept a room photo at all. The desk needs it to count the photo step honestly: with
+       * storage off an upload always answers 503, so demanding a photo makes the step untickable and no turnover can
+       * reach done. Measured on production, the summary said "1 turnover is done" while the card could only count 6.
+       */
+      photosAvailable: storageConfigured(env),
+    },
     200,
     { 'Cache-Control': 'no-store' },
   );

@@ -71,12 +71,19 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   const jobs = useMemo(() => cleanJobs(reservations, asOf), [reservations, asOf]);
   // Ticks the cleaner made on their own link. Read from the server so the desk and the phone agree.
   const [cleanProgress, setCleanProgress] = useState<CleanProgress[] | null>(null);
+  /**
+   * Whether this site can store a room photo. False means an upload always answers 503, so the photo step must not
+   * demand one — otherwise it can never be ticked and no turnover reaches done.
+   */
+  const [photosAvailable, setPhotosAvailable] = useState(true);
   useEffect(() => {
     let cancel = false;
     void api
       .getCleanProgress()
       .then((result) => {
-        if (!cancel) setCleanProgress(result.storageReads === 'paused' ? null : result.progress);
+        if (cancel) return;
+        setCleanProgress(result.storageReads === 'paused' ? null : result.progress);
+        setPhotosAvailable(result.photosAvailable !== false);
       })
       .catch(() => {
         if (!cancel) setCleanProgress(null);
@@ -348,8 +355,8 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
              */
             const done =
               cleanProgress === null
-                ? jobDoneCount(job.steps, checks, job.id, photoCount)
-                : Math.max(serverDoneCount(job, progressRows, photoCount), jobDoneCount(job.steps, checks, job.id, photoCount));
+                ? jobDoneCount(job.steps, checks, job.id, photoCount, photosAvailable)
+                : Math.max(serverDoneCount(job, progressRows, photoCount), jobDoneCount(job.steps, checks, job.id, photoCount, photosAvailable));
             const clock = turnHours(
               {
                 sameDay: job.priority,
@@ -490,7 +497,7 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
                         : (progressRows.find((row) => row.house === job.house && row.checkout === job.checkout)?.done ?? []).includes(
                             step.id,
                           );
-                    const checked = stepDone(step.id, onServer || Boolean(checks[key]), photoCount);
+                    const checked = stepDone(step.id, onServer || Boolean(checks[key]), photoCount, photosAvailable);
                     return (
                       <li key={step.id}>
                         <label className="flex items-center gap-3 text-sm">
@@ -583,4 +590,5 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
     </section>
   );
 }
+
 

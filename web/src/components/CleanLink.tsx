@@ -23,6 +23,8 @@ export function CleanLink({ token }: { token: string }) {
   const [state, setState] = useState<'loading' | 'ready' | 'invalid' | 'error'>('loading');
   const [saving, setSaving] = useState<string | null>(null);
   const [photos, setPhotos] = useState<Record<string, PhotoRow[]>>({});
+  /** False when the site cannot store a photo, so the photo step must not demand one. */
+  const [photosAvailable, setPhotosAvailable] = useState(true);
   const [photoBusy, setPhotoBusy] = useState<string | null>(null);
   const [photoNote, setPhotoNote] = useState<string | null>(null);
 
@@ -60,9 +62,15 @@ export function CleanLink({ token }: { token: string }) {
       const res = await fetch(
         `/api/clean/${encodeURIComponent(token)}/photos?house=${encodeURIComponent(job.house)}&checkout=${encodeURIComponent(job.checkout)}`,
       );
-      const body = (await res.json()) as { photos?: PhotoRow[]; error?: string };
-      if (res.ok && body.photos) setPhotos((current) => ({ ...current, [keyFor(job)]: body.photos! }));
-      else setPhotoNote(body.error ?? 'Photos could not be read.');
+      const body = (await res.json()) as { photos?: PhotoRow[]; error?: string; storageConfigured?: boolean };
+      if (res.ok && body.photos) {
+        setPhotos((current) => ({ ...current, [keyFor(job)]: body.photos! }));
+        /*
+         * Whether this site can accept a photo at all. With storage off an upload always answers 503, so the photo
+         * step must not demand one — otherwise it can never be ticked and no turnover reaches done.
+         */
+        setPhotosAvailable(body.storageConfigured !== false);
+      } else setPhotoNote(body.error ?? 'Photos could not be read.');
     } catch {
       setPhotoNote('Photos could not be read.');
     }
@@ -255,6 +263,19 @@ export function CleanLink({ token }: { token: string }) {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a6f2f]">
                       {lang === 'es' ? 'Fotos del cuarto' : 'Room photos'}
                     </p>
+                    {/*
+                      Say it plainly when the site cannot store a photo. Otherwise a cleaner taps Add a photo, gets
+                      "Photos are not turned on for this site yet", and has no idea whether their work counts — the
+                      step is still on the list, so it reads as a job they are failing rather than a feature that is
+                      off.
+                    */}
+                    {!photosAvailable && (
+                      <p className="mt-1 text-sm text-[#5d564b]" data-bot="clean-link-photos-off">
+                        {lang === 'es'
+                          ? 'Las fotos no están activadas en este sitio. Marca el paso de fotos cuando hayas hecho las camas y la cocina; no se te pedirá una foto.'
+                          : 'Photos are not turned on for this site yet. Tick the photo step once the rooms are ready — you will not be asked for an image.'}
+                      </p>
+                    )}
                     {(photos[keyFor(job)] ?? []).length > 0 && (
                       <ul className="mt-1 space-y-1 text-sm">
                         {(photos[keyFor(job)] ?? []).map((photo) => (
