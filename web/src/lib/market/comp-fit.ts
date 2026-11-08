@@ -47,15 +47,16 @@ export function compFitLine(house: HouseId, sleeps: number, distanceMi: number, 
 /**
  * How much of a house's comp list can actually set its band.
  *
- * The word "sample" used to be hardcoded, so even a list built from **live** comps was described as
- * samples. On the market page that read "5 of 10 sample comps" for River while 19 real comps sat in the
- * store — a sentence that was wrong about its own data. The caller now says which it is, and the default
- * stays "sample" so existing sample-based callers keep an accurate description.
+ * **`kind` is required.** It used to default to `'sample'`, which meant any caller that forgot it silently
+ * described real comps as samples — and two of three call sites did forget, on the same page, at the same
+ * time: the shop's own digest said "saved comps" while the caption directly beneath the table said
+ * "4 of 4 sample comps" about the same four listings. A default that is wrong for the majority of callers is
+ * not a default; making it required lets the compiler find the next caller instead of a screenshot doing it.
  */
 export function compFitSummary(
   house: HouseId,
   comps: readonly { sleeps: number; distanceMi: number }[],
-  kind: 'sample' | 'saved' = 'sample',
+  kind: 'sample' | 'saved',
 ): string {
   const close = comps.filter((comp) => isFairComp(house, comp)).length;
   const total = comps.length;

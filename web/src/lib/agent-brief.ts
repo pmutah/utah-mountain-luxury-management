@@ -85,7 +85,7 @@ function sampleDesk(
       const board = buildMarketBoard(house, asOf, 90, selected);
       return {
         agent: 'co-host' as const,
-        text: `${HOUSE_LABEL[house]}: ${compFitSummary(house, board.comps)} The published ask stays.`,
+        text: `${HOUSE_LABEL[house]}: ${compFitSummary(house, board.comps, 'sample')} The published ask stays.`,
       };
     }),
   ];

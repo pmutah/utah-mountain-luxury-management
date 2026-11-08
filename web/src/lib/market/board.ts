@@ -1,7 +1,7 @@
 import { bandComps, isCloseSleep, isFairComp, isNearby } from './comp-fit';
 import { eachNight, isWeekendNight, monthFactor } from './dates';
 import { compsFor, type SampleComp } from './fixtures';
-import { type BoardSource, type LiveComp, liveAsk, type SnapIndex } from './live';
+import { type BoardSource, type LiveComp, liveAsk, liveCompFits, type SnapIndex } from './live';
 import { approvedGuestRate, type QuotedSheetNight } from './rate-sheet';
 import { proposeGuestRate } from './propose';
 import { nightAsk } from './rates';
@@ -173,7 +173,61 @@ export function buildMarketBoard(
 
   const weekend = nights.find((night) => isWeekendNight(night.date)) ?? nights[0]!;
   const inBand = new Set(comps.map((comp) => comp.id));
-  const cards: CompCard[] = listed
+  /*
+   * Cards describe the comps the band actually used, not the sample list.
+   *
+   * They were always built from `listed`, which is the sample fixtures, so a house with five saved comps
+   * rendered a comp table of ten listings named "Sample · River bench home" while its band came from real
+   * asks — and the digest said "5 of 10 saved comps" about a list that contained no saved comps at all. A
+   * host comparing against that table is comparing against nothing.
+   *
+   * When saved comps exist they are the market and they get the table. Their ask is the median of what they
+   * were observed asking, and their `inBand` flag is whether they fit, because that is the job this table
+   * does for a host. The sample list stays only for a house with no saved comp at all, where a blank table
+   * would hide the fact that the page has nothing measured to show.
+   */
+  const saved = live?.comps ?? [];
+  const savedCards: CompCard[] = saved
+    .map((comp) => {
+      const asks = nights
+        .map((night) => liveAsk(live!.index, comp.id, night.date))
+        .filter((ask): ask is number => ask !== null);
+      const ask = asks.length > 0 ? Math.round(median(asks)) : 0;
+      return {
+        id: comp.id,
+        name: comp.name,
+        area: comp.area,
+        beds: comp.beds,
+        sleeps: comp.sleeps,
+        rating: comp.rating,
+        reviews: comp.reviews,
+        guestFavorite: comp.guestFavorite,
+        distanceMi: comp.distanceMi,
+        nextWeekendAsk: ask,
+        occupancy: 0,
+        score: scoreComp(
+          {
+            id: comp.id,
+            house,
+            name: comp.name,
+            area: comp.area,
+            beds: comp.beds,
+            sleeps: comp.sleeps,
+            rating: comp.rating,
+            reviews: comp.reviews,
+            guestFavorite: comp.guestFavorite,
+            distanceMi: comp.distanceMi,
+            baseGuest: ask,
+            occupancy: 0,
+          },
+          house,
+        ),
+        fit: isFairComp(house, comp) ? ('close' as const) : isCloseSleep(house, comp.sleeps) && !isNearby(comp.distanceMi) ? ('far' as const) : ('small' as const),
+        inBand: liveCompFits(house, comp.sleeps, comp.distanceMi, comp.isOwn, comp.minNights),
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+  const cards: CompCard[] = savedCards.length > 0 ? savedCards : listed
     .map((comp) => ({
       id: comp.id,
       name: comp.name,
@@ -191,7 +245,6 @@ export function buildMarketBoard(
       inBand: inBand.has(comp.id),
     }))
     .sort((a, b) => b.score - a.score);
-
   const first30 = nights.slice(0, 30);
   const liveNights = nights.filter((night) => night.source !== 'sample').length;
   return {

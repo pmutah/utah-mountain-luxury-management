@@ -625,7 +625,17 @@ export function MarketBoard() {
           </button>
         </div>
         <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6" data-bot="market-digest">
-          {houseShadowText(calendar, shadow.digest, compFitSummary(house, board.comps))}
+          {houseShadowText(
+            calendar,
+            shadow.digest,
+            /*
+             * The noun has to match the comps behind it. `compFitSummary` defaults to "sample comps", and this
+             * call site never passed the kind — so a house whose cards are now saved comps still had its fit
+             * line say "5 of 5 sample comps". The default stays honest for sample-only callers; here the board
+             * knows which it is.
+             */
+            compFitSummary(house, board.comps, board.summary.liveComps > 0 ? 'saved' : 'sample'),
+          )}
         </pre>
         {starts && (
           <p className="mt-3 text-sm" data-bot="market-starts">
@@ -862,7 +872,7 @@ export function MarketBoard() {
       </div>
 
       <p className="text-sm text-[var(--uml-muted)]" data-bot="market-comp-fit" data-narrowed={board.fit.narrowed ? 'yes' : 'no'}>
-        {compFitSummary(house, cards)}
+        {compFitSummary(house, cards, board.summary.liveComps > 0 ? 'saved' : 'sample')}
       </p>
       <div className="flex flex-wrap gap-2" data-bot="market-comp-sort">
         {(
@@ -915,9 +925,21 @@ export function MarketBoard() {
                 <h3 className="font-display text-2xl leading-tight mt-1">{comp.name.replace('Sample · ', '')}</h3>
               </div>
               {calendar === 'live' ? (
-                <p className="uml-num text-lg" data-bot="market-comp-ask">
-                  {formatWhole(comp.nextWeekendAsk)}
-                </p>
+                /*
+                 * A saved comp with no observed ask has **no price**, and `$0` is not "unknown" — it reads as a
+                 * free night and sorts below every real comp. Two of Lindon's four saved comps had never been
+                 * watched, so the table offered a $0 ask beside a $421 one. The sample path always had an ask
+                 * (it was invented), so this case could not arise before saved comps filled the table.
+                 */
+                comp.nextWeekendAsk > 0 ? (
+                  <p className="uml-num text-lg" data-bot="market-comp-ask" data-measured="yes">
+                    {formatWhole(comp.nextWeekendAsk)}
+                  </p>
+                ) : (
+                  <p className="max-w-40 text-right text-xs text-[var(--uml-muted)]" data-bot="market-comp-ask" data-measured="no">
+                    No ask saved yet
+                  </p>
+                )
               ) : (
                 <p className="max-w-40 text-right text-xs text-[var(--uml-muted)]" data-bot="market-comp-ask">
                   {calendar === 'loading' ? 'Checking the calendar.' : unreadMoneyNote('comp')}
@@ -925,13 +947,19 @@ export function MarketBoard() {
               )}
             </div>
             <p className="mt-2 text-sm text-[var(--uml-muted)]">
-              {comp.beds} bed · sleeps {comp.sleeps} · {comp.rating.toFixed(2)} · {comp.reviews} reviews
-              {comp.guestFavorite ? ' · Guest favorite' : ''} · {comp.distanceMi} mi · {comp.occupancy}% booked
+              {/*
+                A saved comp carries no bed count, no rating and no occupancy — nothing reads them. Printing
+                `0 bed · 0.00 · 0 reviews · 0% booked` presents four absences as four measurements, on a card
+                whose whole purpose is to be a measured comparison. Only the facts that exist are shown.
+              */}
+              {comp.beds > 0 ? `${comp.beds} bed · ` : ''}sleeps {comp.sleeps}
+              {comp.rating > 0 ? ` · ${comp.rating.toFixed(2)} · ${comp.reviews} reviews` : ' · rating not saved'}
+              {comp.guestFavorite ? ' · Guest favorite' : ''} · {comp.distanceMi} mi
+              {comp.occupancy > 0 ? ` · ${comp.occupancy}% booked` : ''}
             </p>
             <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="market-comp-amenities">
-              {compAmenityLine(comp.id)}
-            </p>
-            <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="market-comp-sleep" data-fit={comp.fit} data-in-band={comp.inBand ? 'yes' : 'no'}>
+              {compAmenityLine(comp.id, board.summary.liveComps > 0 && !comp.id.startsWith('Sample'))}
+            </p>            <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="market-comp-sleep" data-fit={comp.fit} data-in-band={comp.inBand ? 'yes' : 'no'}>
               {compFitLine(house, comp.sleeps, comp.distanceMi, comp.inBand)}
             </p>
             <div className="mt-3 flex gap-2">

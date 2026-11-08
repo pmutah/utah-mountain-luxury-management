@@ -120,7 +120,7 @@ function hostCompAnswer(
       excluded: [...(hidden?.[house] ?? [])],
     });
     const board = buildMarketBoard(house, asOf, 90, selected);
-    return `${NAME[house]}: ${compFitSummary(house, board.comps)}`;
+    return `${NAME[house]}: ${compFitSummary(house, board.comps, 'sample')}`;
   });
   const text = `${lines.join(' ')} This does not change the rate band. Nothing is posted.`;
   return text.includes('$') ? null : text;

@@ -75,7 +75,16 @@ export function compAmenities(id: string): readonly AmenityId[] {
   return COMP_AMENITIES[id] ?? [];
 }
 
-export function compAmenityLine(id: string): string {
+/**
+ * The amenity line for a card.
+ *
+ * `COMP_AMENITIES` is keyed by **sample comp id**, so a saved listing is not in it and the old line said
+ * *"Sample list: none."* on every real comp card — a fabricated amenity comparison attached to a real
+ * listing, describing a list that comp was never in. A saved comp has no saved amenities at all, so the card
+ * says the count was not read rather than reporting an absence as a finding.
+ */
+export function compAmenityLine(id: string, saved = false): string {
+  if (saved) return 'Amenities not saved for this comp.';
   const labels = compAmenities(id).map((amenity) => LABEL[amenity]);
   return labels.length > 0 ? `Sample list: ${labels.join(', ')}.` : 'Sample list: none.';
 }
