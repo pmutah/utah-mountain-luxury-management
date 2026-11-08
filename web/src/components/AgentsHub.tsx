@@ -8,6 +8,8 @@ import { loadDateBlocks, loadQuoteCalendar } from '../lib/booked-nights';
 import { loadCleanFixes, loadHouseFixes } from '../lib/clean-notes';
 import { loadCompChoices } from '../lib/market/comps';
 import { denverToday } from '../lib/market/dates';
+import { loadMarketOverview } from '../lib/market/overview-client';
+import type { MarketBoard } from '../lib/market/types';
 import type { RateWeekCalendar } from '../lib/rate-week';
 import { loadShadowLog, saveShadowLog, shadowClock } from '../lib/market/shadow-log';
 import { loadShadowCalendar, shadowDayDigest, withToday } from '../lib/shadow-day-record';
@@ -57,8 +59,17 @@ export function AgentsHub({
     // The reservations come from this page's own props, not another fetch: a second read of the same
     // key on one page load is what exhausted the daily KV limit.
     void loadShadowCalendar()
-      .then((inputs) => {
+      .then(async (inputs) => {
         if (cancel || !inputs) return;
+        // Load the real boards for each house. Without them the digest is built from the sample fixtures,
+        // and a shadow day saved that way counts toward the seven-day gate on a market that does not exist.
+        const loaded = await Promise.all(
+          (['river', 'ranch', 'lindon'] as const).map(async (id) => [id, await loadMarketOverview(id)] as const),
+        );
+        const boards: Partial<Record<'river' | 'ranch' | 'lindon', MarketBoard>> = {};
+        for (const [id, board] of loaded) {
+          if (board) boards[id] = board;
+        }
         const record = shadowDayDigest({
           asOf: today,
           calendarLive: true,
@@ -69,6 +80,7 @@ export function AgentsHub({
           paceLive: reservations.length > 0,
           preferenceTimes,
           compChoices,
+          boards,
         });
         if (record.state !== 'ready') return;
         const next = withToday(loadShadowLog(), today, record.digest);

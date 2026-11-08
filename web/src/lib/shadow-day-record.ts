@@ -20,7 +20,7 @@ import type { YearPace } from './market/fill';
 import { portfolioDigest } from './market/shadow';
 import { grossPace } from './revenue-goals';
 import { SHADOW_UNREAD, recordShadowDay, type ShadowDay } from './market/shadow-log';
-import type { HouseId } from './market/types';
+import type { HouseId, MarketBoard } from './market/types';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 
@@ -68,6 +68,12 @@ export function shadowDayDigest(input: {
   paceLive: boolean;
   preferenceTimes?: { arrival: Record<string, string | undefined>; departure: Record<string, string | undefined> } | null;
   compChoices: ReturnType<typeof loadCompChoices>;
+  /**
+   * The live boards the caller already built, per house. Without these the recorded digest is built from
+   * the sample fixtures, and a shadow day saved from invented comps still counts toward the seven-day
+   * gate — the gate would be satisfied by a market that does not exist.
+   */
+  boards?: Partial<Record<HouseId, MarketBoard>>;
 }): ShadowDayRecord {
   if (!input.calendarLive) return { state: 'unread', digest: '' };
   const paceOf = (id: HouseId): YearPace =>
@@ -84,6 +90,8 @@ export function shadowDayDigest(input: {
     pace: { river: paceOf('river'), ranch: paceOf('ranch'), lindon: paceOf('lindon') },
     calendarLive: true,
     comps,
+    // The real boards when the caller has them, so a recorded day reflects the market it claims to watch.
+    boards: input.boards,
     closed: input.closed,
     ...(input.paceLive && input.stays ? { stays: input.stays } : {}),
     arrivalWindows: input.paceLive && input.preferenceTimes ? input.preferenceTimes.arrival : null,
