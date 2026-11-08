@@ -162,11 +162,14 @@ const PUBLIC_ROUTES = [
   'muse/openapi.ts',
   'muse/openapi.json.ts',
   'muse/tools.ts', // Bearer-gated inside the handler; listed here so the check reads it there.
+  'muse/do.ts', // Same bearer gate as muse/tools.ts; refuses 503 when no bot secret is set.
+  'amanda/do.ts', // Re-exports muse/do.ts, so the same gate applies.
   'amanda/enter.ts',
   'amanda/instructions.ts',
   'amanda/openapi.ts',
   'amanda/openapi.json.ts',
   'amanda/tools.ts',
+  'amanda/do.ts',
   'esign/sign/[token].ts', // The token is the credential.
   'esign/sign/[token]/file.ts',
   'book/index.ts', // The public direct request form. A guest has no cookie before they ask.
