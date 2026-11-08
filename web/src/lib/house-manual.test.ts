@@ -263,7 +263,7 @@ test('the stay phone searches the published guide and leaves the door code off',
 
   const riverNow = stayGuideLookup('Are quiet hours in effect right now?', 'river', undefined, 23);
   const riverNowText = riverNow.hits.map((hit) => hit.text).join(' ');
-  assert.match(riverNowText, /does not name a clock/);
+  assert.match(riverNowText, /quiet hours apply/i);
   assert.equal(riverNowText.includes('10 PM'), false);
   assert.equal(riverNowText.includes('10:00 PM'), false);
   assert.equal(riverNowText.includes('$'), false);

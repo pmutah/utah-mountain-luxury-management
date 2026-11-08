@@ -9,6 +9,8 @@ export type OwnerHouseLine = {
   costs: number;
   /** Cleaning taken out before the fee. It is also inside `costs`, which is why the two cancel. */
   cleaning: number;
+  /** The part of `cleaning` that was assumed, not taken from a receipt. Zero when every month has one. */
+  estimatedCleaning: number;
   /** The 20% management fee: 20% of `revenue - cleaning`. */
   fee: number;
   /** `revenue - cleaning - fee - (costs - cleaning)`, the money split in half. */
@@ -94,6 +96,7 @@ export function buildOwnerStatement(
         revenue: cents(row.revenue),
         costs: cents(row.mortgage + row.cleaning + row.operating),
         cleaning: cents(row.cleaning),
+        estimatedCleaning: cents(row.estimatedCleaning ?? 0),
         fee,
         leftover,
         todd: cents(row.dist?.todd ?? 0),

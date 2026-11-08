@@ -22,6 +22,7 @@ function previewHouse(id: 'ranch' | 'river', name: string, revenue: number, clea
     revenue,
     costs: Math.round((cleaning + operating) * 100) / 100,
     cleaning,
+    estimatedCleaning: 0,
     fee,
     leftover,
     todd: Math.round((leftover / 2) * 100) / 100,

@@ -31,7 +31,7 @@ test('quiet hours follow the published window and do not invent a river clock', 
   assert.match(quietNow('ranch', 8), /not in effect/);
   assert.match(quietNow('ranch', 13), /10:00 PM to 8:00 AM/);
   const river = quietNow('river', 23);
-  assert.match(river, /does not name a clock/);
+  assert.match(river, /quiet hours apply/i);
   assert.equal(river.includes('10'), false);
   const text = [quietNow('ranch', 23), quietNow('ranch', 13), river].join('\n');
   assert.equal(text.includes('$'), false);
@@ -39,7 +39,7 @@ test('quiet hours follow the published window and do not invent a river clock', 
   const quote = quietNowLine('ranch', 23, 'quote');
   assert.match(quote, /in effect until 8:00 AM/);
   assert.match(quote, /does not say the house is open/);
-  assert.match(quietNowLine('river', 23, 'quote'), /does not name a clock/);
+  assert.match(quietNowLine('river', 23, 'quote'), /quiet hours apply/i);
   assert.equal(quietNowLine('ranch', 13, 'phone').includes('house is open'), false);
   assert.equal(quote.includes('$'), false);
 });

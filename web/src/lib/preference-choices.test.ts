@@ -53,7 +53,9 @@ test('preference choices follow the published guide for that house', () => {
   assert.match(preferenceCardNote(0), /no preference card yet/);
   assert.equal(preferenceCardLines('ranch', null).length, 0);
   const pets = preferencePetLine();
-  assert.match(pets, /does not name a pet rule/);
+  // No house publishes a pet rule, so the phone points the guest at a person instead of narrating the gap.
+  assert.match(pets, /not covered in the published guide/i);
+  assert.match(pets, /ask us before you book/i);
   assert.match(pets, /Nothing is sent/);
   assert.equal(pets.includes('$'), false);
 });

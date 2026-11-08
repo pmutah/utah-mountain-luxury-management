@@ -233,7 +233,7 @@ test('the house guide desk answers from the published guide', () => {
   assert.match(quiet, /in effect until 8:00 AM/);
   assert.match(quiet, /does not send a message/);
   const riverQuiet = guideDeskAnswer('Is it quiet hours now at the River House?', '2026-10-30', undefined, false, 23);
-  assert.match(riverQuiet, /does not name a clock/);
+  assert.match(riverQuiet, /quiet hours apply/i);
   assert.equal(riverQuiet.includes('10'), false);
   assert.equal(quiet.includes('$') || riverQuiet.includes('$'), false);
 
@@ -373,7 +373,7 @@ test('the house guide desk answers from the published guide', () => {
     checkIn: '2026-12-01',
     checkOut: '2026-12-04',
   }, 23);
-  assert.match(noraQuiet ?? '', /does not name a clock/);
+  assert.match(noraQuiet ?? '', /quiet hours apply/i);
   assert.equal((noraQuiet ?? '').includes('10 PM'), false);
   assert.equal((noraQuiet ?? '').includes('$'), false);
 });

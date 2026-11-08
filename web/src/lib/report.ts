@@ -61,6 +61,12 @@ export type PropertyReportRow = {
   margin: number;
   mortgage: number;
   cleaning: number;
+  /**
+   * The part of `cleaning` that was assumed rather than taken from a receipt, for a month with stays
+   * and no cleaning expense. Kept separate so a partner's statement can label an estimate instead of
+   * presenting it as a booked cost.
+   */
+  estimatedCleaning?: number;
   operating: number;
   dist: OwnerDistribution | null;
   channels: Record<ChannelName, ChannelSlice>;
@@ -286,8 +292,16 @@ function monthPropertyMetrics(
     .filter((e) => e.propertyId === propertyId && e.month === month && e.category === 'Cleaning')
     .reduce((sum, e) => sum + e.amount, 0);
   const stayCount = checkIns.length;
-  const baseCleaning =
-    cleaningExpenses > 0 ? cleaningExpenses : stayCount * PROPERTIES[propertyId].cleaningFee;
+  /*
+   * A month with stays but no cleaning receipt falls back to `stays × the house's cleaning fee`. That
+   * is a reasonable **forecast**, and it is what the desk budgets against — but on a partner's
+   * statement it is an estimated cost presented beside real receipts, and it moves the split. February
+   * 2026 is the only month affected today: one Ranch stay, no receipt, so $350 is assumed and about
+   * $35 comes off Todd's share. The number is kept, because silently treating it as $0 would overpay
+   * him on a real cost, but `estimatedCleaning` records it so the statement can say so out loud.
+   */
+  const assumedCleaning = cleaningExpenses > 0 ? 0 : stayCount * PROPERTIES[propertyId].cleaningFee;
+  const baseCleaning = cleaningExpenses > 0 ? cleaningExpenses : assumedCleaning;
   const cleaning = open ? baseCleaning + extra : 0;
   const mortgage = open ? PROPERTIES[propertyId].mortgage : 0;
   const operating = expenses
@@ -312,6 +326,7 @@ function monthPropertyMetrics(
     availableNights,
     mortgage,
     cleaning,
+    estimatedCleaning: open ? assumedCleaning : 0,
     operating,
     dist: ownerSplit(propertyId, revenue, cleaning, mortgage, operating),
     channels,
@@ -350,6 +365,7 @@ function applyOwnerView(row: PropertyReportRow, owner: ReportOwnerFilter): Prope
     availableNights: row.availableNights,
     mortgage: row.mortgage,
     cleaning: row.cleaning,
+    estimatedCleaning: row.estimatedCleaning,
     operating: row.operating,
     dist: row.dist,
     channels: row.channels,
@@ -514,6 +530,7 @@ function sumRows(rows: PropertyReportRow[], name: string, propertyId: PropertyRe
     availableNights,
     mortgage,
     cleaning,
+    estimatedCleaning: rows.reduce((total, row) => total + (row.estimatedCleaning ?? 0), 0),
     operating,
     dist: sumDist(rows),
     channels,

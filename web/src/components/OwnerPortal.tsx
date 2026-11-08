@@ -111,6 +111,18 @@ export function OwnerPortal({ token }: { token: string }) {
               Todd’s share after the management fee. The fee was {money(data.fee)} of {money(data.feeBasis)} of rent after
               cleaning.
             </p>
+            {/*
+              Only shown when a month had a stay but no cleaning receipt, because the fee basis and the
+              costs line both use an assumed figure for it. An estimate presented as a receipt is the
+              kind of thing an owner should not have to discover by dividing.
+            */}
+            {data.houses.some((house) => house.estimatedCleaning > 0) && (
+              <p className="mt-2 text-xs text-[#7a7264]" data-bot="owner-portal-estimate">
+                {money(data.houses.reduce((total, house) => total + house.estimatedCleaning, 0))} of the cleaning above is
+                estimated — a stay was booked but no cleaning receipt was entered for that month. Add the receipt and this
+                figure, and the share, update on their own.
+              </p>
+            )}
           </section>
 
           {data.empty && (

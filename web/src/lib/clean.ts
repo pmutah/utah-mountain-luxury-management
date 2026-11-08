@@ -325,15 +325,15 @@ const RULES_ES: Record<string, string> = {
     'Horas de silencio de 10 PM a 8 AM. No fumar adentro. No fiestas.',
 };
 
-/** Whether quiet hours are in effect. The River House guide does not name a clock. Not a checklist line. */
+/** Whether quiet hours are in effect. River publishes no window, so it states the rule without a time. Not a checklist line. */
 export function cleanQuietLine(house: HouseId, lang: CleanLang, hour = denverHour()): string {
   const h = ((Math.floor(hour) % 24) + 24) % 24;
   const tail = lang === 'es' ? 'Esto no es una línea de la lista. No se envió nada.' : 'This is not a checklist line. Nothing was sent.';
   let line: string;
   if (house === 'river') {
     line = lang === 'es'
-      ? 'Horas de silencio en este vecindario de montaña. La guía no nombra un reloj.'
-      : 'Quiet hours in this mountain neighborhood. The guide does not name a clock.';
+      ? 'Aplican horas de silencio en este vecindario del cañón. Baje el volumen de noche para no molestar a los vecinos.'
+      : 'Quiet hours apply in this canyon neighborhood. Keep noise down at night so the neighbors are not disturbed.';
   } else if (h >= 22 || h < 8) {
     line = lang === 'es'
       ? 'Las horas de silencio están en vigor hasta las 8:00 AM.'

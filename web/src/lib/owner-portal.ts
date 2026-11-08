@@ -39,6 +39,7 @@ export type OwnerPortalView = {
     revenue: number;
     costs: number;
     cleaning: number;
+    estimatedCleaning: number;
     fee: number;
     leftover: number;
     todd: number;
@@ -75,6 +76,7 @@ export function ownerPortalView(statement: OwnerStatement, period: 'month' | 'yt
       revenue: money(house.revenue),
       costs: money(house.costs),
       cleaning: money(house.cleaning),
+      estimatedCleaning: money(house.estimatedCleaning ?? 0),
       fee: money(house.fee),
       leftover: money(house.leftover),
       todd: money(house.todd),

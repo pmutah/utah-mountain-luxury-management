@@ -78,7 +78,8 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.match(quietDay, /10:00 PM a 8:00 AM/);
   assert.match(quietDay, /Esto no es una línea de la lista/);
   const riverQuiet = cleanQuietLine('river', 'es', 23);
-  assert.match(riverQuiet, /no nombra un reloj/);
+  // River publishes quiet hours without a window, so the Spanish line states the rule and no time.
+  assert.match(riverQuiet, /horas de silencio/i);
   assert.equal(riverQuiet.includes('10:00'), false);
   assert.match(safetyEs, /No fuegos artificiales/);
   assert.match(safetyEs, /No se envió nada/);

@@ -25,9 +25,9 @@ const RES: Reservation[] = [
 ];
 
 const EXP: Expense[] = [
-  { id: 't-op-clean', propertyId: 'ranch', date: '2026-06-05', amount: 1200, category: 'Cleaning', note: 't' },
-  { id: 't-op-mort', propertyId: 'ranch', date: '2026-06-01', amount: 3000, category: 'Mortgage', note: 't' },
-  { id: 't-op-util', propertyId: 'ranch', date: '2026-06-10', amount: 500, category: 'Utilities', note: 't' },
+  { id: 't-op-clean', month: '2026-06', propertyId: 'ranch', category: 'Cleaning', amount: 1200, note: 't' },
+  { id: 't-op-mort', month: '2026-06', propertyId: 'ranch', category: 'Mortgage', amount: 3000, note: 't' },
+  { id: 't-op-util', month: '2026-06', propertyId: 'ranch', category: 'Utilities', amount: 500, note: 't' },
 ];
 
 function view() {
@@ -81,5 +81,25 @@ test('the portal still shows no guest names and no construction money', () => {
   // Only Ranch and River are ever returned.
   for (const house of data.houses) {
     assert.ok(house.id === 'ranch' || house.id === 'river', `${house.id} is not an owner house`);
+  }
+});
+
+test('a stay with no cleaning receipt is flagged as an estimate, not passed off as a booked cost', () => {
+  // The real shape of February 2026: one Ranch stay, no cleaning expense, so the fallback assumes
+  // stays x $350. That estimate is charged into the fee basis, so the owner has to be told.
+  const noReceipt = EXP.filter((expense) => expense.category !== 'Cleaning');
+  const statement = buildOwnerStatement('2026-06', 'year', RES, noReceipt);
+  const data = ownerPortalView(statement, 'ytd');
+  const ranch = data.houses.find((house) => house.id === 'ranch')!;
+
+  assert.ok(ranch.estimatedCleaning > 0, 'the assumed cleaning was not recorded');
+  assert.equal(ranch.estimatedCleaning, 350, 'one stay at the Ranch should assume the $350 house fee');
+  // The estimate is part of the cleaning it stands in for, not an extra deduction on top.
+  assert.equal(ranch.cleaning, ranch.estimatedCleaning);
+
+  // With a real receipt, nothing is estimated.
+  const withReceipt = ownerPortalView(buildOwnerStatement('2026-06', 'year', RES, EXP), 'ytd');
+  for (const house of withReceipt.houses) {
+    assert.equal(house.estimatedCleaning, 0, `${house.id} flagged an estimate even though receipts exist`);
   }
 });

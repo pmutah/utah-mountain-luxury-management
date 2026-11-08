@@ -58,11 +58,19 @@ export function quietNowLine(house: HouseId, hour: number, where: 'quote' | 'pho
   return line;
 }
 
-/** Whether the published quiet-hours window is in effect. The River House guide does not name a clock. */
+/**
+ * Whether the published quiet-hours window is in effect.
+ *
+ * The River House guide does not name a clock, and the old line said exactly that to the guest:
+ * "Quiet hours in this mountain neighborhood. The guide does not name a clock." That is a note about
+ * our own data gap, and a guest cannot use it. River is a whole-house rental on a canyon lot, so the
+ * sentence states the rule that does apply without inventing hours the guide does not publish.
+ * Setting the clock is a host task; until then nothing here claims a time.
+ */
 export function quietNow(house: HouseId, hour: number): string {
   const h = ((Math.floor(hour) % 24) + 24) % 24;
   if (house === 'river') {
-    return 'Quiet hours in this mountain neighborhood. The guide does not name a clock. Nothing is sent.';
+    return 'Quiet hours apply in this canyon neighborhood. Keep noise down at night so the neighbors are not disturbed.';
   }
   if (h >= 22 || h < 8) return 'Quiet hours are in effect until 8:00 AM. Nothing is sent.';
   return 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM. Nothing is sent.';
@@ -78,9 +86,12 @@ export function quietNowAnswer(query: string, house: HouseId, hour = denverHour(
   return text;
 }
 
-/** Ranch and Lindon share one clock. The River House guide does not name one. */
+/**
+ * Ranch and Lindon share one clock. River publishes quiet hours without a window, so its half of the
+ * sentence states what applies there and says nothing about the guide behind it.
+ */
 export function homeQuietLine(hour: number): string {
   const h = ((Math.floor(hour) % 24) + 24) % 24;
   const valley = h >= 22 || h < 8 ? 'Quiet hours are in effect until 8:00 AM.' : 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM.';
-  return `Ranch and Lindon: ${valley} The River House guide does not name a clock. Nothing is sent.`;
+  return `Ranch and Lindon: ${valley} The River House sits in a canyon neighborhood, so keep noise down at night. Nothing is sent.`;
 }

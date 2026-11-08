@@ -134,9 +134,17 @@ export function preferenceCardNote(count: number): string {
   return line;
 }
 
-/** The guide does not name a pet rule. */
+/**
+ * What the phone says about pets.
+ *
+ * No house currently publishes a pet rule, so the old line said "The published guide does not name a
+ * pet rule" — true, but useless to a guest deciding whether to bring a dog, and it reads as a gap in the
+ * product. The honest and useful answer is that pets are not covered by the guide and the guest should
+ * ask before booking. It invents no policy; it points at a person.
+ */
 export function preferencePetLine(): string {
-  const line = 'The published guide does not name a pet rule. Nothing is sent.';
-  if (line.includes('$') || /dog|sauna|fire pit/i.test(line)) return 'Nothing is sent.';
+  const line =
+    'Pets are not covered in the published guide. Ask us before you book and we will tell you what this house allows. Nothing is sent.';
+  if (line.includes('$') || /door\s*code|wi-?fi|password/i.test(line)) return 'Nothing is sent.';
   return line;
 }
