@@ -5,6 +5,10 @@ import { AIRBNB_KEEP } from '../lib/revenue-goals';
 type Plan = {
   house: string;
   allowed: boolean;
+  /** What `allowed` means: clear to act on by hand. Never "a rate can be sent". */
+  actionable?: boolean;
+  /** False on every response, because no sender exists. */
+  sends?: boolean;
   hold: string | null;
   nights: Array<{ date: string; from: number; to: number; kind: string; source?: string }>;
   line: string;
@@ -253,6 +257,13 @@ export function PushPlanPanel() {
                 data-bot="push-plan-house"
                 data-house={plan.house}
                 data-allowed={plan.allowed ? 'yes' : 'no'}
+                /*
+                 * A second attribute for the part that is true. `data-allowed="yes"` on a build with no sender told a
+                 * bot the rate could be pushed; this one says the plan is clear to act on by hand, and
+                 * `data-sends` says nothing leaves the app.
+                 */
+                data-actionable={plan.actionable ? 'yes' : 'no'}
+                data-sends="no"
                 className="rounded-2xl border border-[var(--uml-line)] p-4"
               >
                 <p className="font-display text-xl">{HOUSE[plan.house] ?? plan.house}</p>

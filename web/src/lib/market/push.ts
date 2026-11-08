@@ -31,8 +31,23 @@ export type PushNight = {
 
 export type PushPlan = {
   house: HouseId;
-  /** True when the plan is allowed to run at all. */
+  /**
+   * True when **no gate is blocking the decision** — the shadow week is done, the calendar was read, the house is not
+   * paused, and a write token exists.
+   *
+   * It does **not** mean a rate can leave this app. There is no sender: `pushSendState` says so on every response, and
+   * the agent map says it too. Measured against the gate states: with the shadow week done and a token set, this came
+   * back `true` while `send.line` read *"no sender is built"*. A field named "allowed" that answers "yes" when nothing
+   * can happen is the same shape as the rest of this work — a label with nothing behind it — and a bot reading
+   * `data-allowed="yes"` would draw exactly the wrong conclusion.
+   *
+   * `actionable` says the part that is true: the plan is clear to act on by hand.
+   */
   allowed: boolean;
+  /** What `allowed` actually means, said once so no caller has to infer it. */
+  actionable: boolean;
+  /** False on every response, because no sender exists. Named so a caller cannot mistake `allowed` for it. */
+  sends: false;
   /** Why it is not allowed, when it is not. */
   hold: string | null;
   nights: PushNight[];
@@ -186,18 +201,20 @@ export function pushPlanFor(house: HouseId, run: ShadowRun, gate: PushGate, asOf
   const dataUnusable = !gate.calendarReady || gate.paused || run.paused;
   const nights = dataUnusable ? [] : pushNights(house, run.nights, asOf);
 
-  if (hold && dataUnusable) return { house, allowed: false, hold, nights: [], line: hold };
+  if (hold && dataUnusable) return { house, allowed: false, actionable: false, sends: false, hold, nights: [], line: hold };
   if (hold) {
     const preview =
       nights.length === 0
         ? 'Preview: no night would change once this is open.'
         : `Preview only: ${nights.length === 1 ? '1 night' : `${nights.length} nights`} would change. ${hold}`;
-    return { house, allowed: false, hold, nights, line: preview };
+    return { house, allowed: false, actionable: false, sends: false, hold, nights, line: preview };
   }
   if (nights.length === 0) {
     return {
       house,
       allowed: true,
+      actionable: true,
+      sends: false,
       hold: null,
       nights: [],
       line: 'No night would change. Every night is booked, closed, locked, paused, or already at the ask.',
@@ -212,7 +229,7 @@ export function pushPlanFor(house: HouseId, run: ShadowRun, gate: PushGate, asOf
     restores === 0 ? '' : restores === 1 ? '1 night back to the base' : `${restores} nights back to the base`,
   ].filter(Boolean);
   const line = `${nights.length === 1 ? '1 night' : `${nights.length} nights`} would change: ${parts.join(', ')}. Nothing is sent from this page.`;
-  return { house, allowed: true, hold: null, nights, line: line.includes('$') ? 'The plan is ready. Nothing is sent from this page.' : line };
+  return { house, allowed: true, actionable: true, sends: false, hold: null, nights, line: line.includes('$') ? 'The plan is ready. Nothing is sent from this page.' : line };
 }
 
 /** The plan across all three houses, for a gate that applies to the whole board. */
