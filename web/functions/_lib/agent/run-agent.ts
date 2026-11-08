@@ -1,4 +1,4 @@
-import {
+﻿import {
   generateAgentTurn,
   userMessage,
   modelText,
@@ -70,7 +70,20 @@ export async function runAgentChat(
       continue;
     }
 
-    reply = result.text?.trim() ?? 'Done.';
+    reply = result.text?.trim() ?? '';
+    /*
+     * The model sometimes returns empty text after a tool call â€” often when it believes the tool result
+     * speaks for itself. Substituting "Done." here was a non-answer dressed as an answer: a host asks a
+     * question, gets "Done.", and has no idea what happened or whether anything was read. When the model
+     * says nothing, the reply says what the tools actually did instead.
+     */
+    if (!reply) {
+      const used = toolSteps.map((step) => step.tool).filter(Boolean);
+      reply =
+        used.length > 0
+          ? `I ran ${used.length === 1 ? `the ${used[0]} tool` : `${used.length} tools (${used.join(', ')})`} but the model returned no summary. The results are in the steps above.`
+          : 'The model returned no answer. Nothing was changed.';
+    }
     geminiContents.push(modelText(reply));
     messages.push({
       role: 'assistant',
@@ -93,3 +106,4 @@ export async function runAgentChat(
 
   return { sessionId: sid, reply, messages, toolSteps };
 }
+
