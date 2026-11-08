@@ -41,8 +41,17 @@ function filled(value: unknown): boolean {
 }
 
 /**
- * What a guest would find. A house needs the facts every guest asks for, at least one photo-free
- * section of house notes, and at least three nearby places to be useful.
+ * What a guest would find. A house needs the facts every guest asks for and at least three nearby
+ * places. House notes are **welcome but not required**.
+ *
+ * The note requirement used to be mandatory, which blocked the Lindon House permanently: its published
+ * guide genuinely has `notes: []` in `house-stay.ts`, because there is nothing unusual to warn a guest
+ * about — no hot tub, no septic, no river. The page already had the address, how to arrive, parking, the
+ * house rules, five checkout steps, and nineteen nearby places. That is not a thin page; it is a complete
+ * page for a house with no special instructions.
+ *
+ * A gate that demands a warning where there is none teaches a host to invent one, which is worse than an
+ * empty list: a fabricated septic note reaches a real guest.
  */
 export function guideReadiness(guide: GuideFacts | null | undefined): GuideReadiness {
   if (!guide) {
@@ -50,12 +59,13 @@ export function guideReadiness(guide: GuideFacts | null | undefined): GuideReadi
   }
   const missing = REQUIRED.filter((row) => !filled(guide[row.key])).map((row) => row.label);
   const sections = (guide.sections ?? []).filter((section) => filled(section.title) && filled(section.body));
-  if (sections.length === 0) missing.push('at least one house note');
   const places = (guide.places ?? []).filter((place) => filled(place.name) && filled(place.note));
   if (places.length < 3) missing.push('at least three nearby places');
   const ready = missing.length === 0;
   const line = ready
-    ? 'Ready for guests. The stay page has the address, how to arrive, where to park, the house notes, the nearby places, and the checkout steps.'
+    ? sections.length > 0
+      ? 'Ready for guests. The stay page has the address, how to arrive, where to park, the house notes, the nearby places, and the checkout steps.'
+      : 'Ready for guests. The stay page has the address, how to arrive, where to park, the nearby places, and the checkout steps. This house has no special notes, which is normal for a house with no hot tub, septic, or river to warn about.'
     : `A guest would see a thin page. Add ${listPhrase(missing)} before turning this on.`;
   return { ready, missing, line };
 }
@@ -88,11 +98,16 @@ export function switchLine(guide: GuideFacts | null | undefined, enabled: boolea
 
 /** How much of a guide is done, for a progress line that does not overstate it. */
 export function guideFill(guide: GuideFacts | null | undefined): { done: number; total: number } {
-  if (!guide) return { done: 0, total: REQUIRED.length + 2 };
+  /*
+   * Progress counts what is **required** for a page to be useful — the five facts and the nearby places.
+   * House notes are not counted, because they are not required: a house with no hot tub, septic, or river
+   * has nothing to put there, and showing a permanent "6 of 7" would push a host to invent a warning.
+   */
+  const total = REQUIRED.length + 1;
+  if (!guide) return { done: 0, total };
   const done = REQUIRED.filter((row) => filled(guide[row.key])).length;
-  const sections = (guide.sections ?? []).filter((section) => filled(section.title) && filled(section.body)).length > 0 ? 1 : 0;
   const places = (guide.places ?? []).filter((place) => filled(place.name) && filled(place.note)).length >= 3 ? 1 : 0;
-  return { done: done + sections + places, total: REQUIRED.length + 2 };
+  return { done: done + places, total };
 }
 
 /** A line for the guests page listing which houses are ready. No door code is read here. */

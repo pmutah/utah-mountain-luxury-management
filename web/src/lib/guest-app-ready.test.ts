@@ -24,13 +24,24 @@ test('a full guide is ready', () => {
   assert.equal(readiness.line.includes('$'), false);
 });
 
-test('a guide with no house note or too few places is not ready', () => {
-  const noNotes = guideReadiness({ ...FULL, sections: [] });
-  assert.equal(noNotes.ready, false);
-  assert.ok(noNotes.missing.includes('at least one house note'));
+test('a guide with too few nearby places is not ready', () => {
   const fewPlaces = guideReadiness({ ...FULL, places: [{ name: 'A', note: 'x' }] });
   assert.ok(fewPlaces.missing.includes('at least three nearby places'));
   assert.match(fewPlaces.line, /thinner|thin page/);
+});
+
+test('a house with no house notes is ready, because some houses have nothing special to warn about', () => {
+  /*
+   * This used to assert the opposite, and that assertion blocked the Lindon House permanently: its
+   * published guide has `notes: []` because there is no hot tub, septic, or river to warn about. A gate
+   * that demands a warning where there is none teaches a host to invent one, and a fabricated septic note
+   * reaches a real guest.
+   */
+  const noNotes = guideReadiness({ ...FULL, sections: [] });
+  assert.equal(noNotes.ready, true, 'a house with no special notes was refused');
+  assert.equal(noNotes.missing.length, 0);
+  // The line has to say why there are none, so a host is not left thinking it is unfinished.
+  assert.match(noNotes.line, /no special notes/i);
 });
 
 test('a blank section or place does not count', () => {
@@ -43,9 +54,10 @@ test('a blank section or place does not count', () => {
       { name: 'Heber', note: 'Train.' },
     ],
   });
+  /* A blank note is simply not a note. It is no longer a blocker, but it must not read as content either. */
   assert.equal(blank.ready, false);
-  assert.ok(blank.missing.includes('at least one house note'));
   assert.ok(blank.missing.includes('at least three nearby places'));
+  assert.equal(blank.missing.includes('at least one house note'), false, 'a missing note is not a blocker');
 });
 
 test('every missing fact is named so a host knows what to add', () => {
@@ -80,10 +92,15 @@ test('the editor line says when an on app is thin instead of pretending it is fi
 });
 
 test('the fill count is honest about partial work', () => {
-  assert.deepEqual(guideFill(FULL), { done: 7, total: 7 });
+  /*
+   * Six, not seven: the five required facts plus the nearby places. House notes are not required, so they
+   * are not counted — a permanent "6 of 7" on a house with nothing special to warn about is what pushes a
+   * host to invent a note.
+   */
+  assert.deepEqual(guideFill(FULL), { done: 6, total: 6 });
   const partial = guideFill({ headline: 'x', address: 'y' });
   assert.equal(partial.done, 2);
-  assert.equal(partial.total, 7);
+  assert.equal(partial.total, 6);
   assert.equal(guideFill(null).done, 0);
 });
 
