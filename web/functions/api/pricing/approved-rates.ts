@@ -7,7 +7,7 @@ import type { SettingsEnv } from '../../_lib/kv';
 import { clearApprovedRate, loadApprovedRates, saveApprovedRate } from '../../_lib/pricing-store';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { isRealDay } from '../../../src/lib/market/dates';
-import { approvedGuestRate, sheetLine, sheetUsable, type ApprovedRate } from '../../../src/lib/market/rate-sheet';
+import { approvalBase, approvedGuestRate, sheetLine, sheetUsable, type ApprovedRate } from '../../../src/lib/market/rate-sheet';
 import { nightAsk } from '../../../src/lib/market/rates';
 
 type HouseId = 'ranch' | 'lindon' | 'river';
@@ -116,12 +116,43 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
   }
 
   const ask = nightAsk(house, date);
-  const allowed = approvedGuestRate([{ date, guest }], date, { guest: ask.guest, floorGuest: ask.floorGuest });
+  /*
+   * The cap is measured from **the price this approval replaces**, not from the published card.
+   *
+   * Those are the same number the first time a night is priced and different every time after. The board
+   * already starts from the approved price (`buildMarketBoard` takes the sheet), so it proposes the *next*
+   * 8% step — $193 → $208 — while this route validated against the card and refused it, because $208 is not
+   * within 8% of $179. Measured on production: the ladder broke at the second rung, so Lindon could be raised
+   * once and never again, and its $421 market median was unreachable by any number of approvals.
+   *
+   * Reading the sheet first is what makes the route and the board agree. A night with no approval still
+   * validates against the card, so the first step is unchanged.
+   */
+  let existing: ApprovedRate[] = [];
+  try {
+    existing = (await loadApprovedRates(env)).filter((row) => row.house === house && row.date === date);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(
+        request,
+        { error: 'The approved prices could not be read, so no price was approved. Nothing was written.' },
+        503,
+      );
+    }
+    const message = err instanceof Error ? err.message : 'The approved rates failed';
+    return corsJson(request, { error: message }, 500);
+  }
+  const currentGuest = approvalBase(ask.guest, existing);
+  const allowed = approvedGuestRate([{ date, guest }], date, { guest: currentGuest, floorGuest: ask.floorGuest });
   if (allowed === null) {
+    const basis =
+      currentGuest === ask.guest
+        ? `The card is $${ask.guest} and the floor is $${ask.floorGuest}.`
+        : `That night is already approved at $${currentGuest}, the card is $${ask.guest}, and the floor is $${ask.floorGuest}.`;
     return corsJson(
       request,
       {
-        error: `That price is outside what this house can quote for that night. The card is $${ask.guest} and the floor is $${ask.floorGuest}. A raise moves at most 8% in one night, and a cut goes no lower than the 20% promotion or the floor. Nothing was written.`,
+        error: `That price is outside what this house can quote for that night. ${basis} A raise moves at most 8% in one night, and a cut goes no lower than the 20% promotion or the floor. Nothing was written.`,
       },
       400,
     );

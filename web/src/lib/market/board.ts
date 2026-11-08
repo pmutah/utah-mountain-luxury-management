@@ -2,7 +2,7 @@ import { bandComps, isCloseSleep, isFairComp, isNearby } from './comp-fit';
 import { eachNight, isWeekendNight, monthFactor } from './dates';
 import { compsFor, type SampleComp } from './fixtures';
 import { type BoardSource, type LiveComp, liveAsk, liveCompFits, type SnapIndex } from './live';
-import { approvedGuestRate, type QuotedSheetNight } from './rate-sheet';
+import { approvalBase, approvedGuestRate, type QuotedSheetNight } from './rate-sheet';
 import { proposeGuestRate } from './propose';
 import { nightAsk } from './rates';
 import { median, percentileValue } from './stats';
@@ -37,6 +37,11 @@ function compAsk(comp: SampleComp, iso: string): number {
  * What this house currently asks for a night. A night the host approved asks the approved price:
  * that is what the guest page quotes, so the board has to start there too. Otherwise the push plan
  * re-proposes a night that is already set, and the two disagree about the same night.
+ *
+ * The base is `approvalBase`, the same one the approve route and the quote use. This passed the published card
+ * as the base, so a night approved above 8% over the card was **rejected here** and the board went back to
+ * reading $179 — while the sheet held $208. Three places computed this base and all three got it wrong the same
+ * way; one function is what stops a fourth.
  */
 function ourGuest(
   house: HouseId,
@@ -44,7 +49,10 @@ function ourGuest(
   sheet: readonly QuotedSheetNight[] = [],
 ): { guest: number; floorGuest: number; season: string | null; lock: boolean; minNights: number } {
   const ask = nightAsk(house, iso);
-  const approved = approvedGuestRate(sheet, iso, { guest: ask.guest, floorGuest: ask.floorGuest });
+  const approved = approvedGuestRate(sheet, iso, {
+    guest: approvalBase(ask.guest, sheet),
+    floorGuest: ask.floorGuest,
+  });
   return {
     guest: approved ?? ask.guest,
     floorGuest: ask.floorGuest,

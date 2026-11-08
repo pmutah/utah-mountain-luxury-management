@@ -60,6 +60,23 @@ export function toApprovedRate(value: unknown): ApprovedRate | null {
 export type QuotedSheetNight = { date: string; guest: number };
 
 /**
+ * The price a new approval is measured from.
+ *
+ * The 8% daily cap compares against **the price being replaced**, which is the published card the first time a
+ * night is priced and the approved price every time after. Those were assumed to be the same, and they are not.
+ *
+ * The board already starts from the approved price, so it proposes the next step ($193 → $208) while the route
+ * validated against the card ($179) and refused it. Measured on production, the ladder broke at its second
+ * rung: a night could be raised once and never again, which put Lindon's $421 market median out of reach by any
+ * number of approvals. One function, so the board, the route, and the quote cannot disagree about the base.
+ */
+export function approvalBase(card: number, approved: readonly { guest: number }[]): number {
+  if (approved.length === 0) return card;
+  const highest = Math.max(...approved.map((row) => Math.round(row.guest)));
+  return Number.isFinite(highest) && highest > 0 ? highest : card;
+}
+
+/**
  * The rate a guest may be quoted for one night, or null when the published base stands.
  *
  * A raise is capped at the daily move, because the engine's own cap exists so a price cannot jump

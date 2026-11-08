@@ -1,7 +1,7 @@
 import { partyFits } from './house-stay';
 import { addDays, isWeekendNight } from './market/dates';
 import { promotionForNight, type YearPace } from './market/fill';
-import { approvedGuestRate, type QuotedSheetNight } from './market/rate-sheet';
+import { approvalBase, approvedGuestRate, type QuotedSheetNight } from './market/rate-sheet';
 import { nightAsk } from './market/rates';
 import { riverSeasonOn } from './market/seasons';
 import type { HouseId } from './market/types';
@@ -68,10 +68,17 @@ export function directNight(
   // A night the host approved is the one place a comp-driven price reaches a guest. The approved
   // rate is a guest price, so the direct price is its host net, and the night takes no promotion:
   // the host already set this price on purpose.
+  /*
+   * The cap is measured from the price this approval replaces — the approved price when one exists, the card
+   * otherwise — so the quote and the approve route share one base. They did not: the route refused the second
+   * rung of the ladder, and after fixing that the quote would still have returned null here and quietly shown
+   * the guest the old card price. A silent fallback to a lower number is worse than a refusal, because nobody
+   * sees it.
+   */
   const approved =
     sheet.length === 0 || taken.includes(iso) || ask.closed
       ? null
-      : approvedGuestRate(sheet, iso, { guest: ask.guest, floorGuest: ask.floorGuest });
+      : approvedGuestRate(sheet, iso, { guest: approvalBase(ask.guest, sheet), floorGuest: ask.floorGuest });
   if (approved !== null) {
     return {
       date: iso,
