@@ -369,6 +369,7 @@ export function StayApp({ token }: { token: string }) {
     checkOut: data.checkOut,
     opensOn: access.opensOn,
     preferencesDone: data.preferencesDone,
+    hasSurvey: data.hasSurvey,
     checkInTime: guide.checkInTime,
     checkOutTime: guide.checkOutTime,
     phase: access.phase,

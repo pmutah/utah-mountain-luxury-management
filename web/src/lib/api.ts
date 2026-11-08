@@ -427,6 +427,8 @@ export interface StayGuide {
   partyGuests?: number;
   partyChildren?: number;
   preferencesDone: boolean;
+  /** True when the preference survey was submitted. It can be submitted with no answers. */
+  hasSurvey?: boolean;
   /** Paused when saved bookings could not be read. The phone does not call a night free. */
   storageReads?: 'ok' | 'paused';
   /** True when the night before check-in is empty. Omitted by older servers. Null when the calendar was not read. */

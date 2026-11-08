@@ -7,6 +7,7 @@ import { hostOnly } from '../../../_lib/auth';
 import type { AgentEnv, ReservationRecord } from '../../../_lib/agent/types';
 import { occupiedNights, type StaySpan } from '../../../../src/lib/availability';
 import { nightBeforeIsFree, checkoutNightIsFree, stayNightFlags } from '../../../../src/lib/journey';
+import { preferenceCardLines } from '../../../../src/lib/preference-choices';
 import { stayAccessSecrets } from '../../../../src/lib/stay-rules';
 import { addDays } from '../../../../src/lib/market/dates';
 import { storageReadPaused } from '../../../_lib/kv-json';
@@ -154,7 +155,15 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
     checkIn,
     checkOut,
     ...(partyGuests !== undefined ? { partyGuests, ...(partyChildren !== undefined ? { partyChildren } : {}) } : {}),
-    preferencesDone: Boolean(survey.completedAt),
+    /*
+     * A completed survey is not the same as having preferences. This stay's survey was submitted with
+     * only `{ surveyVariant: 'vip' }` and no answers, yet `Boolean(completedAt)` reported done — so the
+     * guest read "We have your preferences" in the journey and "This stay has no preference card yet"
+     * on the same page, both visible, saying the opposite. The journey line now waits for a card that
+     * actually carries answers, which is the same test the card section uses.
+     */
+    preferencesDone: preferenceCardLines(houseId, survey.answers ?? null).length > 0,
+    hasSurvey: Boolean(survey.completedAt),
     storageReads: calendarPaused ? 'paused' : 'ok',
     nightBeforeFree: flags.nightBeforeFree,
     checkoutNightFree: flags.checkoutNightFree,

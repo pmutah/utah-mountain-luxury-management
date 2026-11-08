@@ -89,6 +89,8 @@ export function arrivalJourney(input: {
   house?: string;
   /** True when every agreement topic was opened on this phone. That does not sign it. */
   agreementRead?: boolean;
+  /** True when the preference survey was submitted, even if it carried no answers. */
+  hasSurvey?: boolean;
 }): JourneyStep[] {
   const codeOpen = input.asOf >= input.opensOn;
   const steps: JourneyStep[] = [
@@ -101,9 +103,16 @@ export function arrivalJourney(input: {
     {
       id: 'group',
       title: 'Your group',
+      /*
+       * A survey that was submitted with no answers is neither "we have your preferences" nor a blank
+       * start. Saying the first was false — the card section on the same page correctly said there was
+       * no card — and saying "tell us about your group" reads as though nothing arrived.
+       */
       detail: input.preferencesDone
         ? 'We have your preferences.'
-        : 'Tell us about your group so we can set the house.',
+        : input.hasSurvey
+          ? 'Your preference card came in empty. Add what matters to your group whenever you like.'
+          : 'Tell us about your group so we can set the house.',
       state: input.preferencesDone ? 'done' : input.phase === 'after' ? 'later' : 'now',
     },
     {
