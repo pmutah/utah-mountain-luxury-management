@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { formatWhole } from '../lib/luxury';
 import { eachNight, isRealDay } from '../lib/market/dates';
 import { MAX_ASK_NIGHTS, liveCardRows, mergedCompCount } from '../lib/market/live';
 import type { HouseId } from '../lib/market/types';
@@ -174,7 +175,19 @@ export function LiveComps({ house, from, days = 90 }: { house: HouseId; from: st
       {!paused && cards && (
         <>
           <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="market-live-count">
+            {/*
+              This panel lists every saved comp, and the band table above lists only the ones that can set a
+              band. Both numbers are correct, and together they read as a contradiction — River showed
+              "6 saved comps" here and "5 of 5 saved comps" above, with nothing saying why. The second
+              sentence names the split so the two panels reconcile on the page.
+            */}
             {mergedCompCount(0, cards.length)}
+            {cards.length > 0 &&
+              (() => {
+                const banding = cards.filter((row) => row.setsBand).length;
+                if (banding === cards.length) return ' Every one of them can set the rate band.';
+                return ` ${banding} of ${cards.length} can set the rate band; the rest are listed here and left out, and each says why.`;
+              })()}
           </p>
           {needsHouse > 0 && (
             <p className="mt-2 text-sm" data-bot="market-live-needs-house">
@@ -205,8 +218,13 @@ export function LiveComps({ house, from, days = 90 }: { house: HouseId; from: st
                       <h3 className="mt-1 font-display text-xl leading-tight">{row.comp.name}</h3>
                     </div>
                     {row.ask !== null ? (
+                      /*
+                       * `formatWhole`, because this printed a bare `2400` beside a page where every other
+                       * price is `$2,400`. An unformatted number on a card of guest asks reads as a count,
+                       * and this is the one figure the host records by hand.
+                       */
                       <p className="uml-num text-base" data-bot="market-live-ask">
-                        {row.ask}
+                        {formatWhole(row.ask)}
                       </p>
                     ) : (
                       <p className="max-w-32 text-right text-xs text-[var(--uml-muted)]" data-bot="market-live-ask">

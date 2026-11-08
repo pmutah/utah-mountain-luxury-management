@@ -860,7 +860,15 @@ export function MarketBoard() {
       <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-amenities">
         <p className="uml-kicker">Sample amenities</p>
         <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
-          Counts use the sample comps on this page. Hiding one changes the count. These are not live listings, and nothing is posted.
+          {/*
+            It said "the sample comps on this page", which stopped being true once saved comps filled the table
+            above: a host would read the panel as describing the real listings directly above it. The counts
+            have never used them — `COMP_AMENITIES` is keyed by sample id — so the sentence now says which set
+            it counts and, when real comps are on screen, that their amenities were never saved.
+          */}
+          {board.summary.liveComps > 0
+            ? `These counts are the built-in sample set, not the ${board.summary.liveComps === 1 ? 'saved comp' : `${board.summary.liveComps} saved comps`} in the table above — nobody has saved amenities for ${board.summary.liveComps === 1 ? 'it' : 'them'}. Nothing is posted.`
+            : 'Counts use the sample comps on this page. Hiding one changes the count. These are not live listings, and nothing is posted.'}
         </p>
         <ul className="mt-4 space-y-2">
           {amenityGaps(house, listed).map((row) => (

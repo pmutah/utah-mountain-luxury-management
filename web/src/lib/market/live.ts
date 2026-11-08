@@ -203,7 +203,7 @@ export function liveCardRows(
   snaps: readonly LiveSnap[],
   nights: readonly string[],
   house: HouseId,
-): Array<{ comp: LiveComp; coverage: number; ask: number | null; line: string }> {
+): Array<{ comp: LiveComp; coverage: number; ask: number | null; line: string; setsBand: boolean }> {
   const index = indexSnaps(snaps);
   return comps
     .map((comp) => {
@@ -214,6 +214,12 @@ export function liveCardRows(
         coverage: cover.dates,
         ask: firstNight ? liveAsk(index, comp.id, firstNight) : null,
         line: liveCompLine(comp, cover.dates, house),
+        /*
+         * Whether this comp can set the band, as a fact rather than something a caller infers from the prose of
+         * `line`. The saved-comps panel lists every saved comp while the band table lists only the fitting ones,
+         * so the two showed "6 saved comps" and "5 of 5 saved comps" with nothing reconciling them.
+         */
+        setsBand: liveCompFits(house, comp.sleeps, comp.distanceMi, comp.isOwn, comp.minNights),
       };
     })
     .sort((a, b) => Number(b.comp.guestFavorite) - Number(a.comp.guestFavorite) || a.comp.distanceMi - b.comp.distanceMi)
