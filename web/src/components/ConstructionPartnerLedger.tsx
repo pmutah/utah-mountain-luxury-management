@@ -161,8 +161,26 @@ export function ConstructionPartnerLedger({
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Todd</p>
           <p className="text-2xl font-black text-white mt-1">{formatCurrency(summary.todd)}</p>
           <p className="text-[10px] text-slate-500 font-bold mt-1">
-            {summary.toddCount} {summary.toddCount === 1 ? 'receipt' : 'receipts'}
+            {/*
+              This said "47 receipts" for a partner with **47 expense lines and one receipt**. The figure is a row
+              count; the noun was wrong, and on a money card a wrong noun is a false assurance. It now says what it
+              counts, and the undocumented amount below carries the receipt story.
+            */}
+            {summary.toddCount} {summary.toddCount === 1 ? 'expense line' : 'expense lines'}
+            {summary.toddDocumented !== undefined && (
+              <> · {summary.toddDocumented} with a receipt</>
+            )}
           </p>
+          {/*
+            A receipt count is not coverage. This card showed "$1,096,812.40" beside "2 receipts" and nothing else, so
+            a partner saw a large settled figure with no sign that almost none of it was documented. The undocumented
+            amount is the number that belongs here.
+          */}
+          {summary.toddUndocumented > 0 && (
+            <p className="text-[10px] font-bold mt-1 text-amber-400" data-bot="ledger-todd-undocumented">
+              {formatCurrency(summary.toddUndocumented)} has no receipt
+            </p>
+          )}
         </div>
         <div className="bg-slate-950/70 p-5 rounded-3xl border border-amber-800/40">
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -170,11 +188,32 @@ export function ConstructionPartnerLedger({
           </p>
           <p className="text-2xl font-black text-amber-400 mt-1">{formatCurrency(summary.brandon)}</p>
           <p className="text-[10px] text-slate-500 font-bold mt-1">
-            {summary.brandonCount} {summary.brandonCount === 1 ? 'receipt' : 'receipts'}
+            {summary.brandonCount} {summary.brandonCount === 1 ? 'expense line' : 'expense lines'}
+            {summary.brandonDocumented !== undefined && (
+              <> · {summary.brandonDocumented} with a receipt</>
+            )}
           </p>
+          {summary.brandonUndocumented > 0 && (
+            <p className="text-[10px] font-bold mt-1 text-amber-400" data-bot="ledger-brandon-undocumented">
+              {formatCurrency(summary.brandonUndocumented)} has no receipt
+            </p>
+          )}
         </div>
       </div>
       <p className="text-sm font-black text-white mb-6">{settlement}</p>
+      {/*
+        One line for the whole ledger, because two amber notes can be read as two small exceptions. This says what
+        share of the spend is actually documented.
+      */}
+      {summary.undocumentedCount > 0 && (
+        <p className="text-sm text-amber-400 mb-4" data-bot="ledger-undocumented-line">
+          {summary.undocumentedCount === 1
+            ? '1 line has no receipt attached.'
+            : `${summary.undocumentedCount} lines have no receipt attached.`}{' '}
+          {formatCurrency(summary.toddUndocumented + summary.brandonUndocumented)} of{' '}
+          {formatCurrency(summary.totalAssigned)} in partner spend is undocumented.
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-2 mb-6">
         <button
