@@ -1,4 +1,5 @@
 import { houseStay } from './house-stay';
+import { stepRows } from './clean-progress';
 import { isRealDay } from './market/dates';
 import type { HouseId } from './market/types';
 
@@ -32,6 +33,11 @@ export type CleanJobView = {
   sameDay: boolean;
   /** The steps for this turn, already in plain language. */
   steps: string[];
+  /**
+   * The same steps with the id each one is ticked by. A client must send `id`, not `label` — the route filters
+   * against `stepIds` and drops anything else, which is how every tick was silently discarded.
+   */
+  stepRows: Array<{ id: string; label: string }>;
   /** Where the keys are and where to park, from the published guide. */
   arrive: string;
   rules: string[];
@@ -104,6 +110,19 @@ export function cleanJobView(input: {
     gapNights: input.gapNights,
     sameDay,
     steps: cleanSteps(sameDay, input.lang ?? 'en'),
+    /*
+     * The ids a tick must use, paired with the label the cleaner reads.
+     *
+     * The payload sent `steps` as plain labels only, while `POST /api/clean/:token` filters whatever it is given
+     * against `stepIds(sameDay)` — `window`, `beds`, `linens`, `kitchen`, `baths`, `floors`, `photos`. A client could
+     * only ever echo a label, so **every tick was silently dropped**: the POST answered `ok: true`, a progress row
+     * was written with an empty `done`, and the box re-rendered unticked. Measured on production — labels produced
+     * `done: []`, ids produced `done: ["beds","window"]` on the same route.
+     *
+     * A tick that reports success and saves nothing is the same defect as a label with nothing behind it, and it is
+     * worse on a cleaner's phone, because they have no way to tell that their work did not register.
+     */
+    stepRows: stepRows(sameDay, input.lang ?? 'en'),
     arrive: `${stay.arrival} ${stay.parking}`,
     rules,
   };
