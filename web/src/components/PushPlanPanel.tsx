@@ -160,6 +160,41 @@ export function PushPlanPanel() {
     }
   }
 
+  /**
+   * Approve every night this house's plan proposes, in one write.
+   *
+   * The 8% cap means a house at the bottom of its band needs many days of approvals, and doing them one at a
+   * time is what makes a host stop halfway — a seven-night plan climbing for two weeks was about a hundred
+   * clicks. Each night is still checked on its own; the response counts the refusals and names them.
+   */
+  async function approveAll(house: string, nights: Array<{ date: string; to: number; source?: string }>) {
+    const usable = nights.filter((night) => night.source !== 'sample');
+    if (usable.length === 0) {
+      setError('Every night in this plan is priced off the sample set, so none can be approved.');
+      return;
+    }
+    setBusy(`${house}|all`);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await api.approveRateBatch({
+        house,
+        nights: usable.map((night) => ({ date: night.date, guest: night.to })),
+      });
+      setNotice(result.line);
+      if (result.refused > 0) {
+        const first = result.nights.find((night) => !night.ok);
+        if (first) setError(`${first.date}: ${first.reason ?? 'refused'}`);
+      }
+      load();
+      loadApproved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Those nights could not be approved.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <section className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="push-plan">
       <p className="uml-kicker">What a rate push would change</p>
@@ -303,6 +338,24 @@ export function PushPlanPanel() {
                         </span>
                       )}
                     </p>
+                    {/*
+                      One button for the whole plan. The 8% cap needs one approval per night per day, so a house
+                      at the bottom of its band needs dozens — and doing them one at a time is where a host gives
+                      up. A single night keeps its own button below for the case where the host wants just one.
+                    */}
+                    {plan.nights.filter((night) => night.source !== 'sample').length > 1 && (
+                      <button
+                        type="button"
+                        disabled={busy === `${plan.house}|all`}
+                        onClick={() => void approveAll(plan.house, plan.nights)}
+                        data-bot={`push-plan-approve-all-${plan.house}`}
+                        className="rounded-full border border-[var(--uml-line)] px-3 py-1 text-xs uppercase tracking-[0.12em] disabled:opacity-50"
+                      >
+                        {busy === `${plan.house}|all`
+                          ? 'Saving…'
+                          : `Approve all ${plan.nights.filter((night) => night.source !== 'sample').length} nights`}
+                      </button>
+                    )}
                     <ul className="flex flex-wrap gap-2">
                       {plan.nights
                         .filter((night) => night.source !== 'sample')

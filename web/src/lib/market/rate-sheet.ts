@@ -182,6 +182,24 @@ export function withApprovedRateReport(
   return trimSheet(next);
 }
 
+/**
+ * Many rows in **one** write.
+ *
+ * A batch that called `withApprovedRateReport` per night would rewrite the whole sheet each time — eight
+ * nights meant eight full-value KV writes, which is what produced the 503s I hit climbing the ladder one
+ * approval at a time. This replaces every matching night in a single pass and trims once, so approving a
+ * seven-night plan costs one write rather than seven.
+ */
+export function withApprovedRates(
+  sheet: readonly ApprovedRate[],
+  rows: readonly ApprovedRate[],
+): { sheet: ApprovedRate[]; dropped: number } {
+  if (rows.length === 0) return { sheet: [...sheet], dropped: 0 };
+  const replacing = new Set(rows.map((row) => `${row.house}|${row.date}`));
+  const kept = sheet.filter((entry) => !replacing.has(`${entry.house}|${entry.date}`));
+  return trimSheet([...kept, ...rows]);
+}
+
 /** The sheet without one house's row for one night. Approving a night can be undone. */
 export function withoutApprovedRate(sheet: readonly ApprovedRate[], house: string, date: string): ApprovedRate[] {
   return sheet.filter((entry) => !(entry.house === house && entry.date === date));

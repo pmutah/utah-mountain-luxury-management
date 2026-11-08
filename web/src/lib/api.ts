@@ -891,6 +891,22 @@ export const api = {
       `/api/pricing/approved-rates?house=${encodeURIComponent(house)}&date=${encodeURIComponent(date)}`,
       { method: 'DELETE' },
     ),
+  /**
+   * Approve a whole plan in one write.
+   *
+   * The 8% cap needs one approval per night per day, so a two-week climb on a seven-night plan was ~100
+   * single-night calls. Each night still carries its own outcome, so a refused night is visible rather than
+   * swallowed.
+   */
+  approveRateBatch: (body: { house: string; nights: Array<{ date: string; guest: number }> }) =>
+    request<{
+      ok: boolean;
+      approved: number;
+      refused: number;
+      dropped: number;
+      line: string;
+      nights: Array<{ date: string; ok: boolean; written: number; reason: string | null }>;
+    }>('/api/pricing/approved-rates', { method: 'PUT', body: JSON.stringify(body) }),
   getBookingRequests: () =>
     request<{
       rows:

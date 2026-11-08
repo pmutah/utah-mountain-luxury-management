@@ -6,6 +6,7 @@ import { indexSnaps, liveCompFits, toLiveComp, toLiveSnaps, type LiveComp, type 
 import {
   toApprovedRate,
   withApprovedRateReport,
+  withApprovedRates,
   withoutApprovedRate,
   type ApprovedRate,
 } from '../../src/lib/market/rate-sheet';
@@ -240,6 +241,23 @@ export async function saveApprovedRate(
   row: ApprovedRate,
 ): Promise<{ sheet: ApprovedRate[]; dropped: number }> {
   const written = withApprovedRateReport(await loadApprovedRates(env), row);
+  await kvPut(env, KV_SHEET, written.sheet);
+  return written;
+}
+
+/**
+ * Many nights in one write.
+ *
+ * A loop over `saveApprovedRate` rewrites the whole sheet per night: approving a seven-night plan meant seven
+ * full-value KV writes, and firing them back to back is what produced transient 503s while I climbed the
+ * ladder one approval at a time on production. One read, one write, one trim.
+ */
+export async function saveApprovedRates(
+  env: SettingsEnv,
+  rows: readonly ApprovedRate[],
+): Promise<{ sheet: ApprovedRate[]; dropped: number }> {
+  if (rows.length === 0) return { sheet: await loadApprovedRates(env), dropped: 0 };
+  const written = withApprovedRates(await loadApprovedRates(env), rows);
   await kvPut(env, KV_SHEET, written.sheet);
   return written;
 }

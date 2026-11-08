@@ -4,10 +4,11 @@ import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { loadActiveHolds } from '../../_lib/hold-store';
 import { storageReadPaused } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
-import { clearApprovedRate, loadApprovedRates, saveApprovedRate } from '../../_lib/pricing-store';
+import { clearApprovedRate, loadApprovedRates, saveApprovedRate, saveApprovedRates } from '../../_lib/pricing-store';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { isRealDay } from '../../../src/lib/market/dates';
 import { approvalBase, approvedGuestRate, sheetLine, sheetUsable, type ApprovedRate } from '../../../src/lib/market/rate-sheet';
+import { batchRows, decideBatch } from '../../../src/lib/market/rate-batch';
 import { nightAsk } from '../../../src/lib/market/rates';
 
 type HouseId = 'ranch' | 'lindon' | 'river';
@@ -190,9 +191,134 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
   );
 };
 
-/** Take one approval back. The night returns to the published card. */
-export const onRequestDelete: PagesFunction<SettingsEnv> = async ({ request, env }) => {
+/**
+ * Approve a whole plan in one call.
+ *
+ * The ladder needs one approval per night per day, and a seven-night plan climbing for two weeks is about a
+ * hundred single-night calls — which is exactly the kind of work a host stops doing halfway. This takes the
+ * nights a plan proposes and writes them in **one** KV write.
+ *
+ * It is not a bypass. `decideBatch` applies the same per-night checks the single route does — booked or closed,
+ * the floor, the 8% cap measured from the price being replaced, the ceiling — and reports each night's own
+ * outcome, so a refused night in the middle of a batch is visible rather than swallowed.
+ */
+export const onRequestPut: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
+  let body: { house?: unknown; nights?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return corsJson(request, { error: 'Invalid JSON' }, 400);
+  }
+  const house = houseFrom(body.house);
+  if (!house) return corsJson(request, { error: 'Choose the Ranch, the Lindon House, or the River House.' }, 400);
+  if (!Array.isArray(body.nights) || body.nights.length === 0) {
+    return corsJson(request, { error: 'Send at least one night to approve.' }, 400);
+  }
+  const requested: Array<{ date: string; guest: number }> = [];
+  for (const raw of body.nights) {
+    if (!raw || typeof raw !== 'object') continue;
+    const row = raw as { date?: unknown; guest?: unknown };
+    const date = typeof row.date === 'string' ? row.date.trim() : '';
+    const guest = typeof row.guest === 'number' && Number.isFinite(row.guest) ? Math.round(row.guest) : 0;
+    if (!isRealDay(date) || guest <= 0) continue;
+    requested.push({ date, guest });
+  }
+  if (requested.length === 0) {
+    return corsJson(request, { error: 'None of those nights is a real date with a price above zero.' }, 400);
+  }
+
+  let taken: string[] = [];
+  let closed: string[] = [];
+  let sheet: ApprovedRate[] = [];
+  try {
+    const stays = await getAllReservations(env);
+    const blocks = await loadCalendarBlocks(env);
+    const holds = await loadActiveHolds(env);
+    const nightsOf = (checkIn: string, checkOut: string): string[] => {
+      const out: string[] = [];
+      let cursor = checkIn;
+      while (cursor < checkOut) {
+        out.push(cursor);
+        cursor = addDaysLocal(cursor, 1);
+      }
+      return out;
+    };
+    for (const stay of stays) {
+      if (stay.propertyId !== house || stay.status === 'cancelled') continue;
+      taken.push(...nightsOf(stay.checkIn, stay.checkOut));
+    }
+    for (const block of blocks) {
+      if (block.propertyId !== house) continue;
+      closed.push(...nightsOf(block.start, block.end));
+    }
+    for (const hold of holds) {
+      if (hold.propertyId !== house) continue;
+      taken.push(...nightsOf(hold.checkIn, hold.checkOut));
+    }
+    sheet = await loadApprovedRates(env);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(
+        request,
+        { error: 'The calendar could not be read, so no price was approved. Nothing was written.' },
+        503,
+      );
+    }
+    const message = err instanceof Error ? err.message : 'The calendar failed';
+    return corsJson(request, { error: message }, 500);
+  }
+
+  const plan = decideBatch({
+    house,
+    requested,
+    sheet,
+    card: (date) => {
+      const ask = nightAsk(house, date);
+      return { guest: ask.guest, floorGuest: ask.floorGuest };
+    },
+    taken,
+    closed,
+  });
+
+  const rows = batchRows(plan, new Date().toISOString());
+  if (rows.length === 0) {
+    return corsJson(request, { ok: false, ...plan, nights: plan.nights, written: 0 }, 200, {
+      'Cache-Control': 'no-store',
+    });
+  }
+  let written;
+  try {
+    written = await saveApprovedRates(env, rows);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(request, { error: 'The approved prices could not be saved. Nothing was written.' }, 503);
+    }
+    const message = err instanceof Error ? err.message : 'The save failed';
+    return corsJson(request, { error: message }, 500);
+  }
+  const droppedLine =
+    written.dropped > 0
+      ? ` The sheet was full, so ${written.dropped === 1 ? 'the furthest-out night was' : `${written.dropped} furthest-out nights were`} dropped.`
+      : '';
+  return corsJson(
+    request,
+    {
+      ok: plan.refused === 0,
+      house,
+      nights: plan.nights,
+      approved: plan.approved,
+      refused: plan.refused,
+      dropped: written.dropped,
+      line: `${plan.line}${droppedLine} ${sheetLine(written.sheet, house)}`.trim(),
+    },
+    200,
+    { 'Cache-Control': 'no-store' },
+  );
+};
+
+/** Take one approval back. The night returns to the published card. */
+export const onRequestDelete: PagesFunction<SettingsEnv> = async ({ request, env }) => {  if (!hostOnly(request, env)) return hostDenied(request, env);
   const url = new URL(request.url);
   const house = houseFrom(url.searchParams.get('house'));
   const date = url.searchParams.get('date') ?? '';
