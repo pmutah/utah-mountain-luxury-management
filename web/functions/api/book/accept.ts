@@ -259,11 +259,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     lindon: 'the Lindon House',
   };
   const offNames = guideOff.map((house) => HOUSE_LABEL[house]);
+  /*
+   * Where to find the link again.
+   *
+   * The accept message shows the guest page once, in a transient line that the next inbox load replaces. Email is the
+   * usual way the guest receives it, and on this deployment email does not send at all — so a host who dismisses the line
+   * has no link and no obvious way back. The Guests page has always carried it; nothing said so.
+   */
   const portalNote = portalError
     ? `A guest link could not be made: ${portalError}`
     : offNames.length > 0
-      ? `The guest app is off for ${offNames.join(' and ')}, so ${offNames.length === 1 ? 'that link' : 'those links'} will say the app is off. Turn it on in Guests before the guest arrives.`
-      : null;
+      ? `The guest app is off for ${offNames.join(' and ')}, so ${offNames.length === 1 ? 'that link' : 'those links'} will say the app is off. Turn it on in Guests before the guest arrives. The link stays on the Guests page.`
+      : portalLinks.some((row) => row.link)
+        ? 'The guest page stays on the Guests page, so you can copy it again after this message goes away.'
+        : null;
 
   // The guest is told the stay is confirmed. A failed send leaves the booking in place.
   const mail = guestAcceptedMail({
