@@ -88,22 +88,29 @@ export function wholeLikelihoodFor(
 }
 
 /**
- * The units worth offering for a range: the ones free on **every** night in it.
+ * The units worth offering for a range: the ones free on **every** night in it, and that carry a real price.
  *
  * A unit free on only part of a range cannot be sold for that range, and offering it would promise nights it does not
  * have. This is why the caller passes availability rather than a single flag.
+ *
+ * A unit with no price is not offerable either. It was possible to pass `0` for an unpriced unit, and the engine would
+ * then sum it as a free night — a split that "earns" nothing while costing a turnover. So the price is checked here,
+ * where the decision is made, not trusted from the caller.
  */
 export function offerableUnits(
   freeUnitsByNight: Readonly<Record<string, number>>,
   unitFreeNightly: Readonly<Record<string, ReadonlySet<string>>>,
   from: string,
   until: string,
+  unitNightly?: Readonly<Record<string, number>>,
 ): RiverUnitId[] {
   const nights = nightsBetween(from, until);
   if (nights.length === 0) return [];
-  return RIVER_UNITS.filter((unit) =>
-    nights.every((night) => (freeUnitsByNight[night] ?? 0) > 0 && unitFreeNightly[unit]?.has(night)),
-  );
+  return RIVER_UNITS.filter((unit) => {
+    // A unit with no price is not sellable, so it cannot be part of a split.
+    if (unitNightly && !((unitNightly[unit] ?? 0) > 0)) return false;
+    return nights.every((night) => (freeUnitsByNight[night] ?? 0) > 0 && unitFreeNightly[unit]?.has(night));
+  });
 }
 
 /**
@@ -139,7 +146,7 @@ export function decideSplit(input: {
   // One whole-house clean, once, if anything sells.
   const wholeNet = wholeExpected - (wholeExpected > 0 ? defaults.wholeCleaning : 0);
 
-  const units = offerableUnits(input.freeUnitsByNight, input.unitFreeNightly, input.from, input.until);
+  const units = offerableUnits(input.freeUnitsByNight, input.unitFreeNightly, input.from, input.until, input.prices.unitNightly);
   const unitProbability = isOffPeak || (!peak && nights.some((n) => offPeak(n, defaults)))
     ? defaults.unitLikelihood.offPeak
     : defaults.unitLikelihood.peak;

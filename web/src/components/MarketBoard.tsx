@@ -9,6 +9,7 @@ import { boardFromOverview, loadMarketOverview } from '../lib/market/overview-cl
 import { boardSourceLine } from '../lib/market/live';
 import { LiveComps } from './LiveComps';
 import { PushPlanPanel } from './PushPlanPanel';
+import { RiverSplitPanel } from './RiverSplitPanel';
 import { addDays, denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
 import { forwardWindows, sampleBookedShare } from '../lib/market/forward';
@@ -888,6 +889,12 @@ export function MarketBoard() {
       </div>
 
       <LiveComps house={house} from={today} />
+
+      {/*
+        Whole or split. Only the Riverhouse is sold in parts, so the other two houses get no card rather than a card that
+        says "not applicable".
+      */}
+      {house === 'river' && <RiverSplitPanel from={today} />}
 
       <PushPlanPanel />
 

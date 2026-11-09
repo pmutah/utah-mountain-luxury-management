@@ -76,6 +76,11 @@ const HOST_ROUTES = [
    * which nights each unit can still be sold. It publishes nothing to another channel.
    */
   'pricing/river-units.ts',
+  /*
+   * The Riverhouse split decision. Host only: it reads unit prices and the calendar and answers which of whole or parts
+   * to offer. It writes nothing, blocks nothing, and publishes nothing to another channel.
+   */
+  'pricing/river-split.ts',
   'guest-guide.ts',
   'clean/links.ts',
   'clean/progress.ts',

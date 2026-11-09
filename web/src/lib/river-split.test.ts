@@ -181,3 +181,35 @@ test('every decision carries a reason naming real money', () => {
     assert.match(d.reason, /\$/, `a decision did not name a number: ${d.reason}`);
   }
 });
+
+test('a unit with no price is never offered in a split', () => {
+  /*
+   * The route passes 0 for an unpriced part, and the engine used to sum that as a free night: a split that earns
+   * nothing while still costing a turnover. The price is now checked where the decision is made.
+   */
+  const byNight: Record<string, number> = {};
+  const perUnit: Record<string, Set<string>> = {};
+  for (const night of ['2026-12-14', '2026-12-15']) {
+    byNight[night] = 3;
+    for (const unit of RIVER_UNITS) perUnit[unit] = new Set([...perUnit[unit] ?? [], night]);
+  }
+  const priced = { 'garage-suite': 320, 'recreation-wing': 640, 'main-lodge': 0 } as Record<RiverUnitId, number>;
+  const offered = offerableUnits(byNight, perUnit, '2026-12-14', '2026-12-16', priced);
+  assert.deepEqual(offered, ['garage-suite', 'recreation-wing'], 'the unpriced part was offered');
+});
+
+test('a split with every unit unpriced offers nothing at all', () => {
+  const byNight: Record<string, number> = { '2026-12-14': 3 };
+  const perUnit: Record<string, Set<string>> = {};
+  for (const unit of RIVER_UNITS) perUnit[unit] = new Set(['2026-12-14']);
+  const none = { 'garage-suite': 0, 'recreation-wing': 0, 'main-lodge': 0 } as Record<RiverUnitId, number>;
+  assert.deepEqual(offerableUnits(byNight, perUnit, '2026-12-14', '2026-12-15', none), []);
+});
+
+test('omitting the price map keeps the old behaviour, so a caller is not silently narrowed', () => {
+  const byNight: Record<string, number> = { '2026-12-14': 3 };
+  const perUnit: Record<string, Set<string>> = {};
+  for (const unit of RIVER_UNITS) perUnit[unit] = new Set(['2026-12-14']);
+  // No price argument: availability alone decides, which is what every earlier caller relied on.
+  assert.deepEqual(offerableUnits(byNight, perUnit, '2026-12-14', '2026-12-15'), [...RIVER_UNITS]);
+});

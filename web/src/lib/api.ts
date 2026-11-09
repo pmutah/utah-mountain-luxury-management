@@ -966,6 +966,33 @@ export const api = {
       sellable: boolean;
       publishes?: boolean;
     }>('/api/pricing/river-units', { method: 'PUT', body: JSON.stringify(body) }),
+  /**
+   * Whether to sell the Riverhouse whole or in parts for a range.
+   *
+   * `decision: null` is a real answer, not an error: it means no part has a price, so there is nothing to split and the
+   * route says which part is missing.
+   */
+  getRiverSplit: (from: string, until: string) =>
+    request<{
+      decision: {
+        choice: 'whole' | 'split' | 'both';
+        reason: string;
+        wholeExpected: number;
+        splitExpected: number;
+        units: string[];
+        heldWholeForPeak?: boolean;
+      } | null;
+      mode?: string;
+      from?: string;
+      until?: string;
+      nights?: number;
+      wholeNightly?: number;
+      pricedUnits?: string[];
+      publishes?: boolean;
+      writeNote?: string;
+      reason?: string;
+      storageReads?: 'ok' | 'paused';
+    }>(`/api/pricing/river-split?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}`),
   getBookingRequests: () =>
     request<{
       rows:
