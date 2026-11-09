@@ -8,12 +8,11 @@ import { nightAsk } from '../../../src/lib/market/rates';
 import { denverToday, addDays } from '../../../src/lib/market/dates';
 import { RIVER_UNITS, riverAvailability, type UnitSpan } from '../../../src/lib/river-units';
 import { unitRateState } from '../../../src/lib/river-unit-rates';
-import { decideSplit, DEFAULT_SPLIT, type SplitMode } from '../../../src/lib/river-split';
+import { decideSplit, DEFAULT_SPLIT } from '../../../src/lib/river-split';
+import { applySplitMode, readSplitMode } from '../../../src/lib/river-split-mode';
 import type { SettingsEnv } from '../../_lib/kv';
 
 type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string };
-
-const MODES: SplitMode[] = ['auto', 'suggest-only', 'off'];
 
 /**
  * Whether to sell the Riverhouse whole or in parts, for one range, from real data.
@@ -31,8 +30,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const from = url.searchParams.get('from') ?? denverToday();
   const untilParam = url.searchParams.get('until');
   const until = untilParam ?? addDays(from, 14);
-  const modeParam = url.searchParams.get('mode');
-  const mode: SplitMode = MODES.includes(modeParam as SplitMode) ? (modeParam as SplitMode) : 'auto';
+  const mode = readSplitMode(url.searchParams.get('mode'));
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(until) || until <= from) {
     return corsJson(request, { error: 'Name a real range: until has to be after from.' }, 400);
@@ -121,12 +119,23 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     wholeBlocked,
     defaults: DEFAULT_SPLIT,
   });
+  /*
+   * The host's mode has to change the answer, or it is not a setting.
+   *
+   * `off` forces the house whole and strips the units; `suggest-only` keeps the answer and says nothing acts on it. The
+   * engine's own choice is kept beside the applied one, so a host who turned splitting off can still see what it costs.
+   */
+  const applied = applySplitMode(decision, mode);
 
   return corsJson(
     request,
     {
-      decision,
+      decision: { ...decision, choice: applied.choice, units: applied.units },
       mode,
+      /** What the engine chose before the mode, so an override is visible rather than silent. */
+      engineChoice: applied.engineChoice,
+      overridden: applied.overridden,
+      modeLine: applied.modeLine,
       from,
       until,
       nights: nights.length,

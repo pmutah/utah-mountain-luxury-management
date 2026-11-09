@@ -972,7 +972,7 @@ export const api = {
    * `decision: null` is a real answer, not an error: it means no part has a price, so there is nothing to split and the
    * route says which part is missing.
    */
-  getRiverSplit: (from: string, until: string) =>
+  getRiverSplit: (from: string, until: string, mode?: 'auto' | 'suggest-only' | 'off') =>
     request<{
       decision: {
         choice: 'whole' | 'split' | 'both';
@@ -983,6 +983,10 @@ export const api = {
         heldWholeForPeak?: boolean;
       } | null;
       mode?: string;
+      /** What the engine chose before the mode, and whether the mode overrode it. */
+      engineChoice?: string;
+      overridden?: boolean;
+      modeLine?: string | null;
       from?: string;
       until?: string;
       nights?: number;
@@ -992,7 +996,11 @@ export const api = {
       writeNote?: string;
       reason?: string;
       storageReads?: 'ok' | 'paused';
-    }>(`/api/pricing/river-split?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}`),
+    }>(
+      `/api/pricing/river-split?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}${
+        mode ? `&mode=${encodeURIComponent(mode)}` : ''
+      }`,
+    ),
   getBookingRequests: () =>
     request<{
       rows:

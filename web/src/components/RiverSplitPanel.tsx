@@ -32,6 +32,11 @@ const SHORT = new Map<string, string>(RIVER_UNIT_DETAIL.map((unit) => [unit.id a
 
 export function RiverSplitPanel({ from }: { from: string }) {
   const until = addDays(from, 14);
+  /*
+   * The host's split mode. It changes the answer, so it has to be visible and switchable here: a setting that lives only
+   * in a URL is one a host will never find.
+   */
+  const [mode, setMode] = useState<'auto' | 'suggest-only' | 'off'>('auto');
   const [data, setData] = useState<{
     decision: Decision | null;
     pricedUnits?: string[];
@@ -39,13 +44,17 @@ export function RiverSplitPanel({ from }: { from: string }) {
     reason?: string;
     publishes?: boolean;
     writeNote?: string;
+    engineChoice?: string;
+    overridden?: boolean;
+    modeLine?: string | null;
   } | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'paused' | 'error'>('loading');
 
   useEffect(() => {
     let cancel = false;
+    setState('loading');
     void api
-      .getRiverSplit(from, until)
+      .getRiverSplit(from, until, mode)
       .then((result) => {
         if (cancel) return;
         if (result.storageReads === 'paused') {
@@ -61,7 +70,7 @@ export function RiverSplitPanel({ from }: { from: string }) {
     return () => {
       cancel = true;
     };
-  }, [from, until]);
+  }, [from, until, mode]);
 
   const decision = data?.decision ?? null;
 
@@ -76,6 +85,33 @@ export function RiverSplitPanel({ from }: { from: string }) {
         The house is held whole whenever it can plausibly sell whole, and offered in parts only to fill nights it will not
         take. Every answer below names the money it compared.
       </p>
+
+      {/*
+        The mode changes the answer, so it lives on the page. Auto acts on the decision, suggest-only is advice, and off
+        never offers the parts — each one alters what is reported below.
+      */}
+      <div className="mt-4 flex flex-wrap gap-2" data-bot="river-split-modes" role="group" aria-label="Split mode">
+        {(
+          [
+            ['auto', 'Auto'],
+            ['suggest-only', 'Suggest only'],
+            ['off', 'Off'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            data-bot={`river-split-mode-${value}`}
+            aria-pressed={mode === value}
+            onClick={() => setMode(value)}
+            className={`min-h-11 rounded-full border px-3 py-2 text-xs uppercase tracking-[0.12em] ${
+              mode === value ? 'border-[var(--uml-gold)] text-[var(--uml-gold)]' : 'border-[var(--uml-line)]'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {state === 'loading' && <p className="mt-4 text-sm">Working out the next two weeks…</p>}
       {state === 'paused' && (
@@ -104,6 +140,20 @@ export function RiverSplitPanel({ from }: { from: string }) {
           <p className="mt-1 text-sm" data-bot="river-split-reason">
             {decision.reason}
           </p>
+          {/*
+            An override must be visible, not silent. When the mode changed the engine's choice the card says so and names
+            what the engine wanted, so a host can see what turning splitting off is costing them.
+          */}
+          {data?.overridden && (
+            <p className="mt-2 text-sm text-amber-300/90" data-bot="river-split-overridden" data-engine={data.engineChoice}>
+              Overridden: the engine chose {data.engineChoice}. {data.modeLine}
+            </p>
+          )}
+          {!data?.overridden && data?.modeLine && (
+            <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="river-split-modeline">
+              {data.modeLine}
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap gap-4 text-xs text-[var(--uml-muted)]">
             <span data-bot="river-split-whole">Whole house expected ${decision.wholeExpected}</span>
             <span data-bot="river-split-parts">Parts expected ${decision.splitExpected}</span>
