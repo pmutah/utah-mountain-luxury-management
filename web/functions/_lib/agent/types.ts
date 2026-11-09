@@ -27,6 +27,14 @@ export interface ReservationRecord {
   guestPhone?: string;
   /** Airbnb / Hospitable / VRBO confirmation code (e.g. HMB9PP5E8F). */
   confirmationCode?: string;
+  /**
+   * Which parts of the Riverhouse this stay occupies.
+   *
+   * Absent means the **whole house**, which is what every stay recorded before the house was sold in parts means — so
+   * no existing booking changes meaning, and all of them keep blocking every part. Only a stay sold as one or two
+   * parts carries a list here.
+   */
+  units?: string[];
   surveyToken?: string;
   surveySentAt?: string;
   surveyChannel?: 'email' | 'sms' | 'none';

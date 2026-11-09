@@ -1,11 +1,15 @@
 import { addDays } from './market/dates';
 import type { HouseId } from './market/types';
+import { RIVER_UNIT_DETAIL } from './river-units';
 
 const NAME: Record<HouseId, string> = {
   river: 'The River House',
   ranch: 'The Ranch House',
   lindon: 'The Lindon House',
 };
+
+/** The parts by name, so a host reads "River Main Lodge" rather than a slug. */
+const RIVER_UNIT_NAME = new Map(RIVER_UNIT_DETAIL.map((unit) => [unit.id, unit.name]));
 
 function isHouse(id: string): id is HouseId {
   return id === 'river' || id === 'ranch' || id === 'lindon';
@@ -36,6 +40,11 @@ export type BookingRequestRow = {
   returning?: boolean;
   createdAt?: string;
   note?: string;
+  /**
+   * Which parts of the Riverhouse this request takes. Absent means the whole house, so every request taken before
+   * parts existed still reads as the whole house and blocks all three.
+   */
+  units?: string[];
 };
 
 /** A request is still open until a stay with its dates exists on that house. Nothing is written here. */
@@ -57,6 +66,13 @@ export type InboxRow = {
   /** True when the request is older than the reply window. It is not called late by the calendar. */
   stale: boolean;
   line: string;
+  /**
+   * Which parts of the Riverhouse the request takes, already named for a host.
+   *
+   * Null for a whole-house request, which is every request made before the house was sold in parts. A host must see
+   * this before accepting: accepting a part request books only those parts, and the rest of the house stays sellable.
+   */
+  partLine?: string;
 };
 
 const REPLY_DAYS = 2;
@@ -128,6 +144,19 @@ export function bookingInbox(
         : '';
     const state = takenNow ? 'Those nights are already on the calendar.' : 'Those nights are not on the calendar.';
     const line = `${houseLine}, ${dates}, ${party}${kids}. ${state} Nothing is booked.`;
+    /*
+     * The part request is named separately from the house, because "River" alone would tell a host the whole house is
+     * wanted. An empty list or no list means the whole house, which is what every earlier request means.
+     */
+    const partIds = Array.isArray(request.units) ? request.units.filter((unit) => typeof unit === 'string') : [];
+    // Canonical order, so the same parts always read the same way here and on the booking gate.
+    const orderedParts = RIVER_UNIT_DETAIL.filter((detail) => partIds.includes(detail.id)).map((detail) => detail.id);
+    const unknownParts = partIds.filter((unit) => !orderedParts.includes(unit as never));
+    const namedParts = [...orderedParts, ...unknownParts];
+    const partLine =
+      namedParts.length === 0
+        ? undefined
+        : `${namedParts.map((unit) => RIVER_UNIT_NAME.get(unit as never) ?? unit).join(' and ')} only, not the whole house.`;
     rows.push({
       id: request.id,
       houses,
@@ -138,6 +167,7 @@ export function bookingInbox(
       taken: takenNow,
       stale: ageDays !== null && ageDays > REPLY_DAYS,
       line: line.includes('$') ? line.replace(/\$\S+/g, '') : line,
+      ...(partLine ? { partLine } : {}),
     });
     if (rows.length >= limit) break;
   }

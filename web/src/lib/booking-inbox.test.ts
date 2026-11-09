@@ -144,3 +144,21 @@ test('the inbox stops at the limit and the summary counts the open ones', () => 
   assert.match(summary, /0 still name a free night/);
   assert.match(inboxSummary([]), /No direct requests are waiting/);
 });
+
+test('a part request names the part, and a whole-house request never does', () => {
+  const rows = bookingInbox([request({ units: ['main-lodge', 'garage-suite'] })], { river: [] }, '2026-11-07');
+  assert.equal(rows.length, 1);
+  const partLine = rows[0]!.partLine;
+  assert.ok(partLine, 'a part request produced no part line, so a host would read it as the whole house');
+  assert.match(partLine, /River Garage Suite and River Main Lodge/);
+  assert.match(partLine, /not the whole house/);
+  // A whole-house request carries no part line at all.
+  const whole = bookingInbox([request()], { river: [] }, '2026-11-07');
+  assert.equal(whole[0]!.partLine, undefined, 'a whole-house request claimed to be a part');
+  // An empty list means the whole house, which is what every earlier request means.
+  const empty = bookingInbox([request({ units: [] })], { river: [] }, '2026-11-07');
+  assert.equal(empty[0]!.partLine, undefined, 'an empty unit list was read as a part');
+  // A part name we do not sell is shown as typed rather than dropped silently.
+  const odd = bookingInbox([request({ units: ['attic'] })], { river: [] }, '2026-11-07');
+  assert.match(odd[0]!.partLine ?? '', /attic/);
+});

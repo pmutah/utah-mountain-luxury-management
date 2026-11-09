@@ -256,6 +256,15 @@ export function RequestInbox() {
               className="rounded-2xl border border-slate-800 px-4 py-3"
             >
               {row.line}
+              {/*
+                A part request must say which part before the host accepts it. "The River House" alone reads as the
+                whole house, and accepting would then look like it took the entire house.
+              */}
+              {row.partLine && (
+                <p className="mt-1 text-xs text-amber-300/90" data-bot="request-inbox-part">
+                  {row.partLine}
+                </p>
+              )}
               {row.stale && !row.taken && (
                 <span className="ml-1 text-slate-500">This request has waited more than 2 days.</span>
               )}

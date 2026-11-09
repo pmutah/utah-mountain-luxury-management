@@ -12,6 +12,8 @@ import { guestRequestReceipt, sentLine } from '../../../src/lib/booking-mail';
 import { nightsBetween } from '../../../src/lib/booking-accept';
 import { returningGuest, returningLine, type ReturningCheck } from '../../../src/lib/returning-guest';
 import { addHolds, loadHolds } from '../../_lib/hold-store';
+import { loadRiverUnitRates } from '../../_lib/pricing-store';
+import { unitRequestCheck } from '../../../src/lib/river-unit-request';
 import { denverToday } from '../../../src/lib/market/dates';
 
 interface BookingRequest {
@@ -28,6 +30,11 @@ interface BookingRequest {
   alsoPropertyId?: string;
   guests?: number;
   children?: number;
+  /**
+   * Which parts of the Riverhouse this request takes. Absent means the whole house, which is what every request made
+   * before parts existed means — so no existing request changes meaning.
+   */
+  units?: string[];
   /** The guest's own link to this request. It is the credential, so it is never shown on the host desk. */
   statusToken?: string;
 }
@@ -111,18 +118,57 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
       503,
     );
   }
-  const hold = bookingRequestHold({
-    propertyId,
-    alsoPropertyId,
-    checkIn: entry.checkIn,
-    checkOut: entry.checkOut,
-    stays: staySpans,
-    blocks: blockSpans,
-    asOf: denverToday(),
-    ...(guests !== undefined ? { guests } : {}),
-    ...(children !== undefined ? { children } : {}),
-  });
-  if (hold) return corsJson(request, { error: hold }, 409);
+  /*
+   * A request to stay in **part** of the Riverhouse goes through its own gate, because the rules are different: two
+   * parts together are one reservation, a part with no price is not sellable, and a whole-house booking blocks every
+   * part. `bookingRequestHold` above treats the Riverhouse as one house, which is right for the whole house and wrong
+   * for a part: a booked Recreation Wing would have refused a Main Lodge request before this gate was reached.
+   *
+   * The rates are read here rather than trusted from the browser: a client that says a part is priced must not be able
+   * to book a part that never was.
+   */
+  const wantedUnits = Array.isArray(body.units) ? body.units.filter((unit): unit is string => typeof unit === 'string') : [];
+  if (wantedUnits.length > 0) {
+    if (propertyId !== 'river' || alsoPropertyId) {
+      return corsJson(request, { error: 'Only the River House is sold in parts.' }, 400);
+    }
+    let unitRates;
+    try {
+      unitRates = await loadRiverUnitRates(env);
+    } catch {
+      return corsJson(
+        request,
+        { error: 'The part prices could not be read. Nothing was booked, and your request was not saved.' },
+        503,
+      );
+    }
+    const partCheck = unitRequestCheck(
+      staySpans as never,
+      unitRates,
+      {
+        units: wantedUnits,
+        checkIn: entry.checkIn,
+        checkOut: entry.checkOut,
+        ...(guests !== undefined ? { guests } : {}),
+      },
+      blockSpans as never,
+    );
+    if (!partCheck.ok) return corsJson(request, { error: partCheck.reason, code: partCheck.code }, 409);
+    entry.units = partCheck.units;
+  } else {
+    const hold = bookingRequestHold({
+      propertyId,
+      alsoPropertyId,
+      checkIn: entry.checkIn,
+      checkOut: entry.checkOut,
+      stays: staySpans,
+      blocks: blockSpans,
+      asOf: denverToday(),
+      ...(guests !== undefined ? { guests } : {}),
+      ...(children !== undefined ? { children } : {}),
+    });
+    if (hold) return corsJson(request, { error: hold }, 409);
+  }
   // A live hold for another guest means these nights are not this guest's to request yet.
   const conflict = holdConflict(holds, [...staySpans, ...blockSpans], propertyId, alsoPropertyId, entry.checkIn, entry.checkOut, new Date());
   if (conflict) {
@@ -179,6 +225,15 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
    */
   const now = new Date();
   const expiresAt = holdExpiresAt(now);
+  /*
+   * A hold is kept per house. A request for part of the Riverhouse therefore holds the **whole** house for the
+   * 30-minute window, which is stricter than the booking itself: two parts may be sold separately, but a request in
+   * flight holds the house so no second guest can be promised a night that the first may take.
+   *
+   * That is deliberately conservative. A precise per-part hold would need `holdConflict` to carry units across every
+   * house and every caller, and the cost of being wrong here is an overbooking; the cost of being conservative is at
+   * most a lost request inside a half-hour window.
+   */
   const newHolds: BookingHold[] = houses.map((houseId) => ({
     id: newId(`hold-${houseId}`),
     propertyId: houseId,

@@ -6,6 +6,7 @@ import { createReservation, getAllReservations } from '../../_lib/reservations-s
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { releaseHoldsForRequest, loadHolds } from '../../_lib/hold-store';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
+import { unitBookingConflict } from '../../../src/lib/river-units';
 import { acceptHold, acceptedLine, stayPlans } from '../../../src/lib/booking-accept';
 import { quoteStay } from '../../../src/lib/quote';
 import { twoHouseParties } from '../../../src/lib/payout-suggest';
@@ -115,6 +116,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       checkIn: stay.checkIn,
       checkOut: stay.checkOut,
       status: stay.status,
+      // A stay recorded before parts existed has no `units` and therefore occupies the whole house.
+      ...(stay.units && stay.units.length > 0 ? { units: stay.units } : {}),
     })),
     ...blocks.map((block) => ({
       propertyId: block.propertyId,
@@ -128,14 +131,43 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   for (const house of [saved.propertyId, saved.alsoPropertyId]) {
     if ((house === 'river' || house === 'ranch' || house === 'lindon') && !houses.includes(house)) houses.push(house);
   }
-  const clash = houses.flatMap((house) =>
-    occupiedNights(spans, house, saved.checkIn ?? '', saved.checkOut ?? ''),
-  );
+  /*
+   * A request for part of the Riverhouse is checked against **the parts it asked for**, not against the house. The
+   * house-wide check is right for a whole-house stay and wrong for a part: it would refuse the Main Lodge because the
+   * Recreation Wing was sold, which is the exact overbooking rule inverted.
+   */
+  const partUnits = Array.isArray(saved.units) ? saved.units.filter((unit) => typeof unit === 'string') : [];
+  /*
+   * At accept the only question is whether the parts are still free — the price was settled when the request was
+   * taken. So this asks the blocking rules directly rather than going through `unitRequestCheck`, which would also
+   * re-check pricing and could refuse a request the host had already agreed to.
+   */
+  const partClash =
+    partUnits.length > 0 && saved.propertyId === 'river' && !saved.alsoPropertyId
+      ? unitBookingConflict(
+          spans as never,
+          { units: partUnits as never, checkIn: saved.checkIn ?? '', checkOut: saved.checkOut ?? '' },
+          saved.checkIn ?? '',
+          saved.checkOut ?? '',
+        )
+      : null;
+  const clash =
+    partUnits.length > 0 && saved.propertyId === 'river' && !saved.alsoPropertyId
+      ? partClash
+        ? [`${partClash.unit} is already booked on ${partClash.night}.`]
+        : []
+      : houses.flatMap((house) => occupiedNights(spans, house, saved.checkIn ?? '', saved.checkOut ?? ''));
 
   const result = acceptHold({
     request: saved,
     alreadyAccepted,
-    plan: { payout, source, takenOnHouse: clash },
+    plan: {
+      payout,
+      source,
+      takenOnHouse: clash,
+      // A part booking says which part it sold, so the host's line does not claim the whole house.
+      ...(partUnits.length > 0 && saved.propertyId === 'river' && !saved.alsoPropertyId ? { units: partUnits } : {}),
+    },
     asOf: denverToday(),
   });
   if (!result.ok) return corsJson(request, { error: result.reason }, 409);
@@ -173,6 +205,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       source: stay.source,
       note: stay.note,
       status: 'confirmed',
+      /*
+       * The parts this stay occupies travel onto the saved reservation. Without this the booking would block nothing:
+       * the blocking rules read `units` off the stay, and a part sold without it would read as the whole house to
+       * everything downstream, which is the safe direction but would make the other two parts unsellable.
+       */
+      ...(stay.units && stay.units.length > 0 ? { units: stay.units } : {}),
     });
     created.push({ id: row.id, propertyId: row.propertyId });
   }

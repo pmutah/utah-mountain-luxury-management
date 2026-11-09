@@ -1,5 +1,6 @@
 import { addDays } from './market/dates';
 import type { HouseId } from './market/types';
+import { RIVER_UNIT_DETAIL } from './river-units';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -20,6 +21,11 @@ export type AcceptInput = {
   source?: string;
   /** A saved stay with these nights already on that house, other than this request. */
   takenOnHouse?: readonly string[];
+  /**
+   * Which parts of the Riverhouse this request takes. Absent means the whole house, so a request made before parts
+   * existed accepts exactly as it did.
+   */
+  units?: readonly string[];
 };
 
 /** One stay to save. A two-house request produces two of these. */
@@ -42,6 +48,12 @@ export type StayPlan = {
    * two figures, and only their sum belongs to the guest.
    */
   guestTotal?: number;
+  /**
+   * Which parts of the Riverhouse this stay occupies.
+   *
+   * Absent means the whole house. Only a single-house Riverhouse booking can carry parts.
+   */
+  units?: string[];
 };
 
 export type AcceptPlan = {
@@ -66,6 +78,13 @@ export type AcceptPlan = {
    * payout, so weighting by the guest total put money on the wrong house.
    */
   shares?: Partial<Record<HouseId, number>>;
+  /**
+   * Which parts of the Riverhouse this booking occupies.
+   *
+   * Absent means the whole house. Carried on the plan so the host's confirmation says which part was sold instead of
+   * telling them the whole house is now booked when only the Main Lodge is.
+   */
+  units?: string[];
 };
 
 /**
@@ -119,6 +138,13 @@ export function stayPlans(plan: AcceptPlan): StayPlan[] {
       payout: (shares[index] ?? 0) / 100,
       source: plan.source,
       ...(guestCents !== null ? { guestTotal: guestCents / 100 } : {}),
+      /*
+       * The parts travel on the stay itself, because the blocking rules read them from the saved reservation. Only a
+       * single-house Riverhouse plan can carry parts; a two-house party is the whole of both houses.
+       */
+      ...(houses.length === 1 && house === 'river' && (plan.units ?? []).length > 0
+        ? { units: [...(plan.units ?? [])] }
+        : {}),
     };
   });
 }
@@ -203,6 +229,18 @@ export function acceptHold(input: {
       note,
       payout: Math.round(input.plan.payout * 100) / 100,
       source: (input.plan.source ?? 'Direct').slice(0, 40) || 'Direct',
+      /*
+       * The parts this booking occupies, kept from the caller. Only names we actually sell survive, and only for the
+       * Riverhouse: a stray unit on a Ranch request would be a booking for a part that does not exist. An empty list is
+       * omitted entirely, because absent is what "the whole house" means everywhere else.
+       */
+      ...(propertyId === 'river' && !also && (input.plan.units ?? []).some((unit) => RIVER_UNIT_DETAIL.some((detail) => detail.id === unit))
+        ? {
+            units: (input.plan.units ?? [])
+              .filter((unit) => RIVER_UNIT_DETAIL.some((detail) => detail.id === unit))
+              .slice(0, RIVER_UNIT_DETAIL.length),
+          }
+        : {}),
     },
   };
 }
@@ -221,13 +259,22 @@ export function nightsBetween(checkIn: string, checkOut: string): number {
 
 /** A confirmation line for the host. No guest name, no door code, and it does not quote a rate. */
 export function acceptedLine(plan: AcceptPlan): string {
+  /*
+   * A part booking is not the whole house. Saying "The River House is booked" when only the Main Lodge was sold would
+   * tell a host the entire house is gone and the other two parts are unsellable — the opposite of the rule.
+   */
+  const parts = (plan.units ?? []).filter((unit) => typeof unit === 'string' && unit.length > 0);
+  const partName = (unit: string) =>
+    RIVER_UNIT_DETAIL.find((detail) => detail.id === unit)?.name ?? unit;
   const houses = plan.alsoPropertyId
     ? `${plan.propertyId === 'river' ? 'The River House' : plan.propertyId === 'ranch' ? 'The Ranch House' : 'The Lindon House'} and the second house`
-    : plan.propertyId === 'river'
-      ? 'The River House'
-      : plan.propertyId === 'ranch'
-        ? 'The Ranch House'
-        : 'The Lindon House';
+    : parts.length > 0 && plan.propertyId === 'river'
+      ? `${parts.map(partName).join(' and ')} at the River House`
+      : plan.propertyId === 'river'
+        ? 'The River House'
+        : plan.propertyId === 'ranch'
+          ? 'The Ranch House'
+          : 'The Lindon House';
   const nights = plan.nights === 1 ? '1 night' : `${plan.nights} nights`;
   const line = `${houses} is booked for ${nights}. The host payout is saved. Nothing was sent to the guest from here.`;
   return line.includes('$') ? 'The stay is saved. Nothing was sent to the guest from here.' : line;
