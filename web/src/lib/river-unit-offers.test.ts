@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { PublicUnit } from './booked-nights.ts';
 import { unitOfferLine, unitStayOffers, unitsTogetherSleeps, unitsTogetherTotal } from './river-unit-offers.ts';
+import { partyFitsParts } from './party-fits-parts.ts';
 
 /*
  * The guest-facing half of the Riverhouse split. The question a guest actually asks is "the house is taken for my
@@ -167,6 +168,27 @@ test('two parts together add up to one figure and one capacity', () => {
   );
   assert.equal(unitsTogetherTotal(offers), 790 + 790);
   assert.equal(unitsTogetherSleeps(offers), 17);
+});
+
+test('the capacity the card prints is the capacity the form accepts', () => {
+  /*
+   * The card printed "Sleeps 25" for all three parts - their raw sum - while the form refused a party of 25, because
+   * every part is the whole house and the house sleeps 24. Two numbers for one fact, on the same screen.
+   */
+  const all = unitStayOffers(
+    [
+      unit({ id: 'garage-suite', name: 'River Garage Suite', sleeps: 4 }),
+      unit({ id: 'recreation-wing', name: 'River Recreation Wing', sleeps: 8 }),
+      unit({ id: 'main-lodge', name: 'River Main Lodge', sleeps: 13 }),
+    ],
+    '2026-12-10',
+    '2026-12-12',
+  );
+  const shown = unitsTogetherSleeps(all);
+  assert.equal(shown, 24, 'the card prints a capacity the house does not have');
+  // And the page check agrees with what it prints.
+  assert.equal(partyFitsParts(['garage-suite', 'recreation-wing', 'main-lodge'], shown)?.ok, true);
+  assert.equal(partyFitsParts(['garage-suite', 'recreation-wing', 'main-lodge'], shown + 1)?.ok, false);
 });
 
 test('a total with an unpriced part is null, never a partial sum', () => {

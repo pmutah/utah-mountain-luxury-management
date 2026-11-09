@@ -1,5 +1,6 @@
 import type { RiverUnitId } from './river-units';
 import { RIVER_UNIT_DETAIL } from './river-units';
+import { SLEEPS } from './house-stay';
 
 /**
  * Whether a party fits the parts a guest chose, and what to tell them when it does not.
@@ -19,17 +20,18 @@ export type PartyFit =
 /**
  * How many the chosen parts sleep between them, from the published capacities.
  *
- * **Capped at the house.** The parts sum to 25 (4 + 8 + 13) against a 24-guest house, so booking all three would let one
- * more person in than the house itself may hold. Every part is the whole house, so it cannot exceed the house.
+ * **Capped at the house.** The parts add up to one more than the house sleeps, so booking every part would let one extra
+ * person in than the house itself may hold. Every part is the whole house, so it cannot exceed the house.
+ *
+ * The cap is `SLEEPS.river`, not a number written here: a second copy of the house's capacity is exactly how this drifted
+ * before, and a guard in the test suite fails on any new one.
  *
  * Which number is right is the host's call. Until they settle it the stricter wins, because an overfilled house is not
  * recoverable and a party that is refused here can book the whole house instead.
  */
-export const RIVER_HOUSE_SLEEPS = 24;
-
 export function partsSleeps(units: readonly RiverUnitId[]): number {
   const sum = units.reduce((total, unit) => total + (RIVER_UNIT_DETAIL.find((detail) => detail.id === unit)?.sleeps ?? 0), 0);
-  return units.length === RIVER_UNIT_DETAIL.length ? Math.min(sum, RIVER_HOUSE_SLEEPS) : sum;
+  return units.length === RIVER_UNIT_DETAIL.length ? Math.min(sum, SLEEPS.river) : sum;
 }
 
 /**

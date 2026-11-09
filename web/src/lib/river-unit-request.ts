@@ -1,6 +1,6 @@
 import { RIVER_UNIT_DETAIL, RIVER_UNITS, isRiverUnitId, type RiverUnitId, type UnitSpan } from './river-units';
 import { sellableUnits, unitRateState, type RiverUnitRates } from './river-unit-rates';
-import { RIVER_HOUSE_SLEEPS } from './party-fits-parts';
+import { SLEEPS } from './house-stay';
 
 /**
  * Whether a guest's request to stay in part of the Riverhouse can be taken.
@@ -186,7 +186,7 @@ export function unitRequestCheck(
    * host's call; until they settle it, the stricter of the two wins, because overfilling a house is not recoverable and
    * a refused party can book the other way.
    */
-  const houseSleeps = RIVER_HOUSE_SLEEPS;
+  const houseSleeps = SLEEPS.river;
   const sleeps = read.units.length === RIVER_UNITS.length ? Math.min(partsSleep, houseSleeps) : partsSleep;
   if (guests > 0 && guests > sleeps) {
     const names = read.units.map((unit) => NAME.get(unit) ?? unit).join(' and ');

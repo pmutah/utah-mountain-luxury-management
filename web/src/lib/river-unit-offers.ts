@@ -1,5 +1,7 @@
 import type { PublicUnit } from './booked-nights';
 import type { HouseId } from './market/types';
+import { partsSleeps } from './party-fits-parts';
+import type { RiverUnitId } from './river-units';
 
 /**
  * What the booking page says about the Riverhouse parts.
@@ -184,7 +186,12 @@ export function unitsTogetherTotal(offers: readonly UnitStayOffer[]): number | n
   return total;
 }
 
-/** The largest party the chosen parts can hold, summed from the real capacities. */
+/**
+ * The largest party the chosen parts can hold.
+ *
+ * Reads the shared cap rather than summing raw capacities here: the parts add up to more than the house sleeps, and the
+ * card used to print that inflated figure beside a form that refused it. One number, one place.
+ */
 export function unitsTogetherSleeps(offers: readonly UnitStayOffer[]): number {
-  return offers.reduce((sum, offer) => sum + (offer.unit.sleeps || 0), 0);
+  return partsSleeps(offers.map((offer) => offer.unit.id as RiverUnitId));
 }
