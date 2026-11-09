@@ -53,14 +53,23 @@ const AgentsHub = lazy(() =>
 const MarketBoard = lazy(() =>
   import('./components/MarketBoard').then((m) => ({ default: m.MarketBoard })),
 );
-import { EsignCeremony } from './components/EsignCeremony';
-import { PropertyDetail } from './components/PropertyDetail';
+/*
+ * The guest-path pages are lazy.
+ *
+ * `StayApp` pulls in the whole house guide — the prose, the restaurants, the trails — which is most of what made the main
+ * bundle 685 kB for every dashboard visitor. It is only ever rendered on a `/stay/` path, and those paths return before
+ * the dashboard exists, so a host loading the app should never download it.
+ */
+const StayApp = lazy(() => import('./components/StayApp').then((m) => ({ default: m.StayApp })));
+const GuestPreferenceForm = lazy(() =>
+  import('./components/GuestPreferenceForm').then((m) => ({ default: m.GuestPreferenceForm })),
+);
+const EsignCeremony = lazy(() => import('./components/EsignCeremony').then((m) => ({ default: m.EsignCeremony })));
+const PropertyDetail = lazy(() => import('./components/PropertyDetail').then((m) => ({ default: m.PropertyDetail })));
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { ToastStack } from './components/Toast';
 import { AgentChat } from './components/AgentChat';
 import { ConstructionManagerChat } from './components/ConstructionManagerChat';
-import { GuestPreferenceForm } from './components/GuestPreferenceForm';
-import { StayApp } from './components/StayApp';
 import { StayHostThread } from './components/StayHostThread';
 import { CommandPalette } from './components/CommandPalette';
 import { OwnerLetterButton } from './components/OwnerLetterButton';
@@ -503,11 +512,19 @@ export default function App() {
   const stayMatch = window.location.pathname.match(/^\/stay\/([^/]+)(\/preferences)?\/?$/);
   if (stayMatch?.[1]) {
     const token = decodeURIComponent(stayMatch[1]);
-    return stayMatch[2] ? <GuestPreferenceForm token={token} /> : <StayApp token={token} />;
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        {stayMatch[2] ? <GuestPreferenceForm token={token} /> : <StayApp token={token} />}
+      </Suspense>
+    );
   }
   const esignMatch = window.location.pathname.match(/^\/esign\/([^/]+)/);
   if (esignMatch?.[1]) {
-    return <EsignCeremony token={esignMatch[1]} />;
+    return (
+      <Suspense fallback={<LoadingSkeleton />}>
+        <EsignCeremony token={esignMatch[1]} />
+      </Suspense>
+    );
   }
   const ownerMatch = window.location.pathname.match(/^\/owner\/([a-f0-9]{32})\/?$/);
   if (ownerMatch?.[1]) {
