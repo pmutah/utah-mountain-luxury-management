@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { PublicUnit } from './booked-nights.ts';
-import { unitOfferLine, unitStayOffers, unitsTogetherSleeps, unitsTogetherTotal } from './river-unit-offers.ts';
+import { unitOfferLine, partSharedHouseLine, unitStayOffers, unitsTogetherSleeps, unitsTogetherTotal } from './river-unit-offers.ts';
 import { partyFitsParts } from './party-fits-parts.ts';
 
 /*
@@ -189,6 +189,37 @@ test('the capacity the card prints is the capacity the form accepts', () => {
   // And the page check agrees with what it prints.
   assert.equal(partyFitsParts(['garage-suite', 'recreation-wing', 'main-lodge'], shown)?.ok, true);
   assert.equal(partyFitsParts(['garage-suite', 'recreation-wing', 'main-lodge'], shown + 1)?.ok, false);
+});
+
+test('the booking page says a part is part of a shared house', () => {
+  /*
+   * The portal said so, but only after the guest had booked and paid. A guest could read "the Garage Suite" as a private
+   * house with fewer bedrooms and find out on arrival.
+   */
+  const one = unitStayOffers([unit({ id: 'garage-suite', name: 'River Garage Suite' })], '2026-12-10', '2026-12-12');
+  const line = partSharedHouseLine(one);
+  assert.ok(line, 'a part booking is offered with no word that the house is shared');
+  assert.match(line, /part of a shared house/);
+  assert.match(line, /shared spaces/);
+  assert.match(line, /other guests/);
+});
+
+test('nothing is said about sharing when the guest has every part', () => {
+  // Then they have the whole house, and the warning would be false.
+  const all = unitStayOffers(
+    [
+      unit({ id: 'garage-suite', name: 'River Garage Suite' }),
+      unit({ id: 'recreation-wing', name: 'River Recreation Wing' }),
+      unit({ id: 'main-lodge', name: 'River Main Lodge' }),
+    ],
+    '2026-12-10',
+    '2026-12-12',
+  );
+  assert.equal(partSharedHouseLine(all), null);
+});
+
+test('nothing is said when no part is chosen', () => {
+  assert.equal(partSharedHouseLine([]), null);
 });
 
 test('a total with an unpriced part is null, never a partial sum', () => {

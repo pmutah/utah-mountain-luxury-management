@@ -7,7 +7,7 @@ import { HouseManual } from './HouseManual';
 import { HouseDays } from './HouseDays';
 import { houseDayPaper } from '../lib/house-day';
 import { bothHouseCalendarAheadLine, calendarAheadLine, loadQuoteCalendar, type PublicUnit } from '../lib/booked-nights';
-import { unitOfferLine, unitStayOffers, unitsTogetherSleeps, unitsTogetherTotal } from '../lib/river-unit-offers';
+import { unitOfferLine, partSharedHouseLine, unitStayOffers, unitsTogetherSleeps, unitsTogetherTotal } from '../lib/river-unit-offers';
 import { nightsBetween } from '../lib/booking-accept';
 import { partyFitsParts, partsSleeps } from '../lib/party-fits-parts';
 import { bothHouseEventPlans, eventPlans } from '../lib/event-plan';
@@ -285,6 +285,8 @@ export function DirectBook() {
   const bookingParts = chosenParts.length > 0;
   /** Whether the party fits the parts chosen, when parts are chosen. Null means the question does not apply. */
   const partParty = bookingParts ? partyFitsParts(chosenParts as never, guestCount) : null;
+  /** What a part guest gives up: the rest of the house. Said here, before they book. */
+  const sharedHouseLine = bookingParts ? partSharedHouseLine(selectedPartOffers) : null;
   const guideStay = houseStay(house);
   const sheet = ics
     ? tripSheet({
@@ -1269,6 +1271,15 @@ export function DirectBook() {
                 {bookingParts && partParty?.ok === false && (
                   <p className="mt-2 text-sm text-amber-300/90" data-bot="stay-parts-capacity" data-code={partParty.code}>
                     {partParty.reason}
+                  </p>
+                )}
+                {/*
+                  Said before the guest books, not after. The portal carries this too, but a guest reading it for the first
+                  time on arrival has already paid for something they did not expect.
+                */}
+                {bookingParts && sharedHouseLine && (
+                  <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="stay-parts-shared">
+                    {sharedHouseLine}
                   </p>
                 )}
                   </p>

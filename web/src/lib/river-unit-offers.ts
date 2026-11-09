@@ -1,7 +1,7 @@
 import type { PublicUnit } from './booked-nights';
 import type { HouseId } from './market/types';
 import { partsSleeps } from './party-fits-parts';
-import type { RiverUnitId } from './river-units';
+import { RIVER_UNIT_DETAIL, type RiverUnitId } from './river-units';
 
 /**
  * What the booking page says about the Riverhouse parts.
@@ -168,6 +168,22 @@ export function unitOfferLine(
   }
   if (priced.length === 0) return 'The River House can also be rented in parts, but none of them has a price yet.';
   return 'No part of the River House is open for those dates.';
+}
+
+/**
+ * What a guest choosing a part is giving up.
+ *
+ * The portal told a part guest that other guests may be in the house — but only **after** they had booked and paid. The
+ * booking page, where the choice is actually made, said nothing, so a guest could reasonably read "the Garage Suite" as
+ * "a private house with fewer bedrooms" and discover the truth on arrival.
+ *
+ * Null when no part is chosen or when the guest has taken every part, because then there is nothing to give up.
+ */
+export function partSharedHouseLine(offers: readonly UnitStayOffer[]): string | null {
+  const chosen = offers.filter((offer) => offer.available || offer.total !== null);
+  if (chosen.length === 0) return null;
+  if (chosen.length >= RIVER_UNIT_DETAIL.length) return null;
+  return 'This is part of a shared house. The other parts, and the shared spaces, may be used by other guests during your stay.';
 }
 
 /**
