@@ -2,8 +2,9 @@ import { listSharedWork } from '../agent-work';
 import { PRICING_DOCTRINE, grossGoalSnapshot } from '../pricing-doctrine';
 import { PROPERTIES } from '../data';
 import { getAllReservations, getOccupancySummary } from '../reservations-store';
-import { loadApprovedRates, loadPricingAlerts, compareMarket } from '../pricing-store';
+import { loadApprovedRates, loadPricingAlerts, compareMarket, loadRiverUnitRates } from '../pricing-store';
 import { checkCalendarDiscrepancies } from '../calendar-store';
+import { partFacts, partPromptLines } from '../../../src/lib/part-facts';
 import type { AgentChatContext, AgentEnv } from './types';
 
 function todayDenver(): string {
@@ -62,6 +63,31 @@ export async function buildAgentContext(
   } catch {
     approvedLine = 'Approved prices: could not be read, so treat every night as the published card and say so.';
   }
+  /*
+   * The Riverhouse parts.
+   *
+   * The prompt said "sleeps 24" and nothing else, so the co-host described a house that can only be rented whole. Asked
+   * "can I still sell Saturday?" it answered from the house calendar — which is taken the moment any part is sold — so
+   * it said no while two parts were still for sale. A price sheet that cannot be read is carried as unknown, never as
+   * "nothing is priced".
+   */
+  let partLines: string[] = [];
+  try {
+    const rates = await loadRiverUnitRates(env);
+    const spans = (reservations as unknown as Array<{ propertyId: string; checkIn: string; checkOut: string; status?: string; units?: string[] }>).map(
+      (stay) => ({
+        propertyId: stay.propertyId,
+        checkIn: stay.checkIn,
+        checkOut: stay.checkOut,
+        status: stay.status,
+        ...(stay.units && stay.units.length > 0 ? { units: stay.units } : {}),
+      }),
+    );
+    partLines = partPromptLines(partFacts(rates, spans, today, 7), today);
+  } catch {
+    // An unreadable sheet is not "no parts". Say the prices could not be read and claim nothing.
+    partLines = partPromptLines(partFacts(null, [], today, 7), today);
+  }
   const sharedLine = [
     ...shared.done.slice(0, 8).map((item) => `${item.ownerName} finished ${item.title} ${item.atDenver}. ${item.result}`),
     ...shared.open.slice(0, 5).map((item) =>
@@ -81,7 +107,8 @@ export async function buildAgentContext(
     `Properties:`,
     `- Ranch House (ranch): ${ranchAddr}`,
     `- Lindon House (lindon): ${lindonAddr}`,
-    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
+    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24 as one house and is also sold in three parts, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
+    ...partLines,
     `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
     approvedLine,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : '',
