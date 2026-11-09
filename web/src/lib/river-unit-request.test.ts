@@ -24,8 +24,8 @@ function allPriced(): RiverUnitRates {
 
 const span = (over: Partial<UnitSpan>): UnitSpan => ({
   propertyId: 'river',
-  checkIn: '2026-12-10',
-  checkOut: '2026-12-13',
+  checkIn: '2026-11-10',
+  checkOut: '2026-11-13',
   ...over,
 });
 
@@ -35,8 +35,8 @@ test('all three parts start unpriced and none can be booked', () => {
   for (const unit of RIVER_UNITS) {
     const check = unitRequestCheck([], rates, {
       units: [unit],
-      checkIn: '2026-12-10',
-      checkOut: '2026-12-12',
+      checkIn: '2026-11-10',
+      checkOut: '2026-11-12',
       guests: 2,
     });
     assert.equal(check.ok, false, `${unit} was bookable with no price`);
@@ -48,7 +48,7 @@ test('all three parts start unpriced and none can be booked', () => {
 });
 
 test('the whole house is bookable with no part priced, because it is not sold as a part', () => {
-  const check = unitRequestCheck([], blankUnitRates(), { checkIn: '2026-12-10', checkOut: '2026-12-12', guests: 10 });
+  const check = unitRequestCheck([], blankUnitRates(), { checkIn: '2026-11-10', checkOut: '2026-11-12', guests: 10 });
   assert.equal(check.ok, true, 'the whole house needed a part to be priced');
   if (check.ok) {
     assert.equal(check.wholeHouse, true);
@@ -64,8 +64,8 @@ test('a whole-house booking blocks every part', () => {
   for (const unit of RIVER_UNITS) {
     const check = unitRequestCheck(spans, allPriced(), {
       units: [unit],
-      checkIn: '2026-12-11',
-      checkOut: '2026-12-12',
+      checkIn: '2026-11-11',
+      checkOut: '2026-11-12',
       guests: 2,
     });
     assert.equal(check.ok, false, `${unit} was bookable while the whole house was taken`);
@@ -74,18 +74,22 @@ test('a whole-house booking blocks every part', () => {
 });
 
 test('one part booked leaves the other two sellable and blocks the house', () => {
+  /*
+   * A two-night stay, because the rate card's shoulder minimum is two: a one-night span would be refused for its length
+   * rather than for the part it asks about, and this test is about which part blocks what.
+   */
   const spans = [span({ units: ['recreation-wing'], status: 'confirmed' })];
   const rates = allPriced();
   for (const unit of ['garage-suite', 'main-lodge'] as const) {
     const check = unitRequestCheck(spans, rates, {
       units: [unit],
-      checkIn: '2026-12-11',
-      checkOut: '2026-12-12',
+      checkIn: '2026-11-11',
+      checkOut: '2026-11-13',
       guests: 2,
     });
     assert.equal(check.ok, true, `${unit} was blocked by the Recreation Wing`);
   }
-  const house = unitRequestCheck(spans, rates, { checkIn: '2026-12-11', checkOut: '2026-12-12', guests: 10 });
+  const house = unitRequestCheck(spans, rates, { checkIn: '2026-11-11', checkOut: '2026-11-13', guests: 10 });
   assert.equal(house.ok, false, 'the whole house was bookable while a part was taken');
 });
 
@@ -93,8 +97,8 @@ test('two parts together are one reservation and leave the third sellable', () =
   const rates = allPriced();
   const check = unitRequestCheck([], rates, {
     units: ['garage-suite', 'main-lodge'],
-    checkIn: '2026-12-10',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-10',
+    checkOut: '2026-11-12',
     guests: 8,
   });
   assert.equal(check.ok, true);
@@ -106,10 +110,10 @@ test('two parts together are one reservation and leave the third sellable', () =
 
   // Those nights now block the house and both parts, and leave the Recreation Wing free.
   const spans: UnitSpan[] = check.spans.map((s) => ({ ...span({}), units: s.units, wholeHouse: s.wholeHouse }));
-  const availability = riverAvailability(spans, '2026-12-10', '2026-12-12');
+  const availability = riverAvailability(spans, '2026-11-10', '2026-11-12');
   assert.deepEqual(availability.units['garage-suite'], []);
   assert.deepEqual(availability.units['main-lodge'], []);
-  assert.deepEqual(availability.units['recreation-wing'], ['2026-12-10', '2026-12-11']);
+  assert.deepEqual(availability.units['recreation-wing'], ['2026-11-10', '2026-11-11']);
   assert.deepEqual(availability.wholeHouse, []);
 });
 
@@ -117,37 +121,38 @@ test('all three parts together leave nothing free', () => {
   const rates = allPriced();
   const check = unitRequestCheck([], rates, {
     units: [...RIVER_UNITS],
-    checkIn: '2026-12-10',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-10',
+    checkOut: '2026-11-12',
     guests: 20,
   });
   assert.equal(check.ok, true);
   if (!check.ok) return;
   const spans: UnitSpan[] = check.spans.map((s) => ({ ...span({}), units: s.units }));
-  const availability = riverAvailability(spans, '2026-12-10', '2026-12-12');
+  const availability = riverAvailability(spans, '2026-11-10', '2026-11-12');
   for (const unit of RIVER_UNITS) assert.deepEqual(availability.units[unit], [], `${unit} stayed free`);
   assert.deepEqual(availability.wholeHouse, []);
 });
 
 test('cancelling a part reopens the house and that part', () => {
+  // Two nights, because the shoulder minimum is two; a one-night span would be refused for its length, not its status.
   const rates = allPriced();
   const cancelled = [span({ units: ['main-lodge'], status: 'cancelled' })];
   const check = unitRequestCheck(cancelled, rates, {
     units: ['main-lodge'],
-    checkIn: '2026-12-11',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-11',
+    checkOut: '2026-11-13',
     guests: 3,
   });
   assert.equal(check.ok, true, 'a cancelled stay still blocked its part');
-  const house = unitRequestCheck(cancelled, rates, { checkIn: '2026-12-11', checkOut: '2026-12-12', guests: 10 });
+  const house = unitRequestCheck(cancelled, rates, { checkIn: '2026-11-11', checkOut: '2026-11-13', guests: 10 });
   assert.equal(house.ok, true, 'a cancelled stay still blocked the house');
 });
 
 test('a party larger than the parts is refused with the real number', () => {
   const check = unitRequestCheck([], allPriced(), {
     units: ['garage-suite'],
-    checkIn: '2026-12-10',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-10',
+    checkOut: '2026-11-12',
     guests: 9,
   });
   assert.equal(check.ok, false);
@@ -161,8 +166,8 @@ test('a party larger than the parts is refused with the real number', () => {
 test('a part nobody sells is refused by name, not silently dropped', () => {
   const check = unitRequestCheck([], allPriced(), {
     units: ['attic'],
-    checkIn: '2026-12-10',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-10',
+    checkOut: '2026-11-12',
     guests: 2,
   });
   assert.equal(check.ok, false);
@@ -174,8 +179,8 @@ test('a half-priced part is refused and says it is not fully priced', () => {
   rates['recreation-wing'] = { nightly: 640, cleaning: null, minNights: 2 };
   const check = unitRequestCheck([], rates, {
     units: ['recreation-wing'],
-    checkIn: '2026-12-10',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-10',
+    checkOut: '2026-11-12',
     guests: 4,
   });
   assert.equal(check.ok, false);
@@ -188,14 +193,14 @@ test('a half-priced part is refused and says it is not fully priced', () => {
 test('the parts requested are described the same way whatever order they arrive in', () => {
   const a = unitRequestCheck([], allPriced(), {
     units: ['main-lodge', 'garage-suite'],
-    checkIn: '2026-12-10',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-10',
+    checkOut: '2026-11-12',
     guests: 4,
   });
   const b = unitRequestCheck([], allPriced(), {
     units: ['garage-suite', 'main-lodge', 'garage-suite'],
-    checkIn: '2026-12-10',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-10',
+    checkOut: '2026-11-12',
     guests: 4,
   });
   assert.equal(a.ok && b.ok, true);
@@ -208,13 +213,13 @@ test('offers name why a part cannot be booked, and never show a price for an unp
   const rates = blankUnitRates();
   rates['garage-suite'] = { nightly: 320, cleaning: 150, minNights: 2 };
   const spans = [span({ units: ['garage-suite'], status: 'confirmed' })];
-  const offers = unitOffers(spans, rates, '2026-12-11', '2026-12-12');
+  const offers = unitOffers(spans, rates, '2026-11-11', '2026-11-12');
   const garage = offers.find((offer) => offer.unit === 'garage-suite');
   const wing = offers.find((offer) => offer.unit === 'recreation-wing');
   assert.ok(garage && wing);
   assert.equal(garage.nightly, 320);
   assert.equal(garage.available, false);
-  assert.match(garage.reason ?? '', /Booked on 2026-12-11/);
+  assert.match(garage.reason ?? '', /Booked on 2026-11-11/);
   // The unpriced part shows no number at all.
   assert.equal(wing.nightly, null);
   assert.equal(wing.available, false);
@@ -223,7 +228,7 @@ test('offers name why a part cannot be booked, and never show a price for an unp
 
 test('an offer with no free night is unbookable but still states its price', () => {
   const rates = allPriced();
-  const offers = unitOffers([], rates, '2026-12-10', '2026-12-12');
+  const offers = unitOffers([], rates, '2026-11-10', '2026-11-12');
   for (const offer of offers) {
     assert.equal(offer.available, true, `${offer.unit} was not offered with no bookings`);
     assert.ok(offer.nightly !== null && offer.nightly > 0, `${offer.unit} was offered without a price`);
@@ -237,19 +242,19 @@ test('an offer with no free night is unbookable but still states its price', () 
 });
 
 test('a closed stretch refuses the booking and is not called a booking', () => {
-  const closed = [span({ checkIn: '2026-12-11', checkOut: '2026-12-13' })];
-  const check = unitRequestCheck([], allPriced(), { checkIn: '2026-12-10', checkOut: '2026-12-12', guests: 6 }, closed);
+  const closed = [span({ checkIn: '2026-11-11', checkOut: '2026-11-13' })];
+  const check = unitRequestCheck([], allPriced(), { checkIn: '2026-11-10', checkOut: '2026-11-12', guests: 6 }, closed);
   assert.equal(check.ok, false);
   if (!check.ok) {
     assert.equal(check.code, 'closed', 'a closed night was reported as taken');
-    assert.match(check.reason, /closed on 2026-12-11/);
+    assert.match(check.reason, /closed on 2026-11-11/);
     assert.equal(/booked/i.test(check.reason), false, 'a closed night was described as booked');
   }
   // A closed house also closes every part.
   const part = unitRequestCheck([], allPriced(), {
     units: ['main-lodge'],
-    checkIn: '2026-12-11',
-    checkOut: '2026-12-12',
+    checkIn: '2026-11-11',
+    checkOut: '2026-11-12',
     guests: 4,
   }, closed);
   assert.equal(part.ok, false);
@@ -257,8 +262,8 @@ test('a closed stretch refuses the booking and is not called a booking', () => {
 });
 
 test('a closed night never reads as available on an offer', () => {
-  const closed = [span({ checkIn: '2026-12-11', checkOut: '2026-12-13' })];
-  const offers = unitOffers([], allPriced(), '2026-12-10', '2026-12-12', closed);
+  const closed = [span({ checkIn: '2026-11-11', checkOut: '2026-11-13' })];
+  const offers = unitOffers([], allPriced(), '2026-11-10', '2026-11-12', closed);
   for (const offer of offers) {
     assert.equal(offer.available, false, `${offer.unit} was offered on a closed night`);
     assert.match(offer.reason ?? '', /closed/i);
@@ -267,6 +272,6 @@ test('a closed night never reads as available on an offer', () => {
 
 test('a block outside the dates asked about does not refuse the stay', () => {
   const closed = [span({ checkIn: '2026-12-20', checkOut: '2026-12-24' })];
-  const check = unitRequestCheck([], allPriced(), { checkIn: '2026-12-10', checkOut: '2026-12-12', guests: 6 }, closed);
+  const check = unitRequestCheck([], allPriced(), { checkIn: '2026-11-10', checkOut: '2026-11-12', guests: 6 }, closed);
   assert.equal(check.ok, true, 'a block in another week refused these dates');
 });

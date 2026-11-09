@@ -1,6 +1,8 @@
 import { RIVER_UNIT_DETAIL, RIVER_UNITS, isRiverUnitId, type RiverUnitId, type UnitSpan } from './river-units';
 import { sellableUnits, unitRateState, type RiverUnitRates } from './river-unit-rates';
 import { SLEEPS } from './house-stay';
+import { nightAsk } from './market/rates';
+import { addDays } from './market/dates';
 
 /**
  * Whether a guest's request to stay in part of the Riverhouse can be taken.
@@ -50,6 +52,7 @@ export type UnitRequestCode =
   | 'taken'
   | 'closed'
   | 'over-capacity'
+  | 'min-nights'
   | 'no-guests'
   | 'stale';
 
@@ -93,6 +96,21 @@ function takenNights(spans: readonly UnitSpan[], units: readonly RiverUnitId[], 
   }
   return [...taken].sort();
 }
+/**
+ * Every night in a stay, as dates. Empty for a range that is not a real stay.
+ *
+ * Used to read each night's own minimum from the rate card, so a holiday minimum is found rather than assumed.
+ */
+function nightsBetween(checkIn: string, checkOut: string): string[] {
+  const out: string[] = [];
+  let cursor = checkIn;
+  for (let guard = 0; guard < 400 && cursor < checkOut; guard += 1) {
+    out.push(cursor);
+    cursor = addDays(cursor, 1);
+  }
+  return out;
+}
+
 function nextDay(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   const date = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
@@ -197,6 +215,29 @@ export function unitRequestCheck(
           ? `All three parts are the whole house, which sleeps ${sleeps}. This party is ${guests}.`
           : `${names} sleeps ${sleeps}, and this party is ${guests}.`,
       code: 'over-capacity',
+    };
+  }
+
+  /*
+   * The house's own minimum stay applies to a part too.
+   *
+   * The minimum lives in the rate card (`quoteStay` reads `minNights` off each night's ask) and the whole-house path goes
+   * through it. The part path did not, so a guest could book **two nights in the Garage Suite over Christmas** when the
+   * house needs five. A part is part of the house; it cannot undercut the house's own rule.
+   *
+   * A part's own minimum, when the host set one, may be stricter and is checked separately on the page; this is the floor.
+   */
+  const houseMinimum = Math.max(
+    ...nightsBetween(checkIn, checkOut).map((night) => nightAsk('river', night).minNights),
+    // A night that cannot be read must not lower the minimum to a permissive number.
+    1,
+  );
+  const nightsWanted = nightsBetween(checkIn, checkOut).length;
+  if (nightsWanted > 0 && nightsWanted < houseMinimum) {
+    return {
+      ok: false,
+      reason: `This stay needs at least ${houseMinimum} nights, the same as the whole house.`,
+      code: 'min-nights',
     };
   }
 
