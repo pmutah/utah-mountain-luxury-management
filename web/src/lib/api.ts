@@ -435,6 +435,14 @@ export interface StayGuide {
   guestName: string;
   propertyId: 'ranch' | 'lindon' | 'river';
   propertyName: string;
+  /**
+   * Which parts of the Riverhouse this stay occupies.
+   *
+   * Absent or empty means the whole house, which is every stay recorded before the house was sold in parts. A part
+   * guest must be told which part, and that the rest of the house may be someone else's — without this the portal reads
+   * as a whole-house booking.
+   */
+  units?: string[];
   checkIn: string;
   checkOut: string;
   /** Overnight guests for this stay when known from preferences or the booking note. */

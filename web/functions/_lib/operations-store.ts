@@ -50,7 +50,7 @@ const DEFAULT_PROPERTY_CONFIG: Record<PropertyId, PropertyOpsConfig> = {
   },
   river: {
     houseRules:
-      'Quiet hours in this mountain neighborhood. Whole-house rental only. No parties without written approval. Follow septic drain and trash guidelines in the house manual.',
+      'Quiet hours in this mountain neighborhood. No parties without written approval. Follow septic drain and trash guidelines in the house manual.',
     lockCodeTemplate:
       'Your door code is {code}. Check-in after 4pm. House manual and lock details are sent after booking.',
   },

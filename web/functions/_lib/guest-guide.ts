@@ -132,7 +132,7 @@ function defaults(id: GuideHouseId): HouseGuide {
       parking: 'Park in the driveway and garage. Keep the canyon road clear for plows in winter.',
       arrival: 'Drive up Provo Canyon to Vivian Park. Stock up on groceries in Orem first. AWD or 4WD in winter.',
       houseRules:
-        'Whole-house rental only. Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.',
+        'Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.',
       checkout: `${shared.checkout}\nOnly toilet paper goes in the toilets. No wipes, even flushable ones.`,
       sections: [
         { title: 'Bedrooms', body: 'Seven king suites, each in its own room, plus an expandable king.' },

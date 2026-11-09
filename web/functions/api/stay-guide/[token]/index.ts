@@ -165,6 +165,14 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
     guestName: survey.guestName,
     propertyId: houseId,
     propertyName: PROPERTIES[houseId].name,
+    /*
+     * Which parts of the Riverhouse this stay occupies.
+     *
+     * Absent or empty means the whole house, so every stay recorded before the house was sold in parts reads exactly as
+     * it did. A part guest needs this: without it the portal tells them the house sleeps 24 and says nothing about the
+     * rest of the building being someone else's.
+     */
+    ...(Array.isArray(stay?.units) && stay.units.length > 0 ? { units: stay.units } : {}),
     checkIn,
     checkOut,
     ...(partyGuests !== undefined ? { partyGuests, ...(partyChildren !== undefined ? { partyChildren } : {}) } : {}),

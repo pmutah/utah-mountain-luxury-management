@@ -10,7 +10,12 @@ const RULES: Record<HouseId, HouseRule[]> = {
   river: [
     {
       id: 'stay',
-      text: 'Whole-house rental only. Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.',
+      /*
+       * This said "Whole-house rental only", which stopped being true when the house became sellable in parts — and it
+       * was rendering directly above the guest's own part line, so a Garage Suite guest read both. The rule now says
+       * what is actually true of either booking, and the part line says which one applies.
+       */
+      text: 'Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.',
     },
     {
       id: 'septic',

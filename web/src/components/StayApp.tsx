@@ -3,6 +3,7 @@ import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '..
 import { guestArrivalLine } from '../lib/arrival';
 import { preferenceCardLines, preferenceCardNote, preferencePartyCount } from '../lib/preference-choices';
 import { guestDepartureLine } from '../lib/departure';
+import { partStayCapacityLine, partStayFrom, partStayLabel, partStayLine } from '../lib/part-stay';
 import { loadQuoteCalendar } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree, rightNow, stayCalendarHold, stayCountdown } from '../lib/journey';
 import { addDays, denverToday } from '../lib/market/dates';
@@ -321,6 +322,14 @@ export function StayApp({ token }: { token: string }) {
   const { guide, access } = data;
   const first = data.guestName.split(' ')[0] || data.guestName;
   const house = data.propertyName.replace(/^The /, '');
+  /*
+   * A stay in part of the Riverhouse. `wholeHouse` is true for every stay recorded before the house was sold in parts,
+   * so nothing changes for those guests — the part lines are simply null.
+   */
+  const partStay = partStayFrom(data.units);
+  const partLine = partStayLine(partStay);
+  const partCapacity = partStayCapacityLine(partStay);
+  const partLabel = partStayLabel(partStay);
   const places = stayAreaPlaces(data.propertyId, guide.places).filter((place) => kind === 'all' || place.kind === kind);
   const phone = guide.contactPhone.replace(/[^\d+]/g, '');
   const houseId: HouseId | null =
@@ -410,8 +419,18 @@ export function StayApp({ token }: { token: string }) {
           <Kicker>Utah Mountain Luxury</Kicker>
           <h1 className="guest-display mt-2 text-4xl">Welcome, {first}</h1>
           <p className="mt-1 text-sm text-white/70">
-            {house} · {longDate(data.checkIn)} – {longDate(data.checkOut)}
+            {partLabel ? `${partLabel} · ${house}` : house} · {longDate(data.checkIn)} – {longDate(data.checkOut)}
           </p>
+          {/*
+            A guest who booked part of the Riverhouse must be told so before they arrive. Without this the phone read as
+            a whole-house booking — and a guest who expects 24 beds and 7 suites walks into the Garage Suite annoyed.
+            The line also says the rest of the house may be someone else's, without ever naming them.
+          */}
+          {partCapacity ? (
+            <p className="mt-1 text-xs text-[#d4b56a]" data-bot="stay-part-capacity">
+              {partCapacity}
+            </p>
+          ) : null}
           {photoCaption ? (
             <p className="mt-1 text-xs text-white/70" data-bot="stay-photo-caption">
               {photoCaption}
@@ -421,6 +440,15 @@ export function StayApp({ token }: { token: string }) {
       </header>
 
       <main className="mx-auto max-w-md space-y-4 px-5 pt-4">
+        {partLine && (
+          <p
+            className="rounded-2xl border border-[#d4b56a]/30 bg-[#d4b56a]/10 px-4 py-3 text-sm leading-relaxed text-[#f6f1e8]"
+            data-bot="stay-part-line"
+            data-units={partStay.units.join(',')}
+          >
+            {partLine}
+          </p>
+        )}
         {hostReply && (
           <p className="rounded-2xl bg-[#d4b56a]/15 px-4 py-3 text-sm leading-relaxed text-[#f6f1e8]" data-bot="stay-host-note">
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-[#d4b56a]">Brandon</span>

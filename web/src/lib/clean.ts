@@ -317,8 +317,8 @@ export function workOrderEssentials(house: HouseId, lang: CleanLang = 'en'): str
 }
 
 const RULES_ES: Record<string, string> = {
-  'Whole-house rental only. Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.':
-    'Solo la casa completa. Horas de silencio en este vecindario de montaña. No fiestas ni eventos sin aprobación por escrito. Sigue las notas del séptico y la basura. No fumar adentro.',
+  'Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.':
+    'Horas de silencio en este vecindario de montaña. No fiestas ni eventos sin aprobación por escrito. Sigue las notas del séptico y la basura. No fumar adentro.',
   'Quiet hours 10 PM to 8 AM. No parties. Stay within the booked guest count. No smoking indoors.':
     'Horas de silencio de 10 PM a 8 AM. No fiestas. Quédate dentro del número de huéspedes reservado. No fumar adentro.',
   'Quiet hours 10 PM to 8 AM. No smoking indoors. No parties.':
