@@ -68,3 +68,23 @@ test('the minimum comes from the rate card, not from a number written here', () 
   assert.match(source, /nightAsk\('river', night\)\.minNights/, 'the gate no longer reads the minimum from the rate card');
   assert.equal(/at least 5 nights/.test(source), false, 'a five-night figure is written into the gate');
 });
+
+test('the whole house refuses a too-short stay on its own, not because a caller checked first', () => {
+  /*
+   * The minimum used to be checked below the whole-house branch, so that branch returned before it. The two paths were
+   * only consistent because the booking route happened to run `bookingRequestHold` — which quotes — before reaching this
+   * gate. Calling the gate directly with nothing else in front of it showed the hole.
+   */
+  const house = check('2026-12-23', '2026-12-25', []);
+  assert.equal(house.ok, false, 'the gate alone allowed a two-night Christmas whole-house stay');
+  if (!house.ok) assert.equal(house.code, 'min-nights');
+});
+
+test('the house capacity on the whole-house answer is read, not repeated', () => {
+  // It was a literal 24 here, the same duplication that has drifted twice elsewhere in this session.
+  const allowed = check('2026-11-17', '2026-11-19', [], 10);
+  assert.equal(allowed.ok, true);
+  if (allowed.ok) assert.equal(allowed.sleeps, 24);
+  const source = readFileSync(new URL('./river-unit-request.ts', import.meta.url), 'utf8');
+  assert.equal(/sleeps: 24,/.test(source), false, 'a literal 24 is back in the gate');
+});

@@ -97,6 +97,31 @@ function takenNights(spans: readonly UnitSpan[], units: readonly RiverUnitId[], 
   return [...taken].sort();
 }
 /**
+ * The house's minimum stay for a range, read from the rate card.
+ *
+ * Used by the **part** branch. A whole-house request goes through `quoteStay` via `bookingRequestHold`, which enforces the
+ * same minimum, so this is not called for it by the route — the whole-house branch here keeps its own call only so the gate
+ * is correct when called directly (by a test, or by a future caller that does not quote first).
+ *
+ * A night that cannot be read falls back to 1 rather than to something permissive-but-wrong; the rate card always answers,
+ * so this is a guard, not a policy.
+ */
+function houseMinimumNights(checkIn: string, checkOut: string): { reason: { ok: false; reason: string; code: 'min-nights' } | null } {
+  const nights = nightsBetween(checkIn, checkOut);
+  const minimum = Math.max(...nights.map((night) => nightAsk('river', night).minNights), 1);
+  if (nights.length > 0 && nights.length < minimum) {
+    return {
+      reason: {
+        ok: false,
+        reason: `This stay needs at least ${minimum} nights, the same as the whole house.`,
+        code: 'min-nights',
+      },
+    };
+  }
+  return { reason: null };
+}
+
+/**
  * Every night in a stay, as dates. Empty for a range that is not a real stay.
  *
  * Used to read each night's own minimum from the rate card, so a holiday minimum is found rather than assumed.
@@ -158,12 +183,16 @@ export function unitRequestCheck(
         code: 'taken',
       };
     }
+    // Checked here as well as at the end, because this branch returns before that point.
+    const houseMinimum = houseMinimumNights(checkIn, checkOut);
+    if (houseMinimum.reason) return houseMinimum.reason;
     return {
       ok: true,
       spans: [{ units: [...RIVER_UNITS], wholeHouse: true }],
       units: [],
       wholeHouse: true,
-      sleeps: 24,
+      // Read from the one place the house's capacity is written down, not repeated here.
+      sleeps: SLEEPS.river,
       guests,
       line: 'The whole River House.',
     };
@@ -218,28 +247,8 @@ export function unitRequestCheck(
     };
   }
 
-  /*
-   * The house's own minimum stay applies to a part too.
-   *
-   * The minimum lives in the rate card (`quoteStay` reads `minNights` off each night's ask) and the whole-house path goes
-   * through it. The part path did not, so a guest could book **two nights in the Garage Suite over Christmas** when the
-   * house needs five. A part is part of the house; it cannot undercut the house's own rule.
-   *
-   * A part's own minimum, when the host set one, may be stricter and is checked separately on the page; this is the floor.
-   */
-  const houseMinimum = Math.max(
-    ...nightsBetween(checkIn, checkOut).map((night) => nightAsk('river', night).minNights),
-    // A night that cannot be read must not lower the minimum to a permissive number.
-    1,
-  );
-  const nightsWanted = nightsBetween(checkIn, checkOut).length;
-  if (nightsWanted > 0 && nightsWanted < houseMinimum) {
-    return {
-      ok: false,
-      reason: `This stay needs at least ${houseMinimum} nights, the same as the whole house.`,
-      code: 'min-nights',
-    };
-  }
+  const minimum = houseMinimumNights(checkIn, checkOut);
+  if (minimum.reason) return minimum.reason;
 
   return {
     ok: true,
