@@ -116,6 +116,11 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env, p
       nights: view.nights,
       ...(view.guests !== undefined ? { guests: view.guests } : {}),
       ...(view.children !== undefined ? { children: view.children } : {}),
+      /*
+       * Which part the guest asked for. The route rebuilds this response field by field rather than spreading the view,
+       * so a new field on the view does not arrive here by itself — this is the line that makes it visible.
+       */
+      ...(view.parts && view.parts.length > 0 ? { parts: view.parts } : {}),
       ...(view.heldUntil ? { heldUntil: view.heldUntil } : {}),
       ...(view.reason ? { reason: view.reason } : {}),
       ...(view.answeredAt ? { answeredAt: view.answeredAt } : {}),

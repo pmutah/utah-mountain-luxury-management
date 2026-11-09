@@ -10,6 +10,8 @@ type View = {
   nights: number;
   guests?: number;
   children?: number;
+  /** The parts of the Riverhouse this request is for. Absent means the whole house. */
+  parts?: string[];
   heldUntil?: string;
   reason?: string;
   answeredAt?: string;
@@ -101,6 +103,16 @@ export function RequestStatus({ token }: { token: string }) {
               {KICKER[view.status]}
             </p>
             <h2 className="mt-2 font-display text-2xl">{view.houseLine}</h2>
+            {/*
+              What the guest actually asked for. The page showed only the house and the dates, so a guest who had just
+              requested the Garage Suite could not tell from their own link what they had asked for - while the receipt
+              email named it.
+            */}
+            {view.parts && view.parts.length > 0 && (
+              <p className="mt-1 text-sm text-[var(--uml-gold)]" data-bot="request-parts">
+                {view.parts.join(' and ')}
+              </p>
+            )}
             <p className="mt-1 text-sm text-[var(--uml-muted)]">
               {day(view.checkIn)} to {day(view.checkOut)} · {view.nights === 1 ? '1 night' : `${view.nights} nights`}
               {typeof view.guests === 'number'
@@ -154,7 +166,7 @@ export function RequestStatus({ token }: { token: string }) {
             )}
 
             <p className="mt-8 text-xs text-[var(--uml-muted)]">
-              This page shows the dates and the party only. It does not carry a price, a door code, or a way in.
+              This page shows the house, the dates, and the party. It does not carry a price, a door code, or a way in.
             </p>
           </section>
         )}

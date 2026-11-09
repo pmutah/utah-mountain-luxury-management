@@ -1,6 +1,10 @@
 import { isDeclineReason, type DeclineReason } from './booking-decline';
 import { isRealDay } from './market/dates';
 import type { HouseId } from './market/types';
+import { RIVER_UNIT_DETAIL } from './river-units';
+
+/** The parts by name, so a guest reads "River Garage Suite" rather than a slug. */
+const UNIT_NAME = new Map<string, string>(RIVER_UNIT_DETAIL.map((unit) => [unit.id as string, unit.name]));
 
 /**
  * A guest who sends a direct request can see where it stands. Before this the guest got a receipt and
@@ -26,6 +30,13 @@ export type RequestView = {
   nights: number;
   guests?: number;
   children?: number;
+  /**
+   * The parts of the Riverhouse this request is for, already named. Absent means the whole house.
+   *
+   * The status page showed only dates and the party, so a guest who had just asked for the Garage Suite could not tell
+   * from their own link what they had asked for — and the confirmation email names it, so the two disagreed.
+   */
+  parts?: string[];
   /** When the dates stop being held, when a hold is still live. */
   heldUntil?: string;
   /** Why the host could not take the stay, in guest words. Only on a decline. */
@@ -71,6 +82,11 @@ export type RequestStatusInput = {
   checkOut?: unknown;
   guests?: unknown;
   children?: unknown;
+  /**
+   * Which parts of the Riverhouse the guest asked for. Absent means the whole house, which is every request made before
+   * the house was sold in parts.
+   */
+  units?: unknown;
 };
 
 export type RequestStatusDecision = {
@@ -128,6 +144,15 @@ export function requestView(
       ? request.children
       : undefined;
 
+  /*
+   * The parts, named for a guest. An unknown name is dropped rather than shown raw, and an empty list means the whole
+   * house — so a request made before parts existed reads exactly as it did.
+   */
+  const parts = (Array.isArray(request.units) ? request.units : [])
+    .filter((unit): unit is string => typeof unit === 'string' && unit.length > 0)
+    .map((unit) => UNIT_NAME.get(unit) ?? null)
+    .filter((name): name is string => Boolean(name));
+
   const base = {
     houses,
     checkIn,
@@ -135,6 +160,7 @@ export function requestView(
     nights,
     ...(guests !== undefined ? { guests } : {}),
     ...(children !== undefined ? { children } : {}),
+    ...(parts.length > 0 ? { parts } : {}),
   };
 
   // An accepted stay is the only thing that makes this a booking. The note carries the request id,
