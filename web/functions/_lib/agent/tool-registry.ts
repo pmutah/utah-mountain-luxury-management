@@ -3,7 +3,8 @@ import type { GeminiFunctionDeclaration } from './gemini-agent';
 export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
   {
     name: 'manage_finances',
-    description: 'Log expenses, list expenses, or get profit/revenue summary for date ranges.',
+    description:
+      'Log expenses, list expenses, or get a profit/revenue summary for a date range. **This is the tool for any money question about a house** — revenue, costs, profit, the 20% management fee, or an owner share for the Ranch or the River. get_profit_summary is the one that answers those; get_partner_contributions is construction only and will look empty for a rental question.',
     parameters: {
       type: 'object',
       properties: {

@@ -1,6 +1,7 @@
 import { listSharedWork } from '../agent-work';
 import { PRICING_DOCTRINE, grossGoalSnapshot } from '../pricing-doctrine';
-import { PROPERTIES } from '../data';
+import { PROPERTIES, calculateMetrics } from '../data';
+import { mergeAllExpenses } from '../expenses';
 import { getAllReservations, getOccupancySummary } from '../reservations-store';
 import { loadApprovedRates, loadPricingAlerts, compareMarket, loadRiverUnitRates } from '../pricing-store';
 import { checkCalendarDiscrepancies } from '../calendar-store';
@@ -34,6 +35,47 @@ export async function buildAgentContext(
     pricingSummary = `Pricing comps (next 30d): Ranch — ${ranchCmp.message}; Lindon — ${lindonCmp.message}`;
   } catch {
     pricingSummary = 'Pricing comps: not configured yet.';
+  }
+
+  /*
+   * This year's owner shares, computed rather than described.
+   *
+   * Asked "how much does Todd get from the River House this year?" the co-host answered that it could not access financial
+   * data for a rental property, and reached for the construction-only contributions tool. Telling it which tool to use did
+   * not help — three rewrites of the guidance produced the same answer. The figure is computed by the same `calculateMetrics`
+   * the desk uses, so the number in context cannot disagree with the statement.
+   *
+   * A house with no split (Lindon) is left out rather than reported as zero.
+   */
+  let ownerLine = 'Owner shares this year: could not be read.';
+  try {
+    const year = today.slice(0, 4);
+    const shares: string[] = [];
+    /*
+     * The same stores the desk reads. A failed read leaves the line saying it could not be read, rather than reporting a
+     * zero — a zero here reads as "the house earned nothing", which is the mistake this line exists to prevent.
+     */
+    const ownerExpenses = await mergeAllExpenses(env);
+    for (const house of ['ranch', 'river'] as const) {
+      let todd = 0;
+      let fee = 0;
+      let months = 0;
+      for (let m = 1; m <= Number(today.slice(5, 7)); m += 1) {
+        const month = `${year}-${String(m).padStart(2, '0')}`;
+        const metrics = calculateMetrics(house, month, {}, ownerExpenses, reservations);
+        const dist = metrics.dist;
+        if (!dist) continue;
+        todd += dist.todd;
+        fee += dist.mgtFee;
+        months += 1;
+      }
+      shares.push(
+        `${house}: Todd $${Math.round(todd).toLocaleString('en-US')} so far in ${year}, management fee $${Math.round(fee).toLocaleString('en-US')} across ${months} month${months === 1 ? '' : 's'}`,
+      );
+    }
+    ownerLine = `Owner shares, computed from the books (answer an owner-share question from this, not from get_partner_contributions): ${shares.join('; ')}. The split is (revenue - cleaning) x 20% fee to Brandon, then the rest after mortgage and operating halved between Brandon & Stephanie and Todd. Lindon has no split.`;
+  } catch {
+    ownerLine = 'Owner shares this year could not be read; say so rather than quoting a figure.';
   }
 
   const shared = await listSharedWork(env).catch(() => ({ open: [], done: [] }));
@@ -127,10 +169,11 @@ export async function buildAgentContext(
     `Properties:`,
     `- Ranch House (ranch): ${ranchAddr}`,
     `- Lindon House (lindon): ${lindonAddr}`,
-    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24 as one house and is also sold in three parts, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee`,
+    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24 as one house and is also sold in three parts, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee. **The River House opened on November 1 2026, so any total before that date is zero because the house was not open — never because it earned nothing.** Say which it is.`,
     ...partLines,
     `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
     approvedLine,
+    ownerLine,
     mailLine,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : '',
     uiContext.activeTab ? `Active tab: ${uiContext.activeTab}` : '',
@@ -166,6 +209,6 @@ ${PRICING_DOCTRINE}
 For destructive actions (cancel reservation, send email), require explicit user confirmation or create drafts for approval.
 A direct request is answered with manage_operations: list_requests shows the saved requests and, on each, the payout to accept at. accept_request needs that payout — it is never guessed, and a request with no payout is refused. Accepting books the stay and tries to email the guest a confirmation, so the first call only tells you what would happen; call again with confirm:true to do it. **Whether that email actually sends is stated in the Email: line near the top — read it before telling a host the guest was emailed.** decline_request needs one of the six reasons, and also needs confirm:true, because declining emails the guest and lets the hold go so another guest can take those nights. The desk's own rules apply to you: a clashing night, a second accept, and an invented reason are all refused.
 Creating a reservation is refused when those nights are already on that house's calendar or blocked. A refusal names the clashing nights and writes nothing; move the dates rather than retrying. A stay that checks out on the arrival day is not a clash.
-The River House is 50% Brandon Pierce & Stephanie / 50% Todd Wilhite; Brandon is paid a 20% management fee (same split as the Ranch House).
-The construction project tracks who fronted bills: set paidBy to brandon for Brandon & Stephanie or todd for Todd. Use get_partner_contributions with propertyId construction (not rental houses) to report what each side has fronted and who still needs to put in money to stay 50/50.
+The River House is 50% Brandon Pierce & Stephanie / 50% Todd Wilhite; Brandon is paid a 20% management fee (same split as the Ranch House). **An owner-share question about the Ranch or the River is a rental question: use manage_finances with get_profit_summary, never get_partner_contributions.** The split is: (revenue - cleaning) x 20% is Brandon's fee, and the rest after mortgage and operating is halved.
+The construction project tracks who fronted bills: set paidBy to brandon for Brandon & Stephanie or todd for Todd. Use get_partner_contributions with propertyId construction (not rental houses) to report what each side has fronted and who still needs to put in money to stay 50/50. That tool is construction only; for a rental house it returns nothing, which is not the same as the house earning nothing.
 Brandon & Stephanie household furnishings live on the Our expenses tab (propertyId household). Paste receipt text or a photo; those bills stay off rental P&L and are not a Todd split.`;
