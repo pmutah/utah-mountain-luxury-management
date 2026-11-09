@@ -913,6 +913,43 @@ export const api = {
       line: string;
       nights: Array<{ date: string; ok: boolean; written: number; reason: string | null }>;
     }>('/api/pricing/approved-rates', { method: 'PUT', body: JSON.stringify(body) }),
+  /**
+   * The three Riverhouse units: price, whether each is sellable, and its free nights.
+   *
+   * `units: null` means the sheet could not be read, which is not the same as three unpriced units.
+   */
+  getRiverUnits: () =>
+    request<{
+      units:
+        | Array<{
+            id: string;
+            name: string;
+            sleeps: number;
+            bedrooms: number;
+            beds: number;
+            baths: number;
+            rate: { nightly: number | null; cleaning: number | null; minNights: number | null };
+            rateState: 'unset' | 'partial' | 'ready';
+            rateLine: string;
+            sellable: boolean;
+            freeNights: number;
+          }>
+        | null;
+      wholeHouse: { freeNights: number } | null;
+      storageReads?: 'ok' | 'paused';
+      publishes?: boolean;
+      publishNote?: string;
+    }>('/api/pricing/river-units'),
+  /** Set one unit's price. Merges, so the other two units keep their rates. */
+  saveRiverUnit: (body: { unit: string; nightly?: number; cleaning?: number; minNights?: number }) =>
+    request<{
+      ok: boolean;
+      unit: string;
+      rate: { nightly: number | null; cleaning: number | null; minNights: number | null };
+      rateLine: string;
+      sellable: boolean;
+      publishes?: boolean;
+    }>('/api/pricing/river-units', { method: 'PUT', body: JSON.stringify(body) }),
   getBookingRequests: () =>
     request<{
       rows:

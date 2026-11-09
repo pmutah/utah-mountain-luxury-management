@@ -70,6 +70,7 @@ import { ReportPausedNav } from './components/ReportPausedNav';
 import { OwnerRules } from './components/OwnerRules';
 import { CleanHouseCards } from './components/CleanHouseCards';
 import { RiverLaunch } from './components/RiverLaunch';
+import { RiverUnitsPanel } from './components/RiverUnitsPanel';
 import { useToast } from './hooks/useToast';
 import { letterPausedLine, ownerStatementPausedLine } from './lib/report-paused';
 import { currentYearMonth } from './lib/months';
@@ -410,6 +411,16 @@ function Dashboard() {
                 onToast={showToast}
                 onError={(msg) => showToast(msg, 'error')}
               />
+            )}
+            {/*
+              The Riverhouse can be sold whole or in three parts, so the parts have their own card on the River rental
+              view. It sits outside PropertyDetail because the three houses share that component and only River has
+              units; a unit is part of the river house, not a fourth house.
+            */}
+            {!booksPaused && activeTab === 'river' && riverView === 'rental' && (
+              <div className="mt-6">
+                <RiverUnitsPanel onToast={showToast} />
+              </div>
             )}
           </main>
         ) : null}
