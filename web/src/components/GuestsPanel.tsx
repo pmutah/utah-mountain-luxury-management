@@ -206,7 +206,25 @@ export function GuestsPanel({
       }
       await load();
     } catch (e) {
-      onToast(e instanceof Error ? e.message : 'Send failed', 'error');
+      /*
+       * A failed send is not a dead end. The route returns the link it built and the alternatives, so a host whose
+       * email is broken can still get the guest their page instead of reading a provider error and stopping.
+       */
+      const failure = e as { message?: string; link?: string; alternatives?: string };
+      const message = e instanceof Error ? e.message : 'Send failed';
+      if (failure.link) {
+        try {
+          await navigator.clipboard.writeText(failure.link);
+          onToast(
+            `${message} The link is copied — ${failure.alternatives ?? 'send it to the guest yourself.'}`,
+            'error',
+          );
+        } catch {
+          onToast(`${message} Link: ${failure.link}`, 'error');
+        }
+      } else {
+        onToast(message, 'error');
+      }
     } finally {
       setBusyId(null);
     }

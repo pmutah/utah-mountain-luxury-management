@@ -32,14 +32,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (/<!doctype html/i.test(detail) || /error code:\s*1101/i.test(detail)) {
       message = 'The dashboard could not load. Storage writes are paused for the rest of the day.';
     }
+    /*
+     * The whole body rides on the error, not only its message.
+     *
+     * A failed send returns the guest link it already built, so a host whose email is broken can still deliver it. That
+     * was invisible: this threw a bare `Error`, so callers could read the sentence and nothing else. Fields the caller
+     * might act on are copied across rather than dropped.
+     */
+    const failure = new Error(message) as Error & Record<string, unknown>;
     try {
-      const parsed = JSON.parse(detail) as { error?: string; message?: string };
-      if (parsed.error) message = parsed.error;
-      else if (parsed.message) message = parsed.message;
+      const parsed = JSON.parse(detail) as Record<string, unknown>;
+      if (parsed.error) message = String(parsed.error);
+      else if (parsed.message) message = String(parsed.message);
+      failure.message = message;
+      for (const [key, value] of Object.entries(parsed)) {
+        if (key === 'error' || key === 'message') continue;
+        failure[key] = value;
+      }
     } catch {
       // use raw detail
     }
-    throw new Error(message);
+    throw failure;
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;

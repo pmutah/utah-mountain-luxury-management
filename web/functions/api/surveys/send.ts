@@ -86,7 +86,26 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
         guideOn,
       }),
     );
-    if (sent.error) return corsJson(request, { error: sent.error }, 502);
+    if (sent.error) {
+      /*
+       * A failed send must not be a dead end.
+       *
+       * The link is already built at this point, and the host can copy it or text it. When email is broken on this
+       * deployment the raw provider error ("invalid_client") gives a host nothing to do — so the response carries the
+       * link and the alternatives, and the desk can act without knowing what OAuth is.
+       */
+      return corsJson(
+        request,
+        {
+          error: sent.error,
+          link,
+          canCopy: true,
+          alternatives:
+            'The link above works. Copy it and send it to the guest yourself, or try the text channel, which uses a different provider.',
+        },
+        502,
+      );
+    }
   } else if (body.channel === 'sms') {
     if (!phone) return corsJson(request, { error: 'Add a phone number first.' }, 400);
     const sent = await sendTwilioSms(
@@ -94,7 +113,20 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
       phone,
       surveySmsBody({ guestName: stay.guestName, propertyName, link, guideOn }),
     );
-    if (sent.error) return corsJson(request, { error: sent.error }, 502);
+    if (sent.error) {
+      // Same rule for the text channel: the link is the useful part, so it goes back with the failure.
+      return corsJson(
+        request,
+        {
+          error: sent.error,
+          link,
+          canCopy: true,
+          alternatives:
+            'The link above works. Copy it and send it to the guest yourself, or try email, which uses a different provider.',
+        },
+        502,
+      );
+    }
   }
 
   await markSurveySent(env, survey.token, body.channel);
