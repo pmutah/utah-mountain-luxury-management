@@ -1,6 +1,6 @@
 /stay/* /index.html 200
 /esign/* /index.html 200
-/book /index.html 200
+/book /book/ 301
 /book/* /index.html 200
-/houses /index.html 200
+/houses /houses/ 301
 /houses/* /index.html 200
