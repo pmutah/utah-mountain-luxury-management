@@ -3,7 +3,7 @@ import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '..
 import { guestArrivalLine } from '../lib/arrival';
 import { preferenceCardLines, preferenceCardNote, preferencePartyCount } from '../lib/preference-choices';
 import { guestDepartureLine } from '../lib/departure';
-import { partStayCapacityLine, partStayFrom, partStayLabel, partStayLine } from '../lib/part-stay';
+import { partHouseNotes, partStayCapacityLine, partStayFrom, partStayLabel, partStayLine } from '../lib/part-stay';
 import { loadQuoteCalendar } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree, rightNow, stayCalendarHold, stayCountdown } from '../lib/journey';
 import { addDays, denverToday } from '../lib/market/dates';
@@ -403,7 +403,7 @@ export function StayApp({ token }: { token: string }) {
     parking: shownParking,
     rules: shownRules.join(' '),
     houseId: data.propertyId,
-    notes: stayHouseNotes(data.propertyId, guide.sections),
+    notes: partHouseNotes(partStay, stayHouseNotes(data.propertyId, guide.sections)),
     nearby: stayAreaPlaces(data.propertyId, guide.places),
     emergency: shownEmergency,
     checkout: leaving,
@@ -939,7 +939,7 @@ export function StayApp({ token }: { token: string }) {
                 </div>
               </Card>
             )}
-            {stayHouseNotes(data.propertyId, guide.sections).map((section) => (
+            {partHouseNotes(partStay, stayHouseNotes(data.propertyId, guide.sections)).map((section) => (
               <Card key={section.title}>
                 <p className="text-lg" data-bot="stay-house-note">
                   {section.title}

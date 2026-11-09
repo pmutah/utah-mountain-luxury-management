@@ -143,7 +143,22 @@ try {
   const distIndex = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'index.html');
   const localIndex = readFileSync(distIndex, 'utf8');
   const localScript = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(localIndex)?.[0] ?? null;
-  const liveScript = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(home.body)?.[0] ?? null;
+  /*
+   * The live HTML is re-read for a short window before a mismatch is reported.
+   *
+   * Cloudflare serves the previous deployment at the edge for a few seconds after an upload, so a check run in that gap
+   * compared a brand-new local build against the old page and failed - correctly by its own rule, but for a reason that
+   * resolves itself. A check that cries stale on every deploy teaches the operator to rerun it until it passes, which is
+   * exactly how a real stale deploy gets waved through. So: wait, re-read, and only then report.
+   */
+  let liveScript = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(home.body)?.[0] ?? null;
+  if (localScript && liveScript && localScript !== liveScript) {
+    for (let attempt = 1; attempt <= 5 && liveScript !== localScript; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const again = await probe('/');
+      liveScript = /assets\/index-[A-Za-z0-9_-]+\.js/.exec(again.body ?? '')?.[0] ?? liveScript;
+    }
+  }
   if (!localScript) {
     problems.push('dist/index.html names no built bundle, so this check cannot compare it.');
   } else if (!liveScript) {

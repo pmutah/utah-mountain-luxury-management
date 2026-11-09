@@ -6,6 +6,7 @@ import {
   partStayFrom,
   partStayLabel,
   partStayLine,
+  partHouseNotes,
 } from './part-stay.ts';
 
 /*
@@ -99,4 +100,50 @@ test('three parts read as a list, not as three "and"s', () => {
   const line = partStayLine(partStayFrom(['garage-suite', 'recreation-wing', 'main-lodge'])) ?? '';
   assert.match(line, /Garage Suite, Recreation Wing, and Main Lodge/);
   assert.equal(/and Recreation Wing and Main Lodge/.test(line), false);
+});
+
+/** The notes the River guide really publishes, so this test breaks if the guide changes shape. */
+const RIVER_NOTES = [
+  { title: 'Bedrooms', body: 'Seven king suites, each in its own room, plus an expandable king.' },
+  { title: 'Septic', body: 'The house is on septic. Only toilet paper goes in the toilets.' },
+];
+
+test('a part guest is not told about bedrooms they did not rent', () => {
+  const notes = partHouseNotes(partStayFrom(['garage-suite']), RIVER_NOTES);
+  const bedrooms = notes.find((note) => note.title === 'Bedrooms');
+  assert.ok(bedrooms);
+  assert.equal(/seven king suites/i.test(bedrooms.body), false, 'a part guest was told about seven suites');
+  assert.match(bedrooms.body, /Garage Suite: 1 bedroom and 2 beds, sleeping 4/);
+  assert.match(bedrooms.body, /rest of the house is not part of this stay/);
+});
+
+test('a note that is true of a part is left exactly as written', () => {
+  const notes = partHouseNotes(partStayFrom(['garage-suite']), RIVER_NOTES);
+  const septic = notes.find((note) => note.title === 'Septic');
+  assert.deepEqual(septic, RIVER_NOTES[1], 'a septic note was rewritten for a part guest');
+});
+
+test('a whole-house stay keeps every note untouched', () => {
+  const notes = partHouseNotes(partStayFrom(undefined), RIVER_NOTES);
+  assert.deepEqual(notes, RIVER_NOTES);
+});
+
+test('two parts get one capacity line each, added up', () => {
+  const notes = partHouseNotes(partStayFrom(['garage-suite', 'main-lodge']), RIVER_NOTES);
+  const bedrooms = notes.find((note) => note.title === 'Bedrooms')?.body ?? '';
+  assert.match(bedrooms, /1 bedroom and 2 beds/);
+  assert.match(bedrooms, /4 bedrooms and 8 beds/);
+  assert.match(bedrooms, /sleeping 17/);
+});
+
+test('rewriting never names another guest', () => {
+  const bedrooms = partHouseNotes(partStayFrom(['main-lodge']), RIVER_NOTES).find((n) => n.title === 'Bedrooms')?.body ?? '';
+  assert.equal(/guest [A-Z]/.test(bedrooms), false);
+  assert.equal(/\b\d+ (other )?guests\b/i.test(bedrooms), false);
+});
+
+test('the original notes array is not mutated', () => {
+  const source = RIVER_NOTES.map((note) => ({ ...note }));
+  partHouseNotes(partStayFrom(['garage-suite']), source);
+  assert.equal(source[0]?.body, RIVER_NOTES[0]?.body, 'the caller\'s notes were changed in place');
 });

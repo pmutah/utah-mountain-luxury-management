@@ -100,3 +100,35 @@ function listNames(names: readonly string[]): string {
   if (short.length === 2) return `${short[0]} and ${short[1]}`;
   return `${short.slice(0, -1).join(', ')}, and ${short[short.length - 1]}`;
 }
+
+/**
+ * House notes with the capacity-bearing ones rewritten for a part guest.
+ *
+ * The River guide's Bedrooms note reads "Seven king suites, each in its own room, plus an expandable king." A guest in the
+ * Garage Suite has one bedroom and two beds, so that sentence describes rooms they did not rent — the same contradiction
+ * the published rule had, in the body of the guide instead of the rules.
+ *
+ * Only notes that claim a whole-house count are replaced. Everything true of the part stays as written: the septic note,
+ * the river-safety note, and anything the host typed that does not count rooms.
+ *
+ * A whole-house stay is returned untouched, so nothing changes for those guests.
+ */
+export function partHouseNotes<T extends { title: string; body: string }>(
+  stay: PartStay,
+  notes: readonly T[],
+): T[] {
+  if (stay.wholeHouse) return [...notes];
+  return notes.map((note) => {
+    /*
+     * A note is only rewritten when it actually counts the house — "seven king suites", "sleeps 24", or "the whole
+     * house". A note that merely says "the house is on septic" is true of a part and must not be touched.
+     */
+    const claimsWholeHouse = /\bseven king suites\b|\bsleeps 24\b|\bwhole house\b|\bexpandable king\b/i.test(`${note.title} ${note.body}`);
+    if (!claimsWholeHouse) return note;
+    const label = listNames(stay.names);
+    const parts = RIVER_UNIT_DETAIL.filter((detail) => stay.units.includes(detail.id));
+    const counts = parts.map((detail) => `${detail.bedrooms} bedroom${detail.bedrooms === 1 ? '' : 's'} and ${detail.beds} bed${detail.beds === 1 ? '' : 's'}`).join(', ');
+    const replaced = `${label}: ${counts}, sleeping ${stay.sleeps}. The rest of the house is not part of this stay.`;
+    return { ...note, body: replaced };
+  });
+}
