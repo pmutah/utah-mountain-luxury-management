@@ -14,6 +14,7 @@ import { returningGuest, returningLine, type ReturningCheck } from '../../../src
 import { addHolds, loadHolds } from '../../_lib/hold-store';
 import { loadRiverUnitRates } from '../../_lib/pricing-store';
 import { unitRequestCheck } from '../../../src/lib/river-unit-request';
+import { RIVER_UNIT_DETAIL } from '../../../src/lib/river-units';
 import { denverToday } from '../../../src/lib/market/dates';
 
 interface BookingRequest {
@@ -183,6 +184,15 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
 
   const house = houses.map((id) => PROPERTIES[id].name).join(' and ') || propertyName(propertyId);
   /*
+   * What the host is told this request is for. A part request said "asked to book The River House", so the team email
+   * alone could not tell a Garage Suite request from a whole-house one — and the team may act on that email before
+   * opening the desk.
+   */
+  const askedFor =
+    entry.units && entry.units.length > 0
+      ? `${entry.units.map((unit) => RIVER_UNIT_DETAIL.find((detail) => detail.id === unit)?.name ?? unit).join(' and ')} at ${house}`
+      : house;
+  /*
    * `gmailSend` is not guaranteed to return an error object — it can throw (a token refresh that fails,
    * a network fault inside the Workers runtime). Unguarded, that throw replaced the whole response with a
    * Cloudflare 500 **after** the request had already been saved: the guest saw a crash page, the team got
@@ -196,9 +206,9 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     sent = await gmailSend(
       env,
       'utahmountainluxury@gmail.com',
-      `Direct request · ${house} · ${name}`,
+      `Direct request · ${askedFor} · ${name}`,
       [
-        `${name} asked to book ${house}.`,
+        `${name} asked to book ${askedFor}.`,
         returningLine(returning),
         `Email: ${email}`,
         entry.phone ? `Phone: ${entry.phone}` : '',
@@ -264,6 +274,11 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     nights: nightsBetween(entry.checkIn, entry.checkOut),
     ...(entry.guests !== undefined ? { guests: entry.guests } : {}),
     ...(entry.children !== undefined ? { children: entry.children } : {}),
+    /*
+     * The parts this request takes, so the guest's own receipt names what they asked for instead of the whole house.
+     * Absent for a whole-house request, which is every request made before parts existed.
+     */
+    ...(entry.units && entry.units.length > 0 ? { units: entry.units } : {}),
     ...(statusLink ? { statusLink } : {}),
   });
   const guestSent = await gmailSend(env, email, receipt.subject, receipt.body).catch((err) => ({

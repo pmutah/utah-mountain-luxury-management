@@ -1,7 +1,19 @@
 import { PROPERTIES } from './api';
 import type { HouseId } from './market/types';
+import { RIVER_UNIT_DETAIL } from './river-units';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The parts by name, so a guest reads "River Garage Suite" rather than a slug. */
+const UNIT_NAME = new Map<string, string>(RIVER_UNIT_DETAIL.map((unit) => [unit.id as string, unit.name]));
+
+/** "A", "A and B", "A, B, and C" — the way a person writes a list. */
+function listOf(names: readonly string[]): string {
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0]!;
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
 
 function longDate(iso: string): string {
   if (!DATE.test(iso)) return '';
@@ -28,6 +40,13 @@ export type RequestNote = {
   guests?: number;
   children?: number;
   /**
+   * Which parts of the Riverhouse this request takes.
+   *
+   * Absent means the whole house. A guest who asked for the Garage Suite was told "your request for The River House",
+   * which is the wrong house — the email is their own record of what they asked for.
+   */
+  units?: readonly string[];
+  /**
    * The guest's own link to this request. It is the credential, so it goes only in the guest's mail
    * and never on the host desk. A URL that is not a plain https link is dropped.
    */
@@ -41,7 +60,18 @@ export type Mail = { subject: string; body: string };
  * stay is booked. It names no price, no door code, and it does not promise the dates.
  */
 export function guestRequestReceipt(note: RequestNote): Mail {
-  const houses = note.houses.map(houseName).join(' and ');
+  /*
+   * A part request must name the part. "Your request for The River House" when the guest asked for the Garage Suite is
+   * the wrong house, and this email is the guest's own record of what they asked for.
+   */
+  const parts = (note.units ?? []).filter((unit) => typeof unit === 'string' && unit.length > 0);
+  const partNames = parts
+    .map((unit) => UNIT_NAME.get(unit) ?? unit)
+    .filter(Boolean);
+  const houses =
+    partNames.length > 0
+      ? `${listOf(partNames)} at ${note.houses.map(houseName).join(' and ')}`
+      : note.houses.map(houseName).join(' and ');
   const first = note.guestName.split(' ')[0] || note.guestName;
   const nights = note.nights === 1 ? '1 night' : `${note.nights} nights`;
   const party =
