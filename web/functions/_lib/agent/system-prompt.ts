@@ -4,6 +4,7 @@ import { PROPERTIES } from '../data';
 import { getAllReservations, getOccupancySummary } from '../reservations-store';
 import { loadApprovedRates, loadPricingAlerts, compareMarket, loadRiverUnitRates } from '../pricing-store';
 import { checkCalendarDiscrepancies } from '../calendar-store';
+import { gmailHealth, loadGmailTokens } from '../gmail-store';
 import { partFacts, partPromptLines } from '../../../src/lib/part-facts';
 import type { AgentChatContext, AgentEnv } from './types';
 
@@ -64,6 +65,25 @@ export async function buildAgentContext(
     approvedLine = 'Approved prices: could not be read, so treat every night as the published card and say so.';
   }
   /*
+   * Whether email can actually send.
+   *
+   * The prompt said "Accepting books the stay AND emails the guest a confirmation", which is false on a deployment where
+   * the mailbox is broken: a guest request arrived, no mail left, and the AI told a host the guest had been emailed. A
+   * host then waits for a reply that is never coming.
+   *
+   * `gmailHealth` runs the same token path a real send takes, so this line cannot disagree with reality.
+   */
+  let mailLine = 'Email: state unknown — do not say whether a guest was emailed.';
+  try {
+    const tokens = await loadGmailTokens(env);
+    const health = await gmailHealth(env, tokens);
+    mailLine = health.connected
+      ? `Email: connected as ${health.email}, so a send can go out.`
+      : `Email: **cannot send** (${health.problem ?? 'not connected'}). Nothing reaches a guest by email. When you accept a request or send a link, say the email did not send and that the host must copy the link from the Guests page or text it. Never tell a host a guest was emailed when this line says it cannot send.`;
+  } catch {
+    mailLine = 'Email: state could not be read — do not say whether a guest was emailed.';
+  }
+  /*
    * The Riverhouse parts.
    *
    * The prompt said "sleeps 24" and nothing else, so the co-host described a house that can only be rented whole. Asked
@@ -111,6 +131,7 @@ export async function buildAgentContext(
     ...partLines,
     `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
     approvedLine,
+    mailLine,
     uiContext.month ? `Dashboard month: ${uiContext.month}` : '',
     uiContext.activeTab ? `Active tab: ${uiContext.activeTab}` : '',
     `Gross booking goals (host payout, before mortgage and bills): ${(['lindon', 'ranch', 'river'] as const)
@@ -143,7 +164,7 @@ Muse, Amanda, and you share one job list (tool shared_work). Before you start a 
 ${PRICING_DOCTRINE}
 
 For destructive actions (cancel reservation, send email), require explicit user confirmation or create drafts for approval.
-A direct request is answered with manage_operations: list_requests shows the saved requests and, on each, the payout to accept at. accept_request needs that payout — it is never guessed, and a request with no payout is refused. Accepting books the stay AND emails the guest a confirmation, so the first call only tells you what would happen; call again with confirm:true to do it. decline_request needs one of the six reasons, and also needs confirm:true, because declining emails the guest and lets the hold go so another guest can take those nights. The desk's own rules apply to you: a clashing night, a second accept, and an invented reason are all refused.
+A direct request is answered with manage_operations: list_requests shows the saved requests and, on each, the payout to accept at. accept_request needs that payout — it is never guessed, and a request with no payout is refused. Accepting books the stay and tries to email the guest a confirmation, so the first call only tells you what would happen; call again with confirm:true to do it. **Whether that email actually sends is stated in the Email: line near the top — read it before telling a host the guest was emailed.** decline_request needs one of the six reasons, and also needs confirm:true, because declining emails the guest and lets the hold go so another guest can take those nights. The desk's own rules apply to you: a clashing night, a second accept, and an invented reason are all refused.
 Creating a reservation is refused when those nights are already on that house's calendar or blocked. A refusal names the clashing nights and writes nothing; move the dates rather than retrying. A stay that checks out on the arrival day is not a clash.
 The River House is 50% Brandon Pierce & Stephanie / 50% Todd Wilhite; Brandon is paid a 20% management fee (same split as the Ranch House).
 The construction project tracks who fronted bills: set paidBy to brandon for Brandon & Stephanie or todd for Todd. Use get_partner_contributions with propertyId construction (not rental houses) to report what each side has fronted and who still needs to put in money to stay 50/50.
