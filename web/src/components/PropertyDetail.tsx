@@ -1,4 +1,5 @@
 import { Brush, CalendarX } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
   formatCurrency,
   PROPERTIES,
@@ -6,7 +7,11 @@ import {
   type PortfolioData,
   type PropertyMetrics,
   type RentalPropertyId,
+  type Reservation,
 } from '../lib/api';
+import { loadDateBlocks, type DateBlock } from '../lib/booked-nights';
+import { currentDayIso } from '../lib/months';
+import { RiverPartCalendar } from './RiverPartCalendar';
 import { OwnerDistributionPanel } from './OwnerDistribution';
 import { ExtraCleaningInput } from './ExtraCleaningInput';
 import { ExpenseScanner } from './ExpenseScanner';
@@ -20,6 +25,33 @@ import { propertyHealth } from '../lib/luxury';
 import { useHealthSignals } from '../hooks/useHealthSignals';
 
 type TabId = RentalPropertyId;
+
+/**
+ * Loads the calendar blocks the parts calendar needs, then renders it.
+ *
+ * `PropertyDetail` is not given blocks and threading them through every caller would touch the Ranch and Lindon paths
+ * for a River-only feature. The blocks endpoint is a small read the page already makes elsewhere.
+ */
+function RiverPartMonth({ month, reservations }: { month: string; reservations: Reservation[] }) {
+  const [blocks, setBlocks] = useState<DateBlock[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadDateBlocks().then((rows) => {
+      if (live && rows) setBlocks(rows);
+    });
+    return () => {
+      live = false;
+    };
+  }, [month]);
+  /*
+   * A block list that could not be read is not an empty one: rendering the month without blocks would paint closed
+   * nights as open, which is the one mistake this calendar exists to prevent.
+   */
+  if (blocks === null) return null;
+  return (
+    <RiverPartCalendar month={month} reservations={reservations} blocks={blocks} todayIso={currentDayIso()} />
+  );
+}
 
 export function PropertyDetail({
   tab,
@@ -75,6 +107,13 @@ export function PropertyDetail({
       {metrics.dist && <OwnerDistributionPanel dist={metrics.dist} />}
 
       <OccupancyCalendar propertyId={tab} month={data.month} reservations={data.reservations} />
+
+      {/*
+        The Riverhouse is sold four ways, and a one-colour house calendar cannot show that a night with the Main Lodge
+        sold still has two parts for sale. This sits under the house calendar rather than replacing it: the house view is
+        still the right answer for "is the house booked", and this one answers "what is left".
+      */}
+      {tab === 'river' && <RiverPartMonth month={data.month} reservations={data.reservations} />}
 
       <div className="bg-slate-900 rounded-[40px] border border-slate-800 overflow-hidden shadow-xl">
         <div className="p-6 border-b border-slate-800 flex items-center gap-3">

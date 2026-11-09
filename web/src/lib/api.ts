@@ -87,6 +87,14 @@ export interface Reservation {
    * be dropped by JSON and the stamp would survive, which is exactly the bug a reset button would otherwise have.
    */
   surveyCompletedAt?: string | null;
+  /**
+   * Which parts of the Riverhouse this stay occupies.
+   *
+   * Absent means the whole house, which is what every stay recorded before the house was sold in parts means. Only a
+   * part bookable through our own site carries this today, so a channel booking still reads as the whole house — the
+   * conservative reading, because it blocks every part rather than freeing one by mistake.
+   */
+  units?: string[];
 }
 
 export type SurveyVariant = 'vip' | 'classic';
