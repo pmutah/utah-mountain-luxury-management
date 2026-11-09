@@ -3,7 +3,7 @@ import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '..
 import { guestArrivalLine } from '../lib/arrival';
 import { preferenceCardLines, preferenceCardNote, preferencePartyCount } from '../lib/preference-choices';
 import { guestDepartureLine } from '../lib/departure';
-import { partHouseNotes, partStayCapacityLine, partStayFrom, partStayLabel, partStayLine } from '../lib/part-stay';
+import { partStayEntranceLine, partHouseNotes, partStayCapacityLine, partStayFrom, partStayLabel, partStayLine } from '../lib/part-stay';
 import { loadQuoteCalendar } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree, rightNow, stayCalendarHold, stayCountdown } from '../lib/journey';
 import { addDays, denverToday } from '../lib/market/dates';
@@ -330,6 +330,7 @@ export function StayApp({ token }: { token: string }) {
   const partLine = partStayLine(partStay);
   const partCapacity = partStayCapacityLine(partStay);
   const partLabel = partStayLabel(partStay);
+  const partEntrance = partStayEntranceLine(partStay);
   const places = stayAreaPlaces(data.propertyId, guide.places).filter((place) => kind === 'all' || place.kind === kind);
   const phone = guide.contactPhone.replace(/[^\d+]/g, '');
   const houseId: HouseId | null =
@@ -447,6 +448,15 @@ export function StayApp({ token }: { token: string }) {
             data-units={partStay.units.join(',')}
           >
             {partLine}
+            {/*
+              Which entrance is a question this app cannot answer - there is one code for the building and no unit-level
+              door recorded - so the guest is sent to a person before they drive up, rather than left to try doors.
+            */}
+            {partEntrance && (
+              <span className="mt-2 block text-[#d4b56a]" data-bot="stay-part-entrance">
+                {partEntrance}
+              </span>
+            )}
           </p>
         )}
         {hostReply && (

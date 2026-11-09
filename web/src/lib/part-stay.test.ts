@@ -6,6 +6,7 @@ import {
   partStayFrom,
   partStayLabel,
   partStayLine,
+  partStayEntranceLine,
   partHouseNotes,
 } from './part-stay.ts';
 
@@ -100,6 +101,29 @@ test('three parts read as a list, not as three "and"s', () => {
   const line = partStayLine(partStayFrom(['garage-suite', 'recreation-wing', 'main-lodge'])) ?? '';
   assert.match(line, /Garage Suite, Recreation Wing, and Main Lodge/);
   assert.equal(/and Recreation Wing and Main Lodge/.test(line), false);
+});
+
+test('a part guest is told to ask which entrance is theirs', () => {
+  /*
+   * There is one door code for the whole building and no unit-level entrance recorded anywhere, so a part guest holding
+   * that code could try doors until one opened - into another guest's space. The honest line sends them to a person.
+   */
+  const line = partStayEntranceLine(partStayFrom(['garage-suite']));
+  assert.ok(line, 'a part guest is given no entrance guidance');
+  assert.match(line, /Ask us which entrance is yours before you arrive/);
+  assert.match(line, /shared house/);
+  assert.match(line, /door code opens the building rather than one door/);
+});
+
+test('a whole-house guest is not asked about entrances', () => {
+  // The front door is the answer, so the line would be noise.
+  assert.equal(partStayEntranceLine(partStayFrom(undefined)), null);
+});
+
+test('the entrance line names the part without naming another guest', () => {
+  const line = partStayEntranceLine(partStayFrom(['main-lodge'])) ?? '';
+  assert.match(line, /Main Lodge/);
+  assert.equal(/guest [A-Z]/.test(line), false, 'a guest name leaked into the entrance line');
 });
 
 /** The notes the River guide really publishes, so this test breaks if the guide changes shape. */

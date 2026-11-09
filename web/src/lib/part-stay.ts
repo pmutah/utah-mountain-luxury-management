@@ -72,6 +72,21 @@ export function partStayCapacityLine(stay: PartStay): string | null {
 }
 
 /**
+ * Which way in, for a guest who rented only part of the building.
+ *
+ * The platform does not know: there is one door code for the whole house and no unit-level entrance recorded anywhere.
+ * So rather than invent a side door, the guest is told to ask before they drive up — arriving at a shared house without
+ * knowing which door is yours, holding a code that opens every door, is how a guest walks in on someone else.
+ *
+ * Null for a whole-house stay, where the front door is the answer.
+ */
+export function partStayEntranceLine(stay: PartStay): string | null {
+  if (stay.wholeHouse) return null;
+  const names = listNames(stay.names);
+  return `Ask us which entrance is yours before you arrive. ${names} is part of a shared house, and the door code opens the building rather than one door.`;
+}
+
+/**
  * A label for the stay sheet, so a guest's own record says what they rented.
  *
  * Null for the whole house, because "The River House" already says it and a suffix on every booking is noise.
