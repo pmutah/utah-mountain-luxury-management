@@ -224,14 +224,25 @@ export function RiverUnitsPanel({
             ))}
           </ul>
 
-          {/*
-            The honest boundary. A rate set here reaches our own booking page; it does not reach Airbnb, Vrbo, or
-            Hospitable, and a booking taken on those channels is not reflected in the free-night counts above.
-          */}
-          <p className="mt-4 text-xs text-[var(--uml-muted)]" data-bot="river-units-publish">
-            {data.publishNote ??
-              'Blocks and prices stay in this app. Nothing is sent to Hospitable, Airbnb, or Vrbo from here.'}
-          </p>
+      {/*
+        The honest boundary. A rate set here reaches our own booking page; it does not reach Airbnb, Vrbo, or
+        Hospitable, and a booking taken on those channels is not reflected in the free-night counts above.
+      */}
+      {/*
+        Selling the house in parts has a consequence the pricing panel is the right place to state: there is one door
+        code for the building, so a guest in one part can open every part. Two guests who do not know each other would
+        both hold a working code for the whole house. That is the host's decision to make or fix, not something to leave
+        unsaid while they set a price that invites it.
+      */}
+      <p className="mt-4 rounded-xl border border-amber-700/50 bg-amber-950/40 px-3 py-2 text-xs text-amber-100" data-bot="river-units-door">
+        One door code covers the whole building, so a guest booked into one part can open every part. Selling a part
+        while another guest is in the house means two strangers hold the same code. Give each part its own lock, or keep
+        the house whole, before you sell parts on the same nights.
+      </p>
+      <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="river-units-publish">
+        {data.publishNote ??
+          'Blocks and prices stay in this app. Nothing is sent to Hospitable, Airbnb, or Vrbo from here.'}
+      </p>
         </>
       )}
     </section>
