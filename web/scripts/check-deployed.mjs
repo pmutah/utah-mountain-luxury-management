@@ -81,7 +81,19 @@ async function expectJson(path) {
 }
 
 // 1. The site is up at all.
-const home = await probe('/');
+/*
+ * A fresh deploy is briefly unavailable while Cloudflare swaps it in, so a non-200 here is re-read for a short window
+ * before it is reported. This verifier already does that for a bundle mismatch; reporting the whole site down on a
+ * successful deploy was the same mistake in a louder form — and a check that cries 500 on every deploy is one people
+ * learn to ignore.
+ *
+ * A genuine outage still fails: the retries are bounded and the last answer is what gets reported.
+ */
+let home = await probe('/');
+for (let attempt = 1; attempt <= 5 && home.status !== 200; attempt += 1) {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+  home = await probe('/');
+}
 if (home.status !== 200) problems.push(`/: the site answered ${home.status || home.error}`);
 
 // 2. The agent map is the cheapest signal of what is deployed: it lists the routes the build knows.

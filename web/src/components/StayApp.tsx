@@ -787,7 +787,19 @@ export function StayApp({ token }: { token: string }) {
             <Card>
               <Kicker>Getting in</Kicker>
               {access.phase === 'after' ? (
-                <p className="mt-3 text-[#d7cfc3]">Thank you for staying with us. We hope to see you again.</p>
+                /*
+                 * The code closes at noon on checkout day, an hour after the 11:00 AM checkout guests are given. That
+                 * buffer is deliberate, but a guest still collecting their bags at 12:01 was thanked for their stay and
+                 * given nothing else — no code, no explanation, nobody to call. The line now says what happened and who
+                 * to reach.
+                 */
+                <div className="mt-3 space-y-2">
+                  <p className="text-[#d7cfc3]">Thank you for staying with us. We hope to see you again.</p>
+                  <p className="text-sm text-white/60" data-bot="stay-door-closed">
+                    The door code closed at noon on your checkout day. If you are still at the house and need in, call us
+                    and we will open it for you.
+                  </p>
+                </div>
               ) : showCodes ? (
                 <div className="mt-4 space-y-5" data-bot="stay-door">
                   {access.doorCode ? (
