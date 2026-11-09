@@ -71,6 +71,11 @@ const HOST_ROUTES = [
   'pricing/snapshots.ts',
   'pricing/yield-plan.ts',
   'pricing/push-plan.ts',
+  /*
+   * The Riverhouse units. Host only, like every other pricing route: it writes the host's own unit prices and reports
+   * which nights each unit can still be sold. It publishes nothing to another channel.
+   */
+  'pricing/river-units.ts',
   'guest-guide.ts',
   'clean/links.ts',
   'clean/progress.ts',

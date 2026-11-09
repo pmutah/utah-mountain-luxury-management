@@ -2,6 +2,7 @@ import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import { addDays } from '../../src/lib/market/dates';
 import { compsForHouse } from '../../src/lib/market/comp-house';
+import { toUnitRates, type RiverUnitRates } from '../../src/lib/river-unit-rates';
 import { indexSnaps, liveCompFits, toLiveComp, toLiveSnaps, type LiveComp, type SnapIndex } from '../../src/lib/market/live';
 import {
   toApprovedRate,
@@ -36,6 +37,25 @@ export async function saveListingConfig(
   config: Record<PropertyId, ListingConfig>,
 ): Promise<Record<PropertyId, ListingConfig>> {
   return kvPut(env, KV_LISTINGS, config);
+}
+
+/**
+ * What the three Riverhouse units sell for.
+ *
+ * Kept under its own key rather than inside `listingConfig`, because `ListingConfig` is keyed by `PropertyId` and the
+ * units are deliberately not properties. Storing them there would put three unit rows into every three-house read.
+ *
+ * A missing record means **unset**, never free: `blankUnitRates()` returns nulls, and nothing guest-facing may render a
+ * null price.
+ */
+const KV_UNIT_RATES = 'riverUnitRates';
+
+export async function loadRiverUnitRates(env: SettingsEnv): Promise<RiverUnitRates> {
+  return toUnitRates(await kvGet<unknown>(env, KV_UNIT_RATES, null));
+}
+
+export async function saveRiverUnitRates(env: SettingsEnv, rates: RiverUnitRates): Promise<RiverUnitRates> {
+  return toUnitRates(await kvPut(env, KV_UNIT_RATES, rates));
 }
 
 export async function loadCompSet(env: SettingsEnv): Promise<CompListing[]> {
