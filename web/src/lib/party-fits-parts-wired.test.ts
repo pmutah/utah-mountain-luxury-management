@@ -29,3 +29,12 @@ test('the capacity message comes from the shared check, not a second hand-writte
 test('the warning carries the code, so a refused party can be told apart from an unanswered one', () => {
   assert.match(PAGE, /data-code=\{partParty\.code\}/, 'the warning does not say which capacity case it is');
 });
+
+test('the guest-count hint reflects the parts chosen, not the whole house', () => {
+  /*
+   * The field said "Up to 24" with the Garage Suite chosen, so a guest typed nine with no objection from the page and met
+   * the refusal only after filling the whole form.
+   */
+  assert.match(PAGE, /placeholder=\{[^}]*bookingParts \? partsSleeps\(chosenParts/, 'the guest-count hint still uses the house capacity');
+  assert.equal(/placeholder=\{`Up to \$\{stay\.sleeps\}`\}/.test(PAGE), false, 'the house capacity is back as the hint');
+});

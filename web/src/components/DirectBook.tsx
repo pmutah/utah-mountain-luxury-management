@@ -9,7 +9,7 @@ import { houseDayPaper } from '../lib/house-day';
 import { bothHouseCalendarAheadLine, calendarAheadLine, loadQuoteCalendar, type PublicUnit } from '../lib/booked-nights';
 import { unitOfferLine, unitStayOffers, unitsTogetherSleeps, unitsTogetherTotal } from '../lib/river-unit-offers';
 import { nightsBetween } from '../lib/booking-accept';
-import { partyFitsParts } from '../lib/party-fits-parts';
+import { partyFitsParts, partsSleeps } from '../lib/party-fits-parts';
 import { bothHouseEventPlans, eventPlans } from '../lib/event-plan';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { bothHouseMessageNote, guestTimeline, quoteCalendarLine, quoteMessageNote, quoteMessageSchedule } from '../lib/guest-timeline';
@@ -1326,7 +1326,7 @@ export function DirectBook() {
                 aria-label="Overnight guests"
                 data-bot="stay-guests"
                 value={guests}
-                placeholder={`Up to ${stay.sleeps}`}
+                placeholder={`Up to ${bookingParts ? partsSleeps(chosenParts as never) : stay.sleeps}`}
                 onChange={(event) => setGuests(event.target.value.replace(/[^\d]/g, '').slice(0, 2))}
                 className="mt-2 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
               />
