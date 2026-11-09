@@ -112,8 +112,8 @@ export const AGENT_SITE_MAP = {
       'GET /api/clean/photos — host only; every uploaded cleaner room photo grouped by turn, listing only turns that are on the desk. GET /api/clean/photo?path= — host only; one photo, by a path this app would have written, so a guessed path cannot reach the receipt folder.',
     museDo:
       'POST /api/muse/do — bearer only (MUSE_BOT_SECRET or AMANDA_BOT_SECRET). Runs one Muse turn and returns its messages. Refuses 503 when no bot secret is set and 401 on a bad one. It takes only the actions the tools allow, so every rule in manage_operations and the booking desk applies.',
-    amandaOpenapi:
-      'GET /api/amanda/openapi.json (and /api/amanda/openapi) — public. The tool description Amanda reads. It names routes and refusals; it carries no secret and no guest data.',
+    amandaOpenApi:
+      'GET /api/amanda/openapi.json (and /api/amanda/openapi) — public. The tool description Amanda reads. It names routes and refusals; it carries no secret and no guest data. Same full control as Muse, for the Grok bot Amanda.',
     amandaDo:
       'POST /api/amanda/do — the same handler as /api/muse/do, reached under Amanda name so her bearer works there. Bearer only; 503 with no secret, 401 on a bad one.',
     esignSign:
@@ -128,7 +128,6 @@ export const AGENT_SITE_MAP = {
     museInstructions: 'GET /api/muse/instructions — public standing rules',
     museTools:
       'GET/POST /api/muse/tools — Bearer MUSE_BOT_SECRET or AMANDA_BOT_SECRET. Runs co-host tools, construction tools, and dashboard_request for every other /api route. Same bearer unlocks all /api/* REST routes.',
-    amandaOpenApi: 'GET /api/amanda/openapi.json — same full control as Muse, for the Grok bot Amanda',
     amandaInstructions: 'GET /api/amanda/instructions — public standing rules (same authority as Muse)',
     amandaTools:
       'GET/POST /api/amanda/tools — Bearer MUSE_BOT_SECRET or AMANDA_BOT_SECRET. Same tools as Muse, including dashboard_request for every other /api route.',
