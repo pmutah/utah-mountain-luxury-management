@@ -71,8 +71,8 @@ export function partFacts(
   return { partsLine, priced, openNights: priced > 0 ? openNights : [] };
 }
 
-/** The prompt lines for the parts, or an empty list when there is nothing to say. */
-export function partPromptLines(facts: PartFacts, asOf: string): string[] {
+/** The prompt lines for the parts. The window is read off the data, so it cannot disagree with what was checked. */
+export function partPromptLines(facts: PartFacts): string[] {
   const lines = [`Riverhouse parts: ${facts.partsLine}`];
   if (facts.priced === null) {
     lines.push(
@@ -96,7 +96,21 @@ export function partPromptLines(facts: PartFacts, asOf: string): string[] {
       .slice(0, 4)
       .map((night) => `${night.date} (${night.free.length === 0 ? 'nothing free' : `${names(night.free)} free`})`)
       .join('; ');
-    lines.push(`Riverhouse sellability from ${asOf}: ${sample}.`);
+    /*
+     * The window has to be stated, not implied.
+     *
+     * The line used to read "sellability from <date>" with no end, and the prompt only carries the next few nights. Asked
+     * about a date beyond them the model had no data and answered anyway — it told me the Main Lodge and the whole house
+     * were both free on a night a whole-house stay already covered. A fact line that says where it stops cannot be read as
+     * a statement about every future date.
+     */
+    const last = facts.openNights[facts.openNights.length - 1]!.date;
+    lines.push(
+      `Riverhouse sellability, checked only for ${facts.openNights[0]!.date} through ${last}: ${sample}.`,
+    );
+    lines.push(
+      `For any date outside ${facts.openNights[0]!.date} to ${last} you have no availability data. Say so and check the calendar or the River card. **Do not say a date is free, booked, or sellable when it is outside that window.**`,
+    );
   }
   return lines;
 }

@@ -83,10 +83,10 @@ export async function buildAgentContext(
         ...(stay.units && stay.units.length > 0 ? { units: stay.units } : {}),
       }),
     );
-    partLines = partPromptLines(partFacts(rates, spans, today, 7), today);
+    partLines = partPromptLines(partFacts(rates, spans, today, 45));
   } catch {
     // An unreadable sheet is not "no parts". Say the prices could not be read and claim nothing.
-    partLines = partPromptLines(partFacts(null, [], today, 7), today);
+    partLines = partPromptLines(partFacts(null, [], today, 7));
   }
   const sharedLine = [
     ...shared.done.slice(0, 8).map((item) => `${item.ownerName} finished ${item.title} ${item.atDenver}. ${item.result}`),

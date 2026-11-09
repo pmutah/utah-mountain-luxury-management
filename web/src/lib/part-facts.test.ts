@@ -51,7 +51,7 @@ test('the parts line states the capacity gap rather than smoothing it over', () 
 test('with no part priced the prompt forbids quoting a part', () => {
   const facts = partFacts(blankUnitRates(), [], '2026-12-01');
   assert.equal(facts.priced, 0);
-  const lines = partPromptLines(facts, '2026-12-01');
+  const lines = partPromptLines(facts);
   assert.match(lines.join(' '), /No part has a price yet/);
   assert.match(lines.join(' '), /do not invent a nightly rate/i);
 });
@@ -59,7 +59,7 @@ test('with no part priced the prompt forbids quoting a part', () => {
 test('a partly priced house names the count and still forbids quoting the rest', () => {
   const facts = partFacts(priced(), [], '2026-12-01');
   assert.equal(facts.priced, 2);
-  const lines = partPromptLines(facts, '2026-12-01');
+  const lines = partPromptLines(facts);
   assert.match(lines.join(' '), /2 of 3 parts are priced/);
   assert.match(lines.join(' '), /not sellable/);
 });
@@ -68,7 +68,7 @@ test('a price sheet that could not be read is not reported as unpriced', () => {
   const facts = partFacts(null, [], '2026-12-01');
   // Null is "unknown", never zero — the model must not tell a host nothing is for sale.
   assert.equal(facts.priced, null);
-  const lines = partPromptLines(facts, '2026-12-01');
+  const lines = partPromptLines(facts);
   assert.match(lines[0] ?? '', /Garage Suite 4/);
   assert.equal(/No part has a price yet/.test(lines.join(' ')), false, 'an unreadable sheet was called unpriced');
   assert.match(lines.join(' '), /could not be read/);
@@ -79,7 +79,7 @@ test('a night with one part sold is reported as still sellable, not as sold out'
   const first = facts.openNights[0];
   assert.equal(first?.date, '2026-12-10');
   assert.deepEqual(first?.free, ['garage-suite', 'recreation-wing']);
-  const lines = partPromptLines(facts, '2026-12-10').join(' ');
+  const lines = partPromptLines(facts).join(' ');
   assert.match(lines, /Garage Suite and Recreation Wing free/);
   assert.equal(/nothing free/.test(lines), false, 'a night with two parts left was called sold out');
 });
@@ -87,11 +87,34 @@ test('a night with one part sold is reported as still sellable, not as sold out'
 test('a whole-house booking is reported as nothing free', () => {
   const facts = partFacts(priced(), [span()], '2026-12-10', 3);
   assert.deepEqual(facts.openNights[0]?.free, []);
-  assert.match(partPromptLines(facts, '2026-12-10').join(' '), /2026-12-10 \(nothing free\)/);
+  assert.match(partPromptLines(facts).join(' '), /2026-12-10 \(nothing free\)/);
 });
 
 test('the window never starts before the day asked about', () => {
   const facts = partFacts(priced(), [], '2026-12-20', 2);
   assert.equal(facts.openNights[0]?.date, '2026-12-20');
   assert.ok(facts.openNights.every((night) => night.date >= '2026-12-20'));
+});
+
+test('the fact line states the dates it covers, so it cannot be read as every future date', () => {
+  /*
+   * Asked about a night a year out, the co-host answered that the Main Lodge and the whole house were both free — on a
+   * night a whole-house stay already covered. The prompt only carried the next few nights, and the line read
+   * "sellability from <date>" with no end, so the model had nothing telling it where its knowledge stopped.
+   */
+  const facts = partFacts(priced(), [], '2026-12-01', 5);
+  const lines = partPromptLines(facts).join(' ');
+  const first = facts.openNights[0]!.date;
+  const last = facts.openNights[facts.openNights.length - 1]!.date;
+  assert.match(lines, new RegExp(`checked only for ${first} through ${last}`), 'the line does not name its window');
+  assert.match(lines, /outside .* to .* you have no availability data/i, 'the model is not told the window ends');
+  assert.match(lines, /Do not say a date is free, booked, or sellable/i, 'the prohibition is not stated');
+});
+
+test('a night with one part sold is named as still sellable inside the window', () => {
+  // The window statement must not weaken the real data it carries.
+  const facts = partFacts(priced(), [span({ units: ['main-lodge'] })], '2026-12-10', 3);
+  const lines = partPromptLines(facts).join(' ');
+  assert.match(lines, /Garage Suite and Recreation Wing free/);
+  assert.match(lines, /through/);
 });
