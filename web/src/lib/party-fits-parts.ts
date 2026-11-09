@@ -16,9 +16,20 @@ export type PartyFit =
   | { ok: true; sleeps: number; guests: number }
   | { ok: false; sleeps: number; guests: number; reason: string; code: 'too-many' | 'no-guests' | 'no-sleeps' };
 
-/** How many the chosen parts sleep between them, from the published capacities. */
+/**
+ * How many the chosen parts sleep between them, from the published capacities.
+ *
+ * **Capped at the house.** The parts sum to 25 (4 + 8 + 13) against a 24-guest house, so booking all three would let one
+ * more person in than the house itself may hold. Every part is the whole house, so it cannot exceed the house.
+ *
+ * Which number is right is the host's call. Until they settle it the stricter wins, because an overfilled house is not
+ * recoverable and a party that is refused here can book the whole house instead.
+ */
+export const RIVER_HOUSE_SLEEPS = 24;
+
 export function partsSleeps(units: readonly RiverUnitId[]): number {
-  return units.reduce((sum, unit) => sum + (RIVER_UNIT_DETAIL.find((detail) => detail.id === unit)?.sleeps ?? 0), 0);
+  const sum = units.reduce((total, unit) => total + (RIVER_UNIT_DETAIL.find((detail) => detail.id === unit)?.sleeps ?? 0), 0);
+  return units.length === RIVER_UNIT_DETAIL.length ? Math.min(sum, RIVER_HOUSE_SLEEPS) : sum;
 }
 
 /**

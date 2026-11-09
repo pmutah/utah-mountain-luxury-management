@@ -92,6 +92,7 @@ test('the page and the booking route agree on every capacity boundary', () => {
     ['garage-suite'],
     ['main-lodge'],
     ['garage-suite', 'main-lodge'],
+    ['garage-suite', 'recreation-wing', 'main-lodge'],
   ] as const;
   for (const units of combos) {
     const sleeps = partsSleeps([...units]);
@@ -112,4 +113,30 @@ test('the page and the booking route agree on every capacity boundary', () => {
       }
     }
   }
+});
+
+test('all three parts never sleep more than the house', () => {
+  /*
+   * 4 + 8 + 13 = 25 against a 24-guest house. Booking every part *is* the whole house, so 25 could take the entire
+   * building as "three parts" while the same 25 is refused as a whole-house booking.
+   */
+  const all = ['garage-suite', 'recreation-wing', 'main-lodge'] as const;
+  assert.equal(partsSleeps([...all]), 24, 'all three parts sleep more than the house');
+
+  const rates = priced();
+  const at24 = unitRequestCheck([], rates, { units: [...all], checkIn: '2027-03-10', checkOut: '2027-03-12', guests: 24 });
+  assert.equal(at24.ok, true, '24 was refused for all three parts');
+  const at25 = unitRequestCheck([], rates, { units: [...all], checkIn: '2027-03-10', checkOut: '2027-03-12', guests: 25 });
+  assert.equal(at25.ok, false, '25 was allowed for all three parts');
+  if (!at25.ok) {
+    assert.equal(at25.code, 'over-capacity');
+    // It has to say why, since the parts' own numbers add up to 25.
+    assert.match(at25.reason, /whole house, which sleeps 24/);
+  }
+});
+
+test('two parts still get their own sum, uncapped', () => {
+  // Only the full set is the house. Two parts are their own rooms and keep their real capacity.
+  assert.equal(partsSleeps(['garage-suite', 'main-lodge']), 17);
+  assert.equal(partsSleeps(['recreation-wing']), 8);
 });
