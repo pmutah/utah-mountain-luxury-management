@@ -22,6 +22,23 @@ export function cleanLinkPath(token: string): string {
   return `/clean/${token}`;
 }
 
+/**
+ * The link to actually send a cleaner.
+ *
+ * `cleanLinkPath` returns `/clean/<token>`, which is right for `href` and useless in a text message: a cleaner on a
+ * phone cannot open a bare path. The desk told a host to "text it to" the cleaner while offering only the path, so the
+ * host pasted something that went nowhere.
+ *
+ * A token that could not be a real link returns null rather than a URL that will 404, so the caller cannot show a
+ * confident-looking address for a link that does not exist.
+ */
+export function cleanLinkUrl(token: string, origin: string): string | null {
+  if (!isCleanToken(token)) return null;
+  const base = origin.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\/[^/\s]+$/i.test(base)) return null;
+  return `${base}${cleanLinkPath(token)}`;
+}
+
 /** One turnover as the cleaner sees it. No guest name, no door code, no money. */
 export type CleanJobView = {
   house: HouseId;
