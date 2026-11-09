@@ -1,5 +1,6 @@
 import { houseStay } from './house-stay';
 import { stepRows } from './clean-progress';
+import { scopeStep } from './clean-scope';
 import { isRealDay } from './market/dates';
 import type { HouseId } from './market/types';
 
@@ -78,7 +79,12 @@ function shortDate(iso: string): string {
 }
 
 /** The cleaner steps. A same-day turn gets the deadline first. */
-export function cleanSteps(sameDay: boolean, lang: 'en' | 'es' = 'en'): string[] {
+export function cleanSteps(sameDay: boolean, lang: 'en' | 'es' = 'en', units: readonly string[] = []): string[] {
+  /*
+   * The steps are built here as ids so the shared scoping rule can narrow them, then turned back into the strings this
+   * view has always returned. A cleaner sent to a part turn must not be told to do the whole house.
+   */
+  const ids = ['beds', 'linens', 'kitchen', 'baths', 'floors', 'photos'] as const;
   if (lang === 'es') {
     const steps = [
       'Quitar y volver a hacer cada cama',
@@ -88,7 +94,8 @@ export function cleanSteps(sameDay: boolean, lang: 'en' | 'es' = 'en'): string[]
       'Pisos y basura',
       'Tomar una foto de cada cuarto antes de salir',
     ];
-    return sameDay ? ['Turno el mismo día. Terminar antes de las 4pm.', ...steps] : steps;
+    const scoped = steps.map((label, index) => scopeStep({ id: ids[index]!, label }, units, lang).label);
+    return sameDay ? ['Turno el mismo día. Terminar antes de las 4pm.', ...scoped] : scoped;
   }
   const steps = [
     'Strip and remake every bed',
@@ -98,7 +105,8 @@ export function cleanSteps(sameDay: boolean, lang: 'en' | 'es' = 'en'): string[]
     'Floors and trash',
     'Photo each room before you leave',
   ];
-  return sameDay ? ['Same-day turn. Finish before 4pm.', ...steps] : steps;
+  const scoped = steps.map((label, index) => scopeStep({ id: ids[index]!, label }, units, lang).label);
+  return sameDay ? ['Same-day turn. Finish before 4pm.', ...scoped] : scoped;
 }
 
 /**
@@ -110,6 +118,13 @@ export function cleanJobView(input: {
   checkout: string;
   gapNights: number | null;
   lang?: 'en' | 'es';
+  /**
+   * Which parts of the Riverhouse this turn occupies. Absent means the whole house.
+   *
+   * Without this a cleaner sent to the Garage Suite read "Strip and remake every bed" in a house with eleven beds — the
+   * same defect the desk had, in the one place that matters most: the person doing the work.
+   */
+  units?: readonly string[];
 }): CleanJobView | null {
   if (!isRealDay(input.checkout)) return null;
   const stay = houseStay(input.house);
@@ -126,7 +141,7 @@ export function cleanJobView(input: {
     checkout: input.checkout,
     gapNights: input.gapNights,
     sameDay,
-    steps: cleanSteps(sameDay, input.lang ?? 'en'),
+    steps: cleanSteps(sameDay, input.lang ?? 'en', input.units ?? []),
     /*
      * The ids a tick must use, paired with the label the cleaner reads.
      *
@@ -139,7 +154,7 @@ export function cleanJobView(input: {
      * A tick that reports success and saves nothing is the same defect as a label with nothing behind it, and it is
      * worse on a cleaner's phone, because they have no way to tell that their work did not register.
      */
-    stepRows: stepRows(sameDay, input.lang ?? 'en'),
+    stepRows: stepRows(sameDay, input.lang ?? 'en', input.units ?? []),
     arrive: `${stay.arrival} ${stay.parking}`,
     rules,
   };

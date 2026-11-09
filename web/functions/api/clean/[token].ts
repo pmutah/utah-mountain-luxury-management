@@ -67,6 +67,11 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env, p
           house: turn.house as HouseId,
           checkout: turn.checkout,
           gapNights: turn.gapNights,
+          /*
+           * The parts this turn occupies. Without it the cleaner — the person doing the work — is told to strip every bed
+           * in a house where two were used.
+           */
+          ...(turn.checkoutUnits ? { units: turn.checkoutUnits } : {}),
           lang,
         });
         return view ? [view] : [];

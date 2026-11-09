@@ -85,9 +85,13 @@ export function houseReady(house: HouseId, checkout: string, sameDay: boolean, p
   return turnState(house, checkout, sameDay, progress) === 'done';
 }
 
-/** The step labels a cleaner ticks, paired with their ids. */
-export function stepRows(sameDay: boolean, lang: 'en' | 'es' = 'en'): Array<{ id: string; label: string }> {
+/** The step labels a cleaner ticks, paired with their ids. Scoped to the parts this turn occupies. */
+export function stepRows(
+  sameDay: boolean,
+  lang: 'en' | 'es' = 'en',
+  units: readonly string[] = [],
+): Array<{ id: string; label: string }> {
   const ids = stepIds(sameDay);
-  const labels = cleanSteps(sameDay, lang);
+  const labels = cleanSteps(sameDay, lang, units);
   return ids.map((id, index) => ({ id, label: labels[index] ?? id }));
 }
