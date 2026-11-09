@@ -11,6 +11,7 @@ import { nextStayEventLine, stayEvents } from './market/events';
 import { agreementTopicLine } from './stay-agreement';
 import { denverHour } from './stay-rhythm';
 import { buildTurnovers, type Turnover } from './today';
+import { RIVER_UNIT_DETAIL, RIVER_UNITS, type RiverUnitId } from './river-units';
 
 export type CleanStep = {
   id: string;
@@ -478,9 +479,48 @@ export function cleanJobs(reservations: Reservation[], asOf: string, horizonDays
     return {
       ...turn,
       priority,
-      steps: priority ? [SAME_DAY, ...STEPS] : STEPS,
+      steps: (priority ? [SAME_DAY, ...STEPS] : STEPS).map((step) => scopeStep(step, turn)),
     };
   });
+}
+
+/**
+ * A step, scoped to the parts this turn actually touches.
+ *
+ * "Strip and remake every bed" is right for a whole-house turn and wrong for the Garage Suite, which has two beds in a house
+ * with eleven. A cleaner told to do the whole house does hours of work nobody stayed in, and — worse on a part turn — walks
+ * into rooms another guest is using.
+ *
+ * Only the steps that name a whole-house scope are rewritten. A generic step stays exactly as written, because inventing a
+ * narrower instruction would be its own kind of wrong.
+ */
+function scopeStep(step: CleanStep, turn: Turnover): CleanStep {
+  const units = (turn.checkoutUnits ?? []).filter((unit): unit is RiverUnitId =>
+    (RIVER_UNITS as readonly string[]).includes(unit),
+  );
+  // No parts means the whole house, so the step is already right.
+  if (units.length === 0) return step;
+  if (units.length === RIVER_UNITS.length) return step;
+
+  const scoped = RIVER_UNIT_DETAIL.filter((detail) => units.includes(detail.id));
+  const bedrooms = scoped.reduce((sum, detail) => sum + detail.bedrooms, 0);
+  const beds = scoped.reduce((sum, detail) => sum + detail.beds, 0);
+  const names = scoped.map((detail) => detail.name.replace('River ', '')).join(' and ');
+
+  if (step.id === 'beds') {
+    return {
+      ...step,
+      label: `Strip and remake the ${beds} bed${beds === 1 ? '' : 's'} in ${names} (${bedrooms} bedroom${bedrooms === 1 ? '' : 's'}), not the whole house`,
+    };
+  }
+  if (step.id === 'baths') {
+    const baths = scoped.reduce((sum, detail) => sum + detail.baths, 0);
+    return {
+      ...step,
+      label: `Bathrooms and towels in ${names} only (${baths} bath${baths === 1 ? '' : 's'}), not the whole house`,
+    };
+  }
+  return step;
 }
 
 export type { HouseId };

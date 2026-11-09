@@ -51,6 +51,16 @@ export type Turnover = {
   house: HouseId;
   houseName: string;
   checkout: string;
+  /**
+   * Which parts of the Riverhouse the **outgoing** stay occupied.
+   *
+   * Absent means the whole house, which is every stay recorded before the house was sold in parts. A cleaner sent to a
+   * Garage Suite turn was told to "strip and remake every bed" in a house with eleven beds, when two had been used — and
+   * had no way to know which rooms were another guest's.
+   */
+  checkoutUnits?: string[];
+  /** Which parts the arriving stay occupies, when known. Absent means the whole house. */
+  nextUnits?: string[];
   nextCheckIn: string | null;
   nextCheckOut: string | null;
   /** Nights empty between checkout and the next arrival. Zero is a same-day clean. */
@@ -72,6 +82,20 @@ export type Turnover = {
   /** The next stay note names a 1:00 PM arrival. The rest of the note is not stored. */
   arriveAt1: boolean;
 };
+
+/**
+ * The parts a stay occupies, as a spreadable field, or nothing at all.
+ *
+ * Absent must mean the whole house — that is what every stay recorded before the split means — so an empty list produces
+ * no field rather than an empty one a reader might take as "no rooms".
+ */
+function unitsOf(
+  stay: { units?: string[] } | undefined,
+  key: 'checkoutUnits' | 'nextUnits',
+): Partial<Pick<Turnover, 'checkoutUnits' | 'nextUnits'>> {
+  const units = stay?.units ?? [];
+  return units.length > 0 ? { [key]: units } : {};
+}
 
 export function buildTurnovers(reservations: Reservation[], asOf: string, horizonDays = 14): Turnover[] {
   /*
@@ -95,6 +119,12 @@ export function buildTurnovers(reservations: Reservation[], asOf: string, horizo
         house,
         houseName: HOUSE_NAME[house],
         checkout: stay.checkOut,
+        /*
+         * Which parts this turn involves. Absent means the whole house, which is what every stay recorded before the
+         * split means — so a whole-house clean reads exactly as it did, and a part clean can be scoped to its rooms.
+         */
+        ...unitsOf(stay, 'checkoutUnits'),
+        ...unitsOf(next, 'nextUnits'),
         nextCheckIn: next?.checkIn ?? null,
         nextCheckOut: next?.checkOut ?? null,
         gapNights: next ? nightsBetween(stay.checkOut, next.checkIn) : null,
