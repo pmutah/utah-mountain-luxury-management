@@ -9,6 +9,7 @@ import { houseDayPaper } from '../lib/house-day';
 import { bothHouseCalendarAheadLine, calendarAheadLine, loadQuoteCalendar, type PublicUnit } from '../lib/booked-nights';
 import { unitOfferLine, unitStayOffers, unitsTogetherSleeps, unitsTogetherTotal } from '../lib/river-unit-offers';
 import { nightsBetween } from '../lib/booking-accept';
+import { partyFitsParts } from '../lib/party-fits-parts';
 import { bothHouseEventPlans, eventPlans } from '../lib/event-plan';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { bothHouseMessageNote, guestTimeline, quoteCalendarLine, quoteMessageNote, quoteMessageSchedule } from '../lib/guest-timeline';
@@ -282,6 +283,8 @@ export function DirectBook() {
   const partSleeps = unitsTogetherSleeps(selectedPartOffers);
   // A part booking replaces the whole-house quote, so it must not silently add to it.
   const bookingParts = chosenParts.length > 0;
+  /** Whether the party fits the parts chosen, when parts are chosen. Null means the question does not apply. */
+  const partParty = bookingParts ? partyFitsParts(chosenParts as never, guestCount) : null;
   const guideStay = houseStay(house);
   const sheet = ics
     ? tripSheet({
@@ -410,6 +413,11 @@ export function DirectBook() {
     calendar === 'live' &&
     partTotal !== null &&
     selectedPartOffers.length === chosenParts.length &&
+    /*
+     * The party has to fit the parts. Without this the page let a party of nine submit for the Garage Suite, which sleeps
+     * four, and the refusal arrived from the server only after the whole form was filled in.
+     */
+    partParty?.ok === true &&
     rulesRead &&
     Boolean(eventStay ?? true) &&
     (agreementOpened || Boolean(eventStay));
@@ -1258,12 +1266,11 @@ export function DirectBook() {
                     {selectedPartOffers.length === 1 ? 'This part' : 'These parts'} for {nightsBetween(checkIn, checkOut)}{' '}
                     {nightsBetween(checkIn, checkOut) === 1 ? 'night' : 'nights'}, before tax:{' '}
                     <strong>{formatWhole(partTotal)}</strong>. Sleeps {partSleeps}.
-                    {guestCount !== null && guestCount > partSleeps && (
-                      <span className="block text-xs text-amber-300/90" data-bot="stay-parts-capacity">
-                        Your party of {guestCount} is larger than these parts sleep. Add another part or book the whole
-                        house.
-                      </span>
-                    )}
+                {bookingParts && partParty?.ok === false && (
+                  <p className="mt-2 text-sm text-amber-300/90" data-bot="stay-parts-capacity" data-code={partParty.code}>
+                    {partParty.reason}
+                  </p>
+                )}
                   </p>
                 )}
                 {bookingParts && partTotal === null && (
