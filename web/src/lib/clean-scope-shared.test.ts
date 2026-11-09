@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { cleanJobView, cleanSteps } from './clean-link.ts';
+import { stepIds, stepRows } from './clean-progress.ts';
 import { scopeStep } from './clean-scope.ts';
 import { readFileSync } from 'node:fs';
 
@@ -75,4 +76,23 @@ test('no parts, or every part, means the house', () => {
     'Strip and remake every bed',
   );
   assert.equal(scopeStep({ id: 'beds', label: 'x' }, ['attic']).label, 'x', 'an unknown part scoped somehow');
+});
+
+test('the tick ids are pinned, because saved progress is keyed by them', () => {
+  /*
+   * The cleaner's ticks are stored under these ids. `stepRows` derives from `stepIds`, so a reordering would move both
+   * together and a rows-vs-ids comparison would pass while every saved tick landed on the wrong step. This pins the order
+   * itself, which is the thing that must not change.
+   */
+  assert.deepEqual(stepIds(false), ['beds', 'linens', 'kitchen', 'baths', 'floors', 'photos']);
+  assert.deepEqual(stepIds(true), ['window', 'beds', 'linens', 'kitchen', 'baths', 'floors', 'photos']);
+});
+
+test('scoping a label never changes the id a tick is saved under', () => {
+  for (const sameDay of [false, true]) {
+    const ids = stepIds(sameDay);
+    const rows = stepRows(sameDay, 'en', ['garage-suite']);
+    assert.deepEqual(rows.map((row) => row.id), ids, `sameDay=${sameDay}: the scoped rows no longer match the ids`);
+    assert.deepEqual(stepRows(sameDay, 'en').map((row) => row.id), ids);
+  }
 });
