@@ -37,6 +37,7 @@ export async function devPublicCalendar(): Promise<PublicCalendar> {
       approved: null,
       pace: { ranch: 'unknown', lindon: 'unknown', river: 'unknown' },
       turns: null,
+      units: null,
     };
   }
   // The preview has no approved sheet of its own, so one night carries a preview approval. That is

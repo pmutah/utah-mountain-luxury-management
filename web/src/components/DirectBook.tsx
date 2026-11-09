@@ -6,7 +6,9 @@ import { ArriveReady } from './ArriveReady';
 import { HouseManual } from './HouseManual';
 import { HouseDays } from './HouseDays';
 import { houseDayPaper } from '../lib/house-day';
-import { bothHouseCalendarAheadLine, calendarAheadLine, loadQuoteCalendar } from '../lib/booked-nights';
+import { bothHouseCalendarAheadLine, calendarAheadLine, loadQuoteCalendar, type PublicUnit } from '../lib/booked-nights';
+import { unitOfferLine, unitStayOffers, unitsTogetherSleeps, unitsTogetherTotal } from '../lib/river-unit-offers';
+import { nightsBetween } from '../lib/booking-accept';
 import { bothHouseEventPlans, eventPlans } from '../lib/event-plan';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { bothHouseMessageNote, guestTimeline, quoteCalendarLine, quoteMessageNote, quoteMessageSchedule } from '../lib/guest-timeline';
@@ -150,6 +152,18 @@ export function DirectBook() {
   const [chosenDay, setChosenDay] = useState<{ house: HouseId; title: string; lines: string[] } | null>(null);
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [closed, setClosed] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
+  /**
+   * The Riverhouse parts, exactly as the calendar route reported them.
+   *
+   * `null` means the part prices could not be read, which is not "no parts for sale" — the block says so rather than
+   * disappearing. An empty array means the payload carried no parts, which is an older deployment.
+   */
+  const [parts, setParts] = useState<PublicUnit[] | null>([]);
+  /**
+   * The parts this guest is asking for. Empty means the whole house, which is the default and what every request made
+   * before parts existed meant.
+   */
+  const [chosenParts, setChosenParts] = useState<string[]>([]);
   /** Guest prices the host approved. Empty until read, so the published card stands by default. */
   const [approved, setApproved] = useState<Record<HouseId, Array<{ date: string; guest: number }>>>({
     ranch: [],
@@ -192,6 +206,7 @@ export function DirectBook() {
           setClosed(rows.closed);
           setApproved(rows.approved ?? { ranch: [], lindon: [], river: [] });
           setPaceMap(rows.pace);
+          setParts(rows.units ?? []);
           setCalendar('live');
           const blank = !linked.checkIn && !linked.checkOut;
           if (
@@ -249,6 +264,24 @@ export function DirectBook() {
     party.ok && (calendar === 'live' ? quote.ok : calendar === 'off' && !stayRule)
       ? stayIcs(house, checkIn, checkOut)
       : null;
+  /*
+   * The Riverhouse parts, matched against the dates the guest picked. Only the Riverhouse has parts, and the list is
+   * empty for the other two houses, so nothing about them changes.
+   */
+  const partOffers = useMemo(
+    () => (house === 'river' ? unitStayOffers(parts, checkIn, checkOut) : []),
+    [house, parts, checkIn, checkOut],
+  );
+  const partsLine = useMemo(
+    // `quote.ok` is the whole-house quote's own verdict on these dates, so it is the honest `houseFree`.
+    () => unitOfferLine(partOffers, house, quote.ok, Boolean(checkIn && checkOut)),
+    [partOffers, house, quote.ok, checkIn, checkOut],
+  );
+  const selectedPartOffers = partOffers.filter((offer) => chosenParts.includes(offer.unit.id) && offer.available);
+  const partTotal = unitsTogetherTotal(selectedPartOffers);
+  const partSleeps = unitsTogetherSleeps(selectedPartOffers);
+  // A part booking replaces the whole-house quote, so it must not silently add to it.
+  const bookingParts = chosenParts.length > 0;
   const guideStay = houseStay(house);
   const sheet = ics
     ? tripSheet({
@@ -367,7 +400,21 @@ export function DirectBook() {
       ranchTopics: openedTopics.ranch ?? [],
     });
   const requestReady = canRequest || twoHouse;
-  const requestHold = requestReady
+  /*
+   * A guest booking part of the Riverhouse is blocked by the whole-house quote, which refuses a house that is entirely
+   * taken. That refusal is the whole reason they are looking at the parts, so a chosen, available part has to be able
+   * to submit on its own terms: dates open on those parts, the rules read, and the agreement opened.
+   */
+  const partBookingReady =
+    bookingParts &&
+    calendar === 'live' &&
+    partTotal !== null &&
+    selectedPartOffers.length === chosenParts.length &&
+    rulesRead &&
+    Boolean(eventStay ?? true) &&
+    (agreementOpened || Boolean(eventStay));
+  const submitReady = requestReady || partBookingReady;
+  const requestHold = submitReady
     ? ''
     : requestHoldLine({
         calendarLoading: calendar === 'loading',
@@ -498,7 +545,7 @@ export function DirectBook() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!requestReady) return;
+    if (!submitReady) return;
     setBusy(true);
     setError(null);
     try {
@@ -513,6 +560,11 @@ export function DirectBook() {
           checkOut,
           ...(guestCount !== null ? { guests: guestCount } : {}),
           ...(childCount !== null ? { children: childCount } : {}),
+          /*
+           * The parts this guest chose. Empty means the whole house, which is what the form sent before parts existed,
+           * so a whole-house request is byte-for-byte the same request it always was.
+           */
+          ...(bookingParts ? { units: chosenParts } : {}),
           note: twoHouse && bothOffer
             ? [
                 form.note,
@@ -1138,6 +1190,95 @@ export function DirectBook() {
                 </div>
               </div>
             )}
+            {/*
+              A guest whose dates are gone at the Riverhouse has one more thing to try, and until now the page did not
+              tell them: the house can be rented in parts. It sits beside "same dates" because that is the block a guest
+              reads when their first choice fails.
+
+              It never invents a price. A part with no rate shows no number and says it is not for sale yet, and a part
+              the booking gate would refuse is marked unavailable with the reason rather than offered.
+            */}
+            {calendar === 'live' && house === 'river' && parts !== null && partOffers.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-[var(--uml-line)] p-4" data-bot="stay-parts">
+                <p className="uml-kicker">Or part of the house</p>
+                {partsLine && (
+                  <p className="mt-1 text-sm" data-bot="stay-parts-line">
+                    {partsLine}
+                  </p>
+                )}
+                <ul className="mt-3 space-y-2">
+                  {partOffers.map((offer) => {
+                    const chosen = chosenParts.includes(offer.unit.id);
+                    return (
+                      <li
+                        key={offer.unit.id}
+                        data-bot={`stay-part-${offer.unit.id}`}
+                        data-available={offer.available ? 'yes' : 'no'}
+                        data-nightly={offer.unit.nightly ?? ''}
+                        className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl border border-[var(--uml-line)] px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm">
+                            {offer.unit.name}
+                            <span className="ml-2 text-xs text-[var(--uml-muted)]">
+                              sleeps {offer.unit.sleeps} · {offer.unit.bedrooms}BR
+                            </span>
+                          </p>
+                          <p className="text-xs text-[var(--uml-muted)]">
+                            {offer.unit.nightly !== null
+                              ? `${formatWhole(offer.unit.nightly)} a night${
+                                  offer.unit.cleaning ? `, ${formatWhole(offer.unit.cleaning)} cleaning` : ''
+                                }`
+                              : 'Not priced yet'}
+                            {offer.reason ? ` — ${offer.reason}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!offer.available}
+                          data-bot={`stay-part-choose-${offer.unit.id}`}
+                          aria-pressed={chosen}
+                          onClick={() =>
+                            setChosenParts((current) =>
+                              current.includes(offer.unit.id)
+                                ? current.filter((id) => id !== offer.unit.id)
+                                : [...current, offer.unit.id],
+                            )
+                          }
+                          className="rounded-full border border-[var(--uml-line)] px-3 py-2 text-xs uppercase tracking-[0.12em] disabled:opacity-40"
+                        >
+                          {chosen ? 'Chosen' : 'Choose'}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {bookingParts && partTotal !== null && (
+                  <p className="mt-3 text-sm" data-bot="stay-parts-total">
+                    {selectedPartOffers.length === 1 ? 'This part' : 'These parts'} for {nightsBetween(checkIn, checkOut)}{' '}
+                    {nightsBetween(checkIn, checkOut) === 1 ? 'night' : 'nights'}, before tax:{' '}
+                    <strong>{formatWhole(partTotal)}</strong>. Sleeps {partSleeps}.
+                    {guestCount !== null && guestCount > partSleeps && (
+                      <span className="block text-xs text-amber-300/90" data-bot="stay-parts-capacity">
+                        Your party of {guestCount} is larger than these parts sleep. Add another part or book the whole
+                        house.
+                      </span>
+                    )}
+                  </p>
+                )}
+                {bookingParts && partTotal === null && (
+                  <p className="mt-3 text-sm" data-bot="stay-parts-unpriced">
+                    One of the chosen parts has no price, so there is no total to show.
+                  </p>
+                )}
+              </div>
+            )}
+            {calendar === 'live' && house === 'river' && parts === null && (
+              <p className="mt-4 text-xs text-[var(--uml-muted)]" data-bot="stay-parts-paused">
+                The prices for the parts of the River House could not be read, so they are not shown. The whole house is
+                still bookable above.
+              </p>
+            )}
             {held.length > 0 && !compound.show && (
               <div className="mt-4" data-bot="stay-held">
                 <p className="uml-kicker">Not these dates</p>
@@ -1682,7 +1823,7 @@ export function DirectBook() {
                 <button
                   type="submit"
                   data-bot="stay-request"
-                  disabled={busy || !requestReady}
+                  disabled={busy || !submitReady}
                   className="rounded-full bg-[var(--uml-gold)] px-5 py-3 text-xs uppercase tracking-[0.16em] text-[var(--uml-gold-ink)] disabled:opacity-40"
                 >
                   {busy ? 'Sending' : twoHouse ? 'Request both houses' : 'Request these dates'}

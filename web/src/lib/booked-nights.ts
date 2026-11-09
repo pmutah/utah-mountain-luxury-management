@@ -48,6 +48,23 @@ export type QuoteCalendar = {
   approved: Record<HouseId, Array<{ date: string; guest: number }>> | null;
   pace: Record<HouseId, YearPace>;
   turns: QuoteTurn[] | null;
+  /** The Riverhouse parts, or null when their prices could not be read. */
+  units: PublicUnit[] | null;
+};
+
+/** One Riverhouse part as the booking page shows it. */
+export type PublicUnit = {
+  id: string;
+  name: string;
+  sleeps: number;
+  bedrooms: number;
+  beds: number;
+  baths: number;
+  nightly: number | null;
+  cleaning: number | null;
+  minNights: number | null;
+  rateState: 'unset' | 'partial' | 'ready';
+  nights: string[];
 };
 
 const NO_APPROVED: Record<HouseId, Array<{ date: string; guest: number }>> = { ranch: [], lindon: [], river: [] };
@@ -105,6 +122,42 @@ function asTurns(value: unknown): QuoteTurn[] | null {
   return turns;
 }
 
+/**
+ * Riverhouse parts from the availability payload.
+ *
+ * A field that is absent is an older payload with no parts. A field that is null means the prices could not be read,
+ * which is not the same as no parts for sale — a page that confused the two would silently stop offering them. An entry
+ * whose nightly is not a real price is dropped rather than shown as a number.
+ */
+function asUnits(value: unknown): PublicUnit[] | null {
+  if (value === undefined) return [];
+  if (value === null) return null;
+  if (!Array.isArray(value)) return null;
+  const out: PublicUnit[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const row = entry as Record<string, unknown>;
+    if (typeof row.id !== 'string' || typeof row.name !== 'string') continue;
+    const state = row.rateState;
+    const nightly = typeof row.nightly === 'number' && Number.isFinite(row.nightly) && row.nightly > 0 ? Math.round(row.nightly) : null;
+    const nights = Array.isArray(row.nights) ? row.nights.filter((night): night is string => typeof night === 'string' && isRealDay(night)) : [];
+    out.push({
+      id: row.id,
+      name: row.name,
+      sleeps: typeof row.sleeps === 'number' ? row.sleeps : 0,
+      bedrooms: typeof row.bedrooms === 'number' ? row.bedrooms : 0,
+      beds: typeof row.beds === 'number' ? row.beds : 0,
+      baths: typeof row.baths === 'number' ? row.baths : 0,
+      nightly,
+      cleaning: typeof row.cleaning === 'number' && Number.isFinite(row.cleaning) && row.cleaning >= 0 ? Math.round(row.cleaning) : null,
+      minNights: typeof row.minNights === 'number' && Number.isFinite(row.minNights) && row.minNights >= 1 ? Math.round(row.minNights) : null,
+      rateState: state === 'ready' || state === 'partial' || state === 'unset' ? state : 'unset',
+      nights,
+    });
+  }
+  return out;
+}
+
 function readPaused(body: unknown): boolean {
   return Boolean(body && typeof body === 'object' && (body as { storageReads?: string }).storageReads === 'paused');
 }
@@ -126,6 +179,7 @@ export function quoteCalendarFromAvailability(body: unknown): QuoteCalendar | nu
     approved: asApproved((body as { approved?: unknown }).approved),
     pace: asPace((body as { pace?: unknown }).pace),
     turns: asTurns((body as { turns?: unknown }).turns),
+    units: asUnits((body as { units?: unknown }).units),
   };
 }
 

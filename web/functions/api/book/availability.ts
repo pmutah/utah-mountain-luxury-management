@@ -6,7 +6,8 @@ import type { SettingsEnv } from '../../_lib/kv';
 import { storageReadPaused } from '../../_lib/kv-json';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { loadActiveHolds } from '../../_lib/hold-store';
-import { loadApprovedRates } from '../../_lib/pricing-store';
+import { loadApprovedRates, loadRiverUnitRates } from '../../_lib/pricing-store';
+import type { RiverUnitRates } from '../../../src/lib/river-unit-rates';
 import type { ApprovedRate } from '../../../src/lib/market/rate-sheet';
 
 /** Public booked nights only. No guest names, payouts, or contact details. */
@@ -17,6 +18,11 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   let holds: Array<{ propertyId: string; checkIn: string; checkOut: string }> = [];
   // A sheet that could not be read stays null, so the page never shows a stand-in as approved.
   let approved: ApprovedRate[] | null = [];
+  /*
+   * The Riverhouse part prices. Null on a read failure, so the page says the parts could not be read rather than
+   * concluding the house has no parts for sale.
+   */
+  let unitRates: RiverUnitRates | null = null;
   try {
     stays = await getAllReservations(env);
     blocks = await loadCalendarBlocks(env);
@@ -30,6 +36,11 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     } catch {
       approved = null;
     }
+    try {
+      unitRates = await loadRiverUnitRates(env);
+    } catch {
+      unitRates = null;
+    }
   } catch (err) {
     if (storageReadPaused(err)) {
       return corsJson(request, {
@@ -38,13 +49,14 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
         closed: null,
         held: null,
         approved: null,
+        units: null,
         error: 'Saved bookings could not be read. Nothing was written over them.',
       });
     }
     const message = err instanceof Error ? err.message : 'Calendar failed';
     return corsJson(request, { error: message }, 500);
   }
-  return corsJson(request, publicCalendarFromLists(stays, blocks, from, holds, approved));
+  return corsJson(request, publicCalendarFromLists(stays, blocks, from, holds, approved, unitRates));
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

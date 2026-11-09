@@ -4,6 +4,8 @@ import type { YearPace } from './market/fill';
 import type { ApprovedRate } from './market/rate-sheet';
 import type { HouseId } from './market/types';
 import { grossPace, type PaceStay } from './revenue-goals';
+import { RIVER_UNIT_DETAIL, riverAvailability, type UnitSpan } from './river-units';
+import { unitRateState, type RiverUnitRates } from './river-unit-rates';
 
 const HOUSES: HouseId[] = ['ranch', 'lindon', 'river'];
 
@@ -25,6 +27,32 @@ export type PublicCalendar = {
   approved: Record<HouseId, Array<{ date: string; guest: number }>> | null;
   pace: Record<HouseId, YearPace>;
   turns: PublicTurn[] | null;
+  /**
+   * The Riverhouse parts: what each costs and which nights it is still free.
+   *
+   * Null means the part prices could not be read, which is not the same as "no parts for sale" — a page that treated an
+   * unreadable price list as an empty one would silently stop offering the parts. A part with no price carries
+   * `nightly: null` and is never offered.
+   */
+  units: PublicUnit[] | null;
+};
+
+/** One Riverhouse part as a guest may see it. No guest names, no payouts, no host-only notes. */
+export type PublicUnit = {
+  id: string;
+  name: string;
+  sleeps: number;
+  bedrooms: number;
+  beds: number;
+  baths: number;
+  /** Guest nightly rate. Null when the host has not priced this part yet. */
+  nightly: number | null;
+  cleaning: number | null;
+  minNights: number | null;
+  /** 'unset' or 'partial' means this part cannot be booked at any price. */
+  rateState: 'unset' | 'partial' | 'ready';
+  /** Nights this part is free, within the calendar window. */
+  nights: string[];
 };
 
 const UNKNOWN: Record<HouseId, YearPace> = { ranch: 'unknown', lindon: 'unknown', river: 'unknown' };
@@ -64,6 +92,7 @@ export function publicCalendarFromLists(
   asOf: string,
   holds: readonly { propertyId: string; checkIn: string; checkOut: string }[] = [],
   approved: readonly ApprovedRate[] | null = [],
+  unitRates: RiverUnitRates | null = null,
 ): PublicCalendar {
   const until = /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? addDays(asOf, 540) : '';
   if (!until) {
@@ -77,6 +106,7 @@ export function publicCalendarFromLists(
       approved: null,
       pace: UNKNOWN,
       turns: null,
+      units: null,
     };
   }
   const stays = reservations.map(staySpan).filter((stay): stay is StaySpan => stay !== null);
@@ -99,7 +129,42 @@ export function publicCalendarFromLists(
     approved: approvedSheet(approved),
     pace,
     turns: checkoutTurns(stays, asOf),
+    units: publicUnits(unitRates, [...stays, ...closedStays], asOf, until),
   };
+}
+
+/**
+ * The Riverhouse parts as a guest may see them.
+ *
+ * The nights come from the same unit blocking the host side uses, so the page cannot offer a part the booking gate
+ * would refuse. A part with no price is listed with `nightly: null` rather than hidden, because "this part exists but
+ * is not for sale yet" is the honest answer and hiding it invites a guest to ask.
+ */
+function publicUnits(
+  rates: RiverUnitRates | null,
+  spans: readonly UnitSpan[],
+  from: string,
+  until: string,
+): PublicUnit[] | null {
+  if (rates === null) return null;
+  const availability = riverAvailability(spans, from, until);
+  return RIVER_UNIT_DETAIL.map((unit) => {
+    const rate = rates[unit.id];
+    const state = unitRateState(rate);
+    return {
+      id: unit.id,
+      name: unit.name,
+      sleeps: unit.sleeps,
+      bedrooms: unit.bedrooms,
+      beds: unit.beds,
+      baths: unit.baths,
+      nightly: state === 'ready' ? rate.nightly : null,
+      cleaning: rate.cleaning,
+      minNights: rate.minNights,
+      rateState: state,
+      nights: availability.units[unit.id],
+    };
+  });
 }
 
 /**
