@@ -5,6 +5,7 @@ import type { CleanJob } from '../lib/clean';
 import { jobLeaveAt2, stepText, turnHours } from '../lib/turn-clock';
 import { canyonDesk, canyonFromTurns, turnLoad } from '../lib/turn-load';
 import { CleanLinkPanel } from './CleanLinkPanel';
+import { cleanDeskNote } from '../lib/clean-desk-copy';
 import { openSteps, turnState, turnStateLine, type CleanProgress, type TurnState } from '../lib/clean-progress';
 import { api } from '../lib/api';
 import { earlyStayOpen } from '../lib/house-stay';
@@ -137,6 +138,13 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
   const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
   const [checks, setChecks] = useState<Record<string, boolean>>(loadChecks);
   const [tasks, setTasks] = useState<OpenTask[]>([]);
+  /**
+   * Whether the task list was read.
+   *
+   * The panel was rendered only when `tasks.length > 0`, so a failed read and a genuinely empty list looked identical:
+   * both were silence. A host could not tell "nothing to do" from "we could not check". This records which it was.
+   */
+  const [tasksState, setTasksState] = useState<'loading' | 'ready' | 'unreadable'>('loading');
   const [lang, setLang] = useState<CleanLang>(loadLang);
   const [turns, setTurns] = useState<QuoteTurn[] | null>(null);
   useEffect(() => {
@@ -185,10 +193,18 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
         return (await response.json()) as { tasks?: OpenTask[] };
       })
       .then((body) => {
-        if (cancel || !body?.tasks) return;
+        if (cancel) return;
+        if (!body || !Array.isArray(body.tasks)) {
+          // A body without a task list is not an empty list; the desk says so rather than going quiet.
+          setTasksState('unreadable');
+          return;
+        }
         setTasks(body.tasks.filter((task) => task.status === 'pending'));
+        setTasksState('ready');
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancel) setTasksState('unreadable');
+      });
     return () => {
       cancel = true;
     };
@@ -264,10 +280,8 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
       <div>
         <p className="uml-kicker">Clean</p>
         <h2 className="font-display text-5xl">The next two weeks</h2>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
-          {lang === 'es'
-            ? 'Las salidas salen de las reservas que ya están en el calendario. Las marcas se quedan en este navegador. Una foto se queda en esta pestaña y no se sube. No cambia una reserva ni un gasto.'
-            : 'Turnovers come from the bookings already on the calendar. Checks stay on this browser. A room photo stays in this tab and is not uploaded. A fix note stays in this browser and does not create a task. They do not change a booking or an expense.'}
+        <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]" data-bot="clean-desk-note">
+          {cleanDeskNote(lang)}
         </p>
         {cleanTurnsVisible(turns, jobs.length) && (
           <p className="mt-4 text-sm" data-bot="clean-turns">
@@ -574,7 +588,20 @@ export function CleanDesk({ reservations }: { reservations: Reservation[] }) {
           })}
         </div>
       )}
-      {tasks.length > 0 && (
+      {/*
+        The panel renders in three states now. Before, it rendered only when there were tasks to show, so a read that
+        failed was indistinguishable from a house with nothing to do — and a host would happily leave a broken task off
+        the list.
+      */}
+      {tasksState === 'unreadable' && (
+        <div className="uml-panel rounded-3xl p-6" data-bot="clean-tasks-unreadable" data-print-hide>
+          <p className="uml-kicker">Open tasks</p>
+          <p className="mt-2 text-sm" data-bot="clean-tasks-error">
+            The task list could not be read. This is not the same as no open tasks.
+          </p>
+        </div>
+      )}
+      {tasksState === 'ready' && tasks.length > 0 && (
         <div className="uml-panel rounded-3xl p-6" data-bot="clean-tasks" data-print-hide>
           <p className="uml-kicker">Open tasks</p>
           <ul className="mt-3 space-y-2 text-sm">
