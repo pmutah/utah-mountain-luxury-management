@@ -1,6 +1,10 @@
 User-agent: *
 Allow: /llms.txt
-Allow: /houses
-Allow: /book
+Allow: /houses/
+Allow: /book/
 Allow: /api/agent/map
 Disallow: /api/
+
+# The sitemap lists canonical URLs only. /houses and /book both 301 to their
+# slashed form, so pointing here saves a redirect hop for every crawler visit.
+Sitemap: https://wilhite-portfolio.pages.dev/sitemap.xml
