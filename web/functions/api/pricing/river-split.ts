@@ -1,7 +1,7 @@
 import { corsJson } from '../../_lib/data';
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { storageReadPaused } from '../../_lib/kv-json';
-import { loadRiverUnitRates } from '../../_lib/pricing-store';
+import { loadRiverUnitRates, loadRiverSplitMode, saveRiverSplitMode } from '../../_lib/pricing-store';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { nightAsk } from '../../../src/lib/market/rates';
@@ -30,7 +30,22 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const from = url.searchParams.get('from') ?? denverToday();
   const untilParam = url.searchParams.get('until');
   const until = untilParam ?? addDays(from, 14);
-  const mode = readSplitMode(url.searchParams.get('mode'));
+
+  /*
+   * The mode comes from storage when the query does not name one, so a host who turned splitting off is not silently
+   * back on `auto` after a reload. An explicit query value still wins, because that is how the card previews a mode.
+   */
+  let mode = readSplitMode(url.searchParams.get('mode'));
+  if (!url.searchParams.has('mode')) {
+    try {
+      mode = await loadRiverSplitMode(env);
+    } catch {
+      // A stored mode that cannot be read falls back to the shipped default rather than refusing to answer.
+      mode = 'auto';
+    }
+  }
+  /** True when the answer used the saved setting rather than one named in the URL. */
+  const modeFromStorage = !url.searchParams.has('mode');
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(until) || until <= from) {
     return corsJson(request, { error: 'Name a real range: until has to be after from.' }, 400);
@@ -132,6 +147,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     {
       decision: { ...decision, choice: applied.choice, units: applied.units },
       mode,
+      modeFromStorage,
       /** What the engine chose before the mode, so an override is visible rather than silent. */
       engineChoice: applied.engineChoice,
       overridden: applied.overridden,
@@ -141,11 +157,64 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       nights: nights.length,
       wholeNightly,
       pricedUnits,
-      /** False on every response: this route answers a question and writes nothing anywhere. */
+      /**
+       * False on both methods. GET writes nothing; PUT writes one word, the host's own setting. Neither blocks a night,
+       * publishes a rate, nor sends anything to another channel.
+       */
       publishes: false,
       writeNote:
         'This decides what to offer. It does not block a night, publish a rate, or send anything to Airbnb or Vrbo.',
       storageReads: 'ok',
+    },
+    200,
+    { 'Cache-Control': 'no-store' },
+  );
+};
+
+/**
+ * Save the host's whole-versus-split setting.
+ *
+ * This is the only write on the route, and it changes one word. It does not block a night, publish a rate, or alter a
+ * booking — it changes what the card answers the next time it is opened.
+ */
+export const onRequestPut: PagesFunction<Env> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+
+  let body: { mode?: unknown };
+  try {
+    body = (await request.json()) as { mode?: unknown };
+  } catch {
+    return corsJson(request, { error: 'Invalid JSON' }, 400);
+  }
+  /*
+   * A mode that is not one of the three is refused rather than stored as `auto`. Silently normalising it would leave the
+   * host believing they had turned splitting off when they had not.
+   */
+  if (body.mode !== 'auto' && body.mode !== 'suggest-only' && body.mode !== 'off') {
+    return corsJson(request, { error: 'Say auto, suggest-only, or off.' }, 400);
+  }
+  let saved;
+  try {
+    saved = await saveRiverSplitMode(env, body.mode);
+  } catch (err) {
+    if (storageReadPaused(err)) {
+      return corsJson(request, { error: 'The setting could not be saved. Nothing was written.' }, 503);
+    }
+    const message = err instanceof Error ? err.message : 'The setting could not be saved.';
+    return corsJson(request, { error: message }, 500);
+  }
+  return corsJson(
+    request,
+    {
+      ok: true,
+      mode: saved,
+      publishes: false,
+      note:
+        saved === 'off'
+          ? 'Splitting is off. The parts will not be offered for any range until this changes.'
+          : saved === 'suggest-only'
+            ? 'Suggest only. The card will advise and nothing offers the parts on its own.'
+            : 'Auto. The card acts on the decision for each range.',
     },
     200,
     { 'Cache-Control': 'no-store' },

@@ -983,6 +983,8 @@ export const api = {
         heldWholeForPeak?: boolean;
       } | null;
       mode?: string;
+      /** True when the answer used the saved setting rather than one named in the URL. */
+      modeFromStorage?: boolean;
       /** What the engine chose before the mode, and whether the mode overrode it. */
       engineChoice?: string;
       overridden?: boolean;
@@ -1000,6 +1002,12 @@ export const api = {
       `/api/pricing/river-split?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}${
         mode ? `&mode=${encodeURIComponent(mode)}` : ''
       }`,
+    ),
+  /** Save the whole-versus-split setting, so it survives a reload. */
+  saveRiverSplitMode: (mode: 'auto' | 'suggest-only' | 'off') =>
+    request<{ ok: boolean; mode: 'auto' | 'suggest-only' | 'off'; publishes?: boolean; note: string }>(
+      '/api/pricing/river-split',
+      { method: 'PUT', body: JSON.stringify({ mode }) },
     ),
   getBookingRequests: () =>
     request<{

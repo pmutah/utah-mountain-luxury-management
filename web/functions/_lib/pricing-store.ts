@@ -58,6 +58,31 @@ export async function saveRiverUnitRates(env: SettingsEnv, rates: RiverUnitRates
   return toUnitRates(await kvPut(env, KV_UNIT_RATES, rates));
 }
 
+/**
+ * The host's whole-versus-split setting for the Riverhouse.
+ *
+ * It lived only in component state, so every reload put the house back to `auto` — a host who had turned splitting off
+ * found it on again the next morning. A setting that changes what is offered has to outlive the tab.
+ *
+ * An unreadable or unknown value reads as `auto`, which is the mode the app shipped with, so a corrupt row cannot
+ * silently forbid splitting.
+ */
+const KV_SPLIT_MODE = 'riverSplitMode';
+
+export async function loadRiverSplitMode(env: SettingsEnv): Promise<'auto' | 'suggest-only' | 'off'> {
+  const raw = await kvGet<unknown>(env, KV_SPLIT_MODE, null);
+  return raw === 'suggest-only' || raw === 'off' ? raw : 'auto';
+}
+
+export async function saveRiverSplitMode(
+  env: SettingsEnv,
+  mode: 'auto' | 'suggest-only' | 'off',
+): Promise<'auto' | 'suggest-only' | 'off'> {
+  const safe = mode === 'suggest-only' || mode === 'off' ? mode : 'auto';
+  await kvPut(env, KV_SPLIT_MODE, safe);
+  return safe;
+}
+
 export async function loadCompSet(env: SettingsEnv): Promise<CompListing[]> {
   return kvGet(env, KV_COMP, []);
 }

@@ -33,10 +33,13 @@ const SHORT = new Map<string, string>(RIVER_UNIT_DETAIL.map((unit) => [unit.id a
 export function RiverSplitPanel({ from }: { from: string }) {
   const until = addDays(from, 14);
   /*
-   * The host's split mode. It changes the answer, so it has to be visible and switchable here: a setting that lives only
-   * in a URL is one a host will never find.
+   * The host's split mode. It lives on the server now, not in this component.
+   *
+   * It used to be `useState` only, so every reload put the house back to `auto` — a host who had turned splitting off
+   * found it on again the next morning. The panel adopts whatever the route reports, and a change is written back.
    */
   const [mode, setMode] = useState<'auto' | 'suggest-only' | 'off'>('auto');
+  const [modeNote, setModeNote] = useState<string | null>(null);
   const [data, setData] = useState<{
     decision: Decision | null;
     pricedUnits?: string[];
@@ -53,14 +56,16 @@ export function RiverSplitPanel({ from }: { from: string }) {
   useEffect(() => {
     let cancel = false;
     setState('loading');
+    // No mode in the query: the route answers with the saved setting, so a reload keeps it.
     void api
-      .getRiverSplit(from, until, mode)
+      .getRiverSplit(from, until)
       .then((result) => {
         if (cancel) return;
         if (result.storageReads === 'paused') {
           setState('paused');
           return;
         }
+        if (result.mode === 'auto' || result.mode === 'suggest-only' || result.mode === 'off') setMode(result.mode);
         setData(result);
         setState('ready');
       })
@@ -70,7 +75,29 @@ export function RiverSplitPanel({ from }: { from: string }) {
     return () => {
       cancel = true;
     };
-  }, [from, until, mode]);
+  }, [from, until]);
+
+  /**
+   * Change the setting and save it.
+   *
+   * The card re-reads afterwards so what it shows is the saved answer, not the one this browser hoped for. A failed save
+   * says so rather than leaving the button pressed and the server unchanged.
+   */
+  async function chooseMode(next: 'auto' | 'suggest-only' | 'off') {
+    setModeNote(null);
+    const previous = mode;
+    setMode(next);
+    try {
+      const saved = await api.saveRiverSplitMode(next);
+      setModeNote(saved.note);
+      const refreshed = await api.getRiverSplit(from, until);
+      if (refreshed.storageReads !== 'paused') setData(refreshed);
+    } catch (err) {
+      // The save did not land, so the control must not keep claiming the new setting.
+      setMode(previous);
+      setModeNote(err instanceof Error ? err.message : 'That setting could not be saved.');
+    }
+  }
 
   const decision = data?.decision ?? null;
 
@@ -103,7 +130,7 @@ export function RiverSplitPanel({ from }: { from: string }) {
             type="button"
             data-bot={`river-split-mode-${value}`}
             aria-pressed={mode === value}
-            onClick={() => setMode(value)}
+            onClick={() => void chooseMode(value)}
             className={`min-h-11 rounded-full border px-3 py-2 text-xs uppercase tracking-[0.12em] ${
               mode === value ? 'border-[var(--uml-gold)] text-[var(--uml-gold)]' : 'border-[var(--uml-line)]'
             }`}
@@ -112,6 +139,11 @@ export function RiverSplitPanel({ from }: { from: string }) {
           </button>
         ))}
       </div>
+      {modeNote && (
+        <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="river-split-mode-note">
+          {modeNote}
+        </p>
+      )}
 
       {state === 'loading' && <p className="mt-4 text-sm">Working out the next two weeks…</p>}
       {state === 'paused' && (

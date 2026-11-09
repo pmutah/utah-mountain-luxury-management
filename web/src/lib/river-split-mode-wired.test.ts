@@ -31,9 +31,14 @@ test('the mode is read through the shared reader, so an unknown value is not str
   assert.equal(/MODES\.includes/.test(ROUTE), false, 'a hand-rolled mode check is back');
 });
 
-test('the panel can switch the mode and sends it with the request', () => {
+test('the panel can switch the mode and saves the choice', () => {
+  /*
+   * This used to assert that the panel sent the mode with every GET. That was right when the mode was component state
+   * and wrong once it was stored: sending `auto` on load would override the saved setting on every reload, which is the
+   * defect the persistence work removed. The panel now loads without a mode and saves a change explicitly.
+   */
   assert.match(PANEL, /river-split-mode-/, 'the panel has no mode control');
-  assert.match(PANEL, /getRiverSplit\(from, until, mode\)/, 'the chosen mode is not sent');
+  assert.match(PANEL, /saveRiverSplitMode\(next\)/, 'the chosen mode is never saved');
 });
 
 test('the panel shows an override rather than quietly changing its answer', () => {
