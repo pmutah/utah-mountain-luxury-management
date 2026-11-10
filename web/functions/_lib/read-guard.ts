@@ -66,3 +66,41 @@ export async function withPausedGuard(
     },
   );
 }
+
+/**
+ * Report an unexpected throw as JSON naming the fault, instead of letting Cloudflare answer with an opaque 1102.
+ *
+ * Measured on production 2026-11-10: `/api/pricing/push-plan` and `/api/pricing/yield-plan` returned
+ * `HTTP 503` with `Content-Type: text/plain` and the body `error code: 1102` - Cloudflare's "Worker exceeded
+ * resource limits" page, which it serves for **any** uncaught throw. That page names nothing: not the route, not
+ * the error, not the line. It is unactionable for a host (`wrangler pages deployment tail` also refused to
+ * attach, so the stack was not reachable from outside at all) and it hides a real bug behind a platform error.
+ *
+ * So a route that can throw unexpectedly wraps its body here and gets a 500 that says what happened. The status
+ * stays 5xx - this does not pretend the request worked - but the message is the diagnostic.
+ *
+ * Deliberately not used to swallow anything: the error is still reported, with its name and message, and the
+ * route's own refusals (a paused store, a bad token) keep their existing statuses and wording.
+ */
+export function unexpectedResponse(request: Request, err: unknown, what = 'This request'): Response {
+  const detail =
+    err instanceof Error
+      ? `${err.name}: ${err.message}`
+      : typeof err === 'string'
+        ? err
+        : 'no detail was available';
+  return new Response(
+    JSON.stringify({
+      error: `${what} failed unexpectedly. Nothing was written. ${detail}`,
+      unexpected: true,
+    }),
+    {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        ...corsHeaders(request),
+      },
+    },
+  );
+}

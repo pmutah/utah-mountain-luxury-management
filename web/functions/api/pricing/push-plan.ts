@@ -1,5 +1,6 @@
 import { corsJson } from '../../_lib/data';
 import { hostDenied, hostOnly } from '../../_lib/auth';
+import { unexpectedResponse } from '../../_lib/read-guard';
 import { buildMarketBoard } from '../../../src/lib/market/board';
 import { runShadow, portfolioDigest } from '../../../src/lib/market/shadow';
 import { planClimb, planLines, planProvenance, pushPayload, pushPlanAll, pushSendState, pushSummaryLine, type PushGate } from '../../../src/lib/market/push';
@@ -26,6 +27,23 @@ type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string; HOSPITABLE_WRITE_TOKEN?:
  */
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
+  /*
+   * Everything after the auth check runs inside one boundary.
+   *
+   * On production 2026-11-10 this route answered Cloudflare's `error code: 1102` page - a `text/plain` 503 that names
+   * nothing - while the same code answered 200 on the preview alias and on every earlier production build. The stores read
+   * fine (there is already a try around them, and a paused store has its own answer), so the throw is somewhere in the
+   * body, and Cloudflare replaced it with a platform page. A host reading "1102" cannot tell whether their prices are
+   * safe; a 500 that names the error at least says nothing was written.
+   */
+  try {
+    return await buildPlanResponse(request, env);
+  } catch (err) {
+    return unexpectedResponse(request, err, 'The rate push plan');
+  }
+};
+
+async function buildPlanResponse(request: Request, env: Env): Promise<Response> {
   const today = denverToday();
   const days = Math.min(180, Math.max(7, Number(new URL(request.url).searchParams.get('days')) || 90));
 
