@@ -54,6 +54,13 @@ export const OWNER_PORTAL_NOTES: string[] = [
   'Ranch and River pay a 20% management fee to Brandon first.',
   'The 20% is charged on rent after cleaning, not on the whole guest payout, so the fee is smaller than a fifth of the host payout line.',
   'What remains splits in half. Todd takes one half. Brandon and Stephanie take the other half.',
+  /*
+   * Said before the owner finds it. Each month's fee and share are rounded to the cent and then added up, so the year's figure
+   * agrees with the monthly column they can add line by line — which means doubling the year's share can differ from the
+   * leftover by a cent or two. Measured on production 2026-11-10: leftover -$6,472.33 against Todd -$3,236.18. Without this
+   * sentence the statement looks three cents wrong to anyone who checks it.
+   */
+  'Each month is rounded to the cent before the months are added, so a yearly total can differ from a straight halving of the leftover by a cent or two. The monthly column is the figure that adds up exactly.',
   'A loss after the fee splits the same way.',
   'Lindon, household purchases, and construction bills are not on this page.',
   'This page does not change a booking or a saved expense.',

@@ -14,6 +14,22 @@ const PERIODS: Array<{ id: ReportPeriod; label: string }> = [
   { id: 'ytd', label: 'Year to date' },
 ];
 
+/**
+ * Is the published share exactly half of the leftover, to the cent?
+ *
+ * It usually is not, by a cent or two: the share is rounded to cents **per month** and then summed, so the annual figure agrees
+ * with the monthly column an owner can add up. The sentence around it must say so rather than claiming a halving that does not
+ * hold — measured on production 2026-11-10, `leftover -6472.33` against `todd -3236.18`.
+ *
+ * The comparison is on the raw difference, not on two independently rounded values. A first version compared
+ * `leftover/2` rounded to cents against `todd`, which turned the production pair into a 1.5c gap (`-3236.165` rounds to
+ * `-3236.17`) and called the exact case an error. Here the tolerance is the rounding itself: anything inside a cent of a true
+ * halving is reported as exact, and a cent or more is not.
+ */
+function halfIsExact(leftover: number, todd: number): boolean {
+  return Math.abs(leftover / 2 - todd) <= 0.005;
+}
+
 export function OwnerStatement({
   month,
   reservations,
@@ -125,9 +141,18 @@ export function OwnerStatement({
               The working, so the headline can be checked without a spreadsheet. Cleaning is inside
               `costs` and is also taken out before the fee, which is why the two lines below reconcile
               to the number above instead of looking a couple of thousand light.
+
+              The half is described as the figure that is paid, not as an arithmetic identity. `leftover / 2` and the published
+              `todd` differ by a cent or two, because the share is rounded to cents **per month** and then summed — the same
+              choice the fee makes, so the annual figure agrees with the monthly column an owner can add up. The old sentence
+              said "Half is $3,236.18" beside "-$6,472.33 left", which does not halve: an owner checking that sentence found a
+              3¢ disagreement in the very line written to prove the numbers. Measured on production 2026-11-10.
             */}
             <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot={`owner-working-${house.id}`}>
-              {formatCurrency(house.leftover)} left after the {formatCurrency(house.fee)} fee and costs. Half is {formatCurrency(house.todd)}.
+              {formatCurrency(house.leftover)} left after the {formatCurrency(house.fee)} fee and costs.{' '}
+              {halfIsExact(house.leftover, house.todd)
+                ? `Half is ${formatCurrency(house.todd)}.`
+                : `Todd's half is ${formatCurrency(house.todd)}, rounded to the cent in each month.`}
             </p>
           </article>
         ))}
