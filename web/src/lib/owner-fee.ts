@@ -30,14 +30,23 @@ export const MANAGEMENT_FEE_LABEL = `${MANAGEMENT_FEE_PERCENT}%`;
 export const SPLIT_HOUSES = ['ranch', 'river'] as const;
 
 /**
- * The fee for a house's rent, in whole cents.
+ * The fee for a house's rent, **unrounded**, in whole cents after the caller rounds.
  *
  * Charged on rent **after cleaning** — the owner's rule — and never on a negative basis: a month that lost money is not charged
  * a management fee on the loss, because that would grow the loss and invert the incentive the fee is meant to represent.
+ *
+ * Deliberately unrounded. The statement's `leftover` is computed from the unrounded fee and only the published figures are
+ * rounded to cents; rounding here instead moves the halved share, and this session already shipped that by accident — Todd's
+ * share went from -3,236.18 to -3,236.16 on the real statement. Use `managementFee` when a rounded figure is wanted.
  */
-export function managementFee(rentAfterCleaning: number): number {
+export function managementFeeRaw(rentAfterCleaning: number): number {
   if (!Number.isFinite(rentAfterCleaning) || rentAfterCleaning <= 0) return 0;
-  return Math.round((rentAfterCleaning * MANAGEMENT_FEE_RATE + Number.EPSILON) * 100) / 100;
+  return rentAfterCleaning * MANAGEMENT_FEE_RATE;
+}
+
+/** The fee in whole cents, for a figure that will be printed. */
+export function managementFee(rentAfterCleaning: number): number {
+  return Math.round((managementFeeRaw(rentAfterCleaning) + Number.EPSILON) * 100) / 100;
 }
 
 /** What is left to split after the fee, in whole cents. */

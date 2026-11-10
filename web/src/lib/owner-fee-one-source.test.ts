@@ -63,11 +63,19 @@ test('the rate has exactly one definition', () => {
 
 test('the money uses the rate, not a literal', () => {
   const report = readFileSync(join(ROOT, 'src', 'lib', 'report.ts'), 'utf8');
-  assert.match(report, /managementFee\(basis\)/, 'the report no longer calls the shared fee function');
   /*
-   * `* 0.2` in the split is the defect this replaced. Comments are stripped first: the comment explaining the change quotes the
-   * old expression, and a file-wide search matched that quote — the same prose trap as the dead-branch guards.
+   * `managementFeeRaw`, not `managementFee`. The leftover must come from the **unrounded** fee, as the original `basis * 0.2`
+   * line did, because only the published figures are rounded to cents. Using the rounded fee here shipped a real 2c change to
+   * Todd's share (-3,236.18 to -3,236.16), caught by comparing production before and after.
    */
+  assert.match(report, /managementFeeRaw\(basis\)/, 'the report no longer uses the shared fee');
+  assert.equal(
+    /managementFee\(basis\)/.test(report),
+    false,
+    'the report rounds the fee before computing the leftover, which moves the halved share',
+  );
+  // `* 0.2` in the split is the defect this replaced. Comments are stripped first: the comment explaining the change quotes the
+  // old expression, and a file-wide search matched that quote — the same prose trap as the dead-branch guards.
   const code = report.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.equal(
     /\bbasis\s*\*\s*0\.2\b/.test(code),

@@ -7,7 +7,7 @@ import {
   type Reservation,
 } from './api';
 import { addMonths } from './months';
-import { managementFee } from './owner-fee';
+import { managementFeeRaw } from './owner-fee';
 
 export const REPORT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
 export const RIVER_OPEN_MONTH = '2026-11';
@@ -232,7 +232,13 @@ function ownerSplit(
    * `managementFee` keeps the same rounding this line had — cents, applied per month — which is what the owner statement's
    * footing depends on.
    */
-  const mgtFee = managementFee(basis);
+  /*
+   * `managementFeeRaw`, not `managementFee`. The leftover must be computed from the **unrounded** fee, exactly as the original
+   * `basis * 0.2` line did, because only the published figures are rounded to cents. Using the rounded fee here moved Todd's
+   * share on the real statement from -3,236.18 to -3,236.16 — a 2c change to an owner's money, shipped by this refactor and
+   * caught by comparing production before and after.
+   */
+  const mgtFee = managementFeeRaw(basis);
   const leftover = basis - mgtFee - (mortgage + operating);
   const share = leftover / 2;
   // Cents, so a statement or a printed report never shows 1908.3439999999998.
