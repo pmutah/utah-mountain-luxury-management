@@ -6,6 +6,7 @@ import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { isHouseId, housesForRequest, type StaySpan } from '../../../src/lib/availability';
 import { bookingRequestHold } from '../../../src/lib/booking-request';
+import { declaredDogs } from '../../../src/lib/house-rules';
 import { partyNote } from '../../../src/lib/house-stay';
 import { holdConflict, holdConflictLine, holdExpiresAt, type BookingHold, type HoldWithState } from '../../../src/lib/booking-hold';
 import { guestRequestReceipt, sentLine } from '../../../src/lib/booking-mail';
@@ -48,6 +49,14 @@ interface BookingRequest {
    * a difference is reported to the host rather than silently overriding either figure.
    */
   quotedTotal?: number;
+  /**
+   * Dogs the guest declared, 0-2.
+   *
+   * The pet policy has been published on the booking page since 2026-11-10 and there was no field for it, so the owner's
+   * $149 fee was never charged and a host never knew a dog was coming. Absent means the guest did not answer — which is not
+   * the same as "no dogs".
+   */
+  dogs?: number;
   /** The guest's own link to this request. It is the credential, so it is never shown on the host desk. */
   statusToken?: string;
 }
@@ -95,6 +104,13 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     ...(typeof body.quotedTotal === 'number' && Number.isFinite(body.quotedTotal) && body.quotedTotal > 0
       ? { quotedTotal: Math.round(body.quotedTotal * 100) / 100 }
       : {}),
+    /*
+     * The declared dogs, clamped to the owner's limit.
+     *
+     * `declaredDogs` refuses a junk value and caps at two, so a hand-written body cannot record "5 dogs" or a negative. Zero is
+     * kept when the guest explicitly said none, because that is a real answer and the host may want it.
+     */
+    ...(declaredDogs(body.dogs) !== null ? { dogs: declaredDogs(body.dogs)! } : {}),
     ...(alsoPropertyId && alsoPropertyId !== propertyId ? { alsoPropertyId } : {}),
   };
   const houses = housesForRequest(propertyId, alsoPropertyId);

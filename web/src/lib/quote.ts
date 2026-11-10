@@ -1,4 +1,5 @@
 import { partyFits } from './house-stay';
+import { petFeeFor } from './house-rules';
 import { addDays, isWeekendNight } from './market/dates';
 import { promotionForNight, type YearPace } from './market/fill';
 import { approvalBase, approvedGuestRate, type QuotedSheetNight } from './market/rate-sheet';
@@ -44,7 +45,18 @@ export type StayQuote = {
   /** Direct lodging. This is what a guest pays on this page. */
   lodging: number;
   cleaning: number;
-  /** Direct lodging plus cleaning. Utah tax is added only after the rate is confirmed. */
+  /**
+   * The pet fee, when the guest said they are bringing dogs. Zero otherwise.
+   *
+   * The owner set $149 per stay (dogs only, up to 2, under 50 lb, no cats) and `PET_FEE` has carried that number since
+   * 2026-11-10 — while **no quote, no request, and no surface ever charged it**. The policy was published on the booking page
+   * and the fee behind it was never applied, so a guest with a dog read a $149 rule and paid nothing.
+   *
+   * Kept as its own line rather than folded into `stayTotal` so the guest can see what the fee is, and so the receipt and the
+   * host view can name it. The owner's rule is per stay, not per dog and not per night, so a second dog does not double it.
+   */
+  petFee: number;
+  /** Direct lodging plus cleaning plus any pet fee. Utah tax is added only after the rate is confirmed. */
   stayTotal: number;
   channelLodging: number;
   channelTotal: number;
@@ -144,10 +156,17 @@ export function quoteStay(
     closed?: readonly string[];
     /** Host-approved guest rates. A night with none keeps the published card. */
     sheet?: readonly QuotedSheetNight[];
+    /**
+     * Dogs the guest declared. The owner's pet fee is per stay, so this adds `PET_FEE` once for any positive count and
+     * nothing when it is absent. Absent is not "zero dogs" in the type, but it is in the price: a guest who did not say
+     * anything is not charged.
+     */
+    dogs?: number;
   },
 ): StayQuote {
   const asOf = options?.asOf && /^\d{4}-\d{2}-\d{2}$/.test(options.asOf) ? options.asOf : checkIn;
   const pace = options?.pace ?? 'unknown';
+  const petFee = petFeeFor(options?.dogs);
   const empty = (reason: string): StayQuote => ({
     house,
     checkIn,
@@ -155,6 +174,11 @@ export function quoteStay(
     nights: [],
     lodging: 0,
     cleaning: CLEANING[house],
+    /*
+     * The fee is reported even on a refused quote. It is a fact about the stay, not about whether these nights happen to be
+     * free — and a `stayTotal` of 0 with no fee beside it would read as "nothing at all is owed".
+     */
+    petFee,
     stayTotal: 0,
     channelLodging: 0,
     channelTotal: 0,
@@ -189,9 +213,10 @@ export function quoteStay(
     nights,
     lodging,
     cleaning,
-    stayTotal: lodging + cleaning,
+    petFee,
+    stayTotal: lodging + cleaning + petFee,
     channelLodging,
-    channelTotal: channelLodging + cleaning,
+    channelTotal: channelLodging + cleaning + petFee,
     promotionNights,
     approvedNights,
     minNights,

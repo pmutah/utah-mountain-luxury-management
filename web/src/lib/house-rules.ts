@@ -131,6 +131,31 @@ export function petRule(house: HouseId): string | null {
 /** The pet fee, for the desk and the stay agreement. Never rendered on a guest page. */
 export const PET_FEE = 149;
 
+/** The most dogs the owner takes: two, each under 50 lb, dogs only. */
+export const MAX_DOGS = 2;
+
+/**
+ * The pet fee a stay owes for a given number of dogs.
+ *
+ * **Per stay, not per dog and not per night** — that is the owner's rule (2026-11-10), and it is the reason this is a
+ * function rather than a multiplication at each call site. A second dog costs nothing extra; one stay of any length costs
+ * $149 once.
+ *
+ * A count that is absent, zero, negative, or not a whole number owes nothing: a guest who did not say they are bringing a dog
+ * must not be charged for one, and a junk value must not invent a charge. Above `MAX_DOGS` the fee is still one stay's
+ * fee — the request is over the policy and a person deals with it, but the app does not invent a higher price for it.
+ */
+export function petFeeFor(dogs: unknown): number {
+  if (typeof dogs !== 'number' || !Number.isFinite(dogs) || !Number.isInteger(dogs) || dogs <= 0) return 0;
+  return PET_FEE;
+}
+
+/** How many dogs a request may declare, or null when the value is not a usable count. */
+export function declaredDogs(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value) || value < 0) return null;
+  return Math.min(value, MAX_DOGS);
+}
+
 /** A party or event stays off the request button. Nothing is sent. */
 export function eventHoldLine(house: HouseId): string {
   if (house === 'river') {

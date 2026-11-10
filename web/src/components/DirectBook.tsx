@@ -127,6 +127,19 @@ export function DirectBook() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', note: '' });
   const [guests, setGuests] = useState(linked.guests ?? '');
   const [children, setChildren] = useState(linked.children ?? '');
+  /**
+   * Dogs the guest is bringing, as a string from the input.
+   *
+   * The pet policy has been published on this page since 2026-11-10 and there was **no way to declare a pet and no fee
+   * charged** — `PET_FEE` was a constant with a test and no caller. A guest with a dog read the $149 rule and paid nothing.
+   *
+   * Kept as a string because a blank field is not zero dogs: `Number('')` is 0, and that would have to mean "no pets" when
+   * it actually means "not answered". The quote converts it.
+   *
+   * Deliberately not prefilled from a stay link: a returning guest's previous pet count is not in the link, and guessing one
+   * would either overcharge or silently skip the fee.
+   */
+  const [dogs, setDogs] = useState('');
   /*
    * Per house, because the house rules differ. A single flag meant ticking "I have read the house rules" on the
    * Lindon tab also opened River's request form, on rules the guest never saw. The agreement topics were already
@@ -175,6 +188,13 @@ export function DirectBook() {
   const [paceMap, setPaceMap] = useState<Record<HouseId, YearPace> | null>(null);
   const guestCount = /^\d+$/.test(guests) ? Number(guests) : null;
   const childCount = /^\d+$/.test(children) ? Number(children) : null;
+  /**
+   * Dogs, or null when the guest did not answer.
+   *
+   * `null` and `0` are the same price but not the same fact: a blank field means the question was not answered, and the quote
+   * must not record "no pets" for a guest who never saw it.
+   */
+  const dogCount = /^\d+$/.test(dogs) ? Number(dogs) : null;
   const bothNights = calendar === 'live' && bothHouseQuote(guestCount) ? bothHouseMonthNights(taken, closed) : null;
   const spanHouse = bothNights ? 'river' : house;
   const spanTaken = bothNights ? bothNights.taken : (taken[house] ?? []);
@@ -258,8 +278,10 @@ export function DirectBook() {
         closed: closed[house] ?? [],
         sheet: approved[house] ?? [],
         ...(guestCount !== null ? { guests: guestCount, ...(childCount !== null ? { children: childCount } : {}) } : {}),
+        // The pet fee reaches the total the guest sees, so the figure on the page and the figure stored agree.
+        ...(dogCount !== null ? { dogs: dogCount } : {}),
       }),
-    [house, checkIn, checkOut, taken, closed, today, pace, guestCount, childCount, approved],
+    [house, checkIn, checkOut, taken, closed, today, pace, guestCount, childCount, dogCount, approved],
   );
   const ics =
     party.ok && (calendar === 'live' ? quote.ok : calendar === 'off' && !stayRule)
@@ -581,6 +603,8 @@ export function DirectBook() {
           checkOut,
           ...(guestCount !== null ? { guests: guestCount } : {}),
           ...(childCount !== null ? { children: childCount } : {}),
+          // The dogs the guest declared, so the host knows to collect or waive the fee, and the receipt can name it.
+          ...(dogCount !== null ? { dogs: dogCount } : {}),
           /*
            * The parts this guest chose. Empty means the whole house, which is what the form sent before parts existed,
            * so a whole-house request is byte-for-byte the same request it always was.
@@ -1389,6 +1413,37 @@ export function DirectBook() {
                 className="mt-2 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
               />
             </label>
+            {/*
+              Dogs, because the policy is published and the fee was never charged.
+
+              The rule has been on this page since 2026-11-10 — dogs only, up to two, under 50 lb, no cats — and there was no
+              way to say you were bringing one. `PET_FEE` was a constant with a test and no caller, so a guest with a dog read
+              "$149 per stay" and owed nothing. This asks the question and the quote applies the fee.
+
+              Blank is not zero: it means the guest did not answer, and the quote treats that as no fee without recording a
+              "no pets" that nobody said.
+            */}
+            <label className="mt-4 block text-sm">
+              Dogs, $149 per stay for up to two
+              <input
+                inputMode="numeric"
+                aria-label="Dogs"
+                data-bot="stay-dogs"
+                value={dogs}
+                placeholder="0"
+                onChange={(event) => setDogs(event.target.value.replace(/[^\d]/g, '').slice(0, 1))}
+                className="mt-2 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
+              />
+            </label>
+            {dogCount !== null && dogCount > 0 && (
+              <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-pet-fee">
+                {/*
+                  The fee named on the page. It is also in the total below, so this is a label for a charge the guest is
+                  actually being asked for — not a description of a rule.
+                */}
+                {`${dogCount === 1 ? '1 dog' : `${dogCount} dogs`}: $${quote.petFee} pet fee, once per stay.`}
+              </p>
+            )}
             {!party.ok && !compound.show && (
               <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-party">
                 {party.reason}
