@@ -6,6 +6,11 @@ import { RIVER_UNIT_DETAIL } from './river-units';
 /** The parts by name, so a guest reads "River Garage Suite" rather than a slug. */
 const UNIT_NAME = new Map<string, string>(RIVER_UNIT_DETAIL.map((unit) => [unit.id as string, unit.name]));
 
+/** Money for a guest, whole dollars, matching the booking page's own formatting. */
+function guestMoney(amount: number): string {
+  return `$${Math.round(amount).toLocaleString('en-US')}`;
+}
+
 /**
  * A guest who sends a direct request can see where it stands. Before this the guest got a receipt and
  * then nothing until a person wrote back: there was no page, no token, and no way to tell "waiting on
@@ -39,6 +44,17 @@ export type RequestView = {
   parts?: string[];
   /** When the dates stop being held, when a hold is still live. */
   heldUntil?: string;
+  /**
+   * What the guest was quoted when they sent the request, in whole dollars.
+   *
+   * The booking page shows a total and sends it with the request — and then no guest surface ever showed it again. A guest
+   * could be quoted $7,300, receive "someone will write back", and find a status page that says in as many words that it
+   * "does not carry a price". The number they were shown disappeared at the moment they most needed it.
+   *
+   * Absent means the request carried no total (a request made before the page sent one, or a payload without it). This is
+   * never defaulted to zero: a guest must not be told their stay costs nothing.
+   */
+  quotedTotal?: number;
   /** Why the host could not take the stay, in guest words. Only on a decline. */
   reason?: string;
   /** When the host answered. Only after a decision. */
@@ -87,6 +103,13 @@ export type RequestStatusInput = {
    * the house was sold in parts.
    */
   units?: unknown;
+  /**
+   * What the booking page showed the guest, sent with the request. Absent on a request made before the page sent one.
+   *
+   * Typed `unknown` because it comes from stored JSON: a request written by an older build, or a hand-edited row, must not
+   * be able to put a non-number into a guest-facing price.
+   */
+  quotedTotal?: unknown;
 };
 
 export type RequestStatusDecision = {
@@ -145,6 +168,15 @@ export function requestView(
       : undefined;
 
   /*
+   * The total the guest was shown on the booking page. Only a positive, finite number counts: a zero or a NaN is a missing
+   * price, not a free stay, and telling a guest their stay is free would be worse than telling them nothing.
+   */
+  const quotedTotal =
+    typeof request.quotedTotal === 'number' && Number.isFinite(request.quotedTotal) && request.quotedTotal > 0
+      ? Math.round(request.quotedTotal)
+      : undefined;
+
+  /*
    * The parts, named for a guest. An unknown name is dropped rather than shown raw, and an empty list means the whole
    * house — so a request made before parts existed reads exactly as it did.
    */
@@ -161,6 +193,7 @@ export function requestView(
     ...(guests !== undefined ? { guests } : {}),
     ...(children !== undefined ? { children } : {}),
     ...(parts.length > 0 ? { parts } : {}),
+    ...(quotedTotal !== undefined ? { quotedTotal } : {}),
   };
 
   // An accepted stay is the only thing that makes this a booking. The note carries the request id,
@@ -249,4 +282,47 @@ export function holdLine(view: RequestView): string | null {
   });
   const line = `Held until ${time} Mountain time. Nothing is charged, and no card was asked for.`;
   return /\$\d/.test(line) ? 'Held for a short time. Nothing is charged.' : line;
+}
+
+/**
+ * What the guest is told about money.
+ *
+ * The booking page quotes a total and sends it with the request. Until now no guest surface ever showed it again: the status
+ * page said in as many words that it "does not carry a price", and the confirmation email did not carry one either. So a
+ * guest was shown a number, asked to request the stay, and then had that number vanish — while the one question a guest
+ * actually has at this point is what it costs and what happens about paying.
+ *
+ * This states the quoted figure and the truth about payment: **nothing has been charged, and no card was collected here.**
+ * It deliberately does **not** invent a deposit percentage, a due date, or a refund window. Those are the owner's terms, and
+ * they are not in this repo — see the note at the end of this function.
+ *
+ * A view with no quoted total gets a line that says the amount is still to be confirmed, never `$0`.
+ */
+export function moneyLine(view: RequestView): string | null {
+  // A cancelled stay owes nothing, and a declined request was never a booking.
+  if (view.status === 'cancelled' || view.status === 'declined') return null;
+
+  if (view.quotedTotal === undefined) {
+    /*
+     * No figure to state. Saying anything about a price here would invent one; saying nothing would leave the guest with the
+     * same silence this fix exists to remove.
+     */
+    return view.status === 'accepted'
+      ? 'The amount due is being confirmed separately. Nothing has been charged, and no card was collected on this site.'
+      : 'The rate for these nights is confirmed when we reply. Nothing has been charged, and no card was collected on this site.';
+  }
+
+  const total = guestMoney(view.quotedTotal);
+  /*
+   * The two facts that are true on every booking, whatever the owner later decides about deposits:
+   *
+   *   - the guest has not been charged, because this app has no payment processor connected; and
+   *   - they should not expect a card form, because there is not one.
+   *
+   * Everything about *when* money is due is left to the reply, which is a person. That is honest, and it is also the only
+   * truthful thing this repo can say: `paymentLedger` records money that arrived, and nothing here collects it.
+   */
+  return view.status === 'accepted'
+    ? `Your quoted total is ${total}. Nothing has been charged yet, and no card was collected on this site — we will arrange payment with you directly.`
+    : `You were quoted ${total} for these nights. Nothing has been charged, and no card was collected on this site. The total is confirmed in our reply.`;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { HouseId } from '../lib/market/types';
+import { moneyLine } from '../lib/request-status';
 
 type View = {
   status: 'waiting' | 'accepted' | 'declined' | 'expired' | 'cancelled';
@@ -15,6 +16,8 @@ type View = {
   heldUntil?: string;
   reason?: string;
   answeredAt?: string;
+  /** What the guest was quoted on the booking page, in whole dollars. Absent means no figure was carried. */
+  quotedTotal?: number;
   line: string;
   hold: string | null;
 };
@@ -85,6 +88,9 @@ export function RequestStatus({ token }: { token: string }) {
       timeZone: 'UTC',
     });
 
+  /** The money line for this view, or null when there is nothing to say about money. */
+  const money = view ? moneyLine(view) : null;
+
   return (
     <div className="min-h-screen bg-[var(--uml-bg)] px-5 py-12 text-[var(--uml-ink)]" data-bot="request-status">
       <div className="mx-auto max-w-2xl">
@@ -140,6 +146,24 @@ export function RequestStatus({ token }: { token: string }) {
             <p className="mt-5 text-base" data-bot="request-line">
               {view.line}
             </p>
+            {/*
+              What it costs, and what has happened about money.
+
+              The page carried no price at all, and said so — while the booking page had already shown the guest a total and
+              sent it with the request. A guest was quoted a figure, asked to request the stay, and then had that figure
+              disappear. This states it, and states the two things that are true: nothing has been charged, and no card was
+              collected here. The `data-` attribute makes the absence of a quote visible to a test, so a missing total can
+              never render as a confident $0.
+            */}
+            {money && (
+              <p
+                className="mt-2 text-sm"
+                data-bot="request-money"
+                data-quoted={view.quotedTotal !== undefined ? 'yes' : 'no'}
+              >
+                {money}
+              </p>
+            )}
             {view.hold && (
               <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="request-hold">
                 {view.hold}
@@ -179,8 +203,14 @@ export function RequestStatus({ token }: { token: string }) {
               </p>
             )}
 
-            <p className="mt-8 text-xs text-[var(--uml-muted)]">
-              This page shows the house, the dates, and the party. It does not carry a price, a door code, or a way in.
+            <p className="mt-8 text-xs text-[var(--uml-muted)]" data-bot="request-scope">
+              {/*
+                This said the page "does not carry a price", which stopped being true the moment the quote was added — and was
+                never quite honest anyway, because the booking page had already shown the guest one. It now names what it
+                actually holds: the dates, the party, and the total you were quoted. Still no door code and no way in.
+              */}
+              This page shows the house, the dates, the party, and the total you were quoted. It does not carry a door code
+              or a way in.
             </p>
           </section>
         )}

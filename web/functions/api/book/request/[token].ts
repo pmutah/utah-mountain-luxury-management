@@ -121,6 +121,12 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env, p
        * so a new field on the view does not arrive here by itself — this is the line that makes it visible.
        */
       ...(view.parts && view.parts.length > 0 ? { parts: view.parts } : {}),
+      /*
+       * The total the guest was quoted on the booking page. Sent so the status page can state it: the page used to say it
+       * carried no price, which meant the figure a guest had just been shown disappeared at the moment they needed it. It is
+       * the guest's own quote for their own request, so nothing new is exposed by returning it on this token.
+       */
+      ...(view.quotedTotal !== undefined ? { quotedTotal: view.quotedTotal } : {}),
       ...(view.heldUntil ? { heldUntil: view.heldUntil } : {}),
       ...(view.reason ? { reason: view.reason } : {}),
       ...(view.answeredAt ? { answeredAt: view.answeredAt } : {}),
