@@ -27,11 +27,23 @@ const HOSPITABLE_BASE = 'https://public.api.hospitable.com/v2';
 
 export type PublishEnv = {
   HOSPITABLE_PAT?: string;
+  /**
+   * The older name for the same credential. `push-plan` and `shadow-days` accept either, so a host who set only this one
+   * would see the gate open and the switch still reading "no token". Measured on production 2026-11-10: the Pages project
+   * lists `HOSPITABLE_PAT` yet every route reports it absent at runtime, so a single-name check is also a single point of
+   * wrong answers. Both names are read, and neither is assumed.
+   */
+  HOSPITABLE_WRITE_TOKEN?: string;
   /** Must be exactly `on`. Anything else means off. */
   HOSPITABLE_RATE_PUSH?: string;
   /** Must be `cents` or `dollars`. There is no default: guessing is a 100x error on a live listing. */
   HOSPITABLE_PRICE_UNIT?: string;
 };
+
+/** The credential the request actually carries. One answer, used by the gate and by the sender. */
+export function hospitableToken(env: PublishEnv): string {
+  return env.HOSPITABLE_PAT?.trim() || env.HOSPITABLE_WRITE_TOKEN?.trim() || '';
+}
 
 export type PublishSwitch = {
   /** True only when every condition below is met. */
@@ -48,7 +60,8 @@ export type PublishSwitch = {
  * Four conditions, all required, and the line names the first one that is missing rather than saying "not configured".
  */
 export function publishSwitch(env: PublishEnv): PublishSwitch {
-  const hasToken = Boolean(env.HOSPITABLE_PAT?.trim());
+  const token = hospitableToken(env);
+  const hasToken = token.length > 0;
   const flag = (env.HOSPITABLE_RATE_PUSH ?? '').trim().toLowerCase();
   const rawUnit = (env.HOSPITABLE_PRICE_UNIT ?? '').trim().toLowerCase();
   const unit: PriceUnit | null = rawUnit === 'cents' || rawUnit === 'dollars' ? rawUnit : null;
@@ -58,7 +71,15 @@ export function publishSwitch(env: PublishEnv): PublishSwitch {
       on: false,
       hasToken,
       unit,
-      line: 'Rate publishing is off: no Hospitable token is set. Nothing can be sent.',
+      /*
+       * Not "no token is set": a host who has just added the secret and read this line would go looking for a different
+       * problem. The runtime can only report what it can see, and on production 2026-11-10 the Pages project listed
+       * `HOSPITABLE_PAT` while this read came back empty — so the honest sentence names what the code observed and what
+       * to check, in that order.
+       */
+      line:
+        'Rate publishing is off: this app cannot see a Hospitable token, so nothing can be sent. If one is set on the Pages ' +
+        'project, redeploy so the runtime picks it up — a secret added after the last deploy is not visible to it.',
     };
   }
   if (flag !== 'on') {
@@ -164,7 +185,7 @@ export async function publishApprovedRates(
       const res = await fetchImpl(`${HOSPITABLE_BASE}/properties/${property}/calendar`, {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${env.HOSPITABLE_PAT!.trim()}`,
+          Authorization: `Bearer ${hospitableToken(env)}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },

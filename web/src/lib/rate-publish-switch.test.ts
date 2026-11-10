@@ -19,7 +19,48 @@ const TOKEN = 'test-pat-not-real';
 test('the switch is off when nothing is set', () => {
   const gate = publishSwitch({});
   assert.equal(gate.on, false);
-  assert.match(gate.line, /no Hospitable token/, 'the reason does not name the missing token');
+  assert.match(gate.line, /cannot see a Hospitable token/, 'the reason does not name the token it could not see');
+  /*
+   * The old line said "no Hospitable token is set", which is a claim about the deploy, not about what the code can read.
+   * Production listed `HOSPITABLE_PAT` while this read came back empty, so the wording told a host to add a secret they
+   * already had. The line must offer the redeploy explanation instead.
+   */
+  assert.match(gate.line, /redeploy/i, 'a host reading this has no next step');
+});
+
+test('the older credential name opens the switch too', () => {
+  /*
+   * `push-plan` and `shadow-days` accept `HOSPITABLE_PAT` **or** `HOSPITABLE_WRITE_TOKEN`. This gate read only the PAT, so
+   * a deployment holding just the older name would open the plan gate and still show the switch closed. One credential,
+   * one answer.
+   */
+  const gate = publishSwitch({
+    HOSPITABLE_WRITE_TOKEN: TOKEN,
+    HOSPITABLE_RATE_PUSH: 'on',
+    HOSPITABLE_PRICE_UNIT: 'cents',
+  });
+  assert.equal(gate.hasToken, true, 'the older credential name is not recognised');
+  assert.equal(gate.on, true, 'a deployment holding only HOSPITABLE_WRITE_TOKEN cannot publish');
+});
+
+test('the PAT wins when both names are set, and the request carries that one', async () => {
+  const seen: string[] = [];
+  const spy = (async (_url: string, init: RequestInit) => {
+    seen.push(new Headers(init.headers).get('Authorization') ?? '');
+    return new Response('{}', { status: 200 });
+  }) as unknown as typeof fetch;
+
+  await publishApprovedRates(
+    {
+      HOSPITABLE_PAT: 'the-pat',
+      HOSPITABLE_WRITE_TOKEN: 'the-older-name',
+      HOSPITABLE_RATE_PUSH: 'on',
+      HOSPITABLE_PRICE_UNIT: 'dollars',
+    },
+    [{ listing: 'river', date: '2027-03-01', rate: 2400 }],
+    spy,
+  );
+  assert.deepEqual(seen, ['Bearer the-pat'], 'the request did not carry the PAT');
 });
 
 test('a token alone does not turn it on', () => {

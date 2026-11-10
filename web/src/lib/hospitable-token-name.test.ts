@@ -20,10 +20,20 @@ const SHADOW = readFileSync('functions/api/pricing/shadow-days.ts', 'utf8');
 
 test('the sender uses the credential the project actually holds', () => {
   /*
-   * `HOSPITABLE_PAT` is the stored secret. This is the authority: whatever the gate checks, the request must carry this.
+   * `HOSPITABLE_PAT` is the stored secret, and the request must carry it. It now goes through `hospitableToken()`, which
+   * prefers the PAT and falls back to the older `HOSPITABLE_WRITE_TOKEN`, because production was measured listing the PAT
+   * while every route reported it absent at runtime — so accepting one name was a single point of wrong answers.
+   *
+   * The assertion follows the value rather than the literal: the header must be built from the accessor, and the accessor
+   * must prefer the PAT.
    */
-  assert.match(SENDER, /Authorization: `Bearer \$\{env\.HOSPITABLE_PAT/, 'the sender no longer sends the PAT');
-  assert.match(SENDER, /HOSPITABLE_PAT\?\.trim\(\)/, 'the sender no longer gates on the PAT');
+  assert.match(SENDER, /Authorization: `Bearer \$\{hospitableToken\(env\)\}/, 'the sender no longer sends through the token accessor');
+  assert.match(
+    SENDER,
+    /return env\.HOSPITABLE_PAT\?\.trim\(\) \|\| env\.HOSPITABLE_WRITE_TOKEN\?\.trim\(\)/,
+    'the accessor no longer prefers the PAT',
+  );
+  assert.match(SENDER, /const token = hospitableToken\(env\);/, 'the gate does not use the same accessor as the send');
 });
 
 test('the plan gate accepts the PAT, not only the older name', () => {
