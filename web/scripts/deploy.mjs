@@ -115,4 +115,22 @@ try {
   );
   process.exit(1);
 }
+
+/*
+ * Then check that the fixes a person would notice are actually in the scripts being served.
+ *
+ * `check-deployed` answers "is this branch live". This answers "did the thing I fixed survive to production" — a bad
+ * merge or a reverted file can leave the bundle current and the fix gone. It was written last turn and nothing ran it,
+ * which is the same defect it exists to catch, one level up.
+ */
+console.log('→ fixes present in the served scripts');
+try {
+  run('npx', ['tsx', 'scripts/check-session-fixes.ts'], { env: { ...process.env, UML_CHECK_BASE: deployedUrl } });
+} catch {
+  console.error(
+    `\n${deployedUrl} is this branch, but at least one fix is not in the scripts it serves.\n` +
+      'That is a real regression to fix, not a reason to re-deploy.',
+  );
+  process.exit(1);
+}
 console.log(`\nDeployed and verified: ${deployedUrl}`);
