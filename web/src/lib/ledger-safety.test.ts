@@ -14,8 +14,8 @@ import { kvGet, kvPut, StorageReadError } from '../../functions/_lib/kv-json.ts'
 import { createReservation, loadCustomReservations } from '../../functions/_lib/reservations-store.ts';
 import { ensureTurnoverCleaningExpenses, saveCustomExpenses } from '../../functions/_lib/expenses.ts';
 import { ledgerSafeToSave } from '../../functions/_lib/ledger-guard.ts';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 type Store = Record<string, unknown>;
 
@@ -275,4 +275,48 @@ test('the delete route declares its intent, so its removal is not refused', asyn
   );
   assert.match(route, /saveCustomExpenses\(env, custom, \{ allowShrinkReason:/, 'the delete route removes a row without saying why');
   assert.match(route, /archiveExpense\(/, 'the delete route removes a row without archiving it first');
+});
+
+test('a stored receipt is deleted only by a host, and only where it says why', () => {
+  /*
+   * The branch objective names three things that must survive this rebuild: expenses, bookings, and **receipts**. The
+   * ledger guard above covers expense rows; this covers the stored files themselves, which is a different store and a
+   * different way to lose something.
+   *
+   * The archive already refuses a shorter ledger, so a row cannot vanish — but the bytes behind it could still be
+   * deleted while its row survived, leaving a documented expense pointing at nothing.
+   */
+  const root = join(process.cwd(), 'functions');
+  const files = readdirSync(join(root, 'api'), { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+    .map((entry) => join(entry.parentPath ?? root, entry.name));
+
+  const deleters = files.filter((file) => /deleteStoredReceipt\(/.test(readFileSync(file, 'utf8')));
+  assert.ok(deleters.length > 0, 'the search found no receipt deletion at all, so it is not reading the routes');
+
+  for (const file of deleters) {
+    const text = readFileSync(file, 'utf8');
+    const rel = relative(process.cwd(), file).replace(/\\/g, '/');
+    // Every one of these routes is host-only, checked by the route guard as well.
+    assert.match(
+      text,
+      /hostOnly\(request, env\)|hostDenied\(request, env\)/,
+      `${rel} deletes a receipt without a host guard`,
+    );
+  }
+
+  /*
+   * And the set is exactly the three declared paths. A fourth appearing means someone added a way to remove receipt
+   * bytes, which is the thing this test exists to make visible.
+   */
+  const names = deleters.map((file) => relative(process.cwd(), file).replace(/\\/g, '/')).sort();
+  assert.deepEqual(
+    names,
+    [
+      'functions/api/expenses/[id]/attach-receipt.ts',
+      'functions/api/expenses/[id]/photos/[photoId].ts',
+      'functions/api/expenses/archive.ts',
+    ],
+    `receipt deletion moved or was added:\n${names.join('\n')}`,
+  );
 });
