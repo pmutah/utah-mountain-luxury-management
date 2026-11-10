@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { PROPERTIES, formatCurrency, type PortfolioData } from './api';
 import { formatMonthLabel } from './months';
+import { MANAGEMENT_FEE_LABEL } from './owner-fee';
 import { formatWhole, morningBriefing, portfolioProfit, portfolioRevenue, propertyHealth, waterfallBands } from './luxury';
 
 export async function downloadOwnerLetter(data: PortfolioData) {
@@ -60,7 +61,7 @@ export async function downloadOwnerLetter(data: PortfolioData) {
     write(`${band.label} — ${formatCurrency(band.value)}. ${band.detail}.`, 11, serif, muted);
   }
   y -= 10;
-  write('Prepared for the partners. Ranch and River remain 20% management, then 50/50. Lindon is Brandon’s.', 11, serif, muted);
+  write(`Prepared for the partners. Ranch and River remain ${MANAGEMENT_FEE_LABEL} management, then 50/50. Lindon is Brandon’s.`, 11, serif, muted);
   y -= 16;
   write('Brandon', 14, serif);
 

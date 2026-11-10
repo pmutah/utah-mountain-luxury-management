@@ -10,6 +10,7 @@ import {
   type Reservation,
 } from '../lib/api';
 import { loadDateBlocks, type DateBlock } from '../lib/booked-nights';
+import { MANAGEMENT_FEE_LABEL } from '../lib/owner-fee';
 import { SLEEPS } from '../lib/house-stay';
 import { RIVER_UNIT_DETAIL } from '../lib/river-units';
 import { currentDayIso } from '../lib/months';
@@ -95,7 +96,7 @@ export function PropertyDetail({
           <p className="text-sm text-[var(--uml-muted)] max-w-2xl">
             Provo Riverhouse · sleeps {SLEEPS.river} · three parts:{' '}
             {RIVER_UNIT_DETAIL.map((unit) => `${unit.name.replace(/^River /, '')} ${unit.sleeps}`).join(', ')} · first stays November 1, 2026 · 50/50 Brandon &amp;
-            Stephanie and Todd, after a 20% management fee. Build bills live on the Build costs chip.
+            Stephanie and Todd, after a {MANAGEMENT_FEE_LABEL} management fee. Build bills live on the Build costs chip.
           </p>
         )}
 

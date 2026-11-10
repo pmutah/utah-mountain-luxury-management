@@ -1,4 +1,5 @@
 import { PROPERTIES } from './api';
+import { MANAGEMENT_FEE_LABEL } from './owner-fee';
 import { RIVER_FIRST_STAY } from './brand';
 import { arriveReady } from './arrive-ready';
 import { houseDay, type DayKind } from './house-day';
@@ -86,7 +87,7 @@ function hostSplitAnswer(question: string): string | null {
     (/\bshare\b/.test(question) && /\b(todd|brandon|owner)\b/.test(question));
   if (split) {
     lines.push(
-      'Ranch and River pay a 20% management fee to Brandon first.',
+      `Ranch and River pay a ${MANAGEMENT_FEE_LABEL} management fee to Brandon first.`,
       'What remains splits in half. Todd takes one half. Brandon and Stephanie take the other half.',
       'A loss after the fee splits the same way.',
     );

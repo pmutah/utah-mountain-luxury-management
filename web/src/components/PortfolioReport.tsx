@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { APP_NAME } from '../lib/brand';
 import { formatCurrency, PROPERTIES, type Expense, type Reservation } from '../lib/api';
+import { MANAGEMENT_FEE_LABEL } from '../lib/owner-fee';
 import { PAID_BY_LABELS } from '../lib/paid-by';
 import { formatMonthLabel } from '../lib/months';
 import {
@@ -443,7 +444,7 @@ export function PortfolioReport({
     ownerFilter === 'brandon'
       ? 'Lindon profit + ranch/river fee and 50% leftover'
       : ownerFilter === 'todd'
-        ? '50% leftover after Brandon & Stephanie’s 20% fee, including losses'
+        ? `50% leftover after Brandon & Stephanie’s ${MANAGEMENT_FEE_LABEL} fee, including losses`
         : 'After mortgage, cleaning, opex';
 
   const selectOwner = (owner: ReportOwnerFilter) => {
@@ -529,7 +530,7 @@ export function PortfolioReport({
             </div>
             <p className="text-[10px] text-slate-600 font-bold mt-2">
               {ownerFilter === 'todd'
-                ? 'Todd: Ranch and River 50/50 after the 20% fee, including losses. Lindon is Brandon & Stephanie’s.'
+                ? `Todd: Ranch and River 50/50 after the ${MANAGEMENT_FEE_LABEL} fee, including losses. Lindon is Brandon & Stephanie’s.`
                 : ownerFilter === 'brandon'
                   ? 'Brandon & Stephanie: Lindon in full, plus ranch/river management fee and 50% leftover (including losses).'
                   : 'All together: full property P&L. Switch owner to see each person’s take.'}
@@ -703,7 +704,7 @@ export function PortfolioReport({
         <section className="bg-slate-900 p-6 sm:p-8 rounded-[40px] border border-slate-800 shadow-xl">
           <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">Owner split</h3>
           <p className="text-xs text-slate-500 mb-4">
-            Ranch and River: 20% management fee to Brandon &amp; Stephanie, then leftover 50/50 — including
+            Ranch and River: {MANAGEMENT_FEE_LABEL} management fee to Brandon &amp; Stephanie, then leftover 50/50 — including
             losses. Lindon is not in this split.
           </p>
           {t.dist.todd < 0 && (

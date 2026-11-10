@@ -1,4 +1,5 @@
 import type { OwnerStatement } from './owner-statement';
+import { MANAGEMENT_FEE_LABEL } from './owner-fee';
 
 function money(value: number): string {
   return (Math.round((value + Number.EPSILON) * 100) / 100).toFixed(2);
@@ -17,7 +18,7 @@ export function ownerStatementCsv(statement: OwnerStatement): string {
     'Owner,Todd Wilhite',
     `Period,${cell(statement.rangeLabel)}`,
     'Houses,Ranch and River',
-    'Note,"After the 20% management fee, then half. Lindon, household purchases, and construction are not in this file. This file does not change the books."',
+    `Note,"After the ${MANAGEMENT_FEE_LABEL} management fee, then half. Lindon, household purchases, and construction are not in this file. This file does not change the books."`,
     '',
     'Month,Ranch,River,Total',
     ...statement.months.map((row) => [cell(row.label), money(row.ranch), money(row.river), money(row.todd)].join(',')),

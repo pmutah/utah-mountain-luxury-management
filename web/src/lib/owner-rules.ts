@@ -1,11 +1,12 @@
 import { rateGuardLine } from './market/whatif';
+import { MANAGEMENT_FEE_LABEL } from './owner-fee';
 import { agreementTopicLine } from './stay-agreement';
 import { standingTurnLine } from './turn-clock';
 
 /** How Ranch and River are split. No ledger amounts. */
 export function ownerRules(): string[] {
   return [
-    'Ranch and River pay a 20% management fee to Brandon first.',
+    `Ranch and River pay a ${MANAGEMENT_FEE_LABEL} management fee to Brandon first.`,
     'What remains splits in half. Todd takes one half. Brandon and Stephanie take the other half.',
     'A loss after the fee splits the same way.',
     'A hot tub request at the Ranch House and a grocery drop at the River House follow that same split. This card does not say that anyone asked, and it does not charge either one.',

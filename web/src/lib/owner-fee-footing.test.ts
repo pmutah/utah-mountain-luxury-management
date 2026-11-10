@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { managementFee } from './owner-fee.ts';
 
 /*
  * Auditing a real owner statement by hand produced a 1-cent difference on the Ranch: the statement showed a fee of
@@ -39,5 +40,13 @@ test('the statement still halves the leftover for Todd', () => {
 
 test('the fee basis is revenue after cleaning, which is what makes 20% of it look like 18% of revenue', () => {
   assert.match(REPORT, /const basis = revenue - cleaning/, 'the fee basis is not revenue after cleaning');
-  assert.match(REPORT, /basis > 0 \? basis \* 0\.2 : 0/, 'a negative basis is charged a fee');
+  /*
+   * The fee itself moved to `owner-fee.ts` so one rate drives both the arithmetic and the prose. The negative-basis rule is now
+   * tested by calling the function rather than by matching a ternary in the source — a test that pinned
+   * `basis > 0 ? basis * 0.2 : 0` was checking the implementation line, so moving the rate to one place broke it while the
+   * behaviour was unchanged.
+   */
+  assert.equal(managementFee(-500), 0, 'a month that lost money was charged a management fee');
+  assert.equal(managementFee(0), 0, 'a zero basis was charged a fee');
+  assert.equal(managementFee(1000), 200, 'the fee is not 20% of a positive basis');
 });

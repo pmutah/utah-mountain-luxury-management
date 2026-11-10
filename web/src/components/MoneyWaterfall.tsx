@@ -1,4 +1,5 @@
 import { formatCurrency, type PortfolioData } from '../lib/api';
+import { MANAGEMENT_FEE_LABEL } from '../lib/owner-fee';
 import { formatWhole, hostPayout, waterfallBands, type HouseId } from '../lib/luxury';
 
 export function MoneyWaterfall({ data, only }: { data: PortfolioData; only?: HouseId }) {
@@ -23,7 +24,7 @@ export function MoneyWaterfall({ data, only }: { data: PortfolioData; only?: Hou
       <p className="uml-kicker">Where the money goes</p>
       <h2 className="font-display text-3xl mt-1">From host payout to partners</h2>
       <p className="text-sm text-[var(--uml-muted)] mt-2 max-w-xl">
-        Ranch and River pay a 20% management fee to Brandon, then split what remains 50/50 with Todd.
+        Ranch and River pay a {MANAGEMENT_FEE_LABEL} management fee to Brandon, then split what remains 50/50 with Todd.
         Lindon stays with Brandon. Hover a ribbon for the dollars behind it.
       </p>
       <div className="mt-6 overflow-x-auto">

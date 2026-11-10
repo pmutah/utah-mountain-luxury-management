@@ -1,4 +1,5 @@
 import { formatCurrency, type OwnerDistribution as Dist } from '../lib/api';
+import { MANAGEMENT_FEE_LABEL } from '../lib/owner-fee';
 
 export function OwnerDistributionPanel({ dist }: { dist: Dist }) {
   const leftover = dist.todd * 2;
@@ -9,14 +10,14 @@ export function OwnerDistributionPanel({ dist }: { dist: Dist }) {
   const rows = [
     { name: 'Brandon & Stephanie', role: 'Owners & PM', val: dist.brandon, color: 'text-blue-400', bg: 'bg-blue-600' },
     { name: 'Todd Wilhite', role: 'Equity Partner', val: dist.todd, color: 'text-white', bg: 'bg-slate-700' },
-    { name: 'Management fee (20%)', role: 'Included in Brandon & Stephanie', val: dist.mgtFee, color: 'text-amber-400', bg: 'bg-amber-600' },
+    { name: `Management fee (${MANAGEMENT_FEE_LABEL})`, role: 'Included in Brandon & Stephanie', val: dist.mgtFee, color: 'text-amber-400', bg: 'bg-amber-600' },
   ];
 
   return (
     <div className="space-y-4">
       {lossAfterFee && (
         <p className="text-xs font-bold text-red-400">
-          Loss after the 20% fee: {formatCurrency(leftover)} split 50/50. Each partner’s share is a
+          Loss after the {MANAGEMENT_FEE_LABEL} fee: {formatCurrency(leftover)} split 50/50. Each partner’s share is a
           negative on the books.
         </p>
       )}

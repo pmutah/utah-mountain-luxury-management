@@ -7,6 +7,7 @@ import {
   type Reservation,
 } from './api';
 import { addMonths } from './months';
+import { managementFee } from './owner-fee';
 
 export const REPORT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
 export const RIVER_OPEN_MONTH = '2026-11';
@@ -223,7 +224,15 @@ function ownerSplit(
 ): OwnerDistribution | null {
   if (propertyId !== 'ranch' && propertyId !== 'river') return null;
   const basis = revenue - cleaning;
-  const mgtFee = basis > 0 ? basis * 0.2 : 0;
+  /*
+   * The rate comes from `owner-fee.ts`, not from a literal here.
+   *
+   * The 20% was a bare `basis * 0.2` in this function while seven components each wrote "20%" into their own sentences. Nothing
+   * linked the arithmetic to the prose, so correcting one would have left the others asserting a rate the money no longer uses.
+   * `managementFee` keeps the same rounding this line had — cents, applied per month — which is what the owner statement's
+   * footing depends on.
+   */
+  const mgtFee = managementFee(basis);
   const leftover = basis - mgtFee - (mortgage + operating);
   const share = leftover / 2;
   // Cents, so a statement or a printed report never shows 1908.3439999999998.

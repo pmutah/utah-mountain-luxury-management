@@ -5,6 +5,7 @@ import { loadDateBlocks } from '../lib/booked-nights';
 import { denverToday } from '../lib/market/dates';
 import { aheadChannelsLine, aheadLine, gapLine, ownerAhead, type ClosedSpan } from '../lib/owner-ahead';
 import { halfIsExact } from '../lib/owner-portal';
+import { MANAGEMENT_FEE_LABEL } from '../lib/owner-fee';
 import { ownerArrivalLines, ownerOfferLines, ownerStartLines, ownerTurnLines } from '../lib/owner-offers';
 import { buildOwnerStatement } from '../lib/owner-statement';
 import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statement-file';
@@ -80,7 +81,7 @@ export function OwnerStatement({
         <p className="uml-kicker">Owner statement</p>
         <h2 className="font-display text-5xl">Todd Wilhite</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
-          Ranch and River, after the 20% management fee, then half. The fee is 20% of rent after cleaning — not 20% of the guest payout — so it reads lower than a fifth of the revenue line. Lindon, household purchases, and construction bills are not on this page. Nothing here can be edited.
+          Ranch and River, after the {MANAGEMENT_FEE_LABEL} management fee, then half. The fee is {MANAGEMENT_FEE_LABEL} of rent after cleaning — not {MANAGEMENT_FEE_LABEL} of the guest payout — so it reads lower than a fifth of the revenue line. Lindon, household purchases, and construction bills are not on this page. Nothing here can be edited.
         </p>
       </div>
       <div className="flex flex-wrap gap-2" data-bot="owner-controls">

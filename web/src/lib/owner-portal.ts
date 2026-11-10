@@ -1,4 +1,5 @@
 import type { OwnerMonthLine, OwnerStatement } from './owner-statement';
+import { MANAGEMENT_FEE_LABEL } from './owner-fee';
 
 /** A read-only owner link. It names Todd's Ranch and River share and nothing else. */
 export type OwnerAccessRecord = {
@@ -51,8 +52,8 @@ export type OwnerPortalView = {
 };
 
 export const OWNER_PORTAL_NOTES: string[] = [
-  'Ranch and River pay a 20% management fee to Brandon first.',
-  'The 20% is charged on rent after cleaning, not on the whole guest payout, so the fee is smaller than a fifth of the host payout line.',
+  `Ranch and River pay a ${MANAGEMENT_FEE_LABEL} management fee to Brandon first.`,
+  `The ${MANAGEMENT_FEE_LABEL} is charged on rent after cleaning, not on the whole guest payout, so the fee is smaller than a fifth of the host payout line.`,
   'What remains splits in half. Todd takes one half. Brandon and Stephanie take the other half.',
   /*
    * Said before the owner finds it. Each month's fee and share are rounded to the cent and then added up, so the year's figure
