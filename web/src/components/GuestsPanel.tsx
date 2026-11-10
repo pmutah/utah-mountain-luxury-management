@@ -413,7 +413,7 @@ export function GuestsPanel({
         ) : (
           <>
         <p>
-          Gmail: {gmail.connected ? gmail.email : 'not connected — sign in as utahmountainluxury@gmail.com'}
+          Gmail: {gmail.connected ? gmail.email : 'not connected — connect the guest mailbox'}
         </p>
         {/*
           The reason, not just the state. "not connected" leaves a host guessing, and the two causes need

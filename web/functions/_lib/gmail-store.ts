@@ -264,7 +264,21 @@ export async function gmailSend(
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'The mailbox could not be reached.' };
   }
-  if (!tokens) return { error: 'Gmail is not connected. Connect utahmountainluxury@gmail.com in the dashboard.' };
+  if (!tokens) {
+    /*
+     * This said "Connect utahmountainluxury@gmail.com in the dashboard" — a hardcoded address this deployment does not use.
+     * Verified on production 2026-11-10: the connected mailbox is `pmutah@gmail.com`, so a host following the old line would
+     * sign out and back in as an address the app never reads, and the send would fail again.
+     *
+     * The stored tokens are the only place the app learns which mailbox is connected (`tokens.email`, read from Google's
+     * profile). With no tokens there is no address to name, so the honest instruction is to connect *a* mailbox rather than a
+     * particular one - naming a guessed address is how the old line went wrong.
+     */
+    return {
+      error:
+        'Gmail is not connected. Open the dashboard and connect the guest mailbox there, so guest confirmations and host alerts can send.',
+    };
+  }
 
   const raw = btoa(
     `To: ${to}\r\nFrom: Utah Mountain Luxury <${tokens.email}>\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${body}`,

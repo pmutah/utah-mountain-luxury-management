@@ -331,7 +331,7 @@ export function DocumentsVault({
               Gmail:{' '}
               {gmail.connected
                 ? gmail.email
-                : 'not connected — sign in as utahmountainluxury@gmail.com'}
+                : 'not connected — connect the guest mailbox'}
             </p>
             <p>
               SMS:{' '}
