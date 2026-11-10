@@ -84,6 +84,27 @@ test('the guest can declare a dog on the page', () => {
   assert.ok(PAGE.includes('{ dogs: dogCount }'), 'the declared dogs are not sent with the request');
 });
 
+test('the input cannot accept a count the policy refuses', () => {
+  /*
+   * Found on production: the field was `.slice(0, 1)` — copied from the two-digit guest count — so a guest could type 5, and the
+   * page answered "5 dogs: $149 pet fee". The fee was right (per stay) but the sentence read as though five dogs were welcome,
+   * and the owner's rule is two.
+   *
+   * A limit enforced in the route but not at the input is the same class of defect as a fee with no caller: the rule exists and
+   * the surface contradicts it. The input must clamp to MAX_DOGS, and the page must say so rather than silently rewriting.
+   */
+  const field = /data-bot="stay-dogs"/.test(PAGE);
+  assert.ok(field, 'the dog field is gone');
+  assert.match(PAGE, /Math\.min\(Number\(digits\), MAX_DOGS\)/, 'the input does not clamp to the owner limit');
+  assert.equal(
+    /slice\(0, 1\)\)}/.test(PAGE.split('data-bot="stay-dogs"')[1]?.slice(0, 600) ?? ''),
+    false,
+    'the dog input is capped at one digit again instead of at the policy limit',
+  );
+  // And the limit is explained, because a field that rewrites 5 to 2 without a word is worse than one that says why.
+  assert.match(PAGE, /data-bot="stay-dogs-limit"/, 'hitting the limit is not explained');
+});
+
 test('the request stores the declared dogs', () => {
   assert.match(ROUTE, /dogs\?: number/, 'the request type has no dogs field');
   assert.match(ROUTE, /declaredDogs\(body\.dogs\)/, 'the route does not read a declared dog count');

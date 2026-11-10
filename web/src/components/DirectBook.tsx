@@ -18,7 +18,7 @@ import { flexStayLine, publicFlexLine } from '../lib/house-manual';
 import { checkoutNightIsFree, nightBeforeIsFree, stayCountdown, stayMoment } from '../lib/journey';
 import { bothHousePaperNote, bothHousePapers, quotePaperTimes, tripNearbyNote, tripPaperNote, tripSheet } from '../lib/stay-sheet';
 import { placeHref, placeSite } from '../lib/place-link';
-import { directRequestReady, eventHoldLine, houseRules, petRuleLine, quoteActionLine, quoteAgreementHold, quoteTimesHold, quoteTimesReady, requestHoldLine, rulesNote, rulesReadLine } from '../lib/house-rules';
+import { directRequestReady, eventHoldLine, houseRules, MAX_DOGS, petRuleLine, quoteActionLine, quoteAgreementHold, quoteTimesHold, quoteTimesReady, requestHoldLine, rulesNote, rulesReadLine } from '../lib/house-rules';
 import { agreementLine, agreementNote, agreementReadComplete, agreementTopics } from '../lib/stay-agreement';
 import { applyPublicShare, bookShare, companionStayFacts, companionStayNote, publicHouse } from '../lib/house-page';
 import { LISTING_TITLE } from '../lib/listing';
@@ -1431,7 +1431,15 @@ export function DirectBook() {
                 data-bot="stay-dogs"
                 value={dogs}
                 placeholder="0"
-                onChange={(event) => setDogs(event.target.value.replace(/[^\d]/g, '').slice(0, 1))}
+                /*
+                 * Capped at the owner's limit, not at one digit. The field was `.slice(0, 1)`, copied from the two-digit guest
+                 * count, so a guest could type 5 — and the page then said "5 dogs: $149 pet fee", which reads as though five are
+                 * welcome. The policy is two; the input should not accept what the policy refuses.
+                 */
+                onChange={(event) => {
+                  const digits = event.target.value.replace(/[^\d]/g, '').slice(0, 2);
+                  setDogs(digits === '' ? '' : String(Math.min(Number(digits), MAX_DOGS)));
+                }}
                 className="mt-2 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
               />
             </label>
@@ -1442,6 +1450,15 @@ export function DirectBook() {
                   actually being asked for — not a description of a rule.
                 */}
                 {`${dogCount === 1 ? '1 dog' : `${dogCount} dogs`}: $${quote.petFee} pet fee, once per stay.`}
+              </p>
+            )}
+            {/*
+              Said out loud when the guest hits the limit, because a field that silently rewrites 5 to 2 is worse than one that
+              explains. The owner's rule is two dogs, each under 50 lb.
+            */}
+            {dogs !== '' && Number(dogs) >= MAX_DOGS && (
+              <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="stay-dogs-limit">
+                Two dogs is the most we take, each under 50 lb. Message us if that does not fit.
               </p>
             )}
             {!party.ok && !compound.show && (

@@ -75,6 +75,20 @@ const mutations: Array<{ name: string; file: string; from: string; to: string; e
     expect: 'does not name the fee',
   },
   {
+    name: 'the dog input accepts any one digit again',
+    file: PAGE,
+    from: 'String(Math.min(Number(digits), MAX_DOGS))',
+    to: 'digits',
+    expect: 'does not clamp to the owner limit',
+  },
+  {
+    name: 'hitting the limit is not explained',
+    file: PAGE,
+    from: 'data-bot="stay-dogs-limit"',
+    to: 'data-bot="gone"',
+    expect: 'not explained',
+  },
+  {
     name: 'the route stops storing the dogs',
     file: ROUTE,
     from: '...(declaredDogs(body.dogs) !== null ? { dogs: declaredDogs(body.dogs)! } : {}),',
