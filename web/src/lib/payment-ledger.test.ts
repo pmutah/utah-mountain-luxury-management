@@ -221,18 +221,46 @@ test('a booking with no guest total is never in the chase list', () => {
   assert.equal(skipped[0]!.reason, 'no guest total');
 });
 
-test('the balance is on the booking, not only in this module', () => {
-  // The defect this guards against is the one this session kept finding: arithmetic with no caller. The
-  // ledger is now read by the payments route and drawn on the guests page, so a booking can answer what is
-  // still owed instead of only showing what was quoted.
+test('the balance is on the booking, and the whole portfolio is totalled', () => {
+  // The defect this guards against is the one this session kept finding: arithmetic with no caller. Both
+  // functions now have a real reader — the per-booking line and the "still owed" band on the guests page.
   const panel = fs.readFileSync('src/components/GuestsPanel.tsx', 'utf8');
-  assert.match(panel, /paymentLedger\(/, 'the guests page does not use the ledger');
+  assert.match(panel, /paymentLedger\(/, 'the guests page does not use the per-booking ledger');
   assert.match(panel, /data-bot="stay-balance"/, 'the balance is not rendered on the booking card');
+  assert.match(panel, /outstandingBookings\(/, 'the portfolio total is never computed anywhere');
+  assert.match(panel, /data-bot="guests-owed"/, 'the amount still owed is not rendered');
 
   const route = fs.readFileSync('functions/api/book/payments.ts', 'utf8');
   assert.match(route, /paymentLedger\(/, 'the payments route does not answer with the ledger');
   assert.match(route, /isDirectSource/, 'the payments route does not refuse a channel booking');
   assert.match(route, /no guest total/, 'the payments route does not refuse a booking with no balance');
+});
+
+test('an exported helper has a caller, not only a test', () => {
+  /*
+   * `outstandingBookings` was written, exported, and tested while nothing called it — the exact
+   * "label with nothing behind it" shape. A test that only imports a function proves the arithmetic,
+   * not that anybody uses it. This looks for a caller outside the module and its tests.
+   *
+   * Only real files are scanned: `src/components` and `src/lib` hold directories too, and reading one
+   * throws `EISDIR` — which failed this test once with a message that looked like a missing caller.
+   */
+  const filesIn = (dir: string) =>
+    fs
+      .readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.tsx') || entry.isFile() && entry.name.endsWith('.ts'))
+      .map((entry) => `${dir}/${entry.name}`)
+      .filter((file) => !file.endsWith('.test.ts'));
+
+  const sources = [...filesIn('src/components'), ...filesIn('functions/api/book'), ...filesIn('src/lib')];
+
+  const callers = sources.filter((file) => {
+    if (file.endsWith('payment-ledger.ts')) return false;
+    const text = fs.readFileSync(file, 'utf8');
+    return /outstandingBookings\s*\(/.test(text) && text.includes('payment-ledger');
+  });
+
+  assert.ok(callers.length > 0, 'outstandingBookings is exported and tested but nothing calls it');
 });
 
 test('the page draws the balance from the ledger, not from its own arithmetic', () => {

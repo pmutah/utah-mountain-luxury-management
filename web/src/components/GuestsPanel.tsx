@@ -22,7 +22,7 @@ import { guestAddonIntro, houseMenu, hostAddonPhrase } from '../lib/upsells';
 import { loadBookedNights } from '../lib/booked-nights';
 import { guestLinkNote, guestListUnreadable, guestListUnreadNote, guestMailUnreadLine } from '../lib/guest-list';
 import { denverToday } from '../lib/market/dates';
-import { paymentLedger } from '../lib/payment-ledger';
+import { paymentLedger, outstandingBookings } from '../lib/payment-ledger';
 import type { HouseId } from '../lib/market/types';
 
 type HouseFilter = 'all' | 'ranch' | 'lindon' | 'river';
@@ -269,8 +269,58 @@ export function GuestsPanel({
           status: stay.status,
         }))}
       />
-      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-rules">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">House rules</p>
+      {/*
+        What the portfolio is still owed, from the same ledger the payments route answers with.
+        Before this, a direct booking showed what the guest was quoted and nothing said whether it had
+        arrived, so "who still owes us" could only be answered by opening the processor by hand.
+        A channel booking never appears here: the platform collects and pays out. A direct booking with no
+        recorded total is named as such rather than listed at zero.
+      */}
+      {(() => {
+        const owed = outstandingBookings(
+          reservations.map((stay) => ({
+            id: stay.id,
+            source: stay.source,
+            guestTotal: stay.guestTotal,
+            payments: stay.payments,
+            checkIn: stay.checkIn,
+            guestName: stay.guestName,
+            propertyId: stay.propertyId,
+          })),
+        );
+        const noTotal = owed.skipped.filter((row) => row.reason === 'no guest total');
+        if (owed.rows.length === 0 && noTotal.length === 0) return null;
+        return (
+          <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-owed">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">Still owed</p>
+            {owed.rows.length > 0 ? (
+              <>
+                <p className="mt-2 text-lg font-black text-slate-100" data-bot="guests-owed-total">
+                  {formatCurrency(owed.total)} across {owed.rows.length}{' '}
+                  {owed.rows.length === 1 ? 'direct booking' : 'direct bookings'}
+                </p>
+                <ul className="mt-3 space-y-1 text-sm text-slate-300">
+                  {owed.rows.map((row) => (
+                    <li key={row.id} data-bot="guests-owed-row" data-id={row.id}>
+                      {row.guestName} · {row.checkIn} ·{' '}
+                      <span className="text-amber-400">{formatCurrency(row.ledger.outstanding ?? 0)} of {formatCurrency(row.ledger.total ?? 0)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-slate-400">No direct booking is carrying a balance.</p>
+            )}
+            {noTotal.length > 0 && (
+              <p className="mt-3 text-xs text-amber-300" data-bot="guests-owed-unknown">
+                {noTotal.length} direct {noTotal.length === 1 ? 'booking has' : 'bookings have'} no guest total, so
+                what is owed on {noTotal.length === 1 ? 'it' : 'them'} is unknown. That is not the same as paid.
+              </p>
+            )}
+          </section>
+        );
+      })()}
+      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-rules">        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">House rules</p>
         <p className="mt-2 text-sm text-slate-400">
           The door code stays hidden on the guest phone until they tap that they read the house rules. That tap stays on the phone. It does not sign the stay agreement. Checkout steps can be checked off on that same phone, and those checks stay there too.
         </p>
