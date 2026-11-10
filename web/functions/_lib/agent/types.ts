@@ -1,5 +1,16 @@
 export type PropertyId = 'ranch' | 'lindon' | 'river';
 
+/** One payment received against a booking. A refund is a negative `amount`, never a deletion. */
+export interface PaymentRow {
+  id: string;
+  amount: number;
+  /** `YYYY-MM-DD` the money landed. */
+  receivedOn: string;
+  method?: string;
+  reference?: string;
+  note?: string;
+}
+
 export type ReservationStatus = 'confirmed' | 'cancelled' | 'blocked' | 'pending';
 
 export interface ReservationRecord {
@@ -17,6 +28,15 @@ export interface ReservationRecord {
    * predates the field. Absent means "not known", never zero: a zero would read as a comped stay.
    */
   guestTotal?: number;
+  /**
+   * Money actually received against this booking, one row per payment.
+   *
+   * A refund is a **negative** row, never a deletion or an edit of the payment it reverses, so the history of what
+   * arrived survives. Absent means nothing has been recorded — not that nothing was paid — which is why a balance is only
+   * stated when `guestTotal` is known. Channel bookings (Airbnb, VRBO, Hospitable) leave this empty: the platform collects
+   * and remits a payout, so `payout` is the money and there is no guest balance here.
+   */
+  payments?: PaymentRow[];
   source: string;
   status?: ReservationStatus;
   note?: string;

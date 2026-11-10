@@ -84,6 +84,24 @@ export interface Reservation {
    * point — a lone figure on a stay cannot tell a host whether it is the guest price or their own cut.
    */
   guestTotal?: number;
+  /**
+   * Money actually received against this booking, one row per payment.
+   *
+   * A refund is a **negative** row, never a deletion or an edit of the payment it reverses, so the history of what
+   * arrived survives. Absent means nothing has been recorded — not that nothing was paid — which is why a balance is
+   * only stated when `guestTotal` is known. Channel bookings (Airbnb, VRBO, Hospitable) do not use this: the platform
+   * collects and remits a payout, so `payout` is the money and there is no guest balance here.
+   */
+  payments?: Array<{
+    id: string;
+    /** What arrived. Negative for a refund. */
+    amount: number;
+    /** `YYYY-MM-DD` the money landed. */
+    receivedOn: string;
+    method?: string;
+    reference?: string;
+    note?: string;
+  }>;
   source: string;
   status?: string;
   note?: string;
@@ -110,8 +128,34 @@ export interface Reservation {
   units?: string[];
 }
 
-export type SurveyVariant = 'vip' | 'classic';
+/** A payment to record. The route assigns the id when one is not given. */
+export type NewPayment = {
+  amount: number;
+  /** `YYYY-MM-DD` the money landed. A refund is a negative amount. */
+  receivedOn: string;
+  method?: string;
+  reference?: string;
+  note?: string;
+};
 
+/**
+ * What one direct booking is owed and what has arrived.
+ *
+ * `outstanding` and `total` are `null` when the booking carries no guest total — the balance is unknown, not zero.
+ */
+export type BookingLedger = {
+  payments: Array<NewPayment & { id: string }>;
+  received: number;
+  total: number | null;
+  outstanding: number | null;
+  paidInFull: boolean;
+  /** Rows that could not be read, named rather than dropped. */
+  rejected: Array<{ id: string; reason: string }>;
+  /** One line to read instead of doing the arithmetic. */
+  line: string;
+};
+
+export type SurveyVariant = 'vip' | 'classic';
 export interface GuestPreferenceAnswers {
   surveyVariant?: SurveyVariant;
   leadName?: string;
@@ -1061,6 +1105,34 @@ export const api = {
       days: Array<{ date: string }>;
     }>('/api/pricing/shadow-days', { method: 'POST', body: JSON.stringify(body) }),
   /** Take a saved request and make it a booking. Host only. It sends nothing. */
+  /**
+   * The money received against one direct booking, and the balance that follows.
+   *
+   * A booking with no recorded total answers `outstanding: null`, never `0` — the balance is unknown, and a
+   * zero would read as settled.
+   */
+  bookingPayments: (id: string) =>
+    request<BookingLedger & { id: string; propertyId: string; checkIn: string; checkOut: string; source: string; direct: boolean }>(
+      `/api/book/payments?id=${encodeURIComponent(id)}`,
+    ),
+  recordBookingPayment: (body: { id: string; payment: NewPayment }) =>
+    request<
+      BookingLedger & {
+        ok: boolean;
+        id: string;
+        payment?: NewPayment & { id: string };
+        /** True when this payment id was already recorded, so a retry did not count it twice. */
+        duplicate?: boolean;
+        sent: number;
+        note: string;
+      }
+    >('/api/book/payments', { method: 'POST', body: JSON.stringify(body) }),
+  removeBookingPayment: (id: string, paymentId: string) =>
+    request<
+      BookingLedger & { ok: boolean; id: string; removed: string; note: string }
+    >(`/api/book/payments?id=${encodeURIComponent(id)}&paymentId=${encodeURIComponent(paymentId)}`, {
+      method: 'DELETE',
+    }),
   acceptBookingRequest: (body: { id: string; payout: number; source?: string }) =>
     request<{
       ok: boolean;

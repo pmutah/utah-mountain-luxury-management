@@ -80,9 +80,38 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
 }
 
-/** Fill $0 iCal payouts and placeholder channels from seed. Stored payouts and explicit channels are left alone. */
-export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {
+/**
+ * Find one stay by id **whatever its status**, including cancelled.
+ *
+ * `getAllReservations` deliberately drops cancelled rows so they stop counting as bookings. That is right for
+ * the calendar and wrong for money: a guest who cancels after paying still needs a refund recorded against the
+ * booking they paid for, and looking in `getAllReservations` would answer "not on the calendar" for a stay that
+ * is sitting in the store with a payment against it.
+ */
+export async function findReservationAnyStatus(
+  env: SettingsEnv,
+  id: string,
+): Promise<ReservationRecord | null> {
+  if (!id) return null;
+
   const custom = await loadCustomReservations(env);
+  const stored = custom.find((r) => r.id === id);
+  if (stored) return applyHostNetFromSeed(stored);
+
+  const overrides = await loadReservationOverrides(env);
+  const seedMatch = RESERVATIONS.find((r) => r.id === id);
+  if (!seedMatch) return null;
+
+  return applyHostNetFromSeed({
+    ...seedMatch,
+    propertyId: seedMatch.propertyId as PropertyId,
+    ...overrides[id],
+    status: (overrides[id]?.status ?? 'confirmed') as ReservationStatus,
+  });
+}
+
+/** Fill $0 iCal payouts and placeholder channels from seed. Stored payouts and explicit channels are left alone. */
+export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {  const custom = await loadCustomReservations(env);
   let n = 0;
   for (let i = 0; i < custom.length; i++) {
     const r = custom[i]!;

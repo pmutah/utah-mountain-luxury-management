@@ -22,6 +22,7 @@ import { guestAddonIntro, houseMenu, hostAddonPhrase } from '../lib/upsells';
 import { loadBookedNights } from '../lib/booked-nights';
 import { guestLinkNote, guestListUnreadable, guestListUnreadNote, guestMailUnreadLine } from '../lib/guest-list';
 import { denverToday } from '../lib/market/dates';
+import { paymentLedger } from '../lib/payment-ledger';
 import type { HouseId } from '../lib/market/types';
 
 type HouseFilter = 'all' | 'ranch' | 'lindon' | 'river';
@@ -430,6 +431,31 @@ export function GuestsPanel({
                     <p className="text-xs text-slate-500" data-bot="stay-payout">
                       Keep {formatCurrency(stay.payout)}
                     </p>
+                    {/*
+                      What the guest was quoted was shown, and nothing said whether it had arrived. On a direct
+                      booking that is the one question a host asks, so the balance is stated here — from the same
+                      tested ledger the payments route answers with, never from arithmetic written in this file.
+                      A channel booking reads `outstanding === null` and this line stays off: the platform pays out.
+                    */}
+                    {(() => {
+                      const ledger = paymentLedger({
+                        source: stay.source,
+                        guestTotal: stay.guestTotal,
+                        payments: stay.payments,
+                      });
+                      if (ledger.outstanding === null) return null;
+                      return (
+                        <p
+                          className={`text-xs ${ledger.paidInFull ? 'text-emerald-400' : 'text-amber-400'}`}
+                          data-bot="stay-balance"
+                          data-outstanding={ledger.outstanding}
+                        >
+                          {ledger.paidInFull
+                            ? `Paid in full · ${formatCurrency(ledger.received)} received`
+                            : `${formatCurrency(ledger.outstanding)} still owed`}
+                        </p>
+                      );
+                    })()}
                   </>
                 ) : (
                   <p className="text-xs text-slate-500" data-bot="stay-payout">
