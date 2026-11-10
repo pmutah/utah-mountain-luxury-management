@@ -221,6 +221,22 @@ export function buildMarketBoard(
     const offerGuest = promotionPercent === 20 ? promotion.offerGuest : proposedGuest;
     /* A night no stay can reach. Named so the desk can tell it apart from a night the floor stopped. */
     const unreachable = bookable !== null && !bookable.has(iso);
+    /*
+     * Booked and closed nights are facts about our own calendar, not market judgements. The board used to leave them as
+     * `hold` with a reason about a "one-night hole", which told a host to go fix a gap that was actually sold — and the
+     * dashboard's `action === 'booked'` branch ("Our booking page leaves this night booked.") could never fire, because
+     * nothing set it.
+     *
+     * These come before every market reason, the order `guardNight` uses in the shadow run: the calendar is what we hold
+     * directly, so it is the truest thing to say.
+     */
+    const takenNights = new Set(fill?.taken ?? []);
+    const closedNights = new Set(fill?.closed ?? []);
+    const calendarAction: NightRow['action'] | null = takenNights.has(iso)
+      ? 'booked'
+      : closedNights.has(iso)
+        ? 'closed'
+        : null;
 
     return {
       date: iso,
@@ -236,23 +252,28 @@ export function buildMarketBoard(
       proposedGuest,
       promotionPercent,
       offerGuest,
-      action,
-      reason: ours.lock
-        ? 'Holiday rate stays on the season table.'
-        : invented
-          ? `No saved comp ask covers this night, so the band is the invented sample set. No rate move is recommended until a real comp watches this date. The published rate stays.`
-          : /*
-             * Bookability before the rest, the same order the shadow run uses: our own calendar is a fact we hold
-             * directly, and a night no stay can reach is the actionable thing for a host to fix (a one-night hole, a
-             * lone Friday). Saying "the floor is why" on such a night would send them to the wrong place.
-             */
-            unreachable
-            ? 'No stay can be booked on this date — a one-night hole, or a stretch too short for the minimum. The published rate stays, and no promotion is applied to a price nobody can pay.'
-            : ours.approved && move.action === 'promote'
-              ? `This night carries the host's approved price of $${ours.guest}, and an approved night is quoted at that price with no discount. No promotion is applied.`
-              : floorAboveMarket
-                ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
-                : move.reason,
+      // A booked or closed night is not a pricing decision, so no market action or discount is reported for it.
+      action: calendarAction ?? action,
+      reason: calendarAction === 'booked'
+        ? 'This night is already booked. The rate stays, and nothing is sent.'
+        : calendarAction === 'closed'
+          ? 'This night is closed on the calendar. The rate stays.'
+          : ours.lock
+            ? 'Holiday rate stays on the season table.'
+            : invented
+              ? `No saved comp ask covers this night, so the band is the invented sample set. No rate move is recommended until a real comp watches this date. The published rate stays.`
+              : /*
+                 * Bookability before the rest, the same order the shadow run uses: our own calendar is a fact we hold
+                 * directly, and a night no stay can reach is the actionable thing for a host to fix (a one-night hole, a
+                 * lone Friday). Saying "the floor is why" on such a night would send them to the wrong place.
+                 */
+                unreachable
+                ? 'No stay can be booked on this date — a one-night hole, or a stretch too short for the minimum. The published rate stays, and no promotion is applied to a price nobody can pay.'
+                : ours.approved && move.action === 'promote'
+                  ? `This night carries the host's approved price of $${ours.guest}, and an approved night is quoted at that price with no discount. No promotion is applied.`
+                  : floorAboveMarket
+                    ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
+                    : move.reason,
       minNights: ours.minNights,
       compBookedShare: Math.round(((sampleRows.length - observed.length) / sampleRows.length) * 100),
       source,

@@ -61,14 +61,16 @@ test('a booked night is not promoted', () => {
 
 test('a closed night says why in terms a host can act on', () => {
   /*
-   * Not "the floor is why" — that sends a host to the pricing panel when the real problem is a one-night hole or a
-   * block. The order matters, and the shadow run uses the same one.
+   * Not "the floor is why" — that sends a host to the pricing panel when the real problem is a block. And not "no stay can
+   * be booked" either: since the board learned to report `closed`, the honest answer is that the night is closed, which is
+   * more specific than a generic gap. This test originally pinned the vaguer wording.
    */
   const blocked = board({ closed: ['2026-11-20'] });
   const night = blocked.nights.find((row) => row.date === '2026-11-20');
   assert.ok(night, 'the date is missing from the board');
-  assert.match(night!.reason, /No stay can be booked on this date/, 'the reason does not name bookability');
-  assert.doesNotMatch(night!.reason, /floor is \$/, 'the reason blames the floor for an unreachable night');
+  assert.match(night!.reason, /closed on the calendar/, 'the reason does not say the night is closed');
+  assert.doesNotMatch(night!.reason, /floor is \$/, 'the reason blames the floor for a blocked night');
+  assert.doesNotMatch(night!.reason, /one-night hole/, 'a blocked night was blamed on a gap');
 });
 
 test('a missing calendar is "not known", not "nothing is bookable"', () => {
