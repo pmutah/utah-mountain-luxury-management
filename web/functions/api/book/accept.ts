@@ -7,6 +7,9 @@ import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { releaseHoldsForRequest, loadHolds } from '../../_lib/hold-store';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
 import { unitBookingConflict } from '../../../src/lib/river-units';
+import { partStayQuote } from '../../../src/lib/part-stay-quote';
+import { loadRiverUnitRates } from '../../_lib/pricing-store';
+import type { RiverUnitRates } from '../../../src/lib/river-unit-rates';
 import { acceptHold, acceptedLine, stayPlans } from '../../../src/lib/booking-accept';
 import { quoteStay } from '../../../src/lib/quote';
 import { twoHouseParties } from '../../../src/lib/payout-suggest';
@@ -178,14 +181,40 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   /*
    * A one-house request never reaches `houseShares`, so its guest total comes from its own quote here.
    * Without this the booking recorded only the host net and there was no way to invoice the guest.
+   *
+   * **A part booking is not quoted as the house.** `quoteStay` prices the whole Riverhouse, so a request for the Garage
+   * Suite recorded `guestTotal: 4500` for a two-night stay that costs $790 — a 5.7x overstatement landing on the owner
+   * statements and any invoice built from the booking. When the request names parts, the total comes from the parts' own
+   * rates: nightly x nights + cleaning, summed over the parts taken.
    */
+  /*
+   * The part rates are read here rather than trusted from the request, so a booking cannot be quoted off a price that has
+   * since changed or was never set. A read failure leaves `soloGuest` null, which records no guest total — the safe
+   * direction, since a missing figure is visible and a wrong one is not.
+   */
+  let unitRatesAtAccept: RiverUnitRates | null = null;
+  if (partUnits.length > 0 && !shares) {
+    try {
+      unitRatesAtAccept = await loadRiverUnitRates(env);
+    } catch {
+      unitRatesAtAccept = null;
+    }
+  }
+  const partQuote = unitRatesAtAccept
+    ? partStayQuote(partUnits, result.plan.nights, unitRatesAtAccept)
+    : null;
   const soloGuest = shares
     ? null
-    : quoteStay(result.plan.propertyId, result.plan.checkIn, result.plan.checkOut, [], {
-        pace: 'unknown',
-        ...(saved.guests !== undefined ? { guests: saved.guests } : {}),
-        ...(typeof saved.children === 'number' && (saved.children ?? 0) > 0 ? { children: saved.children } : {}),
-      });
+    : partUnits.length > 0
+      ? // A part booking is priced from its own rates; without a usable price there is no guest total to record.
+        partQuote
+        ? { ok: true as const, stayTotal: partQuote.total }
+        : null
+      : quoteStay(result.plan.propertyId, result.plan.checkIn, result.plan.checkOut, [], {
+          pace: 'unknown',
+          ...(saved.guests !== undefined ? { guests: saved.guests } : {}),
+          ...(typeof saved.children === 'number' && (saved.children ?? 0) > 0 ? { children: saved.children } : {}),
+        });
   const toSave = stayPlans(
     shares
       ? { ...result.plan, shares: shares.payouts, guestShares: shares.guestTotals }
