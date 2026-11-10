@@ -48,17 +48,26 @@ function capture(command, commandArgs) {
 const branch = argOf('--branch=') ?? capture('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
 const isProduction = branch === 'main';
 
-/* -------- a non-production deploy has to name its commit, or nobody can tell what is live -------- */
+/* -------- a deploy has to name its commit, or nobody can tell what is live -------- */
+/*
+ * This guard used to cover only non-production branches, which is backwards: `main` is the site guests and owners use.
+ * A dirty tree on `main` published code that exists in no commit — the live site could then differ from the branch with
+ * nothing to trace it to. Both cases are refused now.
+ */
+const dirtyTree = capture('git', ['status', '--porcelain']);
+if (dirtyTree.length > 0) {
+  console.error(
+    `Refusing to deploy ${branch} from a dirty tree.\n` +
+      (isProduction
+        ? 'This is production: uncommitted code would go live with no commit behind it.\n'
+        : 'A preview nobody can trace to a commit is how the live site ended up older than the branch.\n') +
+      // `--skip-checks` does not bypass this: the dirty check runs before it. Saying otherwise would be a false promise.
+      'Commit first, then deploy. There is no flag that skips this check.',
+  );
+  process.exit(1);
+}
+
 if (!isProduction) {
-  const dirty = capture('git', ['status', '--porcelain']);
-  if (dirty.length > 0) {
-    console.error(
-      `Refusing to deploy ${branch} from a dirty tree.\n` +
-        'A preview nobody can trace to a commit is how the live site ended up older than the branch.\n' +
-        'Commit first, then deploy — or pass --skip-checks if you only want to publish what is here.',
-    );
-    process.exit(1);
-  }
   /*
    * Say out loud what a preview alias actually is.
    *
