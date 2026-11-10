@@ -8,6 +8,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { stepRows } from './clean-progress.ts';
 
 const PAGE = readFileSync('src/components/CleanLink.tsx', 'utf8');
 
@@ -40,6 +41,35 @@ test('the page does not name a guest', () => {
   // It shows the house and the day, never who stayed.
   const code = PAGE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
   assert.equal(/guestName|customerName/i.test(code), false, 'the cleaner page reads a guest name');
+});
+
+test('the page draws the server\'s step rows, not its own computation', () => {
+  /*
+   * This called `stepRows(job.sameDay, lang)` — the local helper, without the units — so a turn scoped to the Garage Suite
+   * showed the whole-house bed count while `job.stepRows` (built with the units server-side) said otherwise. Two calculations
+   * of one fact, and the one a person reads was the wrong one.
+   *
+   * Same shape as the door code being sent and never drawn: the API was right and the surface disagreed with it.
+   */
+  assert.match(PAGE, /job\.stepRows\.map/, 'the page does not draw the step rows the server sent');
+  assert.equal(
+    /stepRows\(job\.sameDay/.test(PAGE),
+    false,
+    'the page recomputes the steps locally instead of drawing what the server sent',
+  );
+});
+
+test('a part turn scopes its steps, and the page cannot unscope them', () => {
+  /*
+   * The behaviour the fix preserves: a Garage Suite turn says two beds, not the house's thirteen. Asserted on the builder, so a
+   * change to the page cannot quietly reintroduce the unscoped version.
+   */
+  const scoped = stepRows(false, 'en', ['garage-suite']);
+  const whole = stepRows(false, 'en');
+  const bedsScoped = scoped.find((row) => row.id === 'beds')?.label ?? '';
+  const bedsWhole = whole.find((row) => row.id === 'beds')?.label ?? '';
+  assert.notEqual(bedsScoped, bedsWhole, 'a part turn and a whole-house turn carry the same bed count');
+  assert.match(bedsScoped, /2 beds|Garage Suite/, 'the scoped line does not name the part');
 });
 
 test('a job with no code draws nothing rather than an empty box', () => {

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { stepRows } from '../lib/clean-progress';
 import type { CleanJobView } from '../lib/clean-link';
 
 type Loaded = {
@@ -247,7 +246,15 @@ export function CleanLink({ token }: { token: string }) {
                   </p>
                   <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a6f2f]">{t.steps}</p>
                   <ul className="mt-1 space-y-1 text-sm text-[#3d382f]">
-                    {stepRows(job.sameDay, lang).map((step) => {
+                    {/*
+                      The rows the **server** sent, not a second computation here.
+
+                      This called the local `stepRows` helper with only `sameDay` and `lang` — no units — so a turn scoped to the
+                      Garage Suite showed the whole-house bed count on the cleaner's phone, while `job.stepRows` (built with the
+                      units server-side) said otherwise. Two calculations of one fact, and the one a person reads was the wrong
+                      one. The same shape as the door code being sent and never drawn.
+                    */}
+                    {job.stepRows.map((step) => {
                       const done = doneFor(job).includes(step.id);
                       return (
                         <li key={step.id}>
