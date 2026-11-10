@@ -10,7 +10,7 @@ import { unitBookingConflict, otherPartsOccupied } from '../../../src/lib/river-
 import { partStayQuote } from '../../../src/lib/part-stay-quote';
 import { loadRiverUnitRates } from '../../_lib/pricing-store';
 import type { RiverUnitRates } from '../../../src/lib/river-unit-rates';
-import { acceptHold, acceptedLine, sharedHouseWarning, stayPlans } from '../../../src/lib/booking-accept';
+import { acceptHold, acceptedLine, sharedHouseWarning, quotedTotalNote, stayPlans } from '../../../src/lib/booking-accept';
 import { quoteStay } from '../../../src/lib/quote';
 import { twoHouseParties } from '../../../src/lib/payout-suggest';
 import { guestAcceptedMail, sentLine } from '../../../src/lib/booking-mail';
@@ -225,11 +225,24 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         partQuote
         ? { ok: true as const, stayTotal: partQuote.total }
         : null
-      : quoteStay(result.plan.propertyId, result.plan.checkIn, result.plan.checkOut, [], {
-          pace: 'unknown',
-          ...(saved.guests !== undefined ? { guests: saved.guests } : {}),
-          ...(typeof saved.children === 'number' && (saved.children ?? 0) > 0 ? { children: saved.children } : {}),
-        });
+      : /*
+         * The guest's own quote wins when the request carries one.
+         *
+         * Recomputing here with `pace: 'unknown'` drops the fill promotion, so a three-night River stay the guest was shown
+         * at $5,960 was recorded at $7,300 — the booking was worth more than the guest had agreed to, and the owner
+         * statement and any invoice built from it inherited the difference. `quotedTotal` is what the page displayed.
+         *
+         * It is not trusted blindly: the fresh quote is still computed, and a disagreement is reported to the host rather
+         * than silently resolved, because either figure could be the right one (a season table change, or a client sending
+         * a number it was never shown).
+         */
+        saved.quotedTotal !== undefined && Number.isFinite(saved.quotedTotal) && saved.quotedTotal > 0
+        ? { ok: true as const, stayTotal: saved.quotedTotal }
+        : quoteStay(result.plan.propertyId, result.plan.checkIn, result.plan.checkOut, [], {
+            pace: 'unknown',
+            ...(saved.guests !== undefined ? { guests: saved.guests } : {}),
+            ...(typeof saved.children === 'number' && (saved.children ?? 0) > 0 ? { children: saved.children } : {}),
+          });
   const toSave = stayPlans(
     shares
       ? { ...result.plan, shares: shares.payouts, guestShares: shares.guestTotals }
@@ -359,6 +372,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
        * in the confirmation sentence. Null when nobody else is there.
        */
       sharedHouse: sharedHouseWarning(result.plan),
+      /**
+       * The guest total the booking was recorded at, and — when it disagrees with a fresh quote — both figures.
+       *
+       * A host should see that the guest was quoted one number and the booking is worth another, rather than discovering it
+       * on an invoice. Null when the request carried no quote, which is every request made before this field existed.
+       */
+      guestTotalRecorded: toSave[0]?.guestTotal ?? null,
+      guestTotalLine: quotedTotalNote(saved.quotedTotal, soloGuest && soloGuest.ok ? soloGuest.stayTotal : null),
       plan: result.plan,
       portalLink,
       /** One entry per house, so a two-house booking shows both pages. */

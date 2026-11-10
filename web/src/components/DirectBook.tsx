@@ -586,6 +586,14 @@ export function DirectBook() {
            * so a whole-house request is byte-for-byte the same request it always was.
            */
           ...(bookingParts ? { units: chosenParts } : {}),
+          /*
+           * What the guest is looking at, so the booking is worth the figure they agreed to.
+           *
+           * The accept route used to recompute with `pace: 'unknown'`, which drops the fill promotion — a three-night
+           * River stay quoted $5,960 here was recorded at $7,300. `splitTotal` is the same number the page displays, so
+           * this cannot drift from what the guest sees.
+           */
+          ...(splitTotal !== null ? { quotedTotal: splitTotal } : {}),
           note: twoHouse && bothOffer
             ? [
                 form.note,

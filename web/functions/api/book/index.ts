@@ -36,6 +36,18 @@ interface BookingRequest {
    * before parts existed means — so no existing request changes meaning.
    */
   units?: string[];
+  /**
+   * What the guest was shown for these dates, before tax.
+   *
+   * The quote is computed in the browser from the live rate card and the year's pace, so it is the figure the guest agreed
+   * to. It is stored here because the accept route used to recompute with `pace: 'unknown'` — which drops the fill
+   * promotion — and recorded a total **$1,340 higher** than the guest had seen on a three-night River stay. A booking must
+   * be worth what the guest was quoted, not what today's card would produce.
+   *
+   * A client could send any number, so this is never trusted as money: it is compared against a fresh quote at accept, and
+   * a difference is reported to the host rather than silently overriding either figure.
+   */
+  quotedTotal?: number;
   /** The guest's own link to this request. It is the credential, so it is never shown on the host desk. */
   statusToken?: string;
 }
@@ -76,6 +88,13 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     createdAt: new Date().toISOString(),
     // The guest's own link to this request. Without one they hear nothing until a person writes back.
     statusToken: crypto.randomUUID().replace(/-/g, ''),
+    /*
+     * What the guest was shown. Kept only when it is a real positive figure, because a zero or a junk value would record
+     * "the guest agreed to nothing" — and absent is the honest state for an old client that does not send one yet.
+     */
+    ...(typeof body.quotedTotal === 'number' && Number.isFinite(body.quotedTotal) && body.quotedTotal > 0
+      ? { quotedTotal: Math.round(body.quotedTotal * 100) / 100 }
+      : {}),
     ...(alsoPropertyId && alsoPropertyId !== propertyId ? { alsoPropertyId } : {}),
   };
   const houses = housesForRequest(propertyId, alsoPropertyId);

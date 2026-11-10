@@ -344,3 +344,26 @@ export function sharedHouseWarning(plan: AcceptPlan): string | null {
     'share the building and the one door code opens every part.'
   );
 }
+
+/**
+ * The host's line when the guest's quote and a fresh quote disagree.
+ *
+ * The booking is recorded at the guest's figure — that is what they agreed to. This says so, and says what today's card
+ * would produce, so a host is not surprised by an invoice that does not match the pricing panel.
+ *
+ * Silent when the request carried no quote (every request made before the field existed) and when the two agree.
+ */
+export function quotedTotalNote(quoted: number | undefined, fresh: number | null): string | null {
+  if (typeof quoted !== 'number' || !Number.isFinite(quoted) || quoted <= 0) return null;
+  if (fresh === null || !Number.isFinite(fresh) || fresh <= 0) return null;
+  if (Math.abs(quoted - fresh) < 0.005) return null;
+
+  const money = (n: number) =>
+    `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const higher = quoted > fresh;
+  return (
+    `The guest was quoted ${money(quoted)}, which is what this booking is recorded at. ` +
+    `Today's rate card would quote ${money(fresh)}, ${money(Math.abs(quoted - fresh))} ${higher ? 'less' : 'more'}. ` +
+    `${higher ? 'A promotion may have ended since they asked' : 'A rate may have risen since they asked'} — check before you invoice.`
+  );
+}

@@ -45,6 +45,15 @@ export type BookingRequestRow = {
    * parts existed still reads as the whole house and blocks all three.
    */
   units?: string[];
+  /**
+   * What the guest was shown for these dates, before tax.
+   *
+   * Stored so a booking is worth the figure the guest agreed to. The accept route used to recompute without the fill
+   * promotion and record a higher total — $7,300 against a guest's $5,960 on a three-night River stay.
+   *
+   * Absent on every request made before this field existed, which is why accepting still falls back to a fresh quote.
+   */
+  quotedTotal?: number;
 };
 
 /** A request is still open until a stay with its dates exists on that house. Nothing is written here. */
