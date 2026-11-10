@@ -71,6 +71,24 @@ function money(value: number): number {
 }
 
 /**
+ * Is the published share exactly half of the leftover, to the cent?
+ *
+ * It usually is not, by a cent or two: the share is rounded to cents **per month** and then summed, so the yearly figure agrees
+ * with the monthly column an owner can add up. Measured on production 2026-11-10: `leftover -6472.33` against `todd -3236.18`,
+ * a 1.5c gap.
+ *
+ * Lives here rather than in a component because **two** surfaces print that sentence — the host's `OwnerStatement` and the
+ * owner's own `OwnerPortal` — and they must not disagree about whether the half holds. The host page was fixed first and the
+ * owner page kept the old unconditional claim for a turn, which is exactly the drift a single definition prevents.
+ *
+ * The comparison is on the raw difference, not on two independently rounded values: rounding each side first turns the
+ * production pair into a 1.7c gap and can call an exact half an error.
+ */
+export function halfIsExact(leftover: number, todd: number): boolean {
+  return Math.abs(leftover / 2 - todd) <= 0.005;
+}
+
+/**
  * Todd's statement for the portal. Ranch and River only, and every figure is a number.
  * A statement that would carry a guest name or a note is not returned.
  */

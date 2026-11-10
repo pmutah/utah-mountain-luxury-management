@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { OwnerPortalView } from '../lib/owner-portal';
+import { halfIsExact } from '../lib/owner-portal';
 
 type Loaded = OwnerPortalView & { period: 'month' | 'ytd'; month: string; empty: boolean };
 
@@ -173,9 +174,18 @@ export function OwnerPortal({ token }: { token: string }) {
                           The working, so the share can be checked by hand. Cleaning sits inside the
                           costs column and is also taken off before the fee; showing both is what makes
                           the row add up instead of looking a few thousand light.
+
+                          The half is the figure that is paid, not an arithmetic identity. `leftover / 2` and the published share
+                          differ by a cent or two because the share is rounded to cents **per month** and then summed, so the year
+                          agrees with the monthly column. This page said "Half is $3,236.18" beside "-$6,472.33 left", which does
+                          not halve — measured on production 2026-11-10. The host-side `OwnerStatement` was fixed for this; this
+                          is the page the owner actually receives, and it had the same sentence.
                         */}
                         <span className="mt-1 block text-xs text-[#7a7264]" data-bot="owner-portal-working">
-                          {money(house.leftover)} after the {money(house.fee)} fee and costs. Half is {money(house.todd)}.
+                          {money(house.leftover)} after the {money(house.fee)} fee and costs.{' '}
+                          {halfIsExact(house.leftover, house.todd)
+                            ? `Half is ${money(house.todd)}.`
+                            : `Todd's half is ${money(house.todd)}, rounded to the cent in each month.`}
                         </span>
                         {/*
                           The cleaning figure itself. The line above says "after the fee and costs" and the header says the

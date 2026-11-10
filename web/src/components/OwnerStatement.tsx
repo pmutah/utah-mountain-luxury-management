@@ -4,6 +4,7 @@ import { formatCurrency, type Expense, type Reservation } from '../lib/api';
 import { loadDateBlocks } from '../lib/booked-nights';
 import { denverToday } from '../lib/market/dates';
 import { aheadChannelsLine, aheadLine, gapLine, ownerAhead, type ClosedSpan } from '../lib/owner-ahead';
+import { halfIsExact } from '../lib/owner-portal';
 import { ownerArrivalLines, ownerOfferLines, ownerStartLines, ownerTurnLines } from '../lib/owner-offers';
 import { buildOwnerStatement } from '../lib/owner-statement';
 import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statement-file';
@@ -17,18 +18,10 @@ const PERIODS: Array<{ id: ReportPeriod; label: string }> = [
 /**
  * Is the published share exactly half of the leftover, to the cent?
  *
- * It usually is not, by a cent or two: the share is rounded to cents **per month** and then summed, so the annual figure agrees
- * with the monthly column an owner can add up. The sentence around it must say so rather than claiming a halving that does not
- * hold — measured on production 2026-11-10, `leftover -6472.33` against `todd -3236.18`.
- *
- * The comparison is on the raw difference, not on two independently rounded values. A first version compared
- * `leftover/2` rounded to cents against `todd`, which turned the production pair into a 1.5c gap (`-3236.165` rounds to
- * `-3236.17`) and called the exact case an error. Here the tolerance is the rounding itself: anything inside a cent of a true
- * halving is reported as exact, and a cent or more is not.
+ * Defined in `owner-portal.ts`, because the owner's own portal prints the same sentence and the two surfaces must not disagree.
+ * Imported below rather than re-declared here — a duplicate is how the owner page kept the old claim for a turn after this one
+ * was fixed.
  */
-function halfIsExact(leftover: number, todd: number): boolean {
-  return Math.abs(leftover / 2 - todd) <= 0.005;
-}
 
 export function OwnerStatement({
   month,

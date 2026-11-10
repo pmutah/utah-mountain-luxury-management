@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildOwnerStatement } from './owner-statement.ts';
-import { OWNER_PORTAL_NOTES } from './owner-portal.ts';
+import { OWNER_PORTAL_NOTES, halfIsExact } from './owner-portal.ts';
 
 /*
  * The owner statement told its reader to halve a number and get the wrong answer.
@@ -46,30 +46,40 @@ test('the page never claims a halving that does not hold', () => {
   /*
    * The assertion is on the code: the old sentence interpolated `house.todd` behind the literal words "Half is". That phrasing
    * is only correct when the halves line up, so the component must choose between an exact claim and a rounded one.
+   *
+   * Checked on **both** surfaces. The host's `OwnerStatement` was fixed first; the owner's own `OwnerPortal` kept the
+   * unconditional claim for a turn, which is the drift a second copy of a sentence always produces.
    */
+  for (const path of ['src/components/OwnerStatement.tsx', 'src/components/OwnerPortal.tsx']) {
+    const page = readFileSync(join(process.cwd(), path), 'utf8');
+    assert.equal(
+      /costs\. Half is \{/.test(page),
+      false,
+      `${path} still states an unconditional halving`,
+    );
+    assert.match(page, /halfIsExact\(/, `${path} does not check whether the share is an exact half`);
+    assert.match(page, /rounded to the cent in each month/, `${path} does not explain the rounded case to the owner`);
+  }
+  // One definition, so the two surfaces cannot disagree again.
+  const portal = readFileSync(join(process.cwd(), 'src', 'lib', 'owner-portal.ts'), 'utf8');
+  assert.match(portal, /export function halfIsExact/, 'the shared halfIsExact is gone from owner-portal');
   assert.equal(
-    /costs\. Half is \{formatCurrency\(house\.todd\)\}/.test(PAGE),
+    /function halfIsExact/.test(PAGE.replace(/import[^\n]*halfIsExact[^\n]*\n/g, '')),
     false,
-    'the page still states an unconditional halving',
+    'OwnerStatement declares its own copy of halfIsExact instead of importing the shared one',
   );
-  assert.match(PAGE, /halfIsExact\(/, 'the page does not check whether the share is an exact half');
-  assert.match(PAGE, /rounded to the cent in each month/, 'the rounded case is not explained to the owner');
 });
 
 test('halfIsExact tolerates a cent of monthly rounding but catches a real error', () => {
   /*
    * The tolerance is the point. A cent or two of accumulated monthly rounding is expected and must not trigger the caveat; a
-   * share that is genuinely wrong must. Reading the function out of the component keeps this honest without exporting it.
+   * share that is genuinely wrong must.
    *
-   * The production pair is a **1.5c** gap, not 0.5c: `-6472.33 / 2 = -3236.165`, and the published share is `-3236.18`. My first
-   * version of this test asserted that pair was within half a cent and failed - correctly. The pair is the case the caveat
-   * exists for, so it belongs on the "not exact" side.
+   * The production pair is a **1.5c** gap, not 0.5c: `-6472.33 / 2 = -3236.165`, and the published share is `-3236.18`. My
+   * first version of this test asserted that pair was within half a cent and failed - correctly. The pair is the case the caveat
+   * exists for, so it belongs on the "not exact" side. The function is exercised through its real module now that both
+   * surfaces share it.
    */
-  const body = /function halfIsExact\(leftover: number, todd: number\): boolean \{\s*return ([^;]+);\s*\}/.exec(PAGE);
-  assert.ok(body, 'halfIsExact could not be found in the page');
-  // eslint-disable-next-line no-new-func
-  const halfIsExact = new Function('leftover', 'todd', `return ${body[1]};`) as (a: number, b: number) => boolean;
-
   // The production pair, a 1.5c gap from monthly rounding: this is the rounded case, so it is NOT exact.
   assert.equal(halfIsExact(-6472.33, -3236.18), false, 'the production 1.5c gap was treated as an exact half');
   // A true halving.
