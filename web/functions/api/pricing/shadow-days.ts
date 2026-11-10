@@ -12,7 +12,7 @@ import type { SettingsEnv } from '../../_lib/kv';
 const KV_KEY = 'shadowDays';
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string; HOSPITABLE_WRITE_TOKEN?: string };
+type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string; HOSPITABLE_WRITE_TOKEN?: string; HOSPITABLE_PAT?: string };
 
 function safeDays(value: unknown): SavedShadowDay[] {
   if (!Array.isArray(value)) return [];
@@ -47,7 +47,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     request,
     {
       clock,
-      hasWriteToken: Boolean(env.HOSPITABLE_WRITE_TOKEN),
+      /*
+       * Either name counts — the sender uses `HOSPITABLE_PAT`, and this reported only the older name. A host reading "no write
+       * token" while the PAT was configured would go looking for a secret that already existed.
+       */
+      hasWriteToken: Boolean(env.HOSPITABLE_PAT?.trim() || env.HOSPITABLE_WRITE_TOKEN?.trim()),
       days: saved.map((day) => ({ date: day.date })),
       storageReads: 'ok',
     },

@@ -17,7 +17,7 @@ import type { SettingsEnv } from '../../_lib/kv';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 
-type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string; HOSPITABLE_WRITE_TOKEN?: string };
+type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string; HOSPITABLE_WRITE_TOKEN?: string; HOSPITABLE_PAT?: string };
 
 /**
  * What a rate push would change, house by house. It reads the board, the calendar, and the saved
@@ -173,7 +173,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   const gate: PushGate = {
     shadowReady: shownClock.ready,
-    hasToken: Boolean(env.HOSPITABLE_WRITE_TOKEN),
+    /*
+     * Either name counts.
+     *
+     * The gate checked `HOSPITABLE_WRITE_TOKEN` while the sender I built requires `HOSPITABLE_PAT` — and the PAT is what the
+     * owner actually stored. So the plan would have said "There is no Hospitable write token, so a rate stays closed" while a
+     * token sat in the project, pointing a host at a secret that already existed.
+     *
+     * The PAT is the real credential: it is what `/api/pricing/publish-rates` sends. The older name is kept because other routes
+     * and the docs still use it, and a deployment with only that set should not read as "no token".
+     */
+    hasToken: Boolean(env.HOSPITABLE_PAT?.trim() || env.HOSPITABLE_WRITE_TOKEN?.trim()),
     paused: false,
     calendarReady: true,
   };
