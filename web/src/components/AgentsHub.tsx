@@ -53,6 +53,32 @@ export function AgentsHub({
    * no explanation of what to do. Opening the brief is the daily habit, so it has to count.
    */
   const [shadowSaved, setShadowSaved] = useState<number | null>(null);
+  /**
+   * The durable count and dates, read on load.
+   *
+   * `shadowSaved` only holds a number after this tab records a day, and the fallback was `loadShadowLog()` — browser storage. So
+   * a host opening the brief on a second device, or after clearing site data, read "0 of 7" while the server held real days. The
+   * server count is the one that decides whether a rate may move, so it is the one the brief shows from the first paint.
+   *
+   * The **dates** matter as much as the count: "has the server got today?" is a different question from "has it got seven days",
+   * and my first version conflated them — it treated a successful read as "today is saved", which would skip saving today.
+   */
+  const [serverShadow, setServerShadow] = useState<{ days: number; dates: string[] } | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    void api
+      .getShadowDays()
+      .then((result) => {
+        if (cancel || !result?.clock) return;
+        setServerShadow({ days: result.clock.days, dates: result.clock.dates ?? [] });
+      })
+      .catch(() => {
+        // A failed read leaves the local count; it must not present an unread server clock as zero days.
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
   useEffect(() => {
     if (calendar !== 'live' || booksPaused || blocksReady !== true) return;
     let cancel = false;
@@ -62,12 +88,17 @@ export function AgentsHub({
       .then(async (inputs) => {
         if (cancel || !inputs) return;
         /*
-         * Only fetch the real boards when this visit would actually save a day. `withToday` keeps one record
-         * per date, so a second visit on the same day wrote nothing — and each board costs three KV reads
-         * (comp set, all snapshots, approved rates). This page is the daily habit, so those reads would
-         * repeat on every visit for no gain, on a store that has already hit Cloudflare's daily KV limit once.
+         * Only fetch the real boards when this visit could actually save a day. `withToday` keeps one record per date, so a
+         * second visit on the same day wrote nothing — and each board costs three KV reads (comp set, all snapshots, approved
+         * rates). This page is the daily habit, so those reads would repeat on every visit for no gain, on a store that has
+         * already hit Cloudflare's daily KV limit once.
+         *
+         * The local log alone was wrong about this on a fresh browser: it looked unsaved, so a host on a second device paid nine
+         * reads on every visit. The server count closes that — if the server already holds a day dated today, nothing can be
+         * saved and there is nothing to fetch.
          */
-        const alreadySaved = loadShadowLog().some((day) => day.date === today && day.digest);
+        const localSaved = loadShadowLog().some((day) => day.date === today && day.digest);
+        const alreadySaved = localSaved || Boolean(serverShadow?.dates.includes(today));
         const boards: Partial<Record<'river' | 'ranch' | 'lindon', MarketBoard>> = {};
         if (!alreadySaved) {
           const loaded = await Promise.all(
@@ -109,7 +140,7 @@ export function AgentsHub({
       agentBrief({
         asOf: today,
         stays: reservations,
-        shadowDays: shadowSaved ?? shadowClock(loadShadowLog(), today).days,
+        shadowDays: shadowSaved ?? serverShadow?.days ?? shadowClock(loadShadowLog(), today).days,
         openJobs: workState === 'live' ? open.length : 0,
         calendarReady: calendar === 'live' && !booksPaused,
         booksPaused,
