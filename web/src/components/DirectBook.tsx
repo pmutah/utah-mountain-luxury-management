@@ -312,7 +312,18 @@ export function DirectBook() {
     : null;
   const moment = sheet ? stayMoment(today, checkIn, checkOut) : '';
   const countdown = stayCountdown(today, checkIn, checkOut, 'quote');
-  const splitLine = calendar === 'live' && quote.ok && party.ok && guestCount !== null ? splitStayLine(quote.stayTotal, guestCount) : null;
+  /*
+   * The per-guest share of **what is actually being booked**.
+   *
+   * It read `quote.stayTotal`, the whole-house total, so a guest who had chosen the Garage Suite saw "$790 for this part"
+   * directly above "3 guests would each cover $1,200" — two different prices for one stay, on one screen. When parts are
+   * chosen the part total is the figure, and when partTotal is null there is no honest share to show.
+   */
+  const splitTotal = bookingParts ? partTotal : quote.stayTotal;
+  const splitLine =
+    calendar === 'live' && party.ok && guestCount !== null && splitTotal !== null && (bookingParts ? true : quote.ok)
+      ? splitStayLine(splitTotal, guestCount)
+      : null;
   const saved = quote.ok ? directSavings(quote.channelTotal, quote.stayTotal) : null;
   const openings = useMemo(
     () =>
