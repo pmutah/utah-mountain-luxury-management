@@ -1,5 +1,6 @@
 import { bandComps, isCloseSleep, isFairComp, isNearby } from './comp-fit';
 import { eachNight, isWeekendNight, monthFactor } from './dates';
+import { promotionForNight, type YearPace } from './fill';
 import { compsFor, type SampleComp } from './fixtures';
 import { type BoardSource, type LiveComp, liveAsk, liveCompFits, type SnapIndex } from './live';
 import { approvalBase, approvedGuestRate, type QuotedSheetNight } from './rate-sheet';
@@ -86,6 +87,12 @@ export function buildMarketBoard(
   live?: LiveNights | null,
   /** Host-approved guest rates. A night with none starts from the published card. */
   sheet: readonly QuotedSheetNight[] = [],
+  /**
+   * The fill promotion needs the same two facts the shadow run has: how the year is pacing, and which nights are on the
+   * calendar. Both default to the honest "not known" answer, so a caller that has neither still gets a board — it just
+   * says no promotion is recommended rather than inventing one.
+   */
+  fill?: { pace?: YearPace; taken?: readonly string[] },
 ): MarketBoard {
   const listed = selected ?? compsFor(house);
   const band = bandComps(house, listed);
@@ -166,6 +173,35 @@ export function buildMarketBoard(
             ? 'hold'
             : move.action;
     const proposedGuest = invented || ours.lock ? ours.guest : move.proposedGuest;
+
+    /*
+     * The fill promotion was described and never computed: `promotionPercent` was hardcoded to 0 and `offerGuest` was the
+     * full base, so a board row could read "A promotion can fill the night" beside the undiscounted rate — and the
+     * dashboard's "The 20% fill rate is on" line could never appear, because 0 never equals 20.
+     *
+     * `promotionForNight` is the same function the shadow run uses, so the board and the brief cannot disagree. It is
+     * asked for every night that can still take one, and it decides: a booked or locked night returns percent 0 by
+     * itself, and it refuses when the year is met, the pace is unknown, or the discount would break the floor.
+     *
+     * Asking only when the comp band said `promote` was my first attempt and it fired on nothing — the band holds most
+     * nights, while a fill promotion is about **time** (a weekend inside 21 days, a hole before a booked Friday), so the
+     * two disagree by design.
+     */
+    const promotion =
+      !ours.lock && !invented && !ours.approved
+        ? promotionForNight({
+            date: iso,
+            asOf: from,
+            holiday: false,
+            ourGuest: ours.guest,
+            floorGuest: ours.floorGuest,
+            taken: new Set(fill?.taken ?? []),
+            pace: fill?.pace ?? 'unknown',
+          })
+        : { percent: 0 as const, offerGuest: proposedGuest, reason: '' };
+    const promotionPercent = promotion.percent;
+    const offerGuest = promotionPercent === 20 ? promotion.offerGuest : proposedGuest;
+
     return {
       date: iso,
       season: ours.season,
@@ -178,8 +214,8 @@ export function buildMarketBoard(
       openComps: observed.length,
       percentile: move.percentile,
       proposedGuest,
-      promotionPercent: 0,
-      offerGuest: proposedGuest,
+      promotionPercent,
+      offerGuest,
       action,
       reason: ours.lock
         ? 'Holiday rate stays on the season table.'
