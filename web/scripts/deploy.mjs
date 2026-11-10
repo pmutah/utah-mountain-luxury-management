@@ -59,6 +59,19 @@ if (!isProduction) {
     );
     process.exit(1);
   }
+  /*
+   * Say out loud what a preview alias actually is.
+   *
+   * Measured on 2026-11-09: `elite-rebuild.wilhite-portfolio.pages.dev` and the production host report the same 21 River
+   * and 61 Ranch booked nights. The branch alias is a **second live URL over the same data** — a request made there writes
+   * real expenses, bookings, and receipts. Worth knowing before clicking through a preview, and worth saying once per
+   * deploy rather than leaving to be discovered.
+   */
+  console.log(
+    `\n  Note: ${branch}.${PROJECT}.pages.dev is a live URL over the SAME data as production.\n` +
+      '  Requests made there change real bookings, expenses, and receipts.\n' +
+      '  Use local `wrangler pages dev` for probing, which has its own store.\n',
+  );
 }
 
 /* ------------------------------------ the gates, then the deploy ------------------------------------ */
