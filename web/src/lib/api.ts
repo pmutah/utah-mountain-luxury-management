@@ -458,6 +458,14 @@ export interface HouseGuide {
   wifiName: string;
   wifiPassword: string;
   doorCode: string;
+  /**
+   * A door code per Riverhouse part, for a house sold in parts.
+   *
+   * The route has read this since the split - `part-door-codes.ts` decides what a part guest sees - but nothing in this app
+   * could **write** it, so every part guest was told to call. Absent means no part has its own code; the house code is never
+   * used as a fallback because it opens every part.
+   */
+  partDoorCodes?: Partial<Record<'garage-suite' | 'recreation-wing' | 'main-lodge', string>>;
   doorNotes: string;
   parking: string;
   arrival: string;

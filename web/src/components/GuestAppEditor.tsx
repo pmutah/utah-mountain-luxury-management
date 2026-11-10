@@ -13,6 +13,33 @@ const HOUSES: Array<{ id: HouseId; label: string }> = [
 
 const KINDS: GuidePlace['kind'][] = ['ski', 'food', 'outdoors', 'family', 'rentals', 'essentials'];
 
+/**
+ * The three Riverhouse parts, in the order a host thinks of them.
+ *
+ * Names match `RIVER_UNIT_DETAIL` so the editor and the guest page cannot describe the same part differently.
+ */
+const PART_DOORS: Array<{ id: 'main-lodge' | 'recreation-wing' | 'garage-suite'; name: string }> = [
+  { id: 'main-lodge', name: 'Main Lodge' },
+  { id: 'recreation-wing', name: 'Recreation Wing' },
+  { id: 'garage-suite', name: 'Garage Suite' },
+];
+
+/**
+ * One line saying how many part codes are set.
+ *
+ * A host needs to know at a glance whether the three parts can actually be sold tonight. Saying "2 of 3" is the fact that
+ * decides it: the third part's guest would be told to call.
+ */
+function partDoorSummary(codes: Partial<Record<'main-lodge' | 'recreation-wing' | 'garage-suite', string>> | undefined): string {
+  const set = PART_DOORS.filter((part) => (codes?.[part.id] ?? '').trim().length > 0);
+  if (set.length === 0) return 'No part has its own code, so a part guest is told to call rather than given an entrance code.';
+  if (set.length === PART_DOORS.length) {
+    return 'All three parts have their own code. A whole-house booking still uses the single house code above.';
+  }
+  const missing = PART_DOORS.filter((part) => !(codes?.[part.id] ?? '').trim().length).map((part) => part.name);
+  return `${set.length} of ${PART_DOORS.length} parts have a code. ${missing.join(' and ')} ${missing.length === 1 ? 'is' : 'are'} left blank, so ${missing.length === 1 ? 'that guest is' : 'those guests are'} told to call.`;
+}
+
 const input =
   'w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600';
 
@@ -204,6 +231,53 @@ export function GuestAppEditor({
               {text('wifiName', 'Wi-Fi network')}
               {text('wifiPassword', 'Wi-Fi password')}
             </div>
+            {/*
+              A code per part, because the River House is sold in parts.
+
+              `part-door-codes.ts` has decided what a part guest sees since the split, and both the guest and cleaner routes
+              pass `guide.partDoorCodes` into it - but nothing in this app could write that field, so every field was empty
+              and every part guest was told to call for a code. The owner's instruction was three separate codes with
+              same-night part combinations allowed; this is the missing half.
+
+              Only shown for the River House: the other two are not sold in parts, so three extra boxes there would be
+              decoration. Each is deliberately blank-able - clearing a code puts that part back to "call us", which is the
+              correct state when a lock is rekeyed.
+            */}
+            {house === 'river' && (
+              <div className="space-y-2 rounded-2xl border border-amber-500/20 p-3" data-bot="part-door-codes">
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">Door code per part</p>
+                <p className="text-xs text-amber-200/70">
+                  A guest who books one part sees only that part&apos;s code. If a part has no code it is left blank and the
+                  guest is told to call — the house code is never used instead, because it opens every part.
+                </p>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  {PART_DOORS.map(({ id, name }) => (
+                    <Field key={id} label={name}>
+                      <input
+                        className={input}
+                        data-bot={`part-door-${id}`}
+                        placeholder="Not set"
+                        value={guide?.partDoorCodes?.[id] ?? ''}
+                        onChange={(e) => {
+                          /*
+                           * An emptied field removes the part rather than storing an empty string, so `part-door-codes.ts`
+                           * reads it as "no code" instead of a code that is the empty string.
+                           */
+                          const next = { ...(guide?.partDoorCodes ?? {}) };
+                          const value = e.target.value.trim();
+                          if (value) next[id] = value;
+                          else delete next[id];
+                          patch({ partDoorCodes: next });
+                        }}
+                      />
+                    </Field>
+                  ))}
+                </div>
+                <p className="text-xs text-amber-200/70" data-bot="part-door-summary">
+                  {partDoorSummary(guide?.partDoorCodes)}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
