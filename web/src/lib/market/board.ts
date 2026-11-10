@@ -356,6 +356,21 @@ export function buildMarketBoard(
     .sort((a, b) => b.score - a.score);
   const first30 = nights.slice(0, 30);
   const liveNights = nights.filter((night) => night.source !== 'sample').length;
+  /*
+   * What real saved comps charge, measured separately from the sample fallback.
+   *
+   * `medianAsk` above is the median of `first30`, and on production 2026-11-10 **86 of Lindon's 90 nights were priced off
+   * the sample set** - the invented `baseGuest` values in fixtures.ts ($157-$190). So the card's "Comp median $175" was
+   * arithmetic on numbers this repo made up, while the host's own saved comps charged $388-$556. A figure that reads as
+   * market intelligence but describes nothing is worse than no figure, because a host acts on it.
+   *
+   * This is null when no night in the window carries a real ask, so the surface can say "no measured market" rather than
+   * print a sample as if it were one.
+   */
+  const liveMedians = nights
+    .filter((night) => night.source !== 'sample' && Number.isFinite(night.median) && night.median > 0)
+    .map((night) => night.median);
+  const liveMedianAsk = liveMedians.length > 0 ? Math.round(median(liveMedians)) : null;
   return {
     house,
     source: liveNights === 0 ? 'sample' : liveNights === nights.length ? 'live' : 'mixed',
@@ -371,6 +386,10 @@ export function buildMarketBoard(
     },
     summary: {
       medianAsk: Math.round(median(first30.map((night) => night.median))),
+      /** The median of measured nights only, or null when the window holds no real ask. */
+      liveMedianAsk,
+      /** How many of the first 30 nights carry a real ask rather than the sample fallback. */
+      measuredNights: first30.filter((night) => night.source !== 'sample').length,
       ourTypical: Math.round(median(first30.map((night) => night.ourGuest))),
       ourPercentile: Math.round(median(first30.map((night) => night.percentile))),
       raiseNights: nights.filter((night) => night.action === 'raise').length,

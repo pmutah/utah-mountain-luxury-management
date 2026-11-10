@@ -65,6 +65,15 @@ export type MarketBoard = {
   fit: { close: number; compared: number; narrowed: boolean };
   summary: {
     medianAsk: number;
+    /**
+     * The median of **measured** nights only, or null when the window holds no real comp ask.
+     *
+     * `medianAsk` includes nights priced off the sample fixture set, so on a house with thin coverage it can be entirely
+     * invented. This is the figure a host should read as the market.
+     */
+    liveMedianAsk: number | null;
+    /** Of the first 30 nights, how many carry a real ask rather than the sample fallback. */
+    measuredNights: number;
     ourTypical: number;
     ourPercentile: number;
     raiseNights: number;

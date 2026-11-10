@@ -49,6 +49,8 @@ function liveBoard(house: 'river' | 'ranch' | 'lindon', median: number): MarketB
     fit: { close: 0, compared: 0, narrowed: false },
     summary: {
       medianAsk: median,
+      liveMedianAsk: median,
+      measuredNights: 1,
       ourTypical: median,
       ourPercentile: 50,
       raiseNights: 0,

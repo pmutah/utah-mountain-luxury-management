@@ -1,10 +1,10 @@
-﻿/**
+/**
  * The shadow week gates the entire rate push: nothing can be sent until seven Denver days are saved,
  * and a write token cannot unlock it early.
  *
  * That gate was effectively permanent. A day was only saved by the market page, so the clock advanced
- * only for a host who happened to open `#/market`. The nightly brief â€” the page a host actually reads
- * daily â€” showed "Shadow day 1 of 7" and never said how to move it, and reading the brief did not
+ * only for a host who happened to open `#/market`. The nightly brief — the page a host actually reads
+ * daily — showed "Shadow day 1 of 7" and never said how to move it, and reading the brief did not
  * count. A host following the brief would sit at day one forever and never learn why the push stayed
  * closed.
  *
@@ -47,7 +47,7 @@ function liveBoard(house: 'river' | 'ranch' | 'lindon'): MarketBoard {
     nights: [],
     comps: [comp(1), comp(2), comp(3), comp(4)],
     fit: { close: 4, compared: 4, narrowed: false },
-    summary: { medianAsk: 500, ourTypical: 500, ourPercentile: 50, raiseNights: 0, promoteNights: 0, compPace30: 0, liveNights: 0, liveComps: 4 },
+    summary: { medianAsk: 500, liveMedianAsk: 500, measuredNights: 30, ourTypical: 500, ourPercentile: 50, raiseNights: 0, promoteNights: 0, compPace30: 0, liveNights: 0, liveComps: 4 },
   } as MarketBoard;
 }
 
@@ -91,7 +91,7 @@ test('a day whose calendar could not be read is not recorded', () => {
 test('a week of days recorded from real comps reaches the push gate', () => {
   /*
    * This used to pass days recorded with no boards at all, so every digest was built from the sample
-   * fixtures and still opened the gate — the gate could be satisfied by a market that does not exist. A day
+   * fixtures and still opened the gate � the gate could be satisfied by a market that does not exist. A day
    * now counts only when its fit line does not say "sample comps", so the week has to be recorded from real
    * boards. That is the stronger rule, and it is what the test asserts.
    */
@@ -174,7 +174,7 @@ test('the brief says how to advance the shadow week, not just where it is', () =
 test('the brief and the market page build the digest the same way', () => {
   /*
    * Two surfaces saving the same day is only safe if they agree on what a day is. Both call this one
-   * function, so the digest for a given input is identical â€” a copy per component is how these drift.
+   * function, so the digest for a given input is identical — a copy per component is how these drift.
    */
   const a = shadowDayDigest({ ...BASE, asOf: '2026-11-07', calendarLive: true });
   const b = shadowDayDigest({ ...BASE, asOf: '2026-11-07', calendarLive: true });

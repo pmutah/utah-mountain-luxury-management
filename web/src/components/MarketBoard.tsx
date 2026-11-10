@@ -486,8 +486,30 @@ export function MarketBoard() {
           />
           <Stat
             label="Comp median"
-            value={calendar === 'live' ? formatWhole(board.summary.medianAsk) : 'Not shown'}
-            hint={calendar === 'off' ? unreadMoneyNote('ask') : calendar === 'loading' ? 'Checking the calendar.' : undefined}
+            /*
+             * The measured median when there is one, otherwise "too few measured nights" rather than the sample figure.
+             *
+             * On production 2026-11-10 this stat read "$175" for the Lindon House while 86 of its 90 nights were priced
+             * off the invented fixture set and the host's real saved comps charged $388-$556. A host reading "$175"
+             * believes the market is $175. When almost nothing is measured, the honest answer is that the market is not
+             * known yet - and the comp count beside it says how many are saved.
+             */
+            value={
+              calendar !== 'live'
+                ? 'Not shown'
+                : board.summary.liveMedianAsk != null && board.summary.measuredNights >= 5
+                  ? formatWhole(board.summary.liveMedianAsk)
+                  : 'Not measured yet'
+            }
+            hint={
+              calendar === 'off'
+                ? unreadMoneyNote('ask')
+                : calendar === 'loading'
+                  ? 'Checking the calendar.'
+                  : board.summary.liveMedianAsk != null && board.summary.measuredNights >= 5
+                    ? `From ${board.summary.measuredNights} of the next 30 nights with a saved comp ask.`
+                    : `Only ${board.summary.measuredNights} of the next 30 nights carry a saved comp ask, so no market median is claimed. Record asks under Saved comps.`
+            }
             bot="market-median-off"
           />
           <Stat label="Our percentile" value={`p${board.summary.ourPercentile}`} hint={`Target p${board.targetPercentile}`} />

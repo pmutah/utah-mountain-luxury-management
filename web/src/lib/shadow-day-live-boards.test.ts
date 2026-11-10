@@ -45,7 +45,7 @@ function liveBoard(house: 'river' | 'ranch' | 'lindon'): MarketBoard {
       { id: `${house}-4`, name: 'Fourth saved comp', area: 'Orem', beds: 6, sleeps: 20, rating: 4.7, reviews: 9, guestFavorite: false, distanceMi: 6, nextWeekendAsk: 560, occupancy: 50, score: 7, fit: 'close', inBand: true },
     ],
     fit: { close: 4, compared: 4, narrowed: false },
-    summary: { medianAsk: 500, ourTypical: 500, ourPercentile: 50, raiseNights: 0, promoteNights: 0, compPace30: 0, liveNights: 0, liveComps: 4 },
+    summary: { medianAsk: 500, liveMedianAsk: 500, measuredNights: 30, ourTypical: 500, ourPercentile: 50, raiseNights: 0, promoteNights: 0, compPace30: 0, liveNights: 0, liveComps: 4 },
   } as MarketBoard;
 }
 
