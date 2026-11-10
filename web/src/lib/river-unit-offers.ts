@@ -1,6 +1,7 @@
 import type { PublicUnit } from './booked-nights';
 import type { HouseId } from './market/types';
 import { partsSleeps } from './party-fits-parts';
+import { partCost } from './part-stay-quote';
 import { RIVER_UNIT_DETAIL, type RiverUnitId } from './river-units';
 
 /**
@@ -86,16 +87,23 @@ export function unitStayOffers(
     }
     const free = new Set(unit.nights);
     const blocked = wanted.filter((night) => !free.has(night));
-    // `priced` above guarantees a real nightly; this constant keeps that fact through the rest of the block.
-    const nightly = unit.nightly ?? 0;
-    const lodging = nightly * wanted.length;
-    const cleaning = unit.cleaning ?? 0;
+    /*
+     * The figure comes from `partCost`, the same function the accept route uses to record the reservation. They were
+     * computed separately once: the page showed $790 for a two-night Garage Suite stay while the booking recorded $4,500,
+     * the whole house. One formula, two callers.
+     */
+    const cost = partCost(
+      [{ nightly: unit.nightly, cleaning: unit.cleaning, ready: unit.rateState === 'ready' }],
+      wanted.length,
+    );
+    const lodging = cost?.lodging ?? null;
+    const cleaning = cost?.cleaning ?? null;
     if (blocked.length > 0) {
       return {
         unit,
         lodging,
         cleaning,
-        total: lodging + cleaning,
+        total: cost?.total ?? null,
         blocked,
         available: false,
         reason:
@@ -110,7 +118,7 @@ export function unitStayOffers(
         unit,
         lodging,
         cleaning,
-        total: lodging + cleaning,
+        total: cost?.total ?? null,
         blocked: [],
         available: false,
         reason: `This part has a ${unit.minNights}-night minimum.`,
@@ -120,7 +128,7 @@ export function unitStayOffers(
       unit,
       lodging,
       cleaning,
-      total: lodging + cleaning,
+      total: cost?.total ?? null,
       blocked: [],
       available: true,
       reason: null,

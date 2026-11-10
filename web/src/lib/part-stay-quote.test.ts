@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { partStayQuote } from './part-stay-quote.ts';
+import { partCost, partStayQuote } from './part-stay-quote.ts';
 import { blankUnitRates, type RiverUnitRates } from './river-unit-rates.ts';
 
 /*
@@ -78,4 +78,45 @@ test('the accept route prices parts from their own rates', () => {
    * since changed or was never set.
    */
   assert.match(route, /let unitRatesAtAccept/, 'the rates are not read at accept time');
+});
+
+test('the page and the recorded booking use one formula', () => {
+  /*
+   * This is the property that matters. The page showed $790 for a two-night Garage Suite stay while the booking recorded
+   * $4,500, because the two computed the figure separately. Both call `partCost` now.
+   */
+  const offers = readFileSync(new URL('./river-unit-offers.ts', import.meta.url), 'utf8');
+  const quote = readFileSync(new URL('./part-stay-quote.ts', import.meta.url), 'utf8');
+  assert.match(offers, /partCost\(/, 'the booking page no longer uses the shared formula');
+  assert.match(quote, /partCost\(/, 'the recorded quote no longer uses the shared formula');
+
+  /*
+   * The property: neither **caller** may compute a lodging figure by multiplying a nightly rate itself. `partCost` is the
+   * one place allowed to, so the file that defines it is exempt.
+   *
+   * Matching an exact spelling was too narrow — reintroducing `(unit.nightly ?? 0) * wanted.length` slipped past a guard
+   * written for `nightly * wanted.length`, which is the same mistake with different punctuation.
+   */
+  const bodyWithoutFormula = (source: string) => source.replace(/export function partCost[\s\S]*?\n}/, '');
+  const multipliesNights = (source: string) => /nightly[^;\n]*\*\s*(?:wanted\.length|nights)\b/.test(source);
+  assert.equal(
+    multipliesNights(bodyWithoutFormula(offers)),
+    false,
+    'the booking page multiplies a nightly rate by nights itself again',
+  );
+  assert.equal(
+    multipliesNights(bodyWithoutFormula(quote)),
+    false,
+    'the recorded quote multiplies a nightly rate by nights itself again',
+  );
+  // And the shared formula really is the one that does it.
+  assert.equal(multipliesNights(quote), true, 'partCost no longer multiplies nights, so nothing does');
+});
+
+test('one formula gives one answer for the same stay', () => {
+  // The two callers pass different shapes, so this checks the number they agree on.
+  const viaRates = partStayQuote(['garage-suite'], 2, priced());
+  const viaCost = partCost([{ nightly: 320, cleaning: 150, ready: true }], 2);
+  assert.equal(viaRates!.total, viaCost!.total);
+  assert.equal(viaCost!.total, 790);
 });

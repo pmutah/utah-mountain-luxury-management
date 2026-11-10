@@ -2,6 +2,36 @@ import { RIVER_UNIT_DETAIL } from './river-units';
 import { sellableUnits, type RiverUnitRates } from './river-unit-rates';
 
 /**
+ * The arithmetic for a stay in part of the Riverhouse: the one place it lives.
+ *
+ * The booking page shows this figure and the accept route records it on the reservation, which feeds the owner statements.
+ * They were computed from different inputs once and disagreed: the page showed $790 for two nights in the Garage Suite
+ * while the booking recorded $4,500 — the whole house — because the route quoted the house regardless of what was asked
+ * for. Both call this now, so a guest's price and the recorded price cannot drift apart.
+ *
+ * Returns null when any part has no complete price. A partial figure understates what the guest owes, and a missing total
+ * is visible where a wrong one is not.
+ */
+export type PartCost = { lodging: number; cleaning: number; total: number };
+
+export function partCost(
+  parts: ReadonlyArray<{ nightly: number | null; cleaning: number | null; ready: boolean }>,
+  nights: number,
+): PartCost | null {
+  if (!Number.isInteger(nights) || nights < 1) return null;
+  if (parts.length === 0) return null;
+  let lodging = 0;
+  let cleaning = 0;
+  for (const part of parts) {
+    if (!part.ready || part.nightly === null || part.cleaning === null) return null;
+    lodging += part.nightly * nights;
+    cleaning += part.cleaning;
+  }
+  const cents = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+  return { lodging: cents(lodging), cleaning: cents(cleaning), total: cents(lodging + cleaning) };
+}
+
+/**
  * What a guest pays for a stay in **part** of the Riverhouse.
  *
  * A part booking was recorded with the whole-house figure: `quoteStay` prices the house, and the accept route called it
@@ -44,13 +74,21 @@ export function partStayQuote(
   const named = RIVER_UNIT_DETAIL.filter((detail) => units.includes(detail.id));
   if (scoped.length === 0 || scoped.length !== named.length) return null;
 
-  const lodging = scoped.reduce((sum, detail) => sum + (rates[detail.id].nightly ?? 0) * nights, 0);
-  const cleaning = scoped.reduce((sum, detail) => sum + (rates[detail.id].cleaning ?? 0), 0);
+  // The same arithmetic the booking page shows, so the guest's price and the recorded price cannot disagree.
+  const cost = partCost(
+    scoped.map((detail) => ({
+      nightly: rates[detail.id].nightly,
+      cleaning: rates[detail.id].cleaning,
+      ready: priced.has(detail.id),
+    })),
+    nights,
+  );
+  if (!cost) return null;
   return {
     nights,
-    lodging: Math.round(lodging * 100) / 100,
-    cleaning: Math.round(cleaning * 100) / 100,
-    total: Math.round((lodging + cleaning) * 100) / 100,
+    lodging: cost.lodging,
+    cleaning: cost.cleaning,
+    total: cost.total,
     parts: scoped.map((detail) => detail.name),
   };
 }
