@@ -16,13 +16,13 @@ const open = {
 
 test('the paper names both houses before the calendar can be read', () => {
   const lines = compoundPaperHold(30);
-  assert.match(lines.join(' '), /24 stay at the River House/);
-  // The Ranch takes the rest of the party once the River is full at 24.
-  assert.match(lines.join(' '), /6 stay at the Ranch House/);
+  assert.match(lines.join(' '), /22 stay at the River House/);
+  // The Ranch takes the rest of the party once the River is full at 22.
+  assert.match(lines.join(' '), /8 stay at the Ranch House/);
   assert.match(lines.join(' '), /does not hold either house/);
   assert.match(lines.join(' '), /does not say either house is open/);
   assert.equal(lines.join(' ').includes('$'), false);
-  assert.match(compoundSplitLine(30), /24 stay at the River House and 6 stay at the Ranch House/);
+  assert.match(compoundSplitLine(30), /22 stay at the River House and 8 stay at the Ranch House/);
   assert.equal(/\bis open\b/.test(compoundSplitLine(30)), false);
   assert.equal(compoundSplitLine(20), '');
   assert.equal(compoundPaperHold(20).length, 0);
@@ -112,22 +112,22 @@ test('Ranch and River together quote a party neither house can take alone', () =
   const river = quoteStay('river', open.checkIn, open.checkOut, [], {
     asOf: open.asOf,
     pace: 'unknown',
-    guests: 24,
+    guests: 22,
     children: 2,
   });
   const ranch = quoteStay('ranch', open.checkIn, open.checkOut, [], {
     asOf: open.asOf,
     pace: 'unknown',
-    guests: 6,
+    guests: 8,
     children: 4,
   });
   assert.equal(river.ok, true);
   assert.equal(ranch.ok, true);
   assert.equal(offer.total, river.stayTotal + ranch.stayTotal);
   assert.equal(offer.nights, 2);
-  assert.equal(offer.riverGuests, 24);
-  assert.equal(offer.ranchGuests, 6);
-  assert.match(offer.line, /24 stay at the River House and 6 stay at the Ranch House, including 6 children/);
+  assert.equal(offer.riverGuests, 22);
+  assert.equal(offer.ranchGuests, 8);
+  assert.match(offer.line, /22 stay at the River House and 8 stay at the Ranch House, including 6 children/);
   assert.match(offer.line, /Nothing is sent/);
   assert.equal(offer.line.includes('$'), false);
   assert.equal(offer.line.includes('20% off'), false);
@@ -144,7 +144,7 @@ test('a party past both houses, a children-only party, and a booked house stay c
   assert.equal(tooBig.show, true);
   assert.equal(tooBig.ok, false);
   if (tooBig.ok || !tooBig.show) return;
-  assert.match(tooBig.reason, /sleep 44/);
+  assert.match(tooBig.reason, /sleep 42/);
   assert.equal(tooBig.reason.includes('$'), false);
 
   const kids = compoundOffer(open.checkIn, open.checkOut, 30, 30, {}, open.asOf, pace);
@@ -211,7 +211,7 @@ test('a two-house request waits for both agreements and does not hold the dates'
   assert.equal(compoundRequestReady({ ...ready, calendarLive: false }), false);
   assert.equal(compoundRequestReady({ ...ready, event: true }), false);
   const note = compoundRequestNote(
-    '24 stay at the River House and 6 stay at the Ranch House. Each house keeps an adult. Nothing is sent.',
+    '22 stay at the River House and 8 stay at the Ranch House. Each house keeps an adult. Nothing is sent.',
   );
   assert.match(note, /Both houses are one request/);
   assert.match(note, /Nothing is held and nothing is charged yet/);
@@ -286,14 +286,14 @@ test('a two-house party is quoted the approved price, not the published card', (
   const riverSolo = quoteStay('river', open.checkIn, open.checkOut, [], {
     asOf: open.asOf,
     pace: 'unknown',
-    guests: 24,
+    guests: 22,
     children: 0,
     sheet: sheet.river,
   });
   const ranchSolo = quoteStay('ranch', open.checkIn, open.checkOut, [], {
     asOf: open.asOf,
     pace: 'unknown',
-    guests: 6,
+    guests: 8,
     children: 0,
     sheet: sheet.ranch,
   });

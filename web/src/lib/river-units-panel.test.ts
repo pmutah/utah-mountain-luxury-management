@@ -52,10 +52,14 @@ test('every unit the panel can show has a real capacity and a listing it belongs
   assert.equal(sellableUnits(zeroed).includes('garage-suite'), false, 'a zero-priced unit was sellable');
 });
 
-test('the panel states the capacity gap between the parts and the house', () => {
-  // The three parts sleep 25 and the house sleeps 24. Silently picking one figure is the defect; the panel has to
-  // surface the discrepancy for the host to settle.
-  assert.match(PANEL, /HOUSE_SLEEPS = 24/, 'the house capacity constant is gone, so the gap can no longer be compared');
-  assert.match(PANEL, /sleepsTotal !== HOUSE_SLEEPS/, 'the capacity gap is no longer checked');
+test('the panel compares the parts total with the house, from one source', () => {
+  /*
+   * The three parts sleep 22 and the house sleeps 22, so the note no longer appears — but the comparison must stay, because
+   * it is what would catch the figures drifting apart again. The constant is read from `SLEEPS` rather than written down, so
+   * the panel cannot compare against a capacity no other surface uses.
+   */
+  assert.match(PANEL, /HOUSE_SLEEPS = SLEEPS\.river/, 'the house capacity is not read from SLEEPS');
+  assert.doesNotMatch(PANEL, /HOUSE_SLEEPS = \d/, 'the house capacity is a literal again, so it can drift');
+  assert.match(PANEL, /sleepsTotal !== HOUSE_SLEEPS/, 'the capacity comparison is gone');
   assert.match(PANEL, /river-units-capacity/, 'the capacity note lost its hook, so it can vanish unnoticed');
 });

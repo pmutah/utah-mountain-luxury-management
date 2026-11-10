@@ -3,7 +3,7 @@ import test from 'node:test';
 import { enableHold, guideFill, guideReadiness, readinessLine, switchLine } from './guest-app-ready.ts';
 
 const FULL = {
-  headline: 'Sleeps 24 on the Provo River',
+  headline: 'Sleeps 22 on the Provo River',
   address: '270 East Center Street, Lindon, Utah 84042',
   arrival: 'Drive up Provo Canyon to Vivian Park.',
   parking: 'Park in the driveway and garage.',

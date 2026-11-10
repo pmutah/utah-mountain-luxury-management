@@ -23,16 +23,36 @@ import { SLEEPS } from './house-stay.ts';
 const PART_SLEEPS = new Map(RIVER_UNIT_DETAIL.map((unit) => [unit.id as string, unit.sleeps]));
 
 test('the part capacities are pinned, so a change has to be deliberate', () => {
-  // These come from the Airbnb drafts. If one changes, this test is the place to record why.
+  /*
+   * From the owner's correction on 2026-11-10: the Main Lodge sleeps 10, not 13. The first spec had an expandable king and
+   * a triple twin bunk that are not in the house — four king beds (three king bedrooms plus the bunk-room king) and a bunk
+   * bed in the bunk room, in four bedrooms and three baths. **Do not add a fifth bedroom.**
+   *
+   * With that, the parts sum to 22 — the same as the house — so the two figures finally agree instead of the parts
+   * promising one guest more than the house could hold.
+   */
   assert.equal(PART_SLEEPS.get('garage-suite'), 4);
   assert.equal(PART_SLEEPS.get('recreation-wing'), 8);
-  assert.equal(PART_SLEEPS.get('main-lodge'), 13);
+  assert.equal(PART_SLEEPS.get('main-lodge'), 10);
+});
+
+test('the parts now add up to exactly the house', () => {
+  /*
+   * This was the invariant behind three separate defects: the parts summed to 25 against a 24-guest house, so a party of 25
+   * could take the building as "three parts" while the same 25 was refused as a whole-house booking.
+   *
+   * The owner settled it at 22, so the sum is no longer larger than the house — it is equal. Equality is asserted rather
+   * than "at most", because a sum below the house would mean the parts cannot fill a house the owner says they fill.
+   */
+  const sum = RIVER_UNIT_DETAIL.reduce((total, unit) => total + unit.sleeps, 0);
+  assert.equal(sum, SLEEPS.river, `the parts sum to ${sum} but the house sleeps ${SLEEPS.river}`);
 });
 
 test('no combination of parts promises more than the house holds', () => {
   /*
-   * This is the invariant behind all three defects. The parts add up to more than the house, so the *sum* is not a
-   * capacity — the house is. `partsSleeps` returns the capped figure and this asserts it never exceeds SLEEPS.river.
+   * This is the invariant behind all three defects. The parts used to add up to more than the house, so the *sum* was not
+   * a capacity — the house was. They now sum to exactly the house, and `partsSleeps` still caps, so the guard holds either
+   * way.
    */
   const ids = RIVER_UNIT_DETAIL.map((unit) => unit.id);
   const combos: Array<Array<(typeof ids)[number]>> = [];
@@ -76,7 +96,7 @@ test('no source file hardcodes a part capacity of its own', () => {
       const patterns = [
         /\bgarage[- ]suite\b[^.\n]{0,24}\b4\b/i,
         /\brecreation[- ]wing\b[^.\n]{0,24}\b8\b/i,
-        /\bmain[- ]lodge\b[^.\n]{0,24}\b13\b/i,
+        /\bmain[- ]lodge\b[^.\n]{0,24}\b10\b/i,
       ];
       for (const pattern of patterns) {
         if (pattern.test(text)) offenders.push(`${rel} matches ${pattern}`);
@@ -89,16 +109,19 @@ test('no source file hardcodes a part capacity of its own', () => {
 
 test('the agent map names the right part capacities, since prose cannot read the table', () => {
   /*
-   * The site map is prose for bots, so it cannot import the table - but it can be checked against it. It listed
-   * "(sleeps 4, 1BR)", "(sleeps 8, 3BR)" and "(sleeps 13, 4BR)" as literals, which is exactly the drift this guard
-   * exists to catch, so it is verified here instead of being excused.
+   * The site map is prose for bots, so it cannot import the table - but it can be checked against it. It once listed the
+   * Main Lodge at 13 bedrooms and the Recreation Wing at 3, which is exactly the drift this guard exists to catch, so it is
+   * verified here instead of being excused.
+   *
+   * The prefix is enough: a map entry may add detail after the capacity (the Recreation Wing notes the loft counts as a
+   * bedroom), so requiring the exact closing paren would fail on a correct line.
    */
   const map = readFileSync(join(process.cwd(), 'functions', '_lib', 'agent', 'site-map.ts'), 'utf8');
   for (const unit of RIVER_UNIT_DETAIL) {
-    const line = `${unit.name} (sleeps ${unit.sleeps}, ${unit.bedrooms}BR)`;
+    const prefix = `${unit.name} (sleeps ${unit.sleeps}, ${unit.bedrooms}BR`;
     assert.ok(
-      map.includes(line),
-      `the agent map does not say "${line}", so a bot is told a capacity the table does not hold`,
+      map.includes(prefix),
+      `the agent map does not say "${prefix}...", so a bot is told a capacity the table does not hold`,
     );
   }
 });

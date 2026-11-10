@@ -10,6 +10,8 @@ import {
   type Reservation,
 } from '../lib/api';
 import { loadDateBlocks, type DateBlock } from '../lib/booked-nights';
+import { SLEEPS } from '../lib/house-stay';
+import { RIVER_UNIT_DETAIL } from '../lib/river-units';
 import { currentDayIso } from '../lib/months';
 import { RiverPartCalendar } from './RiverPartCalendar';
 import { OwnerDistributionPanel } from './OwnerDistribution';
@@ -91,7 +93,8 @@ export function PropertyDetail({
       </div>
         {tab === 'river' && (
           <p className="text-sm text-[var(--uml-muted)] max-w-2xl">
-            Provo Riverhouse · sleeps 24 · 7 king suites plus an expandable king · 7,000 sq ft · first stays November 1, 2026 · 50/50 Brandon &amp;
+            Provo Riverhouse · sleeps {SLEEPS.river} · three parts:{' '}
+            {RIVER_UNIT_DETAIL.map((unit) => `${unit.name.replace(/^River /, '')} ${unit.sleeps}`).join(', ')} · first stays November 1, 2026 · 50/50 Brandon &amp;
             Stephanie and Todd, after a 20% management fee. Build bills live on the Build costs chip.
           </p>
         )}

@@ -20,7 +20,7 @@ test('each public house page uses the published guide and leaves prices and door
     assert.equal(house.quoteHref, `/book/?house=${house.id}`);
   }
   const cards = houseCardFacts('river').join('\n');
-  assert.match(cards, /Sleeps 24/);
+  assert.match(cards, /Sleeps 22/);
   assert.match(cards, /Check-in 4:00 PM · Check-out 11:00 AM/);
   assert.match(cards, /Architectural rendering/);
   assert.equal(cards.includes('$'), false);
@@ -37,7 +37,7 @@ test('each public house page uses the published guide and leaves prices and door
   assert.match(companionStayNote(), /other house/);
   assert.equal(/\bis open\b/.test(companionStayNote()), false);
   const river = publicHouse('river');
-  assert.match(JSON.stringify(river.schema.containsPlace), /Seven king suites/);
+  assert.match(JSON.stringify(river.schema.containsPlace), /eight king suites/);
   assert.equal(JSON.stringify(publicHouse('lindon').schema.containsPlace).includes('Bedrooms'), false);
   assert.match(river.photo.caption, /rendering/);
   assert.match(river.opening ?? '', /November 1, 2026/);
@@ -123,7 +123,7 @@ test('each public house page uses the published guide and leaves prices and door
     asOf: '2026-10-31',
     taken: { river: [], ranch: [], lindon: [] },
   }, { guests: 50 });
-  assert.match(over.label, /together sleep 44/);
+  assert.match(over.label, /together sleep 42/);
   assert.equal(over.quoted, false);
   assert.match(over.href, /guests=50/);
   assert.equal(over.label.includes('$'), false);
@@ -142,7 +142,7 @@ test('the public tab uses the house name and does not quote a price', () => {
   assert.equal(/\bopen\b/.test(index.description), false);
   const river = publicShare('river');
   assert.match(river.title, /River House/);
-  assert.match(river.description, /Sleeps 24/);
+  assert.match(river.description, /Sleeps 22/);
   assert.match(river.url, /\/houses\/river$/);
   assert.equal(river.description.includes('$'), false);
   assert.equal(/door\s*code|wi-?fi|password|\b801\b/i.test(`${river.title} ${river.description}`), false);

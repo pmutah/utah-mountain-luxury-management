@@ -114,7 +114,7 @@ test('a request the quote would refuse is not saved', () => {
     asOf,
     guests: 50,
   });
-  assert.match(tooMany ?? '', /together sleep 44/);
+  assert.match(tooMany ?? '', /together sleep 42/);
   assert.equal((tooMany ?? '').includes('$'), false);
   const onlyChildren = bookingRequestHold({
     propertyId: 'river',

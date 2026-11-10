@@ -1,9 +1,16 @@
 import type { HouseId } from './market/types';
+import { SLEEPS } from './house-stay';
+import { RIVER_UNIT_DETAIL } from './river-units';
 import { addonMenuLine } from './upsells';
 
-/** Titles from the pricing playbook. Our booking page uses these. Airbnb and VRBO do not. */
+/**
+ * Titles from the pricing playbook. Our booking page uses these. Airbnb and VRBO do not.
+ *
+ * The River entry is built from `SLEEPS` and the unit table rather than written out, because it once carried two wrong facts
+ * in the one line a guest reads first — a stale sleep count and the wrong number of king suites.
+ */
 export const LISTING_TITLE: Record<HouseId, string> = {
-  river: 'Sleeps 24 · On the Provo River · 7 King Suites',
+  river: `Sleeps ${SLEEPS.river} · On the Provo River · ${RIVER_UNIT_DETAIL.reduce((sum, unit) => sum + unit.bedrooms, 0)} Bedrooms`,
   ranch: 'Sleeps 20 · Hot Tub · Lindon',
   lindon: 'Sleeps 12 · Family Home near BYU',
 };

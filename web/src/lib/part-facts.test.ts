@@ -5,7 +5,7 @@ import { partFacts, partPromptLines } from './part-facts.ts';
 import type { RiverDayInput } from './river-calendar.ts';
 
 /*
- * The co-host was told the River House "sleeps 24" and nothing else, so it described a house that can only be rented
+ * The co-host was told the River House "sleeps 22" and nothing else, so it described a house that can only be rented
  * whole. Two failures follow from that, and both are the kind a host acts on:
  *
  *   - asked "can I still sell Saturday?" it would say no whenever any part was taken, which is the rule inverted;
@@ -33,7 +33,7 @@ test('the parts line names every part with its capacity', () => {
   const facts = partFacts(priced(), [], '2026-12-01');
   assert.match(facts.partsLine, /Garage Suite 4/);
   assert.match(facts.partsLine, /Recreation Wing 8/);
-  assert.match(facts.partsLine, /Main Lodge 13/);
+  assert.match(facts.partsLine, /Main Lodge 10/);
 });
 
 test('the parts line says a night is sold once and that a part blocks the house', () => {
@@ -42,10 +42,15 @@ test('the parts line says a night is sold once and that a part blocks the house'
   assert.match(facts.partsLine, /blocks the whole house/);
 });
 
-test('the parts line states the capacity gap rather than smoothing it over', () => {
+test('the parts line says the parts and the house agree', () => {
+  /*
+   * This asserted that the line stated a *gap* — the parts summed to 25 against a 24-guest house. The owner settled it at 22
+   * on 2026-11-10 (the Main Lodge sleeps 10, not 13), so the two figures now agree and the line says so instead. The test
+   * still holds the important thing: the line names the sum it claims, rather than leaving a host to add up the parts.
+   */
   const facts = partFacts(priced(), [], '2026-12-01');
-  assert.match(facts.partsLine, /sum to 25/);
-  assert.match(facts.partsLine, /sleeps 24/);
+  assert.match(facts.partsLine, /sum to 22/, 'the parts line does not name the sum');
+  assert.match(facts.partsLine, /the same as the house/, 'the parts line does not say the parts and the house agree');
 });
 
 test('with no part priced the prompt forbids quoting a part', () => {

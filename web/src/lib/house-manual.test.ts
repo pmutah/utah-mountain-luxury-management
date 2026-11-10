@@ -45,7 +45,7 @@ test('the house guide search stays on published lines', () => {
   assert.equal(/allowed|no pets|\$/i.test(dog ?? ''), false);
   const many = manualGapLine('Can 30 guests stay?', 'ranch');
   assert.match(many ?? '', /The Ranch House sleeps 20/);
-  assert.match(many ?? '', /together sleep 44/);
+  assert.match(many ?? '', /together sleep 42/);
   assert.match(many ?? '', /Nothing is sent/);
   assert.equal((many ?? '').includes('The Lindon House'), false);
   assert.equal((many ?? '').includes('$'), false);
@@ -441,13 +441,17 @@ test('the quote guide names this stay’s check-in and checkout', () => {
 test('a bedroom count, the airport, and the quiet-hours schedule stay on the published line', () => {
   const riverBeds = stayGuideLookup('How many bedrooms?', 'river', { checkIn: '2026-12-01', checkOut: '2026-12-04' });
   assert.equal(riverBeds.kind, 'hits');
-  assert.match(riverBeds.hits.map((hit) => hit.text).join(' '), /Seven king suites/);
+  assert.match(riverBeds.hits.map((hit) => hit.text).join(' '), /eight king suites/);
   const ranchBeds = stayGuideLookup('How many bedrooms?', 'ranch');
   assert.match(ranchBeds.hits.map((hit) => hit.text).join(' '), /does not list a bedroom count for The Ranch House/);
   assert.equal(ranchBeds.hits.map((hit) => hit.text).join(' ').includes('$'), false);
   const king = stayGuideLookup('Is there a king bed?', 'river');
   assert.equal(king.kind, 'hits');
-  assert.match(king.hits.map((hit) => hit.text).join(' '), /expandable king/);
+  /*
+   * The house line names the loft, not the bunk room: the owner's own count is "nine bedrooms — eight king suites plus the
+   * loft". It replaced "Seven king suites … expandable king", which described a layout that is not in the house.
+   */
+  assert.match(king.hits.map((hit) => hit.text).join(' '), /eight king suites/);
 
   const ranchAir = stayGuideLookup('How far is the airport?', 'ranch');
   assert.match(ranchAir.hits.map((hit) => hit.text).join(' '), /45 minutes south of the Salt Lake airport/);
@@ -491,7 +495,7 @@ test('a party, a sleep count, septic, and a first stay stay on the published lin
   const ranchSleep = stayGuideLookup('How many people can sleep here?', 'ranch');
   assert.match(ranchSleep.hits.map((hit) => hit.text).join(' '), /The Ranch House sleeps 20/);
   const riverSleep = stayGuideLookup('How many people can sleep here?', 'river');
-  assert.match(riverSleep.hits.map((hit) => hit.text).join(' '), /The River House sleeps 24/);
+  assert.match(riverSleep.hits.map((hit) => hit.text).join(' '), /The River House sleeps 22/);
   const park = stayGuideLookup('Where should we park?', 'ranch');
   assert.equal(park.hits.length > 0 && park.hits.every((hit) => hit.title === 'Parking'), true);
   const theseNights = stayGuideLookup('Where should we park these nights?', 'ranch', { checkIn: '2026-12-01', checkOut: '2026-12-04' });

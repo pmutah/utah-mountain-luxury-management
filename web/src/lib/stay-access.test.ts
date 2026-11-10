@@ -55,7 +55,7 @@ function seed(store: Store, checkIn: string, checkOut: string) {
         wifiName: 'Riverhouse',
         wifiPassword: 'fixture-wifi-secret-not-real',
         doorNotes: 'Lockbox on the left post.',
-        headline: 'Sleeps 24 on the Provo River',
+        headline: 'Sleeps 22 on the Provo River',
       },
     }),
   );

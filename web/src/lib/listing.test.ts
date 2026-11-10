@@ -3,8 +3,13 @@ import test from 'node:test';
 import { LISTING_TITLE, listingOpenLine, listingOpportunities } from './listing.ts';
 
 test('the booking titles name the sleep count and the best feature', () => {
-  assert.match(LISTING_TITLE.river, /Sleeps 24/);
-  assert.match(LISTING_TITLE.river, /7 King Suites/);
+  assert.match(LISTING_TITLE.river, /Sleeps 22/);
+  /*
+   * The title used to claim "7 King Suites" and is now built from the unit table, which reports nine bedrooms — the eight
+   * king suites plus the loft, per the owner's count on 2026-11-10.
+   */
+  assert.match(LISTING_TITLE.river, /9 Bedrooms/, 'the River title does not name the bedroom count');
+  assert.doesNotMatch(LISTING_TITLE.river, /King Suites/, 'the River title still claims a suite count, which is what drifted');
   assert.match(LISTING_TITLE.ranch, /Hot Tub/);
   assert.match(LISTING_TITLE.lindon, /near BYU/);
 });

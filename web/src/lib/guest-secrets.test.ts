@@ -46,7 +46,7 @@ function seed(store: Store, over: Record<string, unknown> = {}) {
         doorCode: '4821',
         wifiName: 'Riverhouse',
         wifiPassword: 'fixture-wifi-secret-not-real',
-        headline: 'Sleeps 24 on the Provo River',
+        headline: 'Sleeps 22 on the Provo River',
       },
     }),
   );

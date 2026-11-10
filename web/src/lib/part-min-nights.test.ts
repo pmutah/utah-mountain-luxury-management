@@ -84,7 +84,7 @@ test('the house capacity on the whole-house answer is read, not repeated', () =>
   // It was a literal 24 here, the same duplication that has drifted twice elsewhere in this session.
   const allowed = check('2026-11-17', '2026-11-19', [], 10);
   assert.equal(allowed.ok, true);
-  if (allowed.ok) assert.equal(allowed.sleeps, 24);
+  if (allowed.ok) assert.equal(allowed.sleeps, 22);
   const source = readFileSync(new URL('./river-unit-request.ts', import.meta.url), 'utf8');
   assert.equal(/sleeps: 24,/.test(source), false, 'a literal 24 is back in the gate');
 });

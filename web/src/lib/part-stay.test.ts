@@ -12,7 +12,7 @@ import {
 
 /*
  * A guest who booked the Garage Suite is in a house other people may also be in. The portal said nothing about that, so
- * the guest read a whole-house guide: sleeps 24, the run of the building. That is the defect these tests hold shut.
+ * the guest read a whole-house guide: sleeps 22, the run of the building. That is the defect these tests hold shut.
  *
  * The copy also has a privacy job: it must explain that other guests may be here without ever naming them or hinting who
  * they are.
@@ -22,7 +22,7 @@ test('a stay with no units is the whole house, which is every stay recorded befo
   const stay = partStayFrom(undefined);
   assert.equal(stay.wholeHouse, true);
   assert.deepEqual(stay.units, []);
-  assert.equal(stay.sleeps, 24);
+  assert.equal(stay.sleeps, 22);
   // Nothing to explain to a whole-house guest, so no line appears.
   assert.equal(partStayLine(stay), null);
   assert.equal(partStayCapacityLine(stay), null);
@@ -49,7 +49,7 @@ test('two parts describe both and only the third as elsewhere', () => {
   const stay = partStayFrom(['main-lodge', 'garage-suite']);
   // Canonical order, so the same stay always reads the same way.
   assert.deepEqual(stay.units, ['garage-suite', 'main-lodge']);
-  assert.equal(stay.sleeps, 17);
+  assert.equal(stay.sleeps, 14);
   const line = partStayLine(stay) ?? '';
   assert.match(line, /Garage Suite and Main Lodge/);
   assert.match(line, /Recreation Wing/);
@@ -128,7 +128,7 @@ test('the entrance line names the part without naming another guest', () => {
 
 /** The notes the River guide really publishes, so this test breaks if the guide changes shape. */
 const RIVER_NOTES = [
-  { title: 'Bedrooms', body: 'Seven king suites, each in its own room, plus an expandable king.' },
+  { title: 'Bedrooms', body: 'eight king suites, each in its own room, plus an expandable king.' },
   { title: 'Septic', body: 'The house is on septic. Only toilet paper goes in the toilets.' },
 ];
 
@@ -136,7 +136,7 @@ test('a part guest is not told about bedrooms they did not rent', () => {
   const notes = partHouseNotes(partStayFrom(['garage-suite']), RIVER_NOTES);
   const bedrooms = notes.find((note) => note.title === 'Bedrooms');
   assert.ok(bedrooms);
-  assert.equal(/seven king suites/i.test(bedrooms.body), false, 'a part guest was told about seven suites');
+  assert.equal(/eight king suites/i.test(bedrooms.body), false, 'a part guest was told about seven suites');
   assert.match(bedrooms.body, /Garage Suite: 1 bedroom and 2 beds, sleeping 4/);
   assert.match(bedrooms.body, /rest of the house is not part of this stay/);
 });
@@ -156,8 +156,9 @@ test('two parts get one capacity line each, added up', () => {
   const notes = partHouseNotes(partStayFrom(['garage-suite', 'main-lodge']), RIVER_NOTES);
   const bedrooms = notes.find((note) => note.title === 'Bedrooms')?.body ?? '';
   assert.match(bedrooms, /1 bedroom and 2 beds/);
-  assert.match(bedrooms, /4 bedrooms and 8 beds/);
-  assert.match(bedrooms, /sleeping 17/);
+  // Main Lodge: 4 bedrooms, 5 beds (four kings plus a bunk in the bunk room).
+  assert.match(bedrooms, /4 bedrooms and 5 beds/);
+  assert.match(bedrooms, /sleeping 14/);
 });
 
 test('rewriting never names another guest', () => {

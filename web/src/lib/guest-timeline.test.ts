@@ -25,7 +25,7 @@ test('each house has the full preview and no code, price, or discount', () => {
     assert.match(text, /4:00 PM/);
     assert.match(text, /11:00 AM/);
   }
-  assert.match(guestTimeline('river').find((message) => message.id === 'return')?.body ?? '', /7 King Suites/);
+  assert.match(guestTimeline('river').find((message) => message.id === 'return')?.body ?? '', /9 Bedrooms/);
   assert.match(guestTimeline('ranch').find((message) => message.id === 'return')?.body ?? '', /Hot Tub/);
   assert.match(guestTimeline('lindon').find((message) => message.id === 'return')?.body ?? '', /near BYU/);
   const river = guestTimeline('river').map((message) => message.body).join(' ');

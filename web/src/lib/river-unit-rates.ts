@@ -29,6 +29,27 @@ export function blankUnitRates(): RiverUnitRates {
   ) as RiverUnitRates;
 }
 
+/**
+ * The owner's published part prices, as given on 2026-11-10.
+ *
+ * These are the fallback when the store has nothing, so the three parts are sellable at exactly the figures the owner set
+ * rather than sitting unset forever waiting for someone to type them in. A stored rate always wins: once the host saves a
+ * price in the panel, that is what the app uses and this table is not consulted.
+ *
+ * Flat nightly for every occupancy, as instructed — no weekend uplift, no seasonal table, no extra-guest fee, no
+ * smaller-group discount, no weekly or non-refundable discount, and no new-listing promo. Two-night minimum on each. The
+ * whole-house season table and its $1,500 host-net floor apply **only** to the whole house; they must not be painted onto
+ * the units.
+ *
+ * The nightlies add up to $1,545, which sits next to the whole-house weekday and below its weekend, so taking all three
+ * parts is not a discount against the house. The three cleaning fees add up to the whole-house $600.
+ */
+export const PUBLISHED_UNIT_RATES: RiverUnitRates = {
+  'garage-suite': { nightly: 265, cleaning: 120, minNights: 2 },
+  'recreation-wing': { nightly: 535, cleaning: 180, minNights: 2 },
+  'main-lodge': { nightly: 745, cleaning: 300, minNights: 2 },
+};
+
 function whole(value: unknown, min: number, max: number): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   const rounded = Math.round(value);

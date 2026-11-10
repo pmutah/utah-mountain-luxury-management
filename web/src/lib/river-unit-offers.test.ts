@@ -119,7 +119,7 @@ test('two free parts are described in the plural', () => {
   const offers = unitStayOffers(
     [
       unit({ id: 'garage-suite', name: 'River Garage Suite' }),
-      unit({ id: 'main-lodge', name: 'River Main Lodge', sleeps: 13 }),
+      unit({ id: 'main-lodge', name: 'River Main Lodge', sleeps: 10 }),
     ],
     '2026-12-10',
     '2026-12-12',
@@ -161,31 +161,33 @@ test('two parts together add up to one figure and one capacity', () => {
   const offers = unitStayOffers(
     [
       unit({ id: 'garage-suite', name: 'River Garage Suite', sleeps: 4 }),
-      unit({ id: 'main-lodge', name: 'River Main Lodge', sleeps: 13 }),
+      unit({ id: 'main-lodge', name: 'River Main Lodge', sleeps: 10 }),
     ],
     '2026-12-10',
     '2026-12-12',
   );
   assert.equal(unitsTogetherTotal(offers), 790 + 790);
-  assert.equal(unitsTogetherSleeps(offers), 17);
+  // Garage Suite 4 + Main Lodge 10. It was 17 when the Main Lodge was listed at 13; the owner corrected it to 10.
+  assert.equal(unitsTogetherSleeps(offers), 14);
 });
 
 test('the capacity the card prints is the capacity the form accepts', () => {
   /*
-   * The card printed "Sleeps 25" for all three parts - their raw sum - while the form refused a party of 25, because
-   * every part is the whole house and the house sleeps 24. Two numbers for one fact, on the same screen.
+   * The card printed the parts' raw sum while the form capped at the house, so two numbers described one fact on the same
+   * screen. Before 2026-11-10 they genuinely disagreed (the parts summed to 25, the house slept 24); the owner corrected the
+   * Main Lodge to 10, so both now say 22 and the card and the form agree by construction.
    */
   const all = unitStayOffers(
     [
       unit({ id: 'garage-suite', name: 'River Garage Suite', sleeps: 4 }),
       unit({ id: 'recreation-wing', name: 'River Recreation Wing', sleeps: 8 }),
-      unit({ id: 'main-lodge', name: 'River Main Lodge', sleeps: 13 }),
+      unit({ id: 'main-lodge', name: 'River Main Lodge', sleeps: 10 }),
     ],
     '2026-12-10',
     '2026-12-12',
   );
   const shown = unitsTogetherSleeps(all);
-  assert.equal(shown, 24, 'the card prints a capacity the house does not have');
+  assert.equal(shown, 22, 'the card prints a capacity the house does not have');
   // And the page check agrees with what it prints.
   assert.equal(partyFitsParts(['garage-suite', 'recreation-wing', 'main-lodge'], shown)?.ok, true);
   assert.equal(partyFitsParts(['garage-suite', 'recreation-wing', 'main-lodge'], shown + 1)?.ok, false);

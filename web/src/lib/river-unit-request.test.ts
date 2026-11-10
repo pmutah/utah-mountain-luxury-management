@@ -106,7 +106,7 @@ test('two parts together are one reservation and leave the third sellable', () =
   assert.equal(check.spans.length, 1, 'two parts became two reservations');
   assert.deepEqual(check.spans[0]?.units, ['garage-suite', 'main-lodge']);
   assert.equal(check.spans[0]?.wholeHouse, false);
-  assert.equal(check.sleeps, 17, 'the combined capacity is wrong');
+  assert.equal(check.sleeps, 14, 'the combined capacity is wrong');
 
   // Those nights now block the house and both parts, and leave the Recreation Wing free.
   const spans: UnitSpan[] = check.spans.map((s) => ({ ...span({}), units: s.units, wholeHouse: s.wholeHouse }));

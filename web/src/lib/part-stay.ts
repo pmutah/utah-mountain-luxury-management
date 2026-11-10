@@ -1,3 +1,4 @@
+import { SLEEPS } from './house-stay';
 import { RIVER_UNIT_DETAIL, RIVER_UNITS, type RiverUnitId } from './river-units';
 
 /**
@@ -32,7 +33,12 @@ export function partStayFrom(units: readonly string[] | undefined): PartStay {
   const listed = (units ?? []).filter((unit): unit is RiverUnitId => (RIVER_UNITS as readonly string[]).includes(unit));
   const ordered = RIVER_UNIT_DETAIL.filter((detail) => listed.includes(detail.id));
   if (ordered.length === 0) {
-    return { units: [], sleeps: 24, names: [], wholeHouse: true };
+    /*
+     * The whole house, and its capacity comes from `SLEEPS` — not a literal. A hardcoded 24 sat here after the house was
+     * settled at 22, so every whole-house stay carried a capacity no other surface used, and the sleeps-truth guard could
+     * not see it because it looked for the number in prose.
+     */
+    return { units: [], sleeps: SLEEPS.river, names: [], wholeHouse: true };
   }
   return {
     units: ordered.map((detail) => detail.id),
@@ -135,10 +141,13 @@ export function partHouseNotes<T extends { title: string; body: string }>(
   if (stay.wholeHouse) return [...notes];
   return notes.map((note) => {
     /*
-     * A note is only rewritten when it actually counts the house — "seven king suites", "sleeps 24", or "the whole
-     * house". A note that merely says "the house is on septic" is true of a part and must not be touched.
+     * A note is only rewritten when it actually counts the house — "seven king suites", a whole-house sleep count, or "the
+     * whole house". A note that merely says "the house is on septic" is true of a part and must not be touched.
+     *
+     * The pattern accepts 22, 24, and 25 because notes written under each of the three capacities are still in the store, and
+     * every one of them makes a whole-house claim that must be replaced for a part guest.
      */
-    const claimsWholeHouse = /\bseven king suites\b|\bsleeps 24\b|\bwhole house\b|\bexpandable king\b/i.test(`${note.title} ${note.body}`);
+    const claimsWholeHouse = /\bseven king suites\b|\bsleeps 2[245]\b|\bwhole house\b|\bexpandable king\b/i.test(`${note.title} ${note.body}`);
     if (!claimsWholeHouse) return note;
     const label = listNames(stay.names);
     const parts = RIVER_UNIT_DETAIL.filter((detail) => stay.units.includes(detail.id));

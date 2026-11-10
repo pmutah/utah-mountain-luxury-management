@@ -44,7 +44,7 @@ test('the house guide desk answers from the published guide', () => {
   assert.equal(lindonLeave.toLowerCase().includes('hot tub'), false);
 
   const scoped = guideDeskAnswer('How many people can stay?', '2026-10-30', 'river');
-  assert.match(scoped, /The River House sleeps 24/);
+  assert.match(scoped, /The River House sleeps 22/);
   assert.equal(scoped.includes('Ranch'), false);
   assert.equal(scoped.includes('Lindon'), false);
   const named = guideDeskAnswer('Does the Ranch House have a hot tub?', '2026-10-30', 'river');
@@ -79,7 +79,7 @@ test('the house guide desk answers from the published guide', () => {
   assert.match(riverAgreement, /the river/);
   assert.match(riverAgreement, /does not sign it/);
   const sleeps = guideDeskAnswer('How many people can stay?');
-  assert.match(sleeps, /The River House sleeps 24/);
+  assert.match(sleeps, /The River House sleeps 22/);
   assert.match(sleeps, /The Ranch House sleeps 20/);
   assert.match(sleeps, /The Lindon House sleeps 12/);
   const before = guideDeskAnswer('What should we do before arrival at the River House?');
@@ -92,8 +92,8 @@ test('the house guide desk answers from the published guide', () => {
   const many = guideDeskAnswer('Can 30 guests stay at the Ranch House?');
   assert.match(many, /The Ranch House sleeps 20/);
   assert.match(many, /larger than that house/);
-  assert.match(many, /together sleep 44/);
-  assert.match(many, /24 stay at the River House and 6 stay at the Ranch House/);
+  assert.match(many, /together sleep 42/);
+  assert.match(many, /22 stay at the River House and 8 stay at the Ranch House/);
   assert.match(many, /Each house keeps an adult/);
   assert.equal(many.includes('The Lindon House'), false);
   assert.equal(many.includes('$'), false);
@@ -124,7 +124,7 @@ test('the house guide desk answers from the published guide', () => {
   const beds = guideDeskAnswer('How many king suites at the Ranch House?');
   assert.match(beds, /does not list a bedroom count for The Ranch House/);
   const riverBeds = guideDeskAnswer('king suites at the river');
-  assert.match(riverBeds, /Seven king suites/);
+  assert.match(riverBeds, /eight king suites/);
   const hours = guideDeskAnswer('How long is a same-day turn?');
   assert.match(hours, /5 hours, from 11:00 AM to 4:00 PM/);
   assert.match(hours, /makes it 2 hours/);
@@ -176,7 +176,7 @@ test('the house guide desk answers from the published guide', () => {
     undefined,
     { river: ['river-8'] },
   );
-  assert.match(hiddenComps, /6 of 10 sample comps sleep close/);
+  assert.match(hiddenComps, /8 of 10 sample comps sleep close/);
   assert.equal(hiddenComps.includes('$'), false);
   assert.equal(/\bthe house is open\b/i.test(comps), false);
   const guestComps = guideDeskAnswer('How many fair sample comps sit within 10 miles?', '2026-10-30', undefined, false);
@@ -626,7 +626,7 @@ test('an early arrival question names the request and does not send', () => {
     false,
     { guests: 30 },
   );
-  assert.match(bothDates ?? '', /24 stay at the River House and 6 stay at the Ranch House/);
+  assert.match(bothDates ?? '', /22 stay at the River House and 8 stay at the Ranch House/);
   assert.equal((bothDates ?? '').includes('$'), false);
   const desk = guideDeskAnswer('Can we arrive early?', '2026-10-31', 'ranch');
   assert.match(desk, /night before has to be clear/);
@@ -710,7 +710,7 @@ test('these dates use the stay on the page', () => {
     { taken: { river: [], ranch: [], lindon: [] }, closed: {} },
     { checkIn: '2026-12-01', checkOut: '2026-12-04', guests: 30 },
   );
-  assert.match(both, /24 stay at the River House and 6 stay at the Ranch House/);
+  assert.match(both, /22 stay at the River House and 8 stay at the Ranch House/);
   assert.equal(both.includes('The River House: These dates can be quoted'), false);
   assert.equal(both.includes('$'), false);
   const one = guideDeskAnswer(

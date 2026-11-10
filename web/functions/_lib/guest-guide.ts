@@ -127,7 +127,7 @@ function defaults(id: GuideHouseId): HouseGuide {
   if (id === 'river') {
     return {
       ...shared,
-      headline: 'Sleeps 24 on the Provo River',
+      headline: 'Sleeps 22 on the Provo River',
       address: PROPERTIES.river.address,
       parking: 'Park in the driveway and garage. Keep the canyon road clear for plows in winter.',
       arrival: 'Drive up Provo Canyon to Vivian Park. Stock up on groceries in Orem first. AWD or 4WD in winter.',

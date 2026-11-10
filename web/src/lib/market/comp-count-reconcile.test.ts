@@ -34,11 +34,11 @@ const nights = ['2026-12-01', '2026-12-02'];
 
 test('a comp too small for the house is listed and marked as not setting the band', () => {
   /*
-   * Carpe Montem sleeps 14 against the River House's 24. The rule needs 60% (14.4), so it misses by one guest
-   * and is correctly left out of the band — but it was also invisible in the count, which is what made the two
-   * panels disagree.
+   * The rule needs a comp to sleep 60% of the house. At 22 guests that is 13.2, so a 14-sleeper now **qualifies** — it did
+   * not when the house was published at 24 (needing 14.4). The fixture uses a 12-sleeper so the exclusion is still tested;
+   * the point is the rule, not one comp's size.
    */
-  const rows = liveCardRows([comp({ id: 'big', sleeps: 20 }), comp({ id: 'small', sleeps: 14 })], [], nights, 'river');
+  const rows = liveCardRows([comp({ id: 'big', sleeps: 20 }), comp({ id: 'small', sleeps: 12 })], [], nights, 'river');
   assert.equal(rows.length, 2, 'both comps should be listed');
   const small = rows.find((row) => row.comp.id === 'small')!;
   assert.equal(small.setsBand, false, 'a comp below the 60% rule must not claim to set the band');

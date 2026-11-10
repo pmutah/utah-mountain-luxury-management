@@ -7,11 +7,12 @@ import type { HouseId } from './market/types';
  * How many a house sleeps. This is the number we tell a guest and check a party against, so it has to
  * match the published listing on every channel.
  *
- * The River House was 25 here while the Airbnb listing says "sleeps 24" in two places. That is the
- * kind of gap a guest finds at booking: the page sells a party of 25, the channel caps at 24, and the
- * two disagree on the same night. The listing is the contract, so this follows it.
+ * The River House has moved twice here: 25 while the Airbnb listing said twenty-four, then 24, and the owner settled it at
+ * **22** on 2026-11-10 (an earlier spec counted an expandable king and a triple twin bunk that are not in the house). The
+ * three parts now sum to 22 as well. Each change is recorded in `sleeps-truth.test.ts`, which pins the number and fails on a
+ * second copy of it anywhere in the source — that is how the gaps between surfaces were caught.
  */
-export const SLEEPS: Record<HouseId, number> = { river: 24, ranch: 20, lindon: 12 };
+export const SLEEPS: Record<HouseId, number> = { river: 22, ranch: 20, lindon: 12 };
 
 /** The Ranch and the River booked together. Derived, so it cannot drift from the two numbers above. */
 export const SLEEPS_TOGETHER = SLEEPS.river + SLEEPS.ranch;
@@ -241,7 +242,16 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>
   river: {
     checkIn: '4:00 PM',
     checkOut: '11:00 AM',
-    bedrooms: 'Seven king suites, each in its own room, plus an expandable king.',
+    /*
+     * The owner's own count, 2026-11-10 — recorded as totals only, because the per-part capacities belong in
+     * `river-units.ts` and a second copy here is how they drifted before.
+     *   bedrooms  — 4 in the Main Lodge + 3 in the Recreation Wing + 1 in the Garage Suite + the loft, which counts = 9
+     *   baths     — 3 + 3 + 1 = 7 full baths
+     *   sleeps    — the three parts add up to the house's own capacity
+     *   king beds — eight king suites, plus the Main Lodge bunk room's bunk bed, the Recreation Wing loft's two singles,
+     *               and the Garage Suite's expandable king.
+     */
+    bedrooms: 'Nine bedrooms — eight king suites plus the loft — and seven full baths.',
     arrival: 'Drive up Provo Canyon to Vivian Park. Stock up on groceries in Orem first. AWD or 4WD in winter.',
     parking: 'Park in the driveway and garage. Keep the canyon road clear for plows in winter.',
     notes: [

@@ -1,4 +1,5 @@
 import { listSharedWork } from '../agent-work';
+import { SLEEPS } from '../../../src/lib/house-stay';
 import { PRICING_DOCTRINE, grossGoalSnapshot } from '../pricing-doctrine';
 import { PROPERTIES, calculateMetrics } from '../data';
 import { mergeAllExpenses } from '../expenses';
@@ -128,9 +129,10 @@ export async function buildAgentContext(
   /*
    * The Riverhouse parts.
    *
-   * The prompt said "sleeps 24" and nothing else, so the co-host described a house that can only be rented whole. Asked
-   * "can I still sell Saturday?" it answered from the house calendar — which is taken the moment any part is sold — so
-   * it said no while two parts were still for sale. A price sheet that cannot be read is carried as unknown, never as
+  * The prompt carried only the house capacity and nothing else, so the co-host described a house that can only be rented
+  * whole. Asked "can I still sell Saturday?" it answered from the house calendar — which is taken the moment any part is
+  * sold — so it said no while two parts were still for sale. A price sheet that cannot be read is carried as unknown,
+  * never as
    * "nothing is priced".
    */
   let partLines: string[] = [];
@@ -169,7 +171,7 @@ export async function buildAgentContext(
     `Properties:`,
     `- Ranch House (ranch): ${ranchAddr}`,
     `- Lindon House (lindon): ${lindonAddr}`,
-    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps 24 as one house and is also sold in three parts, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee. **The River House opened on November 1 2026, so any total before that date is zero because the house was not open — never because it earned nothing.** Say which it is.`,
+    `- River House (river): ${riverAddr} — Provo Riverhouse, sleeps ${SLEEPS.river} as one house and is also sold in three parts, on the Provo River, $1,500 host-net floor with premium seasons, first stays November 1 2026; 50/50 Brandon & Stephanie and Todd, Brandon 20% management fee. **The River House opened on November 1 2026, so any total before that date is zero because the house was not open — never because it earned nothing.** Say which it is.`,
     ...partLines,
     `Occupancy: Ranch — ${occupancy.ranch}; Lindon — ${occupancy.lindon}; River — ${occupancy.river}`,
     approvedLine,

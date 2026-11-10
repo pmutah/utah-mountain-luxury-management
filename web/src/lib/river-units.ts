@@ -18,10 +18,12 @@ export const RIVER_UNITS = ['garage-suite', 'recreation-wing', 'main-lodge'] as 
 export type RiverUnitId = (typeof RIVER_UNITS)[number];
 
 /**
- * The three units, from the unpublished Airbnb drafts (verified 2026-11-08).
+ * The three units, from the unpublished Airbnb drafts (verified 2026-11-08), corrected by the owner 2026-11-10.
  *
- * Capacities sum to 25 while the whole house sleeps 24. That one-guest difference is real and is left alone here:
- * the per-unit numbers are as listed, and reconciling them is the host's call, not something to invent.
+ * Capacities sum to **22**, which is what the whole house sleeps — 4 + 8 + 10. The first spec had the Main Lodge at 13 and
+ * the house at 24, so the parts summed to 25 against a 24-guest house and a party of 25 could not book either way. The owner
+ * resolved it on Nov 10: the Main Lodge sleeps 10 (the expandable king and triple twin bunk are not in the house), so the
+ * two figures now agree and a 22-guest group can book whole or in parts.
  */
 export type RiverUnit = {
   id: RiverUnitId;
@@ -50,8 +52,12 @@ export const RIVER_UNIT_DETAIL: readonly RiverUnit[] = [
     id: 'recreation-wing',
     name: 'River Recreation Wing',
     size: 'medium',
+    /*
+     * Three king suites plus the loft, and the owner counts the loft as a bedroom — so four bedrooms, not three. The loft
+     * holds two single beds, which is where the other two of the eight come from.
+     */
     sleeps: 8,
-    bedrooms: 3,
+    bedrooms: 4,
     beds: 5,
     baths: 3,
     airbnbListingId: '1812281461584611574',
@@ -60,10 +66,18 @@ export const RIVER_UNIT_DETAIL: readonly RiverUnit[] = [
     id: 'main-lodge',
     name: 'River Main Lodge',
     size: 'large',
-    sleeps: 13,
+    /*
+     * Ten, from four king suites — and one of those rooms, the bunk room, also holds a bunk bed, which is where the other
+     * two of the ten come from. That is **five beds**: four kings plus one bunk. Three full baths. **Do not add a fifth
+     * bedroom.**
+     *
+     * The first spec had 13 with an expandable king and a triple twin bunk that are not in this part; the owner corrected it
+     * on 2026-11-10.
+     */
+    sleeps: 10,
     bedrooms: 4,
-    beds: 8,
-    baths: 4,
+    beds: 5,
+    baths: 3,
     airbnbListingId: '1812276294765596083',
   },
 ];

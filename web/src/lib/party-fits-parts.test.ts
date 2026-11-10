@@ -25,8 +25,8 @@ function priced(): RiverUnitRates {
 test('the capacities come from the published unit table, not a second copy', () => {
   assert.equal(partsSleeps(['garage-suite']), 4);
   assert.equal(partsSleeps(['recreation-wing']), 8);
-  assert.equal(partsSleeps(['main-lodge']), 13);
-  assert.equal(partsSleeps(['garage-suite', 'main-lodge']), 17);
+  assert.equal(partsSleeps(['main-lodge']), 10);
+  assert.equal(partsSleeps(['garage-suite', 'main-lodge']), 14);
   // Every part's real capacity, so a change to one table breaks this.
   for (const detail of RIVER_UNIT_DETAIL) assert.equal(partsSleeps([detail.id]), detail.sleeps);
 });
@@ -56,8 +56,9 @@ test('one guest over is described in the singular', () => {
 });
 
 test('two parts are judged together', () => {
-  assert.equal(partyFitsParts(['garage-suite', 'main-lodge'], 17)?.ok, true);
-  assert.equal(partyFitsParts(['garage-suite', 'main-lodge'], 18)?.ok, false);
+  // Garage Suite 4 + Main Lodge 10 = 14.
+  assert.equal(partyFitsParts(['garage-suite', 'main-lodge'], 14)?.ok, true);
+  assert.equal(partyFitsParts(['garage-suite', 'main-lodge'], 15)?.ok, false);
 });
 
 test('a party size not given yet is not a failure', () => {
@@ -117,26 +118,27 @@ test('the page and the booking route agree on every capacity boundary', () => {
 
 test('all three parts never sleep more than the house', () => {
   /*
-   * 4 + 8 + 13 = 25 against a 24-guest house. Booking every part *is* the whole house, so 25 could take the entire
-   * building as "three parts" while the same 25 is refused as a whole-house booking.
+   * This was the real gap: 4 + 8 + 13 = 25 against a 24-guest house, so 25 could take the building as "three parts" while
+   * the same 25 was refused as a whole-house booking. The owner settled it on 2026-11-10 — the Main Lodge sleeps 10 — so the
+   * parts now sum to 22, the same as the house, and the cap holds by construction rather than by the `Math.min`.
    */
   const all = ['garage-suite', 'recreation-wing', 'main-lodge'] as const;
-  assert.equal(partsSleeps([...all]), 24, 'all three parts sleep more than the house');
+  assert.equal(partsSleeps([...all]), 22, 'all three parts do not add up to the house');
 
   const rates = priced();
-  const at24 = unitRequestCheck([], rates, { units: [...all], checkIn: '2027-03-10', checkOut: '2027-03-12', guests: 24 });
-  assert.equal(at24.ok, true, '24 was refused for all three parts');
-  const at25 = unitRequestCheck([], rates, { units: [...all], checkIn: '2027-03-10', checkOut: '2027-03-12', guests: 25 });
-  assert.equal(at25.ok, false, '25 was allowed for all three parts');
-  if (!at25.ok) {
-    assert.equal(at25.code, 'over-capacity');
-    // It has to say why, since the parts' own numbers add up to 25.
-    assert.match(at25.reason, /whole house, which sleeps 24/);
+  const at22 = unitRequestCheck([], rates, { units: [...all], checkIn: '2027-03-10', checkOut: '2027-03-12', guests: 22 });
+  assert.equal(at22.ok, true, '22 was refused for all three parts');
+  const at23 = unitRequestCheck([], rates, { units: [...all], checkIn: '2027-03-10', checkOut: '2027-03-12', guests: 23 });
+  assert.equal(at23.ok, false, '23 was allowed for all three parts');
+  if (!at23.ok) {
+    assert.equal(at23.code, 'over-capacity');
+    // The message now names the parts and their true capacity, since they add up to the house.
+    assert.match(at23.reason, /sleeps 22, and this party is 23/);
   }
 });
 
 test('two parts still get their own sum, uncapped', () => {
   // Only the full set is the house. Two parts are their own rooms and keep their real capacity.
-  assert.equal(partsSleeps(['garage-suite', 'main-lodge']), 17);
+  assert.equal(partsSleeps(['garage-suite', 'main-lodge']), 14);
   assert.equal(partsSleeps(['recreation-wing']), 8);
 });

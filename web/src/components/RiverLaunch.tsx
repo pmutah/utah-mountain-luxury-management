@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, type ConstructionProject, type Reservation } from '../lib/api';
 import { RIVER_FIRST_STAY } from '../lib/brand';
 import { CONSTRUCTION_STAGES } from '../lib/construction-stages';
+import { SLEEPS } from '../lib/house-stay';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { launchBookingsNote, riverLaunchLine } from '../lib/launch-bookings';
 
@@ -86,7 +87,7 @@ export function RiverLaunch({
             {riverLaunchLine(days)}
           </p>
           <p className="text-sm mt-3 max-w-xl text-[#e7eee9]">
-            Sleeps 24. The opening moved from October 15. {photo?.caption}.
+            Sleeps {SLEEPS.river}. The opening moved from October 15. {photo?.caption}.
           </p>
         </div>
       </section>

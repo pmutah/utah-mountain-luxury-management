@@ -2,7 +2,7 @@ import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import { addDays } from '../../src/lib/market/dates';
 import { compsForHouse } from '../../src/lib/market/comp-house';
-import { toUnitRates, type RiverUnitRates } from '../../src/lib/river-unit-rates';
+import { PUBLISHED_UNIT_RATES, toUnitRates, type RiverUnitRates } from '../../src/lib/river-unit-rates';
 import { indexSnaps, liveCompFits, toLiveComp, toLiveSnaps, type LiveComp, type SnapIndex } from '../../src/lib/market/live';
 import {
   toApprovedRate,
@@ -51,7 +51,12 @@ export async function saveListingConfig(
 const KV_UNIT_RATES = 'riverUnitRates';
 
 export async function loadRiverUnitRates(env: SettingsEnv): Promise<RiverUnitRates> {
-  return toUnitRates(await kvGet<unknown>(env, KV_UNIT_RATES, null));
+  /*
+   * The owner's published prices when the store has nothing, so the parts are sellable out of the box. A stored rate always
+   * wins — `toUnitRates` reads whatever the host saved, and the fallback is only for a store that has never held one.
+   */
+  const stored = await kvGet<unknown>(env, KV_UNIT_RATES, null);
+  return toUnitRates(stored === null ? PUBLISHED_UNIT_RATES : stored);
 }
 
 export async function saveRiverUnitRates(env: SettingsEnv, rates: RiverUnitRates): Promise<RiverUnitRates> {

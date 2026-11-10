@@ -268,7 +268,7 @@ test('a hidden far sample changes how many comps set the band', () => {
     hiddenComps: { river: ['river-8'] },
   });
   const text = lines.map((line) => line.text).join('\n');
-  assert.match(text, /River: 6 of 10 sample comps sleep close to this house and sit within 10 miles/);
+  assert.match(text, /River: 8 of 10 sample comps sleep close to this house and sit within 10 miles/);
   assert.match(text, /The published ask stays/);
   assert.match(text, /Nothing is posted/);
   assert.equal(text.includes('$'), false);

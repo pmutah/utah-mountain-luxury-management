@@ -15,7 +15,7 @@ test('the house list says what each house is and does not say it is open', () =>
   assert.match(river, /Vivian Park, Provo Canyon, Utah 84604/);
   assert.match(ranch, /270 East Center Street, Lindon, Utah 84042/);
   assert.match(lindon, /143 Harcliff Circle, Lindon, Utah 84042/);
-  assert.match(river, /Seven king suites/);
+  assert.match(river, /eight king suites/);
   assert.match(river, /Provo River/);
   assert.match(river, /rendering/);
   assert.match(river, /Canyon grocery drop/);

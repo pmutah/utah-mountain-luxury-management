@@ -4,9 +4,9 @@ import { houseStay, keptGuideLine, mergeHouseCheckout, partyFits, partyNote, acc
 
 test('the booking page uses the published house and refuses a party that does not fit', () => {
   const river = houseStay('river');
-  assert.equal(river.sleeps, 24);
+  assert.equal(river.sleeps, 22);
   assert.equal(river.checkIn, '4:00 PM');
-  assert.match(river.bedrooms ?? '', /Seven king suites/);
+  assert.match(river.bedrooms ?? '', /eight king suites/);
   assert.match(river.emergency, /call 911 first/);
   assert.equal(river.checkout[0], 'Start the dishwasher.');
   assert.match(river.checkout.at(-1) ?? '', /Only toilet paper/);
@@ -91,10 +91,10 @@ test('the booking page uses the published house and refuses a party that does no
   assert.equal(/password|code\s*\d/i.test(hostEarlyPhrase(true)), false);
   assert.equal(hostEarlyPhrase(false), 'An early arrival is not open for this stay.');
 
-  assert.equal(partyFits('river', 24).ok, true);
-  assert.equal(partyFits('river', 25).ok, false, 'a party of 25 no longer fits the River House');
+  assert.equal(partyFits('river', 22).ok, true);
+  assert.equal(partyFits('river', 23).ok, false, 'a party of 23 no longer fits the River House');
   assert.equal(partyFits('river', 26).ok, false);
-  assert.match(partyFits('river', 26).reason ?? '', /sleeps 24/);
+  assert.match(partyFits('river', 26).reason ?? '', /sleeps 22/);
   assert.equal(partyFits('lindon', 0).ok, false);
   assert.equal(partyFits('ranch', 1.5).ok, false);
   assert.equal(partyFits('ranch', 4, 1).ok, true);

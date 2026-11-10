@@ -178,12 +178,16 @@ test('the two helpers agree with the full availability computation', () => {
   );
 });
 
-test('the unit facts are the ones verified from the Airbnb drafts', () => {
-  // Capacities sum to 25 against a house that sleeps 24. That difference is real and is left for the host.
-  assert.equal(RIVER_UNIT_DETAIL.reduce((sum, unit) => sum + unit.sleeps, 0), 25);
+test('the unit facts are the ones the owner confirmed', () => {
+  /*
+   * Corrected by the owner on 2026-11-10. The first spec had the Main Lodge at 13 with an expandable king and a triple twin
+   * bunk that are not in the house; it sleeps 10, in four bedrooms and three baths. So the parts sum to 22, which is what the
+   * whole house sleeps — the two figures agree now instead of the parts outnumbering the house by one.
+   */
+  assert.equal(RIVER_UNIT_DETAIL.reduce((sum, unit) => sum + unit.sleeps, 0), 22);
   assert.deepEqual(
-    RIVER_UNIT_DETAIL.map((unit) => `${unit.id}:${unit.sleeps}:${unit.bedrooms}`),
-    ['garage-suite:4:1', 'recreation-wing:8:3', 'main-lodge:13:4'],
+    RIVER_UNIT_DETAIL.map((unit) => `${unit.id}:${unit.sleeps}:${unit.bedrooms}:${unit.baths}`),
+    ['garage-suite:4:1:1', 'recreation-wing:8:4:3', 'main-lodge:10:4:3'],
   );
 });
 

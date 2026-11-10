@@ -71,10 +71,49 @@ function houseShares(
     payouts: first === 'river'
       ? { river: river.lodging, ranch: ranch.lodging }
       : { ranch: ranch.lodging, river: river.lodging },
-    guestTotals: first === 'river'
-      ? { river: river.stayTotal, ranch: ranch.stayTotal }
-      : { ranch: ranch.stayTotal, river: river.stayTotal },
+    guestTotals: scaleToGuestQuote(
+      first === 'river'
+        ? { river: river.stayTotal, ranch: ranch.stayTotal }
+        : { ranch: ranch.stayTotal, river: river.stayTotal },
+      request.quotedTotal,
+    ),
   };
+}
+
+/**
+ * Make the two house totals add up to what the guest was quoted, keeping their proportions.
+ *
+ * A two-house quote has the same problem a one-house quote had: it is recomputed here with `pace: 'unknown'`, which drops
+ * the fill promotion, so a party quoted $9,000 across both houses was recorded at $11,000. The total on the booking is what
+ * the owner statement and any invoice inherit.
+ *
+ * The split is kept proportional rather than reassigned, because each house's share reflects the party it holds (24 in the
+ * Riverhouse, 6 in the Ranch), and that is the ratio the payout uses too. Cents land on the last house so the two still add
+ * up to the quoted figure exactly.
+ *
+ * Unchanged when the request carries no quote — every request made before the field existed.
+ */
+export function scaleToGuestQuote(
+  totals: Partial<Record<HouseId, number>>,
+  quoted: number | undefined,
+): Partial<Record<HouseId, number>> {
+  if (typeof quoted !== 'number' || !Number.isFinite(quoted) || quoted <= 0) return totals;
+  const houses = Object.keys(totals) as HouseId[];
+  const sum = houses.reduce((acc, house) => acc + (totals[house] ?? 0), 0);
+  if (sum <= 0) return totals;
+
+  const cents = Math.round(quoted * 100);
+  const scaled: Partial<Record<HouseId, number>> = {};
+  let allocated = 0;
+  houses.forEach((house, index) => {
+    const share =
+      index === houses.length - 1
+        ? cents - allocated
+        : Math.round((((totals[house] ?? 0) * cents) / sum));
+    allocated += share;
+    scaled[house] = share / 100;
+  });
+  return scaled;
 }
 
 /**

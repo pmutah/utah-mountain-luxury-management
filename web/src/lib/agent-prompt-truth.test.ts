@@ -58,22 +58,28 @@ test('the prompt names the three parts and their capacities', async () => {
   for (const part of ['Garage Suite', 'Recreation Wing', 'Main Lodge']) {
     assert.ok(ctx.includes(part), `the prompt never names ${part}`);
   }
-  // The capacity gap, stated rather than smoothed over.
-  assert.match(ctx, /sum to 25 though the house sleeps 24/, 'the prompt hides the capacity gap');
+  /*
+   * The parts and the house now agree at 22 — the owner settled the Main Lodge at 10 on 2026-11-10 — so the line states
+   * agreement rather than a gap. It still names the sum, so a host is never left to add up the parts.
+   */
+  assert.match(ctx, /the three sum to 22, the same as the house/, 'the prompt does not state the parts total');
 });
 
-test('an unpublished part is described as unsellable, in the prompt itself', async () => {
+test('the prompt tells the model the parts are priced, so they may be offered', async () => {
   /*
-   * All three parts are unset in production. This is the assertion that would have caught the line being computed by
-   * `partPromptLines` and never reaching the model.
+   * This asserted the opposite while the parts were unset. The owner published prices on 2026-11-10, so the prompt now
+   * carries real rates and the model may quote them — but it must not quote one the sheet does not hold, and the
+   * "do not invent a rate" instruction has to survive.
    */
   const ctx = await buildAgentContext(emptyEnv() as never, { month: '2026-11', activeTab: 'guests' } as never);
-  assert.match(
-    ctx,
-    /No part has a price yet, so no part is sellable/,
-    'the prompt does not tell the model that no part can be sold',
+  assert.equal(
+    /No part has a price yet/.test(ctx),
+    false,
+    'the prompt still says no part has a price, so the published rates are not reaching the model',
   );
-  assert.match(ctx, /do not invent a nightly rate/, 'the prompt does not forbid inventing a part rate');
+  // A part rate is named, from the owner's sheet.
+  assert.match(ctx, /\$265|\$535|\$745/, 'the prompt carries none of the published part rates');
+  assert.match(ctx, /do not invent a nightly rate/i, 'the prompt does not forbid inventing a part rate');
 });
 
 test('the owner shares are in the prompt, so an owner question is answered from the books', async () => {

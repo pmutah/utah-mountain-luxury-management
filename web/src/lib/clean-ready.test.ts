@@ -35,7 +35,7 @@ test('the cleaner still has each house when the turnover list cannot be read', (
   assert.equal(text.includes('$'), false);
   assert.equal(/password|code\s*\d/i.test(text), false);
   assert.equal(text.toLowerCase().includes('guest name'), false);
-  assert.match(river.photoGuide ?? '', /Seven king suites/);
+  assert.match(river.photoGuide ?? '', /eight king suites/);
   assert.match(river.photoGuide ?? '', /not a new list/);
   assert.match(river.photoGuide ?? '', /not uploaded/);
   assert.equal(ranch.photoGuide, null);

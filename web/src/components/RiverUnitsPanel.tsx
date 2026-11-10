@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { SLEEPS } from '../lib/house-stay';
 
 /**
  * What each Riverhouse unit sells for, and whether it can be sold at all.
  *
  * The three units are unpublished Airbnb drafts with no prices, so they start unset. Unset is a real state: a unit
- * with no rate is not sellable and this panel says so, rather than showing a zero or a guess. The house itself sleeps
- * 24 while the three units sum to 25, and that is the host's decision to reconcile, not this panel's to hide.
+ * with no rate is not sellable and this panel says so, rather than showing a zero or a guess. The house and the three
+ * units both sleep 22 (4 + 8 + 10), corrected by the owner on 2026-11-10 from an earlier spec that had them disagreeing.
  */
 
 type Unit = {
@@ -30,8 +31,14 @@ type Loaded = {
   publishNote?: string;
 };
 
-/** The house's own published capacity, so the unit total can be compared with it. */
-const HOUSE_SLEEPS = 24;
+/**
+ * The house's own published capacity, so the unit total can be compared with it.
+ *
+ * Read from `SLEEPS` rather than written down here. A literal 24 sat in this file while the house slept 22 in the rest of the
+ * app, so the panel would have compared the parts against a capacity no other surface used — and printed a warning about a
+ * gap that no longer existed.
+ */
+const HOUSE_SLEEPS = SLEEPS.river;
 
 export function RiverUnitsPanel({
   onToast,

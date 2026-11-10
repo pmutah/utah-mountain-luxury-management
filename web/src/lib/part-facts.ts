@@ -5,9 +5,9 @@ import { riverMonth, type RiverDayInput } from './river-calendar';
 /**
  * What the co-host is told about the Riverhouse parts, so it can answer a host's real question.
  *
- * The prompt said "sleeps 24" and nothing else, so the AI described a house that can only be rented whole. A host asking
- * "can I still sell Saturday?" would have been told no whenever any part was taken — the opposite of the rule — or told
- * yes for the whole house while a part was gone.
+ * The prompt said only the house capacity and nothing about parts, so the AI described a house that can only be rented
+ * whole. A host asking "can I still sell Saturday?" would have been told no whenever any part was taken — the opposite of
+ * the rule — or told yes for the whole house while a part was gone.
  *
  * This is a fact line, not a tool: the model cannot book or block from it. It exists so the answer it gives matches the
  * calendar the host can see.
@@ -18,6 +18,14 @@ export type PartFacts = {
   partsLine: string;
   /** How many of the three are priced and therefore sellable. Null when the price sheet could not be read. */
   priced: number | null;
+  /**
+   * One line stating each priced part's nightly, cleaning, and minimum, and naming any part that has no price.
+   *
+   * Without it the prompt could say which nights a part was free but not what it cost, so a host asking "what would the
+   * Garage Suite run for three nights?" got nothing — the rates were in the sheet the line was built from and were simply
+   * never written down. Null when the sheet could not be read, which is not the same as "no prices".
+   */
+  ratesLine: string | null;
   /** The next few nights where something is still sellable, and what. */
   openNights: Array<{ date: string; free: RiverUnitId[]; reason: string }>;
 };
@@ -49,16 +57,27 @@ export function partFacts(
   days = 7,
 ): PartFacts {
   const capacities = RIVER_UNIT_DETAIL.map((unit) => `${SHORT[unit.id]} ${unit.sleeps}`).join(', ');
-  const partsLine = `The River House is also sold in three parts (${capacities}; the three sum to 25 though the house sleeps 24). A night is sold once: any part taken blocks the whole house for that night, and the other parts stay sellable. Two parts together are one booking.`;
+  const partsLine = `The River House is also sold in three parts (${capacities}; the three sum to ${RIVER_UNIT_DETAIL.reduce((sum, unit) => sum + unit.sleeps, 0)}, the same as the house). A night is sold once: any part taken blocks the whole house for that night, and the other parts stay sellable. Two parts together are one booking.`;
 
   if (rates === null) {
     /*
      * Null is "could not read", which is not "none priced". Reporting it as zero would make the model tell a host that
      * nothing is for sale when the truth is that we do not know.
      */
-    return { partsLine, priced: null, openNights: [] };
+    return { partsLine, priced: null, ratesLine: null, openNights: [] };
   }
   const priced = RIVER_UNITS.filter((unit) => unitRateState(rates[unit]) === 'ready').length;
+  /*
+   * The prices, stated. Built from the same sheet the sellability is counted from, so the two cannot disagree — and a part
+   * with no price is named as missing instead of being silently left out.
+   */
+  const pricedParts = RIVER_UNITS.map((unit) => {
+    const rate = rates[unit];
+    return unitRateState(rate) === 'ready'
+      ? `${SHORT[unit]} $${rate.nightly} a night, $${rate.cleaning} cleaning, ${rate.minNights}-night minimum`
+      : `${SHORT[unit]} has no price and cannot be booked`;
+  });
+  const ratesLine = `Riverhouse part prices: ${pricedParts.join('; ')}.`;
 
   // The month the window starts in, read from the same calendar the host page uses.
   const month = from.slice(0, 7);
@@ -68,7 +87,7 @@ export function partFacts(
     .slice(0, days)
     .map((day) => ({ date: day.date, free: day.freeParts, reason: day.reason }));
 
-  return { partsLine, priced, openNights: priced > 0 ? openNights : [] };
+  return { partsLine, priced, ratesLine, openNights: priced > 0 ? openNights : [] };
 }
 
 /** The prompt lines for the parts. The window is read off the data, so it cannot disagree with what was checked. */
@@ -85,6 +104,19 @@ export function partPromptLines(facts: PartFacts): string[] {
       'No part has a price yet, so no part is sellable. Do not quote or offer a part, and do not invent a nightly rate for one.',
     );
     return lines;
+  }
+  /*
+   * The prices themselves. Without this the model could say which nights were free but not what a part cost, so "what
+   * would the Garage Suite run for three nights?" had no answer — the rates were in the sheet and never written down.
+   *
+   * The ban on inventing a rate travels with the prices, not only with their absence: a model handed three figures is just
+   * as capable of producing a fourth.
+   */
+  if (facts.ratesLine) {
+    lines.push(facts.ratesLine);
+    lines.push(
+      'Quote only the part prices above. Do not invent a nightly rate, a cleaning fee, or a discount, and do not apply the whole-house season table or its host-net floor to a part.',
+    );
   }
   if (facts.priced < RIVER_UNITS.length) {
     lines.push(

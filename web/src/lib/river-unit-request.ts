@@ -225,13 +225,12 @@ export function unitRequestCheck(
 
   const partsSleep = read.units.reduce((sum, unit) => sum + (RIVER_UNIT_DETAIL.find((detail) => detail.id === unit)?.sleeps ?? 0), 0);
   /*
-   * The parts sum to one more than the house: 4 + 8 + 13 = 25 against a 24-guest house. Booking every part *is* the
-   * whole house, so it cannot sleep more people than the house itself may hold — otherwise a party of 25 could take the
-   * entire building as "three parts" while the same 25 is refused as a whole-house booking.
+   * The parts sum to the house: 4 + 8 + 10 = 22, against a 22-guest house. Booking every part *is* the whole house, so it
+   * cannot sleep more people than the house holds.
    *
-   * The cap is the house's published capacity, not the sum, so the two routes agree. Which number is right is the
-   * host's call; until they settle it, the stricter of the two wins, because overfilling a house is not recoverable and
-   * a refused party can book the other way.
+   * This was a real gap until 2026-11-10: the parts summed to 25 against a house of 24, so a party of 25 could take the
+   * building as "three parts" while the same 25 was refused as a whole-house booking. The owner corrected the Main Lodge to
+   * 10, and the cap is kept anyway — `Math.min` means the two routes agree whatever the per-part numbers say.
    */
   const houseSleeps = SLEEPS.river;
   const sleeps = read.units.length === RIVER_UNITS.length ? Math.min(partsSleep, houseSleeps) : partsSleep;
