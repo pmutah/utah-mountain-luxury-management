@@ -48,6 +48,12 @@ export const AGENT_SITE_MAP = {
       'POST /api/expenses { propertyId:"construction", month, category, amount, note, stage, paidBy:"brandon"|"todd", receiptBase64?, receiptMimeType? }',
     householdExpense:
       'POST /api/expenses { propertyId:"household", month, category:"Furnishings", amount, note, paidBy:"brandon", receiptBase64?, receiptMimeType? }',
+    expenseArchive:
+      'GET/POST/DELETE /api/expenses/archive — host only. The archive of removed expenses and the way back. GET lists what can be restored; POST { id } puts one row back exactly as it was, with its receipt; DELETE removes an archived row for good. Nothing here is a total: an archived row is in no report, statement, or P&L while it sits. A delete used to be permanent, so this is the only recovery path for a mistaken one.',
+    requestDecline:
+      'POST /api/book/decline — host only. { id, reason, note?, notify? } declines a saved request. It records the decision so the inbox shows it, lets the hold go, and tells the guest the dates are not available. Reasons come from a fixed list, the same six the desk offers. It books nothing and touches no expense.',
+    stayMessage:
+      'GET/POST /api/stay-guide/:token/stay-message — host only, and the token is the credential for the stay. GET shows the messages this stay could receive; POST sends exactly one, on a day it is appropriate for, and records that it went. **Nothing is scheduled** — a sender that fired on its own would email a guest at the wrong moment with nobody watching. The stay comes from the record behind the token, never from the request body, so the dates a message is judged against cannot be spoofed.',
     reservations: 'GET/POST /api/reservations',
     calendarSync: 'POST /api/calendar/sync',
     cohost: 'POST /api/agent/chat { message, sessionId?, context?: { month, activeTab } }',
