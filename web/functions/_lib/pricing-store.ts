@@ -394,70 +394,163 @@ export async function compareMarket(
   };
 }
 
+/**
+ * What an automatic price read can and cannot do.
+ *
+ * Measured on production 2026-11-10: this function reported **17 of 19 comps unpaid**, each as "could not extract price —
+ * use manual snapshot". That sentence blamed the host for work the code never attempted properly. Two facts, both checked
+ * against the live pages rather than assumed:
+ *
+ *   1. **The HTML was truncated to 12,000 characters.** An Airbnb listing page is ~1.03 MB and its prices sit around
+ *      character 942,781; a Vrbo page is ~2.1 MB. So the extractor was shown the `<head>` and nothing else, and could not
+ *      have seen a price even when one is present.
+ *   2. **The listing's own nightly rate is not in the static HTML at all.** On Vrbo 2453705 the only `$` figures in the
+ *      document belong to *nearby* listings' `priceRange` in structured data - reading one of those would write a
+ *      stranger's price onto our comp. Airbnb renders its calendar client-side. Neither is a fetch problem; both are
+ *      sites that do not publish this number server-side.
+ *
+ * So the honest outcome for most comps is **"this channel does not publish a fetchable rate"**, and the host records the
+ * ask they can see in a browser. That is not a failure of the host's comp; it is the shape of the channel.
+ */
+export type CompRefreshOutcome = {
+  /** Comps a rate was actually written for. */
+  refreshed: number;
+  /** Comps skipped because a rate was already read in the last day. */
+  recent: number;
+  /** Per-comp notes, each naming what happened rather than only that it did not work. */
+  errors: string[];
+  /** True only when no Gemini key is configured, so nothing was even attempted. */
+  noKey: boolean;
+  /** One line for a host, counting what can and cannot be read automatically. */
+  line: string;
+};
+
 export async function refreshCompPrices(
   env: SettingsEnv,
   geminiKey?: string,
-): Promise<{ refreshed: number; errors: string[] }> {
+): Promise<CompRefreshOutcome> {
   const comps = await loadCompSet(env);
   const errors: string[] = [];
   let refreshed = 0;
+  let recent = 0;
   const sampleDate = new Date();
   sampleDate.setDate(sampleDate.getDate() + ((5 - sampleDate.getDay() + 7) % 7) + 7);
   const dateStr = sampleDate.toISOString().slice(0, 10);
 
+  if (!geminiKey) {
+    /*
+     * Named separately, because "0 refreshed, 19 errors" reads as nineteen broken comps when the truth is that no
+     * extractor is configured at all. The host cannot fix that by editing a comp.
+     */
+    return {
+      refreshed: 0,
+      recent: 0,
+      noKey: true,
+      errors: [],
+      line:
+        'No price extractor is configured (GEMINI_API_KEY), so no comp rate was read. Record the asks you can see in a browser.',
+    };
+  }
+
   for (const comp of comps) {
     const last = (await loadPriceSnapshots(env)).filter((s) => s.compId === comp.id).pop();
-    if (last && Date.now() - new Date(last.fetchedAt).getTime() < 86400000) continue;
-
-    if (geminiKey) {
-      try {
-        const res = await fetch(comp.url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PortfolioBot/1.0)' },
-        });
-        if (res.ok) {
-          const html = (await res.text()).slice(0, 12000);
-          const extractRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiKey)}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [{
-                    text: `Extract the guest-facing listed nightly rate in USD from this listing page HTML for date ${dateStr}. Do not return a host payout. Return ONLY JSON: {"nightlyRate":number|null}. HTML:\n${html}`,
-                  }],
-                }],
-                generationConfig: { responseMimeType: 'application/json', temperature: 0 },
-              }),
-            },
-          );
-          if (extractRes.ok) {
-            const json = (await extractRes.json()) as {
-              candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-            };
-            const raw = json.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (raw) {
-              const parsed = JSON.parse(raw) as { nightlyRate?: number | null };
-              if (parsed.nightlyRate && parsed.nightlyRate > 0) {
-                await addPriceSnapshot(env, {
-                  compId: comp.id,
-                  date: dateStr,
-                  nightlyRate: parsed.nightlyRate,
-                  source: 'scrape',
-                });
-                refreshed++;
-                continue;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        errors.push(`${comp.label}: ${e instanceof Error ? e.message : 'fetch failed'}`);
-      }
+    if (last && Date.now() - new Date(last.fetchedAt).getTime() < 86400000) {
+      recent++;
+      continue;
     }
-    errors.push(`${comp.label}: could not extract price — use manual snapshot`);
+
+    try {
+      const res = await fetch(comp.url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PortfolioBot/1.0)' },
+      });
+      if (!res.ok) {
+        errors.push(
+          `${comp.label}: the page answered ${res.status}. ${res.status === 403 ? 'That site blocks a server-side read, so record the ask by hand.' : 'Nothing was read.'}`,
+        );
+        continue;
+      }
+      /*
+       * The whole document, not the first 12,000 characters. The truncation was the bug: a listing page is around a
+       * megabyte and its figures appear near the end of it, so the model was reading the `<head>` and concluding there
+       * was no price.
+       *
+       * The prompt is bounded by *finding the target listing's own ask*, and is told to return null when the page only
+       * carries nearby listings' prices - a comp priced off a neighbour is worse than no comp price at all.
+       */
+      const html = await res.text();
+      const extractRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${encodeURIComponent(geminiKey)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text:
+                      `Find the guest-facing nightly rate in USD that THIS listing charges for ${dateStr}, in the page below. ` +
+                      'Return the rate for this listing only. Do not return a host payout. Do not return a price that appears under ' +
+                      '"nearby", "similar", "recommended", or another listing\'s structured data - a neighbour\'s rate is not this ' +
+                      'listing\'s rate. If the page does not carry this listing\'s own nightly rate, return null. ' +
+                      `Return ONLY JSON: {"nightlyRate":number|null}. PAGE:\n${html}`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: { responseMimeType: 'application/json', temperature: 0 },
+          }),
+        },
+      );
+      if (!extractRes.ok) {
+        errors.push(`${comp.label}: the price reader answered ${extractRes.status}. Nothing was written.`);
+        continue;
+      }
+      const json = (await extractRes.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const raw = json.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!raw) {
+        errors.push(`${comp.label}: the price reader returned nothing. Nothing was written.`);
+        continue;
+      }
+      const parsed = JSON.parse(raw) as { nightlyRate?: number | null };
+      if (parsed.nightlyRate && parsed.nightlyRate > 0) {
+        await addPriceSnapshot(env, {
+          compId: comp.id,
+          date: dateStr,
+          nightlyRate: parsed.nightlyRate,
+          source: 'scrape',
+        });
+        refreshed++;
+        continue;
+      }
+      /*
+       * A null is an answer, not an error: the site does not publish this listing's rate server-side. Said plainly, with
+       * the next step, because the old wording sent the host looking for a mistake they had not made.
+       */
+      errors.push(
+        `${comp.label}: this site does not publish its nightly rate in the page itself, so there is nothing to read. Record the ask you see in a browser.`,
+      );
+    } catch (e) {
+      errors.push(`${comp.label}: ${e instanceof Error ? e.message : 'the page could not be read.'}`);
+    }
   }
-  return { refreshed, errors };
+
+  const unreadable = errors.length;
+  return {
+    refreshed,
+    recent,
+    noKey: false,
+    errors,
+    line:
+      refreshed === 0
+        ? `No comp rate could be read automatically${recent > 0 ? ` (${recent} already had a rate from the last day)` : ''}. ` +
+          `${unreadable} ${unreadable === 1 ? 'comp reports' : 'comps report'} that this channel does not publish a fetchable rate, ` +
+          'which is a fact about the site rather than a mistake in the comp. Record the asks you can see in a browser.'
+        : `Read a rate for ${refreshed} ${refreshed === 1 ? 'comp' : 'comps'}${recent > 0 ? `, skipped ${recent} with a rate from the last day` : ''}. ` +
+          `${unreadable > 0 ? `${unreadable} could not be read automatically; each says why.` : ''}`.trim(),
+  };
 }
 
 export async function runPricingAlertCheck(env: SettingsEnv): Promise<number> {
