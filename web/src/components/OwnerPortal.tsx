@@ -177,6 +177,16 @@ export function OwnerPortal({ token }: { token: string }) {
                         <span className="mt-1 block text-xs text-[#7a7264]" data-bot="owner-portal-working">
                           {money(house.leftover)} after the {money(house.fee)} fee and costs. Half is {money(house.todd)}.
                         </span>
+                        {/*
+                          The cleaning figure itself. The line above says "after the fee and costs" and the header says the
+                          fee is charged on rent after cleaning, but the number was never shown — so an owner checking the
+                          arithmetic by hand had to take it on trust. The route has always sent it; nothing drew it.
+                        */}
+                        {house.cleaning > 0 && (
+                          <span className="mt-1 block text-xs text-[#7a7264]" data-bot="owner-portal-cleaning">
+                            Cleaning {money(house.cleaning)} is inside the costs and is taken off before the fee.
+                          </span>
+                        )}
                       </td>
                       <td className="py-2 align-top">{house.stays}</td>
                       <td className="py-2 align-top">{money(house.revenue)}</td>
