@@ -68,15 +68,18 @@ export const RIVER_UNIT_DETAIL: readonly RiverUnit[] = [
     size: 'large',
     /*
      * Ten, from four king suites — and one of those rooms, the bunk room, also holds a bunk bed, which is where the other
-     * two of the ten come from. That is **five beds**: four kings plus one bunk. Three full baths. **Do not add a fifth
-     * bedroom.**
+     * two of the ten come from. Three full baths. **Do not add a fifth bedroom.**
      *
-     * The first spec had 13 with an expandable king and a triple twin bunk that are not in this part; the owner corrected it
-     * on 2026-11-10.
+     * **Six beds**, and the spec's own sleeps figure is what settles it: four kings sleep 8, and the part sleeps 10, so the
+     * bunk adds 2 guests — which is a twin-over-twin, two beds. I had 5 here from counting "one bunk" as one bed, which would
+     * have meant a bunk sleeping two people in one bed.
+     *
+     * The first spec had 13 beds with an expandable king and a triple twin bunk that are not in this part; the owner corrected
+     * the capacity on 2026-11-10.
      */
     sleeps: 10,
     bedrooms: 4,
-    beds: 5,
+    beds: 6,
     baths: 3,
     airbnbListingId: '1812276294765596083',
   },

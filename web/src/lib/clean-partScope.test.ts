@@ -58,8 +58,8 @@ test('a part turn scopes the bathrooms too', () => {
 test('two parts add their rooms together', () => {
   const [job] = jobs({ units: ['garage-suite', 'main-lodge'] });
   const beds = job!.steps.find((step) => step.id === 'beds');
-  // 2 beds in the Garage Suite, 5 in the Main Lodge (four kings plus the bunk-room bunk) = 7.
-  assert.match(beds!.label, /7 beds/);
+  // 2 beds in the Garage Suite, 6 in the Main Lodge (four kings plus the twin-over-twin bunk) = 8.
+  assert.match(beds!.label, /8 beds/);
   assert.match(beds!.label, /5 bedrooms/);
 });
 

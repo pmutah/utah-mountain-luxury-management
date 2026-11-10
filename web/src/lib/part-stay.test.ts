@@ -156,8 +156,8 @@ test('two parts get one capacity line each, added up', () => {
   const notes = partHouseNotes(partStayFrom(['garage-suite', 'main-lodge']), RIVER_NOTES);
   const bedrooms = notes.find((note) => note.title === 'Bedrooms')?.body ?? '';
   assert.match(bedrooms, /1 bedroom and 2 beds/);
-  // Main Lodge: 4 bedrooms, 5 beds (four kings plus a bunk in the bunk room).
-  assert.match(bedrooms, /4 bedrooms and 5 beds/);
+  // Main Lodge: 4 bedrooms, 6 beds (four kings plus the twin-over-twin bunk in the bunk room).
+  assert.match(bedrooms, /4 bedrooms and 6 beds/);
   assert.match(bedrooms, /sleeping 14/);
 });
 
