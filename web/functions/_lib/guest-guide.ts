@@ -42,6 +42,13 @@ export interface HouseGuide {
   wifiName: string;
   wifiPassword: string;
   doorCode: string;
+  /**
+   * A door code per Riverhouse part, when the house is sold in parts.
+   *
+   * Absent means no part has its own code. A part guest is then told to call rather than handed the house code, because that
+   * one opens every part. See `part-door-codes.ts`.
+   */
+  partDoorCodes?: Partial<Record<'garage-suite' | 'recreation-wing' | 'main-lodge', string>>;
   doorNotes: string;
   parking: string;
   arrival: string;

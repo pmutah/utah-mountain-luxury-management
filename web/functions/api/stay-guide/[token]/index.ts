@@ -8,6 +8,7 @@ import type { AgentEnv, ReservationRecord } from '../../../_lib/agent/types';
 import { occupiedNights, type StaySpan } from '../../../../src/lib/availability';
 import { nightBeforeIsFree, checkoutNightIsFree, stayNightFlags } from '../../../../src/lib/journey';
 import { preferenceCardLines } from '../../../../src/lib/preference-choices';
+import { doorCodesForStay } from '../../../../src/lib/part-door-codes';
 import { stayAccessSecrets } from '../../../../src/lib/stay-rules';
 import { addDays } from '../../../../src/lib/market/dates';
 import { storageReadPaused } from '../../../_lib/kv-json';
@@ -133,6 +134,19 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
    * record exists on the server, which this route does not do.
    */
   const ready = preview || new URL(request.url).searchParams.get('ready') === '1';
+  /*
+   * The door codes for this stay, resolved **before** the time gate so the gate can withhold the right ones.
+   *
+   * A Riverhouse part booking gets only its own part's code: one code for the whole building meant a Garage Suite guest held
+   * the Main Lodge door. A whole-house stay keeps the single house code, so every stay recorded before the split reads exactly
+   * as it did. A part with no code set is told to call rather than handed the house code, which opens every part.
+   */
+  const doorPlan = doorCodesForStay({
+    house: houseId,
+    units: Array.isArray(stay?.units) ? stay.units : undefined,
+    houseCode: guide.doorCode,
+    partCodes: guide.partDoorCodes,
+  });
   const secrets = stayAccessSecrets({
     unlocked,
     ready,
@@ -159,6 +173,13 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
     nightBeforeIsFree(checkIn, occupiedNights(spans, houseId, addDays(checkIn, -1), checkIn)),
     checkoutNightIsFree(checkOut, occupiedNights(spans, houseId, checkOut, addDays(checkOut, 1))),
   );
+
+  /*
+   * Are the codes open for this phone? `stayAccessSecrets` is the one place that decides, and it needs **both** the window and
+   * the rules acknowledgement. Testing its result rather than `unlocked` is what keeps a part code behind the same gate the
+   * house code was behind.
+   */
+  const codeOpen = secrets.doorCode !== null;
 
   return corsJson(request, {
     enabled: guide.enabled,
@@ -195,7 +216,17 @@ export const onRequestGet: PagesFunction<AgentEnv & { DASHBOARD_PASSWORD?: strin
       unlocked,
       wifiName: secrets.wifiName,
       wifiPassword: secrets.wifiPassword,
-      doorCode: secrets.doorCode,
+      /*
+       * The door code is withheld with everything else. `secrets.doorCode` is null unless **both** the window is open and the
+       * phone has read the rules — `stayAccessSecrets` owns that gate, and my first version used `unlocked` alone, which showed
+       * the code to a phone that had not read the rules.
+       *
+       * `doorCode` is the first code **this stay is entitled to**, not the house code: for a part guest those differ, and
+       * handing over the house code would open every part. `doorCodes` carries the full list for a part stay.
+       */
+      ...(codeOpen ? { doorCode: doorPlan.codes[0]?.code ?? null } : { doorCode: null }),
+      ...(codeOpen && doorPlan.codes.length > 0 ? { doorCodes: doorPlan.codes } : {}),
+      ...(codeOpen && doorPlan.missing ? { doorMissing: doorPlan.missing } : {}),
       doorNotes: secrets.doorNotes,
     },
     guide: {
