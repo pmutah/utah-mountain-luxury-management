@@ -22,7 +22,7 @@ import { guestAddonIntro, houseMenu, hostAddonPhrase } from '../lib/upsells';
 import { loadBookedNights } from '../lib/booked-nights';
 import { guestLinkNote, guestListUnreadable, guestListUnreadNote, guestMailUnreadLine } from '../lib/guest-list';
 import { denverToday } from '../lib/market/dates';
-import { paymentLedger, outstandingBookings } from '../lib/payment-ledger';
+import { paymentLedger, outstandingBookings, isDirectSource } from '../lib/payment-ledger';
 import type { HouseId } from '../lib/market/types';
 
 type HouseFilter = 'all' | 'ranch' | 'lindon' | 'river';
@@ -88,6 +88,14 @@ export function GuestsPanel({
   const [drafts, setDrafts] = useState<Record<string, { email: string; phone: string; code: string }>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /**
+   * The amount and day typed into a stay's "record a payment" row.
+   *
+   * Kept per stay so two forms open at once cannot share one figure. `day` starts empty and is filled from
+   * `denverToday()` when the row is opened, because a payment is almost always today's — but it stays editable,
+   * since a check that arrived last week is normal.
+   */
+  const [payDrafts, setPayDrafts] = useState<Record<string, { amount: string; day: string }>>({});
   const [houseFilter, setHouseFilter] = useState<HouseFilter>('all');
   const [houseQuery, setHouseQuery] = useState('');
   const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
@@ -226,6 +234,77 @@ export function GuestsPanel({
       } else {
         onToast(message, 'error');
       }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  /**
+   * Record money that arrived against one direct booking.
+   *
+   * The balance was on the card with no way to clear it, so a host could see "$1,500 still owed" and had to
+   * reach for curl. This is the control that makes the number actionable.
+   *
+   * The typed amount is checked here as well as on the route, because a client-side check gives the host the
+   * reason immediately and the route check is what actually protects the data. `NaN`, blank, and zero are
+   * refused rather than sent on, so a stray tap cannot record a $0 payment that looks like activity.
+   */
+  async function recordPayment(stay: Reservation) {
+    const draft = payDrafts[stay.id] ?? { amount: '', day: denverToday() };
+    const typed = draft.amount.trim();
+    if (!typed) {
+      onToast('Type the amount that arrived.', 'error');
+      return;
+    }
+    const amount = Number(typed.replace(/[$,\s]/g, ''));
+    if (!Number.isFinite(amount)) {
+      onToast(`"${typed}" is not an amount. Type a number, like 900 or 900.00.`, 'error');
+      return;
+    }
+    if (amount === 0) {
+      onToast('A payment of zero records nothing. Leave it blank if nothing arrived.', 'error');
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.day.trim())) {
+      onToast('Pick the day the money landed.', 'error');
+      return;
+    }
+
+    setBusyId(stay.id);
+    try {
+      const result = await api.recordBookingPayment({
+        id: stay.id,
+        payment: { amount, receivedOn: draft.day.trim() },
+      });
+      // The route answers with the new balance, so the host sees the effect without a second request.
+      onToast(
+        result.paidInFull
+          ? `Recorded ${formatCurrency(amount)}. That booking is paid in full.`
+          : `Recorded ${formatCurrency(amount)}. ${formatCurrency(result.outstanding ?? 0)} still owed.`,
+        'success',
+      );
+      setPayDrafts((d) => ({ ...d, [stay.id]: { amount: '', day: denverToday() } }));
+      await load();
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : 'The payment could not be recorded', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function removePayment(stay: Reservation, paymentId: string) {
+    setBusyId(stay.id);
+    try {
+      const result = await api.removeBookingPayment(stay.id, paymentId);
+      onToast(
+        result.outstanding === null
+          ? 'Removed.'
+          : `Removed. ${formatCurrency(result.outstanding)} still owed.`,
+        'success',
+      );
+      await load();
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : 'The payment could not be removed', 'error');
     } finally {
       setBusyId(null);
     }
@@ -514,6 +593,80 @@ export function GuestsPanel({
                 )}
               </div>
             </div>
+
+            {/*
+              Recording money, on the booking it applies to.
+              Only a direct booking can take one: Airbnb, VRBO, and Hospitable collect from the guest and remit a
+              payout, so a form there would invite a host to count the same money twice. The route refuses it too —
+              this only keeps the control off a surface where it would be wrong.
+            */}
+            {isDirectSource(stay.source) && typeof stay.guestTotal === 'number' && stay.guestTotal > 0 && (() => {
+              const ledger = paymentLedger({
+                source: stay.source,
+                guestTotal: stay.guestTotal,
+                payments: stay.payments,
+              });
+              const payDraft = payDrafts[stay.id] ?? { amount: '', day: today };
+              return (
+                <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950 p-3" data-bot="stay-payments">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      className="w-28 rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-sm"
+                      placeholder="Amount"
+                      inputMode="decimal"
+                      data-bot="stay-payment-amount"
+                      value={payDraft.amount}
+                      onChange={(e) =>
+                        setPayDrafts((d) => ({ ...d, [stay.id]: { ...payDraft, amount: e.target.value } }))
+                      }
+                    />
+                    <input
+                      type="date"
+                      className="rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-sm"
+                      data-bot="stay-payment-day"
+                      value={payDraft.day}
+                      onChange={(e) =>
+                        setPayDrafts((d) => ({ ...d, [stay.id]: { ...payDraft, day: e.target.value } }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      data-bot="stay-payment-save"
+                      disabled={busyId === stay.id}
+                      onClick={() => void recordPayment(stay)}
+                      className="px-4 py-2 rounded-xl bg-[#d4b56a] text-slate-950 text-xs font-black uppercase disabled:opacity-40"
+                    >
+                      Record payment
+                    </button>
+                    <span className="text-xs text-slate-500" data-bot="stay-payment-line">
+                      {ledger.line}
+                    </span>
+                  </div>
+                  {ledger.payments.length > 0 && (
+                    <ul className="mt-2 space-y-1 text-xs text-slate-400">
+                      {ledger.payments.map((payment) => (
+                        <li key={payment.id} className="flex items-center gap-2" data-bot="stay-payment-row">
+                          <span className={payment.amount < 0 ? 'text-rose-400' : 'text-emerald-400'}>
+                            {formatCurrency(payment.amount)}
+                          </span>
+                          <span>{payment.receivedOn}</span>
+                          {payment.reference && <span className="text-slate-500">{payment.reference}</span>}
+                          <button
+                            type="button"
+                            data-bot="stay-payment-remove"
+                            disabled={busyId === stay.id}
+                            onClick={() => void removePayment(stay, payment.id)}
+                            className="text-slate-500 underline hover:text-slate-300 disabled:opacity-40"
+                          >
+                            remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="grid sm:grid-cols-3 gap-3">
               <input

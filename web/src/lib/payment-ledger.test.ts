@@ -263,6 +263,41 @@ test('an exported helper has a caller, not only a test', () => {
   assert.ok(callers.length > 0, 'outstandingBookings is exported and tested but nothing calls it');
 });
 
+test('a host can record a payment from the booking card, not only from curl', () => {
+  /*
+   * The balance was drawn on the card and the route existed, and nothing in the dashboard could write one. A host
+   * reading "$1,500 still owed" had no way to clear it, which makes the figure a spectator.
+   *
+   * This checks the controls exist AND that they call the client methods, because a button that renders and does
+   * nothing is the same defect wearing a different hat.
+   */
+  const panel = fs.readFileSync('src/components/GuestsPanel.tsx', 'utf8');
+  assert.match(panel, /data-bot="stay-payments"/, 'there is no payment control on the booking card');
+  assert.match(panel, /data-bot="stay-payment-amount"/, 'there is no amount field');
+  assert.match(panel, /data-bot="stay-payment-day"/, 'there is no day field');
+  assert.match(panel, /api\.recordBookingPayment\(/, 'the record button does not call the route');
+  assert.match(panel, /api\.removeBookingPayment\(/, 'a recorded payment cannot be corrected');
+
+  // Only a direct booking shows the form: a channel booking pays out through the platform.
+  assert.match(
+    panel,
+    /isDirectSource\(stay\.source\) && typeof stay\.guestTotal === 'number'/,
+    'the payment form is not limited to direct bookings with a known total',
+  );
+});
+
+test('the payment form refuses what the route would refuse, before sending it', () => {
+  /*
+   * The route is the real guard. This checks the client does not send obvious nonsense and then blame the server
+   * for a message the host could have had immediately: a blank amount, a non-number, a zero, and a missing day.
+   */
+  const panel = fs.readFileSync('src/components/GuestsPanel.tsx', 'utf8');
+  assert.match(panel, /if \(!typed\)/, 'a blank amount is sent to the route');
+  assert.match(panel, /Number\.isFinite\(amount\)/, 'a non-numeric amount is sent to the route');
+  assert.match(panel, /if \(amount === 0\)/, 'a zero payment is sent to the route');
+  assert.match(panel, /\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$/, 'the day is not checked for a date shape');
+});
+
 test('the page draws the balance from the ledger, not from its own arithmetic', () => {
   // A second formula in a component is how the part-booking price was overstated. The line has to come from
   // the tested function.
