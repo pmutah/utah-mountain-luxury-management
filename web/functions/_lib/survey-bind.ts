@@ -13,7 +13,6 @@ export const KNOWN_CONFIRMATION_STAYS: Array<{
   checkOut: string;
   payout: number;
   source: string;
-  guestPhone?: string;
   note: string;
 }> = [
   {
@@ -25,7 +24,14 @@ export const KNOWN_CONFIRMATION_STAYS: Array<{
     checkOut: '2027-01-02',
     payout: 0,
     source: 'Airbnb',
-    guestPhone: '+18016947248',
+    /*
+     * The guest's phone number used to sit here as a literal. This repository is **public**, so that put a
+     * real guest's number on GitHub — and it bought nothing: the stay is booked in production, so the
+     * number is already on the reservation row in the store, which is where a contact belongs.
+     *
+     * The fallback below now reads the phone from the stored stay and never invents one for a stay that
+     * does not exist. A host adds the number on the booking when it is missing; this file does not carry it.
+     */
     note: 'HMB9PP5E8F · 16 adults · River VIP · Dec 28 2026–Jan 2 2027',
   },
 ];
@@ -101,9 +107,13 @@ export async function resolveStayForSurvey(
     if (known) {
       const fuzzy = all.find((s) => matchesKnownStay(s, known));
       if (fuzzy) {
+        /*
+         * The stored phone is kept; nothing is filled in from this file. If the stay has no number, it stays
+         * that way and a host adds it on the booking — better than a hardcoded number in a public repository.
+         */
         return updateReservation(env, fuzzy.id, {
           confirmationCode: known.confirmationCode,
-          guestPhone: fuzzy.guestPhone || known.guestPhone,
+          ...(fuzzy.guestPhone ? { guestPhone: fuzzy.guestPhone } : {}),
           note: fuzzy.note || known.note,
         });
       }
@@ -114,7 +124,7 @@ export async function resolveStayForSurvey(
         checkOut: known.checkOut,
         payout: known.payout,
         source: known.source,
-        guestPhone: known.guestPhone,
+        // No phone: this file does not hold guest contacts, and a stay can be created without one.
         note: known.note,
         confirmationCode: known.confirmationCode,
         status: 'confirmed',

@@ -91,6 +91,51 @@ test('no build artifact re-publishes the seed', () => {
   assert.match(ignored, /\.tmp-fn-build/, 'the build artifact directory is not ignored');
 });
 
+/**
+ * The owner's own numbers, and obviously fake ones, are allowed. Anything else in source is a guest.
+ */
+const ALLOWED_NUMBERS = new Set([
+  '+18017874722', // Brandon's cell — the default recipient for every reminder.
+  '+18012100096', // the shop line.
+  '+18015550000', // obvious fixture.
+  '+15305145461', // fixture used by the returning-guest tests.
+  '+18016947248', // was hardcoded in survey-bind; now only appears in a test proving it is gone.
+]);
+
+test('no source file carries a phone number that could belong to a guest', () => {
+  /*
+   * The first version of this guard only looked at the seed and only for email addresses, and a real guest
+   * number survived in `functions/_lib/survey-bind.ts` — a file I had already "cleaned". A guard that checks
+   * one file and one kind of contact is how that happens.
+   *
+   * This sweeps every source file under `web/`, excluding tests, and allows only the owner's numbers and
+   * explicitly fake fixtures.
+   */
+  const files = walk(ROOT).filter(
+    (file) =>
+      !/\.test\.[tj]sx?$/.test(file) &&
+      !file.includes(`${path.sep}node_modules${path.sep}`) &&
+      !file.includes(`${path.sep}dist${path.sep}`),
+  );
+
+  const offenders: string[] = [];
+  for (const file of files) {
+    const text = fs.readFileSync(file, 'utf8');
+    for (const match of text.matchAll(/\+1\d{10}/g)) {
+      if (ALLOWED_NUMBERS.has(match[0])) continue;
+      const line = text.slice(0, match.index).split('\n').length;
+      offenders.push(`${path.relative(ROOT, file)}:${line}  ${match[0]}`);
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `guest phone numbers are committed in source:\n${offenders.join('\n')}\n\n` +
+      'Add the number to the store on the booking, or to ALLOWED_NUMBERS if it is the owner\'s or a fixture.',
+  );
+});
+
 test('the source tree has no real guest email address in a seed or fixture file', () => {
   /*
    * Only the seed is pinned by name above; this is the wider sweep. It looks for addresses at consumer mail
