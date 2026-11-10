@@ -1,9 +1,20 @@
 import { SLEEPS } from '../house-stay';
 import type { HouseId } from './types';
 
-/** A sample is close in size when it sleeps at least 60% of this house. */
+/**
+ * A sample is close in size when it sleeps **between 60% and 150% of this house**.
+ *
+ * The upper bound was missing, and it is not theoretical: a comp that sleeps twice the house passed the old rule, so a
+ * 16-guest Orem house could set the rate for a 12-guest Lindon house and price it up. A house twice the size has more
+ * bedrooms, more bathrooms, and usually a pool — its ask is a different product's ask.
+ *
+ * 150% leaves room for the honest case where a comp is a little larger than ours (a 16-sleeper against a 12, which is what
+ * most of the Lindon market is), while refusing one that is a different class of house.
+ */
 export function isCloseSleep(house: HouseId, sleeps: number): boolean {
-  return sleeps * 5 >= SLEEPS[house] * 3;
+  if (!Number.isFinite(sleeps) || sleeps <= 0) return false;
+  const houseSleeps = SLEEPS[house];
+  return sleeps * 5 >= houseSleeps * 3 && sleeps * 2 <= houseSleeps * 3;
 }
 
 /** A sample is nearby at 10 miles or less. Farther than that is a different market. */
