@@ -131,7 +131,13 @@ export function CleanLink({ token }: { token: string }) {
       })
       .then(({ res, body }) => {
         if (cancel) return;
-        if (res.status === 404) {
+        /*
+         * A malformed or truncated cleaner link never reaches the route: the middleware's shape check sends it
+         * to the host gate, which answers 401. Only a well-formed but unknown token reaches the route and gets
+         * 404. Both mean the same thing to the cleaner — this link does not work — and reporting 401 as a
+         * generic error sends them to the phone mid-shift instead of asking for a new link.
+         */
+        if (res.status === 404 || res.status === 401) {
           setState('invalid');
           return;
         }

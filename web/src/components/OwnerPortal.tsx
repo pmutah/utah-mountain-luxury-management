@@ -27,7 +27,16 @@ export function OwnerPortal({ token }: { token: string }) {
       })
       .then(({ res, body }) => {
         if (cancel) return;
-        if (res.status === 404) {
+        /*
+         * Two different refusals mean the same thing to Todd: the link does not work.
+         *
+         * A token that was minted and then revoked reaches the route, which answers 404. A token that is
+         * malformed — truncated by a mail client wrapping the line, or mistyped — never reaches the route,
+         * because the middleware's shape check sends it to the host gate, which answers 401. That used to fall
+         * through to the generic "could not be read" screen, which reads like the books are broken and invites
+         * a second try instead of asking for a new link. Both are "this link is not valid".
+         */
+        if (res.status === 404 || res.status === 401) {
           setState('invalid');
           return;
         }

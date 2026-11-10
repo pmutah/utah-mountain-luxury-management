@@ -44,7 +44,21 @@ export function RequestStatus({ token }: { token: string }) {
         const body = (await res.json().catch(() => null)) as (View & { error?: string }) | null;
         if (cancel) return;
         if (!res.ok || !body || body.error) {
-          setError(body?.error ?? 'This link is not valid.');
+          /*
+           * The route's own messages are written for a guest and are kept — "could not be read just now" and
+           * "does not name dates we can show" are different problems with different answers.
+           *
+           * What is not guest language is the middleware's 401 `Unauthorized`. A malformed link (a mail client
+           * wrapped the line, or it was copied short) never reaches the route, so the outer gate answers with a
+           * word that belongs on a host screen. That one is replaced, and the token is never echoed back.
+           */
+          const serverSays = typeof body?.error === 'string' ? body.error : '';
+          const hostWord = /^unauthorized$/i.test(serverSays.trim());
+          setError(
+            serverSays && !hostWord
+              ? serverSays
+              : 'This request link is not valid. Ask us for a fresh one and we will send it.',
+          );
           setView(null);
           return;
         }
