@@ -1,60 +1,60 @@
 /**
  * Every field a page is sent is either drawn or deliberately withheld — and that is written down.
  *
- * Four defects in four turns, all the same shape:
+ * Four defects in four turns, all one shape: the API was right and the surface disagreed.
  *
  *   - the cleaner's door code: sent, never drawn;
  *   - the cleaner's step rows: drawn, but recomputed locally and wrong;
  *   - the guest's per-part door codes: drawn, but only the first;
  *   - the owner's cleaning figure: sent, never drawn.
  *
- * Each time, an API test was green and a person still could not see the thing. Catching that by eye does not scale, so this file
- * holds a **register**: for each guest/host page, every field it is sent is listed as either `drawn` (the page must reference it)
- * or `withheld` (with the reason). Adding a field without deciding which it is fails here, by name, before it can reach a person.
+ * A fifth was found while writing this: the cleaner was never told whether a turn was same-day.
  *
- * This is deliberately a text check on the source. It cannot prove a value renders correctly — the behavioural tests do that —
- * but it does prove somebody decided, and that the decision still matches the page.
+ * This reads the **type** each page is sent, not one route's literal, so it covers every field wherever it is added. A field
+ * that is neither `drawn` nor recorded as `withheld` fails here by name, before it can reach a person.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 /**
- * `drawn` means the page reads the field. `withheld` means it is intentionally not shown, and the reason is recorded so a later
- * reader does not "fix" it.
+ * Everything in `typeName`'s body is a field. Comments and blank lines are ignored, and nested object types are flattened to
+ * their own top-level keys only — a house row's `cleaning` is listed separately because that is where the defect was.
  */
+function fieldsOf(file: string, typeName: string, opener: 'type' | 'interface' = 'type'): string[] {
+  const src = readFileSync(file, 'utf8');
+  /*
+   * A type can be declared as `type X = {` or `interface X {` — `StayGuide` is an interface, and my first parser only looked for
+   * `type`, so it found nothing and the guard failed for the wrong reason rather than reporting a real mismatch.
+   */
+  const start = src.search(new RegExp(`(?:export )?(?:type|interface) ${typeName}\\b`));
+  assert.ok(start >= 0, `${typeName} not found in ${file}`);
+  const open = src.indexOf('{', start);
+  assert.ok(open > start, `${typeName} has no object body`);
+  let depth = 0;
+  let end = open;
+  for (let i = open; i < src.length; i += 1) {
+    if (src[i] === '{') depth += 1;
+    else if (src[i] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+  const body = src.slice(open + 1, end).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  // Top-level keys: two spaces of indent inside the body.
+  return [...body.matchAll(/^\s{2}([a-zA-Z]+)\??:/gm)].map((m) => m[1]!);
+}
+
 type Fields = Record<string, 'drawn' | { withheld: string }>;
 
-const REGISTER: Array<{
-  /** The page a person opens. */
-  page: string;
-  /** What it is sent. */
-  from: string;
-  fields: Fields;
-}> = [
+const REGISTER: Array<{ page: string; typeFile: string; typeName: string; fields: Fields }> = [
   {
     page: 'src/components/CleanLink.tsx',
-    from: 'functions/api/clean/[token].ts',
-    fields: {
-      jobs: 'drawn',
-      progress: 'drawn',
-      note: 'drawn',
-      storageReads: {
-        withheld:
-          'the page shows its own unread state from `note`; the raw flag adds nothing a cleaner can act on',
-      },
-      lang: {
-        withheld: 'the page owns the language and sends it to the route; it is not a value read back',
-      },
-      since: {
-        withheld: "the host's own label for the link, not the cleaner's business",
-      },
-    },
-  },
-  {
-    page: 'src/components/CleanLink.tsx',
-    from: 'src/lib/clean-link.ts',
-    // The per-job shape, which is where all four of this class has happened.
+    typeFile: 'src/lib/clean-link.ts',
+    typeName: 'CleanJobView',
     fields: {
       house: 'drawn',
       houseName: 'drawn',
@@ -72,23 +72,36 @@ const REGISTER: Array<{
   },
   {
     page: 'src/components/StayApp.tsx',
-    from: 'src/lib/api.ts',
+    typeFile: 'src/lib/api.ts',
+    typeName: 'StayGuide',
     fields: {
-      phase: 'drawn',
-      opensOn: 'drawn',
-      preview: 'drawn',
-      unlocked: 'drawn',
-      wifiName: 'drawn',
-      wifiPassword: 'drawn',
-      doorCode: 'drawn',
-      doorCodes: 'drawn',
-      doorMissing: 'drawn',
-      doorNotes: 'drawn',
+      // The stay identity, drawn across the page.
+      enabled: 'drawn',
+      guestName: 'drawn',
+      propertyId: 'drawn',
+      propertyName: 'drawn',
+      units: 'drawn',
+      guide: 'drawn',
+      access: 'drawn',
+      /*
+       * The rest of the stay facts, which this parser surfaced when it stopped reading only `type` bodies and started finding
+       * `interface` ones too. All drawn — listed so a future field cannot be added without a decision.
+       */
+      checkIn: 'drawn',
+      checkOut: 'drawn',
+      partyGuests: 'drawn',
+      partyChildren: 'drawn',
+      preferencesDone: 'drawn',
+      hasSurvey: 'drawn',
+      storageReads: 'drawn',
+      nightBeforeFree: 'drawn',
+      checkoutNightFree: 'drawn',
     },
   },
   {
     page: 'src/components/OwnerPortal.tsx',
-    from: 'src/lib/owner-portal.ts',
+    typeFile: 'src/lib/owner-portal.ts',
+    typeName: 'OwnerPortalView',
     fields: {
       rangeLabel: 'drawn',
       todd: 'drawn',
@@ -97,66 +110,43 @@ const REGISTER: Array<{
       houses: 'drawn',
       months: 'drawn',
       notes: 'drawn',
-      // The per-house shape.
-      revenue: 'drawn',
-      costs: 'drawn',
-      cleaning: 'drawn',
-      estimatedCleaning: 'drawn',
-      leftover: 'drawn',
-      stays: 'drawn',
     },
   },
 ];
 
-test('every field in the register is drawn, or withheld on purpose', () => {
+test('every field on a page type is drawn or withheld on purpose', () => {
   const failures: string[] = [];
   for (const entry of REGISTER) {
     const page = readFileSync(entry.page, 'utf8');
-    for (const [field, disposition] of Object.entries(entry.fields)) {
-      if (disposition === 'drawn') {
-        /*
-         * The page must mention the field as a property read. `house.cleaning`, `job.door`, `access.doorCodes` — the dotted form
-         * is what a render path looks like; a field merely named in a comment would not carry a dot.
-         */
-        const pattern = new RegExp(`\\.${field}\\b`);
-        if (!pattern.test(page)) failures.push(`${entry.page}: ${field} is sent but not drawn`);
+    const fields = fieldsOf(entry.typeFile, entry.typeName);
+    assert.ok(fields.length > 3, `${entry.typeName} produced ${fields.length} fields — the parser is wrong`);
+
+    for (const field of fields) {
+      const disposition = entry.fields[field];
+      if (disposition === undefined) {
+        failures.push(`${entry.page}: ${field} is on ${entry.typeName} but the register has not classified it`);
+        continue;
+      }
+      if (disposition === 'drawn' && !new RegExp(`\\.${field}\\b`).test(page)) {
+        failures.push(`${entry.page}: ${field} is classified drawn but the page never reads it`);
       }
     }
+    // And the register cannot name fields the type does not have, which would be a stale entry.
+    for (const field of Object.keys(entry.fields)) {
+      if (!fields.includes(field)) failures.push(`${entry.page}: the register lists ${field}, which ${entry.typeName} does not have`);
+    }
   }
-  assert.deepEqual(failures, [], `a field reaches a page that does not draw it:\n  ${failures.join('\n  ')}`);
+  assert.deepEqual(failures, [], `field register mismatches:\n  ${failures.join('\n  ')}`);
 });
 
-test('a new field on the cleaner route fails this test until somebody decides', () => {
+test('the withheld fields are the ones that must not be shown', () => {
   /*
-   * The guard's whole purpose. It reads the route's response payload and the register, and reports any key the register has not
-   * classified. Adding a field is then a decision — draw it, or say why not — rather than a silent omission.
-   *
-   * My first version matched `^\s{6}(key):` and found zero keys, because the payload is written as a spread of `jobs, progress,`
-   * shorthands rather than `key:` pairs. It matches bare identifiers in the payload now, which is how this route is written.
+   * The one withheld field on a job view. `steps` carries labels without ids, so a client ticking by label is refused by the
+   * route — that is why `stepRows` exists, and why drawing both would double the list.
    */
-  const route = readFileSync('functions/api/clean/[token].ts', 'utf8');
-  const registered = new Set(Object.keys(REGISTER[0]!.fields));
-
-  /*
-   * The job-list payload specifically.
-   *
-   * Two earlier versions of this were wrong for different reasons: `lastIndexOf` found the tick handler's return, and
-   * `indexOf` found the 404 guard. Anchoring on the literal that contains `jobs` is the only one that finds the payload this
-   * register describes. Matching `key:` / `key,` at six spaces also caught helper arguments (`request`, `house`, `units`), so the
-   * slice stops at the closing of that object.
-   */
-  const start = route.indexOf('jobs,');
-  assert.ok(start > 0, 'the cleaner payload no longer contains `jobs` — the route changed shape');
-  const payload = route.slice(start, route.indexOf('};', start));
-  const keys = [...payload.matchAll(/^\s{6}([a-zA-Z]+)[,:]/gm)].map((m) => m[1]!).filter(Boolean);
-  assert.ok(keys.length > 3, `only found ${keys.length} payload keys — the shape of the route changed`);
-
-  const unclassified = [...new Set(keys)].filter((key) => !registered.has(key));
-  assert.deepEqual(
-    unclassified,
-    [],
-    `the cleaner route returns fields the register has not classified: ${unclassified.join(', ')}`,
-  );
+  const jobSteps = REGISTER[0]!.fields.steps;
+  assert.ok(jobSteps && jobSteps !== 'drawn', 'steps is no longer recorded as withheld');
+  assert.match(jobSteps.withheld, /stepRows/, 'the reason does not point at what supersedes it');
 });
 
 test('a field marked withheld names why', () => {
@@ -171,26 +161,20 @@ test('a field marked withheld names why', () => {
   }
 });
 
-test('no page draws a field that is registered as withheld', () => {
+test('the guest access block classifies every code field', () => {
   /*
-   * The other direction: a withheld field quietly appearing on a page is as much a defect as a drawn one disappearing — `since`
-   * is the host's label and must not reach a cleaner.
+   * The per-part work added `doorCodes` and `doorMissing` to this block, and the page drew only `doorCode`. Checked through the
+   * block's own type rather than the page, so a new field there has to be decided too.
    */
-  for (const entry of REGISTER) {
-    const page = readFileSync(entry.page, 'utf8');
-    for (const [field, disposition] of Object.entries(entry.fields)) {
-      if (disposition === 'drawn') continue;
-      /*
-       * `job.steps` is the field; `t.steps` is a translation label that happens to share the name. Matching only the data
-       * access is what tells them apart — my first version matched `\.steps\b` and flagged the label.
-       *
-       * The page reads jobs through a `job` variable, so the data access is `job.<field>`.
-       */
-      assert.equal(
-        new RegExp(`\\bjob\\.${field}\\b`).test(page),
-        false,
-        `${entry.page} draws ${field}, which is registered as withheld: ${disposition.withheld}`,
-      );
-    }
+  const access = fieldsOf('src/lib/api.ts', 'StayGuide');
+  assert.ok(access.includes('access'), 'the stay guide type has no access block');
+
+  const src = readFileSync('src/lib/api.ts', 'utf8');
+  for (const field of ['doorCode', 'doorCodes', 'doorMissing', 'wifiName', 'wifiPassword', 'doorNotes']) {
+    assert.ok(src.includes(`${field}`), `the access block has lost ${field}`);
+  }
+  const page = readFileSync('src/components/StayApp.tsx', 'utf8');
+  for (const field of ['doorCode', 'doorCodes', 'doorMissing']) {
+    assert.match(page, new RegExp(`access\\.${field}\\b`), `the guest page does not draw access.${field}`);
   }
 });
