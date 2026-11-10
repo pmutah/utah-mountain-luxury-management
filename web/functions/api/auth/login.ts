@@ -93,7 +93,24 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (sessionSecret(env)) {
       return corsJson(request, { error: 'Sign in with an approved email address.', code: 'sign-in' }, 401);
     }
-    return corsJson(request, { authenticated: true, authRequired: false });
+    /*
+     * No password and no session secret: there is no way to sign anyone in, and nothing to sign them in
+     * *with* — no cookie can be minted, so every private route will answer 401 no matter what this says.
+     * Returning `authenticated: true` here told the caller it was signed in while granting nothing, which is
+     * a lie the dashboard could act on. `authRequired: false, open: true` matches `/api/auth/session` and
+     * says what is actually true: access is not configured, so private data stays closed.
+     */
+    return corsJson(
+      request,
+      {
+        authenticated: false,
+        authRequired: false,
+        open: true,
+        error: 'This site has no dashboard password set, so private data stays closed. Set DASHBOARD_PASSWORD.',
+        code: 'not-configured',
+      },
+      503,
+    );
   }
   const password = typeof body.password === 'string' ? body.password : '';
   const ok = password === env.DASHBOARD_PASSWORD || matchesMuseSecret(password, env);
