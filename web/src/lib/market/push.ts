@@ -169,12 +169,17 @@ export function pushSendState(gate: PushGate): { sends: boolean; line: string } 
   if (!gate.hasToken) {
     return {
       sends: false,
-      line: 'A rate would not leave this app: there is no write token, no sender, and Hospitable is not the destination for a rate anyway.',
+      line: 'A rate would not leave this app: there is no write token. Even with one, this plan route never sends — publishing lives in /api/pricing/publish-rates and is off unless the host turns it on.',
     };
   }
+  /*
+   * A sender now exists, so this can no longer say "no sender is built". What it still cannot say is that a rate leaves
+   * from *here*: this route builds a plan and stops, and the sender is a separate route behind an explicit off-by-default
+   * switch. The doctrine point stands — a promotion badge is typed on Airbnb and VRBO, never produced by Hospitable.
+   */
   return {
     sends: false,
-    line: 'A rate still would not leave this app: no sender is built, and the doctrine keeps rates out of Hospitable. A rate and a promotion are typed on Airbnb and VRBO directly.',
+    line: 'A rate does not leave this app from here: this route only builds the plan. Publishing is a separate route, off unless the host turns it on, and it writes the nightly price only — a promotion badge is still typed on Airbnb and VRBO directly.',
   };
 }
 

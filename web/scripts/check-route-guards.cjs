@@ -97,6 +97,7 @@ const HOST_ROUTES = [
   'agent/transcribe.ts',
   'stay-guide/[token]/stay-message.ts',
   'pricing/approved-rates.ts',
+  'pricing/publish-rates.ts',
   'owner/links.ts',
   'pricing/shadow-days.ts',
 ];

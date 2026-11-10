@@ -58,8 +58,14 @@ test('the fully open gate still reports allowed, and says what that means', () =
   const [plan] = pushPlanAll([run], gate(), '2026-11-08');
   assert.equal(plan!.allowed, true, 'the open gate should clear the plan to act on');
   assert.equal(plan!.actionable, true, 'actionable must agree with allowed when nothing blocks');
-  // And the send state beside it still says no sender, so the two cannot be read as contradictory by accident.
-  assert.match(pushSendState(gate()).line, /no sender is built/);
+  /*
+   * And the send state beside it still says this route does not send, so the two cannot be read as contradictory by
+   * accident. It no longer says "no sender is built" — one exists now, on a separate route behind an off-by-default switch
+   * — so the line names where publishing actually lives.
+   */
+  const line = pushSendState(gate()).line;
+  assert.match(line, /does not leave this app from here/);
+  assert.match(line, /separate route/);
 });
 
 test('a blocked gate is neither allowed nor actionable', () => {

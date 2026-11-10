@@ -21,35 +21,36 @@ test('an open gate clears the plan but still reports that nothing sends', () => 
   assert.equal(pushHold(READY), null, 'a fully open gate should not hold the plan');
 
   const send = pushSendState(READY);
-  assert.equal(send.sends, false, 'an open gate claimed a send that does not exist');
-  assert.match(send.line, /no sender is built/i);
+  assert.equal(send.sends, false, 'an open gate claimed a send from this route');
+  assert.match(send.line, /does not leave this app from here/i);
 });
 
-test('a missing token is named, and is not the only reason nothing sends', () => {
+test('a missing token is named, and a token alone still does not mean a send', () => {
   const send = pushSendState({ ...READY, hasToken: false });
   assert.equal(send.sends, false);
   assert.match(send.line, /no write token/i);
-  // The old wording stopped at "no sender". That was incomplete: a sender aimed at Hospitable would do the
-  // one thing the doctrine forbids, so the line has to say the destination is wrong too.
-  assert.match(send.line, /Hospitable is not the destination/i, 'the missing sender was hidden behind the missing token');
+  // The plan route never sends whatever the token says, and the line has to say where publishing actually lives.
+  assert.match(send.line, /publish-rates/, 'the line does not point at the route that can publish');
 });
 
 test('setting the token never reads as turning publishing on', () => {
-  // With a token the line must still refuse, and must point at Airbnb and VRBO, not at Hospitable.
   const send = pushSendState({ ...READY, hasToken: true });
   assert.equal(send.sends, false);
-  assert.match(send.line, /no sender is built/i);
-  assert.match(send.line, /Airbnb and VRBO/i, 'the line must say where a rate is actually typed');
+  assert.match(send.line, /separate route/i, 'the line does not say publishing is a separate route');
+  assert.match(send.line, /off unless the host turns it on/i, 'the line does not say publishing is off by default');
+  assert.match(send.line, /Airbnb and VRBO/i, 'the line must say where a promotion is actually typed');
   assert.equal(/will send|is now live|pushing now/i.test(send.line), false, 'the copy promised a send');
 });
 
-test('nothing in the codebase writes a rate to Hospitable', () => {
+test('the only Hospitable writer is the publish route, and it is behind the switch', () => {
   /*
-   * A guard for the day someone builds the sender: this test fails and forces the copy and the gate to be
-   * revisited together, rather than the UI continuing to deny a capability that now exists.
+   * This guard was written for the day a sender appeared: it used to fail if *anything* reached the Hospitable API, so that
+   * the copy and the gate would be revisited together. That day came on 2026-11-10 — the owner asked for the sender with an
+   * off-by-default switch — so the guard now pins the shape instead of the absence: exactly one file may call the API, it must
+   * be the sender, and it must consult `publishSwitch` before it does.
    */
   const roots = ['functions', 'src/lib'];
-  const offenders: string[] = [];
+  const writers: string[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
@@ -59,18 +60,18 @@ test('nothing in the codebase writes a rate to Hospitable', () => {
       }
       if (!/\.ts$/.test(entry) || /\.test\.ts$/.test(entry)) continue;
       const text = readFileSync(full, 'utf8');
-      // An outbound write would need a Hospitable URL or a request carrying the token.
-      if (/api\.hospitable\.com/i.test(text)) offenders.push(`${full}: hospitable API host`);
-      if (/HOSPITABLE_WRITE_TOKEN\s*\}/.test(text) || /Authorization[^\n]*HOSPITABLE_WRITE_TOKEN/.test(text)) {
-        offenders.push(`${full}: sends the token in a request`);
-      }
+      if (/api\.hospitable\.com/i.test(text)) writers.push(full.replace(/\\/g, '/'));
     }
   };
   for (const root of roots) walk(root);
 
   assert.deepEqual(
-    offenders,
-    [],
-    `a Hospitable writer may now exist — revisit pushSendState and the panel copy: ${offenders.join('; ')}`,
+    writers,
+    ['src/lib/market/rate-publish.ts'],
+    `a Hospitable writer appeared somewhere unexpected: ${writers.join('; ')}`,
   );
+
+  const sender = readFileSync('src/lib/market/rate-publish.ts', 'utf8');
+  assert.match(sender, /publishSwitch\(env\)/, 'the sender does not consult the switch');
+  assert.match(sender, /if \(!gate\.on \|\| gate\.unit === null\)/, 'the sender can run with the switch off');
 });
