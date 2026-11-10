@@ -13,3 +13,5 @@ coverage/
 service-account*.json
 *-firebase-adminsdk*.json
 web/_worker.bundle
+
+web/.tmp-fn-build/
