@@ -91,6 +91,7 @@ const HOST_ROUTES = [
   'book/discard.ts',
   'book/requests.ts',
   'book/holds.ts',
+  'book/payments.ts',
   'agent/chat.ts',
   'agent/construction/chat.ts',
   'agent/transcribe.ts',
