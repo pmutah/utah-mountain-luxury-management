@@ -1,10 +1,11 @@
 import { corsJson } from '../../_lib/data';
 import { buildMarketBoard } from '../../../src/lib/market/board';
-import { denverToday } from '../../../src/lib/market/dates';
+import { denverToday, addDays } from '../../../src/lib/market/dates';
 import { grossPace } from '../../../src/lib/revenue-goals';
 import type { YearPace } from '../../../src/lib/market/fill';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
 import { getAllReservations } from '../../_lib/reservations-store';
+import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { loadLiveNights, loadApprovedRates } from '../../_lib/pricing-store';
 import { storageReadPaused } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
@@ -26,7 +27,7 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
   let live = null;
   let storageReads: 'ok' | 'paused' = 'ok';
   /** Booked nights and the year's pace for the fill promotion. Absent when they could not be read. */
-  let fill: { taken: string[]; pace: YearPace } | undefined;
+  let fill: { taken: string[]; pace: YearPace; closed?: string[] } | undefined;
   // Approved nights, so the board a host reads starts from the published price rather than the card.
   let approved: Array<{ house: string; date: string; guest: number }> = [];
   try {
@@ -47,7 +48,26 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     }));
     const taken = occupiedNights(spans, house, from, `${from.slice(0, 4)}-12-31`);
     const pace: YearPace = grossPace(house, stays, from).stillNeeded > 0 ? 'short' : 'met';
-    fill = { taken, pace };
+    /*
+     * Closed nights too, because a night inside a block is just as unreachable as a booked one, and a promotion on it
+     * would be a discount for a date nobody can hold. A block read failure leaves the list empty rather than failing the
+     * whole board: the board still answers, and the promotion rule already refuses on anything it cannot measure.
+     */
+    const blocks = await loadCalendarBlocks(env).catch(() => ({}));
+    /*
+     * Expand each block for this house into the nights it closes. A block runs start..end, and the checkout morning is
+     * not a night — the same rule the rest of the app uses, so a block cannot be read as one night longer than it is.
+     */
+    const closed: string[] = [];
+    for (const block of Object.values(blocks).flat()) {
+      if (!block || block.propertyId !== house) continue;
+      let cursor = block.start;
+      while (cursor < block.end) {
+        if (cursor >= from && !closed.includes(cursor)) closed.push(cursor);
+        cursor = addDays(cursor, 1);
+      }
+    }
+    fill = { taken, pace, closed };
   } catch (err) {
     if (!storageReadPaused(err)) throw err;
     storageReads = 'paused';

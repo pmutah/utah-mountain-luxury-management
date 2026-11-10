@@ -107,5 +107,6 @@ test('the overview route feeds the promotion the facts it needs', () => {
   // is exactly what happened to pace in the sibling route before it was fixed.
   const ROUTE = fs.readFileSync('functions/api/market/overview.ts', 'utf8');
   assert.match(ROUTE, /grossPace\(house, stays, from\)/, 'the route does not compute the year pace');
-  assert.match(ROUTE, /fill = \{ taken, pace \}/, 'the route does not pass the calendar and pace to the board');
+  assert.match(ROUTE, /fill = \{ taken, pace/, 'the route does not pass the calendar and pace to the board');
+  assert.match(ROUTE, /closed/, 'the route does not pass closed nights, so a blocked night could still be promoted');
 });

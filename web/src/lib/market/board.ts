@@ -1,4 +1,5 @@
 import { bandComps, isCloseSleep, isFairComp, isNearby } from './comp-fit';
+import { bookableNights } from './bookable';
 import { eachNight, isWeekendNight, monthFactor } from './dates';
 import { promotionForNight, type YearPace } from './fill';
 import { compsFor, type SampleComp } from './fixtures';
@@ -92,11 +93,28 @@ export function buildMarketBoard(
    * calendar. Both default to the honest "not known" answer, so a caller that has neither still gets a board — it just
    * says no promotion is recommended rather than inventing one.
    */
-  fill?: { pace?: YearPace; taken?: readonly string[] },
+  fill?: { pace?: YearPace; taken?: readonly string[]; closed?: readonly string[] },
 ): MarketBoard {
   const listed = selected ?? compsFor(house);
   const band = bandComps(house, listed);
   const comps = band.used;
+  /*
+   * Nights a guest can actually book, from the same helper the shadow run uses. A one-night hole reads as open on the
+   * board, but no stay can start there — so a discount on it is a price nobody can pay. `null` when the calendar was not
+   * provided, which is "not known" rather than "all bookable".
+   */
+  const fillDates = eachNight(from, days).map((iso) => iso);
+  const bookable =
+    fill?.taken === undefined && fill?.closed === undefined
+      ? null
+      : bookableNights(
+          house,
+          fillDates,
+          fill?.taken ?? [],
+          from,
+          fill?.pace ?? 'unknown',
+          fill?.closed ?? [],
+        );
   const nights: NightRow[] = eachNight(from, days).map((iso) => {
     const sampleRows = comps.map((comp) => ({
       rate: compAsk(comp, iso),
@@ -188,7 +206,7 @@ export function buildMarketBoard(
      * two disagree by design.
      */
     const promotion =
-      !ours.lock && !invented && !ours.approved
+      !ours.lock && !invented && !ours.approved && (bookable === null || bookable.has(iso))
         ? promotionForNight({
             date: iso,
             asOf: from,
@@ -201,6 +219,8 @@ export function buildMarketBoard(
         : { percent: 0 as const, offerGuest: proposedGuest, reason: '' };
     const promotionPercent = promotion.percent;
     const offerGuest = promotionPercent === 20 ? promotion.offerGuest : proposedGuest;
+    /* A night no stay can reach. Named so the desk can tell it apart from a night the floor stopped. */
+    const unreachable = bookable !== null && !bookable.has(iso);
 
     return {
       date: iso,
@@ -221,11 +241,18 @@ export function buildMarketBoard(
         ? 'Holiday rate stays on the season table.'
         : invented
           ? `No saved comp ask covers this night, so the band is the invented sample set. No rate move is recommended until a real comp watches this date. The published rate stays.`
-          : ours.approved && move.action === 'promote'
-            ? `This night carries the host's approved price of $${ours.guest}, and an approved night is quoted at that price with no discount. No promotion is applied.`
-            : floorAboveMarket
-              ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
-            : move.reason,
+          : /*
+             * Bookability before the rest, the same order the shadow run uses: our own calendar is a fact we hold
+             * directly, and a night no stay can reach is the actionable thing for a host to fix (a one-night hole, a
+             * lone Friday). Saying "the floor is why" on such a night would send them to the wrong place.
+             */
+            unreachable
+            ? 'No stay can be booked on this date — a one-night hole, or a stretch too short for the minimum. The published rate stays, and no promotion is applied to a price nobody can pay.'
+            : ours.approved && move.action === 'promote'
+              ? `This night carries the host's approved price of $${ours.guest}, and an approved night is quoted at that price with no discount. No promotion is applied.`
+              : floorAboveMarket
+                ? `The floor is $${ours.floorGuest} and the market's 75th percentile is $${p75}, so no allowed discount reaches this market. The published rate stays; the floor is why.`
+                : move.reason,
       minNights: ours.minNights,
       compBookedShare: Math.round(((sampleRows.length - observed.length) / sampleRows.length) * 100),
       source,
