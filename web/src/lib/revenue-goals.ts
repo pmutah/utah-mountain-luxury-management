@@ -49,6 +49,38 @@ function addDays(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** Annual gross pace for one house, and what is left to earn. */
+export type HousePace = {
+  target: number;
+  booked: number;
+  stillNeeded: number;
+  openNightsLeft: number;
+  label: string;
+  /** Host net per remaining night if every one sold at the bare goal. A gap, not a market price. */
+  sellOutHostNightly: number | null;
+};
+
+/**
+ * Is this "ask" many times what the market charges?
+ *
+ * `sellOutHostNightly` divides the remaining goal by the nights left. That is arithmetic, not a price, and the card used
+ * to present it as one: on 2026-11-10 the Ranch needed $64,011 across 40 open nights, so it read "Ask $1,920 after fees"
+ * while the comps it is compared against ran $245-$1,201 with a median near $515 and our own published rate was $640.
+ *
+ * A host following that sentence would price the house at roughly three times the market and book nothing. So the gap is
+ * measured before it is shown: above this multiple of what the market actually charges, it is reported as a shortfall that
+ * prices cannot close, and the market figure is named instead.
+ *
+ * 1.5x is the line because it leaves room for a genuinely undersold house to price up into its band without the sentence
+ * ever implying a number no comparable listing charges.
+ */
+export const GOAL_GAP_MARKET_MULTIPLE = 1.5;
+
+export function goalGapIsBeyondMarket(sellOutHostNightly: number | null, marketHostNightly: number | null): boolean {
+  if (sellOutHostNightly == null || marketHostNightly == null || marketHostNightly <= 0) return false;
+  return sellOutHostNightly > marketHostNightly * GOAL_GAP_MARKET_MULTIPLE;
+}
+
 function takenNights(stays: PaceStay[], from: string, to: string) {
   const taken = new Set<string>();
   for (const stay of stays) {
