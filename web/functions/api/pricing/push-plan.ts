@@ -8,7 +8,7 @@ import { getAllReservations } from '../../_lib/reservations-store';
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { loadLiveNights, loadApprovedRates } from '../../_lib/pricing-store';
 import { kvGet, kvPut, storageReadPaused } from '../../_lib/kv-json';
-import { denverToday } from '../../../src/lib/market/dates';
+import { denverToday, addDays, eachNight } from '../../../src/lib/market/dates';
 import { grossPace } from '../../../src/lib/revenue-goals';
 import type { YearPace } from '../../../src/lib/market/fill';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
@@ -96,7 +96,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       live,
       approved.filter((row) => row.house === house).map((row) => ({ date: row.date, guest: row.guest })),
     );
-    const taken = occupiedNights(spans, house, today, `${today.slice(0, 4)}-12-31`);
+    /*
+     * Through the end of the board's window, not the end of this calendar year.
+     *
+     * The range stopped at `${year}-12-31`, which is **exclusive**, so Dec 31 itself and every night of the next January
+     * were treated as free. On production that made three sold nights read as open in the authoritative plan — the one that
+     * proposes prices — on the busiest week of the year.
+     */
+    const windowEnd = addDays(eachNight(today, days)[days - 1] ?? today, 1);
+    const taken = occupiedNights(spans, house, today, windowEnd);
     const closed = occupiedNights(
       blocks.map((block) => ({
         propertyId: block.propertyId,
@@ -105,7 +113,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       })),
       house,
       today,
-      `${today.slice(0, 4)}-12-31`,
+      windowEnd,
     );
     /*
      * Year pace, computed from the stays this route already read. It used to be hardcoded `'unknown'`, and

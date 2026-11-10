@@ -1,6 +1,6 @@
 import { corsJson } from '../../_lib/data';
 import { buildMarketBoard } from '../../../src/lib/market/board';
-import { denverToday, addDays } from '../../../src/lib/market/dates';
+import { denverToday, addDays, eachNight } from '../../../src/lib/market/dates';
 import { grossPace } from '../../../src/lib/revenue-goals';
 import type { YearPace } from '../../../src/lib/market/fill';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
@@ -46,7 +46,15 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
       // Units, so a part booking does not read as the whole house on a night it never took.
       ...(stay.units && stay.units.length > 0 ? { units: stay.units } : {}),
     }));
-    const taken = occupiedNights(spans, house, from, `${from.slice(0, 4)}-12-31`);
+    /*
+     * Through the end of the board's window, not the end of this calendar year.
+     *
+     * The range used to stop at `${year}-12-31`, which is **exclusive** — so Dec 31 itself and every night of the next
+     * January were never marked booked. On production that was three sold nights reported as `hold` with a comps reason,
+     * on the busiest week of the year.
+     */
+    const lastNight = eachNight(from, days)[days - 1] ?? from;
+    const taken = occupiedNights(spans, house, from, addDays(lastNight, 1));
     const pace: YearPace = grossPace(house, stays, from).stillNeeded > 0 ? 'short' : 'met';
     /*
      * Closed nights too, because a night inside a block is just as unreachable as a booked one, and a promotion on it
