@@ -6,7 +6,7 @@ import { createReservation, getAllReservations } from '../../_lib/reservations-s
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { releaseHoldsForRequest, loadHolds } from '../../_lib/hold-store';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
-import { unitBookingConflict } from '../../../src/lib/river-units';
+import { unitBookingConflict, otherPartsOccupied } from '../../../src/lib/river-units';
 import { partStayQuote } from '../../../src/lib/part-stay-quote';
 import { loadRiverUnitRates } from '../../_lib/pricing-store';
 import type { RiverUnitRates } from '../../../src/lib/river-unit-rates';
@@ -170,6 +170,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       takenOnHouse: clash,
       // A part booking says which part it sold, so the host's line does not claim the whole house.
       ...(partUnits.length > 0 && saved.propertyId === 'river' && !saved.alsoPropertyId ? { units: partUnits } : {}),
+      /*
+       * A second party in the building, named at the moment the host accepts. The one door code opens every part, so a
+       * host who sells two parts on the same nights is putting two guests behind one lock — a decision they should make
+       * knowing it, not discover on arrival. Parts only; never a guest name.
+       */
+      ...(partUnits.length > 0 && saved.propertyId === 'river' && !saved.alsoPropertyId
+        ? {
+            sharedWith: otherPartsOccupied(
+              spans as never,
+              { units: partUnits as never, checkIn: saved.checkIn ?? '', checkOut: saved.checkOut ?? '' },
+              saved.checkIn ?? '',
+              saved.checkOut ?? '',
+            ),
+          }
+        : {}),
     },
     asOf: denverToday(),
   });

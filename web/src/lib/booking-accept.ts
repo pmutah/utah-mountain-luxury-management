@@ -1,7 +1,6 @@
 import { addDays } from './market/dates';
 import type { HouseId } from './market/types';
 import { RIVER_UNIT_DETAIL } from './river-units';
-
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export type AcceptableRequest = {
@@ -26,6 +25,13 @@ export type AcceptInput = {
    * existed accepts exactly as it did.
    */
   units?: readonly string[];
+  /**
+   * Parts another party already holds on these nights.
+   *
+   * The route computes this from the real calendar and hands it in, so the acceptance line can tell the host that two
+   * guests will share the building and its single door code. Parts only; never a guest.
+   */
+  sharedWith?: readonly string[];
 };
 
 /** One stay to save. A two-house request produces two of these. */
@@ -54,6 +60,16 @@ export type StayPlan = {
    * Absent means the whole house. Only a single-house Riverhouse booking can carry parts.
    */
   units?: string[];
+  /**
+   * Parts of the house occupied by **someone else** on these nights.
+   *
+   * The building has one door code, so a part booking alongside another party means both hold a code that opens
+   * every part. The host decides whether that is acceptable (fit separate locks, or do not sell parts on the same
+   * nights), but they have to know it at the moment they accept — not discover it when a guest arrives.
+   *
+   * Named parts only, never a guest. Absent means nobody else is in the house.
+   */
+  sharedWith?: string[];
 };
 
 export type AcceptPlan = {
@@ -85,6 +101,11 @@ export type AcceptPlan = {
    * telling them the whole house is now booked when only the Main Lodge is.
    */
   units?: string[];
+  /**
+   * Parts another party holds on these nights, so the host's confirmation can warn that two guests will share the
+   * building and its single door code. Named parts only, never a guest.
+   */
+  sharedWith?: string[];
 };
 
 /**
@@ -241,6 +262,14 @@ export function acceptHold(input: {
               .slice(0, RIVER_UNIT_DETAIL.length),
           }
         : {}),
+      /*
+       * Parts another party holds on these nights, carried through so `acceptedLine` can warn the host. Only for a
+       * part booking at the Riverhouse, and only names of parts — a whole-house booking occupies every part, so there
+       * is nobody else to warn about.
+       */
+      ...(propertyId === 'river' && !also && (input.plan.sharedWith ?? []).length > 0
+        ? { sharedWith: [...(input.plan.sharedWith ?? [])] }
+        : {}),
     },
   };
 }
@@ -277,5 +306,21 @@ export function acceptedLine(plan: AcceptPlan): string {
           : 'The Lindon House';
   const nights = plan.nights === 1 ? '1 night' : `${plan.nights} nights`;
   const line = `${houses} is booked for ${nights}. The host payout is saved. Nothing was sent to the guest from here.`;
-  return line.includes('$') ? 'The stay is saved. Nothing was sent to the guest from here.' : line;
+  if (line.includes('$')) return 'The stay is saved. Nothing was sent to the guest from here.';
+
+  /*
+   * A part booking can put two parties in one building, and the building has a single door code. The host decides
+   * whether that is acceptable, but they have to see it when they accept the stay — the pricing panel says it before a
+   * price invites it, and this says it at the other moment the decision is actually made.
+   *
+   * The other party is named by part, never by guest: that is all the host needs, and a name would put one guest's
+   * stay into another guest's record.
+   */
+  const shared = (plan.sharedWith ?? []).filter((unit) => typeof unit === 'string' && unit.length > 0);
+  if (shared.length === 0) return line;
+  const sharedNames = shared.map(partName).join(' and ');
+  return (
+    `${line} **${sharedNames} ${shared.length === 1 ? 'is' : 'are'} occupied by another party on those nights**, ` +
+    'so two guests share the building and the one door code opens every part. Give each part its own lock, or do not sell parts on the same nights.'
+  );
 }

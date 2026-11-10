@@ -220,3 +220,34 @@ export function unitBookingConflict(
 }
 
 export type { HouseId };
+
+/**
+ * The parts of the house another party already holds on these nights.
+ *
+ * Used for one thing: telling the host, at the moment they accept a part booking, that a second party will be in the
+ * building. The building has one door code, so that is a real consequence rather than a detail.
+ *
+ * Only parts **not** being taken by this booking are reported — the parts being sold here are the guest's own, and
+ * naming them back would read as if they were somebody else's. Returns part names, never a guest.
+ */
+export function otherPartsOccupied(
+  spans: readonly UnitSpan[],
+  request: { units: readonly RiverUnitId[]; checkIn: string; checkOut: string },
+  from: string,
+  until: string,
+): string[] {
+  if (request.checkIn >= request.checkOut) return [];
+  const ours = new Set(request.units.length === 0 ? RIVER_UNITS : request.units);
+  const nights = nightsIn({ propertyId: 'river', checkIn: request.checkIn, checkOut: request.checkOut }, from, until);
+  if (nights.length === 0) return [];
+
+  const occupied: string[] = [];
+  for (const unit of RIVER_UNITS) {
+    if (ours.has(unit)) continue;
+    const blocked = new Set(unitBlockedNights(spans, unit, from, until));
+    if (nights.some((night) => blocked.has(night))) {
+      occupied.push(RIVER_UNIT_DETAIL.find((detail) => detail.id === unit)?.name ?? unit);
+    }
+  }
+  return occupied;
+}
