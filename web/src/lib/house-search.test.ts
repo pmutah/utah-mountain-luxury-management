@@ -121,7 +121,7 @@ test('the house list compares the rhythm and does not say a house is open', () =
   const text = JSON.stringify(rows);
   assert.equal(rows.length, 3);
   assert.match(rows.find((row) => row.house === 'river')?.lines.join(' ') ?? '', /Quiet hours in this mountain neighborhood/);
-  assert.match(rows.find((row) => row.house === 'ranch')?.lines.join(' ') ?? '', /Quiet hours 10 PM to 8 AM/);
+  assert.match(rows.find((row) => row.house === 'ranch')?.lines.join(' ') ?? '', /Quiet hours 10 PM to 6 AM/);
   assert.match(rows.find((row) => row.house === 'lindon')?.lines.join(' ') ?? '', /Arrive November 6, 2026 at 4:00 PM/);
   assert.equal(text.includes('will quote'), false);
   assert.equal(text.includes('$'), false);
@@ -133,7 +133,7 @@ test('a house page lists the rhythm for its dates and leaves the door code off',
   const lines = housePageRhythm('ranch', '2026-11-13', '2026-11-15');
   const text = lines.join('\n');
   assert.match(text, /Arrive November 13, 2026 at 4:00 PM/);
-  assert.match(text, /Quiet hours 10 PM to 8 AM/);
+  assert.match(text, /Quiet hours 10 PM to 6 AM/);
   assert.match(text, /Leave November 15, 2026 at 11:00 AM/);
   assert.match(text, /BYU vs Baylor/);
   assert.match(text, /does not hold the dates/);

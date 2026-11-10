@@ -149,7 +149,7 @@ function defaults(id: GuideHouseId): HouseGuide {
       address: PROPERTIES.ranch.address,
       parking: 'Park in the driveway. Please do not block neighbors.',
       arrival: 'The house is in Lindon, about 45 minutes south of the Salt Lake airport.',
-      houseRules: 'Quiet hours 10 PM to 8 AM. No parties. Stay within the booked guest count. No smoking indoors.',
+      houseRules: 'Quiet hours 10 PM to 6 AM. No parties. Stay within the booked guest count. No smoking indoors.',
       checkout: `${shared.checkout}\nPut the hot tub cover back on.`,
       sections: [
         { title: 'Hot tub', body: 'Keep the cover on when not in use. No glass in or near the tub. Kids with an adult only.' },
@@ -163,7 +163,7 @@ function defaults(id: GuideHouseId): HouseGuide {
     address: PROPERTIES.lindon.address,
     parking: 'Park in the driveway.',
     arrival: 'The house is in Lindon, about 15 minutes from BYU and 45 minutes from the Salt Lake airport.',
-    houseRules: 'Quiet hours 10 PM to 8 AM. No smoking indoors. No parties.',
+    houseRules: 'Quiet hours 10 PM to 6 AM. No smoking indoors. No parties.',
     sections: [],
     places: VALLEY_PLACES,
   };

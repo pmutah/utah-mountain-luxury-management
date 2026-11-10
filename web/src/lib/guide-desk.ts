@@ -805,7 +805,12 @@ export function guideDeskAnswer(
     return `${lines.join(' ')} ${CLOSED}`;
   }
   if (/\b(pet|pets|dog|dogs|cat|cats|animal|animals)\b/.test(q)) {
-    return `${petRuleLine('desk')} ${CLOSED}`;
+    /*
+     * The guest-facing text, not the desk text. This answer is read by a guest on a public page, and every guest string is
+     * asserted to contain no `$` so a page can never quote a price — the pet fee is a price. `petRuleLine('desk')` names it,
+     * which is right for a host and wrong here.
+     */
+    return `${petRuleLine('page')} ${CLOSED}`;
   }
   if (/\b(have|host|throw|hold) (a |an )?(party|parties|event|events)\b/.test(q) || /\bparties\b/.test(q)) {
     const lines = scope.map((house) => eventHoldLine(house));

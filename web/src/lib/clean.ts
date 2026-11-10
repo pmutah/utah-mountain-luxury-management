@@ -318,31 +318,35 @@ export function workOrderEssentials(house: HouseId, lang: CleanLang = 'en'): str
 }
 
 const RULES_ES: Record<string, string> = {
-  'Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.':
-    'Horas de silencio en este vecindario de montaña. No fiestas ni eventos sin aprobación por escrito. Sigue las notas del séptico y la basura. No fumar adentro.',
-  'Quiet hours 10 PM to 8 AM. No parties. Stay within the booked guest count. No smoking indoors.':
-    'Horas de silencio de 10 PM a 8 AM. No fiestas. Quédate dentro del número de huéspedes reservado. No fumar adentro.',
-  'Quiet hours 10 PM to 8 AM. No smoking indoors. No parties.':
-    'Horas de silencio de 10 PM a 8 AM. No fumar adentro. No fiestas.',
+  'Quiet hours 10 PM to 6 AM. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.':
+    'Horas de silencio de 10 PM a 6 AM. No fiestas ni eventos sin aprobación por escrito. Sigue las notas del séptico y la basura. No fumar adentro.',
+  'Quiet hours 10 PM to 6 AM. No parties. Stay within the booked guest count. No smoking indoors.':
+    'Horas de silencio de 10 PM a 6 AM. No fiestas. Quédate dentro del número de huéspedes reservado. No fumar adentro.',
+  'Quiet hours 10 PM to 6 AM. No smoking indoors. No parties.':
+    'Horas de silencio de 10 PM a 6 AM. No fumar adentro. No fiestas.',
+  'Dogs only, up to 2, under 50 lb each. No cats. A pet fee applies per stay.':
+    'Solo perros, hasta 2, menos de 50 libras cada uno. No gatos. Aplica una tarifa de mascota por estancia.',
 };
 
-/** Whether quiet hours are in effect. River publishes no window, so it states the rule without a time. Not a checklist line. */
+/**
+ * Quiet hours, in effect 10 PM to 6 AM at all three houses.
+ *
+ * The owner gave one window for every house on 2026-11-10. Before that the Ranch and Lindon said 8 AM and the River House
+ * named no clock, so a River guest was told nothing and the other two were told the wrong hour.
+ */
 export function cleanQuietLine(house: HouseId, lang: CleanLang, hour = denverHour()): string {
   const h = ((Math.floor(hour) % 24) + 24) % 24;
+  const houseName = house === 'river' ? 'The River House' : house === 'ranch' ? 'The Ranch House' : 'The Lindon House';
   const tail = lang === 'es' ? 'Esto no es una línea de la lista. No se envió nada.' : 'This is not a checklist line. Nothing was sent.';
   let line: string;
-  if (house === 'river') {
+  if (h >= 22 || h < 6) {
     line = lang === 'es'
-      ? 'Aplican horas de silencio en este vecindario del cañón. Baje el volumen de noche para no molestar a los vecinos.'
-      : 'Quiet hours apply in this canyon neighborhood. Keep noise down at night so the neighbors are not disturbed.';
-  } else if (h >= 22 || h < 8) {
-    line = lang === 'es'
-      ? 'Las horas de silencio están en vigor hasta las 8:00 AM.'
-      : 'Quiet hours are in effect until 8:00 AM.';
+      ? `${houseName}: las horas de silencio están en vigor hasta las 6:00 AM.`
+      : `${houseName}: quiet hours are in effect until 6:00 AM.`;
   } else {
     line = lang === 'es'
-      ? 'Las horas de silencio no están en vigor. Son de 10:00 PM a 8:00 AM.'
-      : 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM.';
+      ? `${houseName}: las horas de silencio no están en vigor. Son de 10:00 PM a 6:00 AM.`
+      : `${houseName}: quiet hours are not in effect. They run from 10:00 PM to 6:00 AM.`;
   }
   const text = `${line} ${tail}`;
   if (text.includes('$') || /door\s*code|wi-?fi|password/i.test(text)) return tail;

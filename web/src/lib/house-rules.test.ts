@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { directRequestReady, eventHoldLine, guestRuleLines, houseRules, petRuleLine, quoteActionLine, quoteAgreementHold, quoteTimesHold, quoteTimesReady, requestHoldLine, rulesNote, rulesReadLine } from './house-rules.ts';
+import { directRequestReady, eventHoldLine, guestRuleLines, houseRules, PET_FEE, petRuleLine, quoteActionLine, quoteAgreementHold, quoteTimesHold, quoteTimesReady, requestHoldLine, rulesNote, rulesReadLine } from './house-rules.ts';
 
 test('each house publishes its own rules and the request waits for them', () => {
   assert.equal(houseRules('river').some((rule) => rule.text.includes('septic')), true);
@@ -30,18 +30,18 @@ test('each house publishes its own rules and the request waits for them', () => 
   assert.equal(river.includes('$'), false);
   assert.match(eventHoldLine('ranch'), /The Ranch House does not take a party/);
   assert.match(eventHoldLine('lindon'), /The Lindon House does not take a party/);
-  assert.match(rulesNote('ranch'), /House rules read:.*Quiet hours 10 PM to 8 AM/);
+  assert.match(rulesNote('ranch'), /House rules read:.*Quiet hours 10 PM to 6 AM/);
   assert.match(rulesNote('ranch'), /hot tub/);
   assert.match(rulesNote('river'), /septic/);
   assert.match(rulesNote('lindon'), /No parties/);
   assert.equal(/password|door code/i.test(rulesNote('river')), false);
   const ranchPhone = guestRuleLines('ranch', 'No smoking indoors.');
-  assert.match(ranchPhone.join('\n'), /Quiet hours 10 PM to 8 AM/);
+  assert.match(ranchPhone.join('\n'), /Quiet hours 10 PM to 6 AM/);
   assert.match(ranchPhone.join('\n'), /hot tub cover/);
   assert.equal(ranchPhone.some((line) => line === 'No smoking indoors.'), false);
   const custom = guestRuleLines('lindon', 'Please lock the side gate.');
   assert.equal(custom[0], 'Please lock the side gate.');
-  assert.match(custom.join('\n'), /Quiet hours 10 PM to 8 AM/);
+  assert.match(custom.join('\n'), /Quiet hours 10 PM to 6 AM/);
   const hidden = guestRuleLines('river', 'The door code is 1234.');
   assert.equal(hidden.some((line) => /door code/i.test(line)), false);
   assert.match(hidden.join('\n'), /septic/);
@@ -149,10 +149,20 @@ test('each house publishes its own rules and the request waits for them', () => 
   assert.match(rulesReadLine(true, true), /This request does not sign either agreement/);
   assert.equal(heldArrival.includes('$'), false);
   const pets = petRuleLine('page');
-  assert.match(pets, /does not name a pet rule/);
-  assert.match(pets, /will not invent one/);
-  assert.equal(pets.includes('$'), false);
-  assert.equal(/dog|cat|allowed|no pets/i.test(pets), false);
+  /*
+   * The page text names the policy and carries no figure — every guest-facing string is asserted to contain no `$`, so a page
+   * can never quote a price, and the pet fee is a price. The desk line names it; this one does not.
+   */
+  assert.match(pets, /dogs only, up to 2/);
+  assert.match(pets, /under 50 lb/);
+  assert.match(pets, /No cats/);
+  assert.match(pets, /A pet fee applies per stay/);
+  assert.equal(pets.includes('$'), false, 'the guest page names the pet fee, which is a price');
+  assert.equal(/will not invent one|does not name a pet rule/i.test(pets), false, 'the page narrates our old data gap');
+
+  // The desk may name the fee, because a host asking is asking what to charge.
+  assert.match(petRuleLine('desk'), /\$149/);
+  assert.equal(PET_FEE, 149);
   assert.equal(quoteTimesReady({ partyOk: true, calendar: 'live', quoteOk: true, publishedRule: false }), true);
   assert.equal(quoteTimesReady({ partyOk: true, calendar: 'live', quoteOk: false, publishedRule: false }), false);
   assert.equal(quoteTimesReady({ partyOk: false, calendar: 'live', quoteOk: true, publishedRule: false }), false);

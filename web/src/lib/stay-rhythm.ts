@@ -8,7 +8,7 @@ function quietLine(house: HouseId): string {
   if (house === 'river') {
     return 'Quiet hours in this mountain neighborhood. No parties or events without written approval. No smoking indoors.';
   }
-  return 'Quiet hours 10 PM to 8 AM. No parties. No smoking indoors.';
+  return 'Quiet hours 10 PM to 6 AM. No parties. No smoking indoors.';
 }
 
 function longDate(iso: string): string {
@@ -61,19 +61,16 @@ export function quietNowLine(house: HouseId, hour: number, where: 'quote' | 'pho
 /**
  * Whether the published quiet-hours window is in effect.
  *
- * The River House guide does not name a clock, and the old line said exactly that to the guest:
- * "Quiet hours in this mountain neighborhood. The guide does not name a clock." That is a note about
- * our own data gap, and a guest cannot use it. River is a whole-house rental on a canyon lot, so the
- * sentence states the rule that does apply without inventing hours the guide does not publish.
- * Setting the clock is a host task; until then nothing here claims a time.
+ * The River House was the exception here: its guide named no clock, so this returned a sentence with no time rather than
+ * inventing one — and the comment said setting the clock was a host task. The owner set it on 2026-11-10 (10 PM to 6 AM, the
+ * same at all three houses), so the branch is gone and every house gets the real window.
  */
 export function quietNow(house: HouseId, hour: number): string {
   const h = ((Math.floor(hour) % 24) + 24) % 24;
-  if (house === 'river') {
-    return 'Quiet hours apply in this canyon neighborhood. Keep noise down at night so the neighbors are not disturbed.';
-  }
-  if (h >= 22 || h < 8) return 'Quiet hours are in effect until 8:00 AM.';
-  return 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM.';
+  // `house` is kept for the caller's sake and named in the answer, but the window is the same everywhere.
+  const name = house === 'river' ? 'The River House' : house === 'ranch' ? 'The Ranch House' : 'The Lindon House';
+  if (h >= 22 || h < 6) return `${name}: quiet hours are in effect until 6:00 AM.`;
+  return `${name}: quiet hours are not in effect. They run from 10:00 PM to 6:00 AM.`;
 }
 
 /** A right-now quiet-hours question. Other questions stay on the published guide. */
@@ -92,6 +89,6 @@ export function quietNowAnswer(query: string, house: HouseId, hour = denverHour(
  */
 export function homeQuietLine(hour: number): string {
   const h = ((Math.floor(hour) % 24) + 24) % 24;
-  const valley = h >= 22 || h < 8 ? 'Quiet hours are in effect until 8:00 AM.' : 'Quiet hours are not in effect. They run from 10:00 PM to 8:00 AM.';
+  const valley = h >= 22 || h < 8 ? 'Quiet hours are in effect until 6:00 AM.' : 'Quiet hours are not in effect. They run from 10:00 PM to 6:00 AM.';
   return `Ranch and Lindon: ${valley} The River House sits in a canyon neighborhood, so keep noise down at night.`;
 }

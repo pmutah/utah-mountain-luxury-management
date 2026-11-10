@@ -39,8 +39,8 @@ test('the house guide search stays on published lines', () => {
   assert.equal(/This stay checks in/.test(riverAddress.hits.map((hit) => hit.text).join(' ')), false);
 
   const dog = manualGapLine('Can we bring a dog?');
-  assert.match(dog ?? '', /does not name a pet rule/);
-  assert.match(dog ?? '', /will not invent one/);
+  assert.match(dog ?? '', /dogs only, up to 2/);
+  assert.match(dog ?? '', /No cats/);
   assert.match(dog ?? '', /Nothing is sent/);
   assert.equal(/allowed|no pets|\$/i.test(dog ?? ''), false);
   const many = manualGapLine('Can 30 guests stay?', 'ranch');
@@ -173,7 +173,7 @@ test('the stay phone searches the published guide and leaves the door code off',
 
   const dog = stayGuideLookup('Can we bring a dog?', 'lindon');
   assert.equal(dog.kind, 'gap');
-  assert.match(dog.text, /does not name a pet rule/);
+  assert.match(dog.text, /dogs only, up to 2/);
   assert.equal(/allowed|no pets|\$/i.test(dog.text), false);
 
   const other = stayGuideLookup('Who is staying next week?', 'ranch');
@@ -253,17 +253,17 @@ test('the stay phone searches the published guide and leaves the door code off',
 
   const night = stayGuideLookup('Are quiet hours in effect right now?', 'ranch', undefined, 23);
   const nightText = night.hits.map((hit) => hit.text).join(' ');
-  assert.match(nightText, /in effect until 8:00 AM/);
+  assert.match(nightText, /in effect until 6:00 AM/);
   assert.equal(nightText.includes('$'), false);
   assert.equal(/door\s*code|wi-?fi|password/i.test(nightText), false);
 
   const day = stayGuideLookup('Are quiet hours in effect right now?', 'ranch', undefined, 15);
   assert.match(day.hits.map((hit) => hit.text).join(' '), /not in effect/);
-  assert.match(day.hits.map((hit) => hit.text).join(' '), /10:00 PM to 8:00 AM/);
+  assert.match(day.hits.map((hit) => hit.text).join(' '), /10:00 PM to 6:00 AM/);
 
   const riverNow = stayGuideLookup('Are quiet hours in effect right now?', 'river', undefined, 23);
   const riverNowText = riverNow.hits.map((hit) => hit.text).join(' ');
-  assert.match(riverNowText, /quiet hours apply/i);
+  assert.match(riverNowText, /quiet hours are in effect/i);
   assert.equal(riverNowText.includes('10 PM'), false);
   assert.equal(riverNowText.includes('10:00 PM'), false);
   assert.equal(riverNowText.includes('$'), false);
@@ -461,13 +461,16 @@ test('a bedroom count, the airport, and the quiet-hours schedule stay on the pub
 
   const schedule = stayGuideLookup('What time are quiet hours?', 'ranch', undefined, 23);
   const scheduleText = schedule.hits.map((hit) => hit.text).join(' ');
-  assert.match(scheduleText, /Quiet hours 10 PM to 8 AM/);
+  assert.match(scheduleText, /Quiet hours 10 PM to 6 AM/);
   assert.equal(scheduleText.includes('in effect until'), false);
   const riverSchedule = stayGuideLookup('What time are quiet hours?', 'river', undefined, 23);
   const riverScheduleText = riverSchedule.hits.map((hit) => hit.text).join(' ');
-  assert.match(riverScheduleText, /mountain neighborhood/);
-  assert.equal(riverScheduleText.includes('10 PM'), false);
-  assert.equal(riverScheduleText.includes('10:00 PM'), false);
+  /*
+   * The River House now states the same window as the others — the owner gave 10 PM to 6 AM on 2026-11-10. Before that its
+   * guide named no clock, and this asserted the answer carried no time rather than inventing one.
+   */
+  assert.match(riverScheduleText, /10 PM to 6 AM/);
+  assert.doesNotMatch(riverScheduleText, /guide does not name|could not be read/);
 
   const sunday = stayGuideLookup('Are restaurants open on Sunday?', 'ranch');
   assert.equal(sunday.hits[0]?.title, 'Sunday');

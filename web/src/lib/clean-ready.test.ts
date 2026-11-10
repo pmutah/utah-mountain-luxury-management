@@ -11,8 +11,12 @@ test('the cleaner still has each house when the turnover list cannot be read', (
   const river = cards[0];
   const ranch = cards[1];
   const text = JSON.stringify(cards);
-  assert.match(river.rules.join(' '), /mountain neighborhood/);
-  assert.match(ranch.rules.join(' '), /10 PM to 8 AM/);
+  /*
+   * The River House now states the same window as the Ranch. Its rule used to say "in this mountain neighborhood" with no
+   * clock, because the owner had not given one; on 2026-11-10 they did, so the wording changed and the assertion follows.
+   */
+  assert.match(river.rules.join(' '), /10 PM to 6 AM/);
+  assert.match(ranch.rules.join(' '), /10 PM to 6 AM/);
   assert.match(river.when, /Checkout at 11:00 AM/);
   assert.match(river.unread, /does not name a stay/);
   assert.match(river.essentials.join(' '), /Winter driving/);
@@ -54,12 +58,17 @@ test('the cleaner still has each house when the turnover list cannot be read', (
   assert.equal(spanish.includes('$'), false);
 });
 
-test('the Spanish card keeps the mountain quiet hours', () => {
+test('the Spanish card carries the quiet hours in Spanish', () => {
   const cards = cleanHouseCards('es');
   const river = cards[0];
   const ranch = cards[1];
   const text = JSON.stringify(cards);
-  assert.match(river.rules.join(' '), /vecindario de montaña/);
+  /*
+   * The rule now names a clock, so the Spanish carries the window rather than only "vecindario de montaña". The point of the
+   * test is that a Spanish-speaking guest is told the hours in Spanish — not that one particular phrase survives.
+   */
+  assert.match(river.rules.join(' '), /horas de silencio/i);
+  assert.match(river.rules.join(' '), /10 PM a 6 AM/);
   assert.match(river.when, /Salida a las 11:00 AM/);
   assert.match(river.unread, /no nombra una estancia/);
   assert.match(river.prep, /entrega de víveres/);

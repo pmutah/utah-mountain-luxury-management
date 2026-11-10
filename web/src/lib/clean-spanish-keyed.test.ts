@@ -58,8 +58,13 @@ test('the English text still says the things the Spanish is keyed to', () => {
    * with it, and this test is where that shows up.
    */
   const riverRules = workOrderRules('river', 'en');
+  /*
+   * The River quiet-hours rule now names a clock. It used to say "Quiet hours in this mountain neighborhood" with no window,
+   * because the owner had not given one; on 2026-11-10 they gave 10 PM to 6 AM for all three houses, so the English and its
+   * Spanish key both moved.
+   */
   assert.ok(
-    riverRules.some((rule) => /Quiet hours in this mountain neighborhood/.test(rule)),
+    riverRules.some((rule) => /Quiet hours 10 PM to 6 AM/.test(rule)),
     'the River quiet-hours rule was reworded; move its Spanish key with it',
   );
   const septic = workOrderNotes('river', 'en').find((note) => /septic/i.test(note));

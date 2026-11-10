@@ -4,8 +4,8 @@ import { bookedDateLine, conciergeGuideAnswer, guideDeskAnswer, quotePageDateLin
 
 test('a pet question does not invent a rule, and a party stays off the request', () => {
   const pets = guideDeskAnswer('Can we bring a dog?');
-  assert.match(pets, /does not name a pet rule/);
-  assert.match(pets, /will not invent one/);
+  assert.match(pets, /dogs only, up to 2/);
+  assert.match(pets, /No cats/);
   assert.match(pets, /does not send a message/);
   assert.equal(/allowed|no pets|\$/i.test(pets), false);
   const party = guideDeskAnswer('Can we have a party at the River House?');
@@ -230,10 +230,10 @@ test('the house guide desk answers from the published guide', () => {
   assert.match(broken, /does not cancel the stay unless the host agrees in writing/);
   assert.equal(/sample comps list/.test(broken), false);
   const quiet = guideDeskAnswer('Are quiet hours in effect right now at the Ranch House?', '2026-10-30', undefined, false, 23);
-  assert.match(quiet, /in effect until 8:00 AM/);
+  assert.match(quiet, /in effect until 6:00 AM/);
   assert.match(quiet, /does not send a message/);
   const riverQuiet = guideDeskAnswer('Is it quiet hours now at the River House?', '2026-10-30', undefined, false, 23);
-  assert.match(riverQuiet, /quiet hours apply/i);
+  assert.match(riverQuiet, /quiet hours are in effect/i);
   assert.equal(riverQuiet.includes('10'), false);
   assert.equal(quiet.includes('$') || riverQuiet.includes('$'), false);
 
@@ -373,7 +373,7 @@ test('the house guide desk answers from the published guide', () => {
     checkIn: '2026-12-01',
     checkOut: '2026-12-04',
   }, 23);
-  assert.match(noraQuiet ?? '', /quiet hours apply/i);
+  assert.match(noraQuiet ?? '', /quiet hours are in effect/i);
   assert.equal((noraQuiet ?? '').includes('10 PM'), false);
   assert.equal((noraQuiet ?? '').includes('$'), false);
 });

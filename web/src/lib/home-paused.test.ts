@@ -23,7 +23,7 @@ test('the home desk names the next event and the rate rules', () => {
   assert.match(afternoon, /canyon neighborhood/i);
   assert.match(afternoon, /keep noise down/i);
   const night = homePausedLines('2026-10-30', 23).join('\n');
-  assert.match(night, /in effect until 8:00 AM/);
+  assert.match(night, /in effect until 6:00 AM/);
   assert.equal(afternoon.includes('$') || night.includes('$'), false);
 });
 
@@ -45,7 +45,7 @@ test('a house tab keeps that house’s rules when the bookings cannot be read', 
   const text = `${river}\n${ranch}\n${lindon}`;
   assert.equal(text.includes('$'), false);
   assert.equal(/\bopen\b/i.test(text), false);
-  assert.match(housePausedLines('river', '2026-10-30', 23).join('\n'), /quiet hours apply/i);
+  assert.match(housePausedLines('river', '2026-10-30', 23).join('\n'), /quiet hours are in effect/i);
   assert.equal(housePausedLines('river', '2026-10-30', 23).join('\n').includes('10:00 PM'), false);
-  assert.match(housePausedLines('ranch', '2026-10-30', 23).join('\n'), /in effect until 8:00 AM/);
+  assert.match(housePausedLines('ranch', '2026-10-30', 23).join('\n'), /in effect until 6:00 AM/);
 });

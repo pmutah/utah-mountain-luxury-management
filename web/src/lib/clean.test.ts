@@ -70,24 +70,30 @@ test('the photo line stays open until a room photo is attached', () => {
   assert.equal(safety.includes('$'), false);
   const safetyEs = cleanSafetyLine('es');
   const quiet = cleanQuietLine('ranch', 'en', 23);
-  assert.match(quiet, /in effect until 8:00 AM/);
+  assert.match(quiet, /in effect until 6:00 AM/);
   assert.match(quiet, /not a checklist line/);
   assert.equal(quiet.includes('$'), false);
   const quietDay = cleanQuietLine('lindon', 'es', 13);
   assert.match(quietDay, /no están en vigor/);
-  assert.match(quietDay, /10:00 PM a 8:00 AM/);
+  assert.match(quietDay, /10:00 PM a 6:00 AM/);
   assert.match(quietDay, /Esto no es una línea de la lista/);
   const riverQuiet = cleanQuietLine('river', 'es', 23);
-  // River publishes quiet hours without a window, so the Spanish line states the rule and no time.
+  /*
+   * The River House now states the same window in Spanish. It used to be the house with no clock — the Spanish line named the
+   * rule and no time — until the owner gave 10 PM to 6 AM for all three houses on 2026-11-10.
+   */
   assert.match(riverQuiet, /horas de silencio/i);
-  assert.equal(riverQuiet.includes('10:00'), false);
+  assert.match(riverQuiet, /6:00 AM/);
+  assert.match(riverQuiet, /La Casa del Río|River House/i);
   assert.match(safetyEs, /No fuegos artificiales/);
   assert.match(safetyEs, /No se envió nada/);
   assert.equal(safetyEs.includes('$'), false);
-  assert.match(workOrderRules('ranch', 'en').join(' '), /Quiet hours 10 PM to 8 AM/);
+  assert.match(workOrderRules('ranch', 'en').join(' '), /Quiet hours 10 PM to 6 AM/);
   assert.match(workOrderRules('ranch', 'es').join(' '), /Horas de silencio/);
   assert.match(workOrderRules('lindon', 'en').join(' '), /No smoking indoors/);
-  assert.match(workOrderRules('river', 'en').join(' '), /mountain neighborhood/);
+  // The River House states the same window as the others now; it used to carry no clock at all.
+  assert.match(workOrderRules('river', 'en').join(' '), /Quiet hours 10 PM to 6 AM/);
+  assert.match(workOrderRules('river', 'en').join(' '), /No smoking indoors/);
   assert.equal(workOrderRules('ranch', 'en').join(' ').includes('hot tub'), false);
   assert.equal(/password/i.test(workOrderRules('river', 'en').join(' ')), false);
   assert.match(workOrderNotes('ranch')[0] ?? '', /Hot tub/);

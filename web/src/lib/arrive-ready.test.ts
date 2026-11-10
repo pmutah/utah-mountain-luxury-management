@@ -24,7 +24,7 @@ test('before arrival uses the published guide and does not send', () => {
   assert.equal(ranch.includes('$'), false);
 
   const lindon = arriveReady('lindon').map((step) => step.text).join('\n');
-  assert.match(lindon, /Quiet hours 10 PM to 8 AM/);
+  assert.match(lindon, /Quiet hours 10 PM to 6 AM/);
   assert.equal(/hot tub/i.test(lindon), false);
 });
 

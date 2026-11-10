@@ -55,19 +55,33 @@ test('no quiet-hours line tells the guest we never set a clock', () => {
   const mixed = [homeQuietLine(23), homeQuietLine(13)];
   for (const line of [...riverOnly, ...mixed]) assertNoBuildNote(line, 'a quiet-hours line');
 
-  // River must never invent a window its guide does not publish. Ranch keeps its real clock, and a line
-  // naming both houses may legitimately carry Ranch's hours, so this check is on River-only strings.
-  for (const line of riverOnly) {
-    assert.equal(/10\s*(PM|:00)/i.test(line), false, `River stated a clock it does not publish: ${line}`);
+  /*
+   * The River House now publishes a clock — the owner gave 10 PM to 6 AM for all three houses on 2026-11-10 — so this asserts
+   * the window is stated rather than refusing one. The earlier version checked the opposite, because the guide named no time
+   * there and inventing one would have been a guess.
+   *
+   * Only the strings that are actually quiet-hours lines: `housePausedLines` returns the minimum-stay line among others, and a
+   * blanket check demanded a clock from a sentence about nights.
+   */
+  const riverQuietLines = [
+    quietNow('river', 23),
+    quietNow('river', 13),
+    quietNowLine('river', 23, 'quote'),
+    quietNowLine('river', 13, 'phone'),
+    cleanQuietLine('river', 'en', 23),
+    cleanQuietLine('river', 'es', 23),
+  ];
+  for (const line of riverQuietLines) {
+    assert.match(line, /6:00 AM|6 AM/, `River did not state the published window: ${line}`);
   }
 });
 
-test('River quiet hours still say what applies, so the guest gets something usable', () => {
+test('River quiet hours name the real window and read as an instruction', () => {
   const line = quietNow('river', 23);
   assert.match(line, /quiet hours/i);
-  assert.match(line, /neighbor|canyon/i);
-  // A real instruction, not a statement about our documentation.
-  assert.match(line, /keep noise down|not disturbed/i);
+  assert.match(line, /in effect until 6:00 AM/);
+  // Still a real instruction rather than a statement about our documentation.
+  assert.equal(/guide does not name|could not be read/i.test(line), false);
 });
 
 test('the rendering caption does not promise future photography', () => {

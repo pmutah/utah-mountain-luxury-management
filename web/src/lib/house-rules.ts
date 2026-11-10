@@ -15,11 +15,15 @@ const RULES: Record<HouseId, HouseRule[]> = {
        * was rendering directly above the guest's own part line, so a Garage Suite guest read both. The rule now says
        * what is actually true of either booking, and the part line says which one applies.
        */
-      text: 'Quiet hours in this mountain neighborhood. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.',
+      text: 'Quiet hours 10 PM to 6 AM. No parties or events without written approval. Follow the septic and trash notes below. No smoking indoors.',
     },
     {
       id: 'septic',
       text: 'The house is on septic. Only toilet paper goes in the toilets. No wipes, even flushable ones.',
+    },
+    {
+      id: 'pets',
+      text: 'Dogs only, up to 2, under 50 lb each. No cats. A pet fee applies per stay.',
     },
     {
       id: 'river',
@@ -29,7 +33,11 @@ const RULES: Record<HouseId, HouseRule[]> = {
   ranch: [
     {
       id: 'stay',
-      text: 'Quiet hours 10 PM to 8 AM. No parties. Stay within the booked guest count. No smoking indoors.',
+      text: 'Quiet hours 10 PM to 6 AM. No parties. Stay within the booked guest count. No smoking indoors.',
+    },
+    {
+      id: 'pets',
+      text: 'Dogs only, up to 2, under 50 lb each. No cats. A pet fee applies per stay.',
     },
     {
       id: 'tub',
@@ -39,7 +47,11 @@ const RULES: Record<HouseId, HouseRule[]> = {
   lindon: [
     {
       id: 'stay',
-      text: 'Quiet hours 10 PM to 8 AM. No smoking indoors. No parties.',
+      text: 'Quiet hours 10 PM to 6 AM. No smoking indoors. No parties.',
+    },
+    {
+      id: 'pets',
+      text: 'Dogs only, up to 2, under 50 lb each. No cats. A pet fee applies per stay.',
     },
   ],
 };
@@ -68,7 +80,12 @@ export function guestRuleLines(house: HouseId, saved: string): string[] {
   return lines;
 }
 
-/** The published quiet-hours sentence. The River House guide does not name a clock. */
+/**
+ * The quiet-hours sentence, read from the published rules.
+ *
+ * All three houses are 10 PM to 6 AM — the owner confirmed that on 2026-11-10. Before this, the Ranch and Lindon said 8 AM
+ * and the River House named no clock at all, so a guest there was told nothing.
+ */
 export function quietHoursSentence(house: HouseId): string {
   const stay = houseRules(house).find((rule) => rule.id === 'stay')?.text ?? '';
   const sentence = stay.match(/Quiet hours[^.]*\./)?.[0]?.trim() ?? '';
@@ -90,11 +107,29 @@ const HOUSE: Record<HouseId, string> = {
   lindon: 'The Lindon House',
 };
 
-/** The published guide does not name pets. Do not invent a rule. */
+/**
+ * The pet rule for the host desk, where a fee may be named.
+ *
+ * The policy is the same at all three houses per the owner's answer on 2026-11-10: dogs only, up to two, under 50 lb each, no
+ * cats. The fee is **$149** per stay — the owner corrected the $150 that appeared in an earlier spec.
+ *
+ * `petRule()` gives the guest-facing text, which deliberately carries no figure: every guest page is asserted to contain no
+ * `$`, so a page can never quote a price.
+ */
 export function petRuleLine(where: 'page' | 'desk' = 'page'): string {
-  const surface = where === 'desk' ? 'This desk' : 'This page';
-  return `The published guide does not name a pet rule. ${surface} will not invent one.`;
+  if (where === 'desk') {
+    return 'Pets: dogs only, up to 2, under 50 lb each. No cats. $149 per stay at every house.';
+  }
+  return 'Pets: dogs only, up to 2, under 50 lb each. No cats. A pet fee applies per stay.';
 }
+
+/** The published pet rule text for one house, or null when none is published. */
+export function petRule(house: HouseId): string | null {
+  return houseRules(house).find((rule) => rule.id === 'pets')?.text ?? null;
+}
+
+/** The pet fee, for the desk and the stay agreement. Never rendered on a guest page. */
+export const PET_FEE = 149;
 
 /** A party or event stays off the request button. Nothing is sent. */
 export function eventHoldLine(house: HouseId): string {
