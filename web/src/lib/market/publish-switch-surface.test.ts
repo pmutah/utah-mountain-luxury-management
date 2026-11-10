@@ -130,3 +130,38 @@ test('the route still refuses with the switch off, and the panel depends on that
   assert.match(ROUTE, /if \(!gate\.on\)/, 'the route no longer refuses an off switch');
   assert.match(ROUTE, /409/, 'an off switch is not a refusal status');
 });
+
+test('a response without sent/refused does not crash the card', () => {
+  /*
+   * Found by clicking the real confirm in a harness: a response carrying no `sent`/`refused` threw on
+   * `published.sent.length` and unmounted the whole pricing card, taking the plan and approved sheet with it.
+   *
+   * A first version of this guard matched `Array.isArray(result?.sent)` anywhere in the file and still passed after the
+   * assignment was reverted to `result.sent` — the substring survived in the `outcomeUnknown` line. So it now reads the
+   * assignment itself.
+   */
+  assert.match(
+    PANEL,
+    /sent:\s*Array\.isArray\(result\?\.sent\)\s*\?\s*result\.sent\s*:\s*\[\]/,
+    'the stored `sent` is not normalised, so a response without it throws on .map/.length',
+  );
+  assert.match(
+    PANEL,
+    /refused:\s*Array\.isArray\(result\?\.refused\)\s*\?\s*result\.refused\s*:\s*\[\]/,
+    'the stored `refused` is not normalised, so a response without it throws on .slice/.length',
+  );
+  assert.match(
+    PANEL,
+    /outcomeUnknown:\s*!Array\.isArray\(result\?\.sent\)\s*\|\|\s*!Array\.isArray\(result\?\.refused\)/,
+    'the unreadable-outcome flag does not reflect both arrays',
+  );
+  assert.match(
+    PANEL,
+    /data-bot="publish-outcome-unknown"/,
+    'an unreadable outcome renders as nothing, which reads as "nothing sent"',
+  );
+  // The render must read the normalised state, never the raw response.
+  const renderBody = PANEL.slice(PANEL.indexOf('{published && ('));
+  assert.match(renderBody, /published\.sent\.map/, 'the send rows are not drawn from the normalised state');
+  assert.match(renderBody, /published\.refused\.slice/, 'the refused rows are not drawn from the normalised state');
+});

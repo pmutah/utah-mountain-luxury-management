@@ -40,6 +40,15 @@ type PublishResult = {
   refused: Array<{ listing: string; date?: string; why: string }>;
   line: string;
   switch: 'on' | 'off';
+  /**
+   * True when the response did not carry both `sent` and `refused`.
+   *
+   * This is the one write in the app that reaches a live listing, so an unreadable answer must never render as
+   * "nothing was sent" — that is a guess about the outside world. Found by clicking the real confirm in a harness whose
+   * stub answered without those arrays: `published.sent.length` threw and the whole pricing card unmounted, taking the
+   * plan and the approved sheet with it.
+   */
+  outcomeUnknown?: boolean;
 };
 
 type Loaded = {
@@ -163,7 +172,22 @@ export function PushPlanPanel() {
     setPublished(null);
     try {
       const result = await api.publishRates();
-      setPublished(result);
+      /*
+       * Normalise before storing. A response missing `sent` or `refused` is not an empty send — it is an answer this
+       * screen could not read, and the render below reads both arrays. Coercing here keeps the card mounted and keeps the
+       * statement honest, instead of trusting the shape and throwing on `undefined.length`.
+       */
+      setPublished({
+        ok: result?.ok === true,
+        sent: Array.isArray(result?.sent) ? result.sent : [],
+        refused: Array.isArray(result?.refused) ? result.refused : [],
+        line:
+          typeof result?.line === 'string' && result.line.length > 0
+            ? result.line
+            : 'The publish route answered without a description of what it did.',
+        switch: result?.switch === 'on' ? 'on' : 'off',
+        outcomeUnknown: !Array.isArray(result?.sent) || !Array.isArray(result?.refused),
+      });
     } catch (err) {
       /*
        * A 409 from the switch is an expected answer, not a crash: `request` throws on a non-2xx, so the
@@ -595,6 +619,12 @@ export function PushPlanPanel() {
             {published && (
               <div className="mt-3 text-sm" data-bot="publish-result" data-ok={published.ok ? 'yes' : 'no'}>
                 <p>{published.line}</p>
+                {published.outcomeUnknown && (
+                  <p className="mt-1 text-xs" data-bot="publish-outcome-unknown">
+                    The answer did not say which nights were written. Check the calendar before sending again — this
+                    screen cannot tell you whether it landed, and sending twice is not the same as not sending.
+                  </p>
+                )}
                 {published.sent.length > 0 && (
                   <ul className="mt-1 space-y-0.5 text-xs text-[var(--uml-muted)]">
                     {published.sent.map((row) => (
