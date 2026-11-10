@@ -159,8 +159,8 @@ export function CleanLink({ token }: { token: string }) {
   }, [token, lang]);
 
   const t = lang === 'es'
-    ? { title: 'Turnos de limpieza', steps: 'Qué hacer', arrive: 'Cómo entrar', door: 'Código de la puerta', rules: 'Reglas de la casa', empty: 'No hay turnos.' }
-    : { title: 'Cleaning jobs', steps: 'What to do', arrive: 'How to get in', door: 'Door code', rules: 'House rules', empty: 'No turnovers.' };
+    ? { title: 'Turnos de limpieza', steps: 'Qué hacer', arrive: 'Cómo entrar', door: 'Código de la puerta', sameDay: 'Mismo día — termina antes de las 4pm', nightFree: 'noche antes de la próxima llegada', nightsFree: 'noches antes de la próxima llegada', noNextStay: 'Sin próxima llegada reservada', rules: 'Reglas de la casa', empty: 'No hay turnos.' }
+    : { title: 'Cleaning jobs', steps: 'What to do', arrive: 'How to get in', door: 'Door code', sameDay: 'Same-day turn — finish before 4pm', nightFree: 'night before the next arrival', nightsFree: 'nights before the next arrival', noNextStay: 'No next arrival booked yet', rules: 'House rules', empty: 'No turnovers.' };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8" data-bot="clean-link" data-state={state}>
@@ -243,6 +243,20 @@ export function CleanLink({ token }: { token: string }) {
                       day: 'numeric',
                       timeZone: 'UTC',
                     })}
+                  </p>
+                  {/*
+                    Whether this turn is same-day, in words.
+
+                    `sameDay` was only a `data-` attribute, which a person cannot see, and `gapNights` was sent and never drawn. The
+                    deadline is the one fact that changes how a cleaner sequences their morning — the steps line says "finish
+                    before 4pm" on a same-day turn but nothing on screen said *why* today was urgent.
+                  */}
+                  <p className="mt-1 text-sm font-semibold text-[#8a6f2f]" data-bot="clean-link-when">
+                    {job.sameDay
+                      ? t.sameDay
+                      : typeof job.gapNights === 'number'
+                        ? `${job.gapNights} ${job.gapNights === 1 ? t.nightFree : t.nightsFree}`
+                        : t.noNextStay}
                   </p>
                   <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a6f2f]">{t.steps}</p>
                   <ul className="mt-1 space-y-1 text-sm text-[#3d382f]">
