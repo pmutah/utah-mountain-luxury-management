@@ -521,7 +521,17 @@ export interface StayGuide {
     unlocked: boolean;
     wifiName: string | null;
     wifiPassword: string | null;
+    /**
+     * The first door code this stay is entitled to, or null while withheld.
+     *
+     * Kept for a single-house stay, which has exactly one. A part stay reads `doorCodes` instead — this was the only field
+     * the page drew, so a guest holding two parts was shown one door.
+     */
     doorCode: string | null;
+    /** Every door this stay may use, one row per part. Absent when nothing is released yet. */
+    doorCodes?: Array<{ label: string; code: string }>;
+    /** What to tell the guest when a part they booked has no code set: call, and do not use another entrance. */
+    doorMissing?: string | null;
     doorNotes: string | null;
   };
   guide: Omit<HouseGuide, 'enabled' | 'wifiName' | 'wifiPassword' | 'doorCode' | 'doorNotes' | 'updatedAt'>;

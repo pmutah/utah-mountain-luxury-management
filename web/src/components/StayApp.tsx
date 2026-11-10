@@ -802,11 +802,38 @@ export function StayApp({ token }: { token: string }) {
                 </div>
               ) : showCodes ? (
                 <div className="mt-4 space-y-5" data-bot="stay-door">
-                  {access.doorCode ? (
-                    <CopyValue label="Door code" value={access.doorCode} big />
-                  ) : (
-                    <p className="text-[#d7cfc3]">Your door code is on its way. Text us if it is not here by check-in.</p>
-                  )}
+                  {/*
+                    Every door this guest is entitled to, not just the first.
+
+                    A part booking can hold two parts, and the route sends them all in `access.doorCodes`. This drew only
+                    `access.doorCode` — the first code — so a guest with the Garage Suite and the Main Lodge was given one door
+                    and left to guess the other. A single-house stay still has exactly one entry, so it reads the same.
+                  */}
+                  {(() => {
+                    const doors = access.doorCodes ?? [];
+                    if (doors.length > 0) {
+                      return doors.map((row) => (
+                        <CopyValue
+                          key={row.label}
+                          label={doors.length > 1 ? row.label : 'Door code'}
+                          value={row.code}
+                          big
+                        />
+                      ));
+                    }
+                    if (access.doorCode) return <CopyValue label="Door code" value={access.doorCode} big />;
+                    // A part whose code is not set yet: call us, and do not try another entrance.
+                    if (access.doorMissing) {
+                      return (
+                        <p className="text-[#d7cfc3]" data-bot="stay-door-missing">
+                          {access.doorMissing}
+                        </p>
+                      );
+                    }
+                    return (
+                      <p className="text-[#d7cfc3]">Your door code is on its way. Text us if it is not here by check-in.</p>
+                    );
+                  })()}
                   {access.doorNotes && <p className="text-sm text-white/60">{access.doorNotes}</p>}
                   {access.wifiName && <CopyValue label="Wi-Fi network" value={access.wifiName} />}
                   {access.wifiPassword && <CopyValue label="Wi-Fi password" value={access.wifiPassword} />}
