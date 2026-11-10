@@ -1,8 +1,23 @@
 import { houseStay } from './house-stay';
 import { stepRows } from './clean-progress';
 import { scopeStep } from './clean-scope';
-import { isRealDay } from './market/dates';
+import { addDays, isRealDay } from './market/dates';
 import type { HouseId } from './market/types';
+
+/**
+ * Whether a cleaner's link should show the door code on this day.
+ *
+ * A cleaner's window is **not** the guest's. The guest phone closes at noon on checkout day, because that is when a guest must
+ * be out; a cleaner starts at 11 AM and works into the afternoon, so the same rule would take the code away mid-turn — worse
+ * than never showing it, because she would have relied on it.
+ *
+ * So the comparison is by **day**: from the day before the checkout through the checkout day itself. Before that the link shows
+ * the job and nothing to open a door with; after it, the code is gone again.
+ */
+export function cleanerDoorWindowOpen(today: string, checkout: string): boolean {
+  if (!isRealDay(today) || !isRealDay(checkout)) return false;
+  return today === checkout || today === addDays(checkout, -1);
+}
 
 export type CleanLinkRecord = {
   token: string;
@@ -40,7 +55,16 @@ export function cleanLinkUrl(token: string, origin: string): string | null {
   return `${base}${cleanLinkPath(token)}`;
 }
 
-/** One turnover as the cleaner sees it. No guest name, no door code, no money. */
+/**
+ * One turnover as the cleaner sees it. No guest name and no money; the door code **is** shown.
+ *
+ * The code used to be withheld here on the reasoning that a cleaner should not hold the lock. The owner overruled that on
+ * 2026-11-10: Hospitable puts the code in the cleaning task note ("5750 ENTER"), and a cleaner standing at a locked door with
+ * only "park in the driveway" is an operational failure, not a security win — she is the one person who has to get inside.
+ *
+ * Two things still keep it from being a hole: the code only appears from the day before the checkout (see the route, which
+ * applies the same window as the guest phone), and money never appears at all.
+ */
 export type CleanJobView = {
   house: HouseId;
   houseName: string;
@@ -58,6 +82,13 @@ export type CleanJobView = {
   stepRows: Array<{ id: string; label: string }>;
   /** Where the keys are and where to park, from the published guide. */
   arrive: string;
+  /**
+   * The door code for this house, or null when the window has not opened or the house has none set.
+   *
+   * A part turn carries the codes for the parts it covers, in the same shape the guest page uses, so a turn scoped to the
+   * Garage Suite never opens the Main Lodge.
+   */
+  door: { label: string; code: string }[] | null;
   rules: string[];
 };
 
@@ -125,6 +156,13 @@ export function cleanJobView(input: {
    * same defect the desk had, in the one place that matters most: the person doing the work.
    */
   units?: readonly string[];
+  /**
+   * The door codes this cleaner needs for this turn.
+   *
+   * Null or absent means the window has not opened, the house has none set, or the route chose not to send one — in every
+   * case the page says nothing about a code rather than showing an empty one.
+   */
+  door?: Array<{ label: string; code: string }> | null;
 }): CleanJobView | null {
   if (!isRealDay(input.checkout)) return null;
   const stay = houseStay(input.house);
@@ -156,6 +194,7 @@ export function cleanJobView(input: {
      */
     stepRows: stepRows(sameDay, input.lang ?? 'en', input.units ?? []),
     arrive: `${stay.arrival} ${stay.parking}`,
+    door: input.door && input.door.length > 0 ? input.door.map((row) => ({ label: row.label, code: row.code })) : null,
     rules,
   };
 }

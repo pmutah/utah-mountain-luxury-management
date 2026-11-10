@@ -1,5 +1,5 @@
 import { corsJson } from '../../_lib/data';
-import { isCleanToken, cleanJobView, cleanPageNote, sortCleanJobs, type CleanJobView } from '../../../src/lib/clean-link';
+import { isCleanToken, cleanJobView, cleanPageNote, cleanerDoorWindowOpen, sortCleanJobs, type CleanJobView } from '../../../src/lib/clean-link';
 import { findCleanLink, stampCleanView } from '../../_lib/clean-link-store';
 import { progressSince, putProgress } from '../../_lib/clean-progress-store';
 import { keepDone, type CleanProgress } from '../../../src/lib/clean-progress';
@@ -7,6 +7,8 @@ import { buildTurnovers } from '../../../src/lib/today';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { storageReadPaused } from '../../_lib/kv-json';
 import { denverToday } from '../../../src/lib/market/dates';
+import { doorCodesForStay } from '../../../src/lib/part-door-codes';
+import { loadGuides, type GuideHouseId } from '../../_lib/guest-guide';
 import type { HouseId } from '../../../src/lib/market/types';
 import type { SettingsEnv } from '../../_lib/kv';
 
@@ -57,6 +59,31 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env, p
   const lang = new URL(request.url).searchParams.get('lang') === 'es' ? 'es' : 'en';
   let jobs: CleanJobView[] = [];
   let unread = false;
+  /*
+   * The door codes, read once for the houses this link covers.
+   *
+   * The owner decided on 2026-11-10 that the cleaner gets the real code — Hospitable puts it in the task note, and she is the
+   * person who has to get inside. The window is the guard that remains: a code is only included from the day before the
+   * checkout, the same rule the guest phone uses, so a link read weeks early shows the job and no code.
+   */
+  const guides = await loadGuides(env).catch(() => null);
+  const codeForTurn = (house: HouseId, checkout: string, units: readonly string[] | undefined) => {
+    if (!guides) return null;
+    /*
+     * `cleanerDoorWindowOpen` is the day rule: the day before the checkout and the turn day itself, whatever the hour. The
+     * guest phone's `accessWindow` closes at noon, which would strip the code mid-turn.
+     */
+    if (!cleanerDoorWindowOpen(denverToday(), checkout)) return null;
+    const guide = guides[house as GuideHouseId];
+    if (!guide) return null;
+    const plan = doorCodesForStay({
+      house,
+      units,
+      houseCode: guide.doorCode,
+      partCodes: guide.partDoorCodes,
+    });
+    return plan.codes.length > 0 ? plan.codes : null;
+  };
   try {
     const stays = await getAllReservations(env);
     const turnovers = buildTurnovers(stays as never, denverToday(), 14);
@@ -72,6 +99,7 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env, p
            * in a house where two were used.
            */
           ...(turn.checkoutUnits ? { units: turn.checkoutUnits } : {}),
+          door: codeForTurn(turn.house as HouseId, turn.checkout, turn.checkoutUnits),
           lang,
         });
         return view ? [view] : [];
