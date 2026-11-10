@@ -997,6 +997,39 @@ export const api = {
       nights: Array<{ date: string; ok: boolean; written: number; reason: string | null }>;
     }>('/api/pricing/approved-rates', { method: 'PUT', body: JSON.stringify(body) }),
   /**
+   * The publishing switch, read without sending anything.
+   *
+   * `publishes` is always `false` here: this is the GET, and GET never writes. `switch` is the only field
+   * that decides whether the POST below would be allowed to act.
+   */
+  getPublishSwitch: () =>
+    request<{
+      switch: 'on' | 'off';
+      line: string;
+      hasToken: boolean;
+      unit: 'cents' | 'dollars' | null;
+      properties: string;
+      promotionNote: string;
+      publishes: false;
+    }>('/api/pricing/publish-rates'),
+  /**
+   * Send the host's approved prices to the channel calendar.
+   *
+   * Refused with a 409 while the switch is off, and the refusal names which condition is missing. This is
+   * the only call in the app that can move a price off this site, so the panel keeps it behind a confirm.
+   */
+  publishRates: () =>
+    request<{
+      ok: boolean;
+      sent: Array<{ listing: string; dates: number; batches: number }>;
+      refused: Array<{ listing: string; date?: string; why: string }>;
+      line: string;
+      switch: 'on' | 'off';
+      properties?: string;
+      promotionNote?: string;
+      publishes: boolean;
+    }>('/api/pricing/publish-rates', { method: 'POST' }),
+  /**
    * The three Riverhouse units: price, whether each is sellable, and its free nights.
    *
    * `units: null` means the sheet could not be read, which is not the same as three unpriced units.

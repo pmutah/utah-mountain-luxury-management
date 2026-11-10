@@ -66,6 +66,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   /*
    * Only the host's own approved prices are sent — never a proposed, shadow, or promotion figure. An approved rate is the one
    * number a person has looked at and said yes to, and it is the only thing the doctrine permits to leave this app.
+   *
+   * Every row carries a **house**, because `toApprovedRate` and the approve routes only ever accept `ranch`, `lindon`, or
+   * `river` — a Riverhouse part cannot enter this sheet. So the listing below is always the whole house. An earlier version of
+   * this comment claimed a part would publish under its own property; no such row can exist, and the map keys parts by unit id
+   * which this route would never produce.
    */
   let approved;
   try {
@@ -96,8 +101,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   /*
-   * A part is published under its own Hospitable property, so the listing is the unit id when the approved row carries one.
-   * The whole-house row uses the house.
+   * The listing is always the whole house. Every row on this sheet carries a house — `toApprovedRate` and both approve routes
+   * accept only `ranch`, `lindon`, or `river`, so a Riverhouse part cannot enter it and there is no unit id to map. An earlier
+   * comment here claimed a part would publish under its own property; that row cannot exist.
    */
   const nights: PublishNight[] = approved.map((row) => ({
     listing: row.house,

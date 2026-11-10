@@ -24,6 +24,24 @@ type Plan = {
 /** A night the host has already approved, so it can be seen and taken back. */
 type ApprovedNight = { house: string; date: string; guest: number; approvedAt: string };
 
+/** The publishing switch as the route reports it. `null` means it could not be read. */
+type SwitchState = {
+  switch: 'on' | 'off';
+  line: string;
+  hasToken: boolean;
+  unit: 'cents' | 'dollars' | null;
+  properties: string;
+  promotionNote: string;
+};
+
+type PublishResult = {
+  ok: boolean;
+  sent: Array<{ listing: string; dates: number; batches: number }>;
+  refused: Array<{ listing: string; date?: string; why: string }>;
+  line: string;
+  switch: 'on' | 'off';
+};
+
 type Loaded = {
   plans: Plan[] | null;
   summary: string | null;
@@ -67,6 +85,29 @@ export function PushPlanPanel() {
    */
   const [approved, setApproved] = useState<ApprovedNight[] | null>(null);
   const [approvedLine, setApprovedLine] = useState<string | null>(null);
+  /**
+   * The publishing switch. `null` is "could not be read", which is not "off": a host must not read a failed
+   * read as the switch being safely closed.
+   */
+  const [pub, setPub] = useState<SwitchState | null>(null);
+  const [pubUnread, setPubUnread] = useState(false);
+  /** The last publish attempt's outcome, kept so a refusal stays on screen rather than flashing past. */
+  const [published, setPublished] = useState<PublishResult | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  function loadSwitch() {
+    void api
+      .getPublishSwitch()
+      .then((result) => {
+        setPub(result);
+        setPubUnread(false);
+      })
+      .catch(() => {
+        setPub(null);
+        setPubUnread(true);
+      });
+  }
 
   function loadApproved() {
     void api
@@ -105,7 +146,35 @@ export function PushPlanPanel() {
   useEffect(() => {
     load();
     loadApproved();
+    loadSwitch();
   }, []);
+
+  /**
+   * Send the approved prices.
+   *
+   * This is the one action in the app that can move a price off this site, so it takes a second click. The
+   * route refuses while the switch is off, and the refusal is shown as-is rather than as "nothing sent" —
+   * the reason is which condition is missing, and that is what the host would have to change.
+   */
+  async function publish() {
+    setPublishing(true);
+    setError(null);
+    setNotice(null);
+    setPublished(null);
+    try {
+      const result = await api.publishRates();
+      setPublished(result);
+    } catch (err) {
+      /*
+       * A 409 from the switch is an expected answer, not a crash: `request` throws on a non-2xx, so the
+       * message carries the route's own sentence. Show it rather than inventing one.
+       */
+      setError(err instanceof Error ? err.message : 'Nothing was published.');
+    } finally {
+      setPublishing(false);
+      setConfirming(false);
+    }
+  }
 
   /** Take an approval back, so that night returns to the published card. */
   async function takeBack(house: string, date: string) {
@@ -207,7 +276,8 @@ export function PushPlanPanel() {
       <p className="uml-kicker">What a rate push would change</p>
       <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
         A plan, not a send. Booked, closed, paused, locked, and held nights stay put, and a raise never goes under the
-        floor. Nothing here changes a rate on Airbnb or VRBO: <strong>type the listed price into the site yourself.</strong>{' '}
+        floor. Building the plan changes nothing on Airbnb or VRBO: <strong>type the listed price into the site
+        yourself</strong>, or turn on publishing at the bottom of this card to send approved nights to the calendar.
         A night whose only comps are the invented sample set shows no price to type, because there is no measurement
         behind it. Approving a night sets the price this site quotes, and that night only.
       </p>
@@ -442,6 +512,116 @@ export function PushPlanPanel() {
               );
             })}
           </ul>
+        )}
+      </div>
+
+      {/*
+        The publishing switch, and the one button that can move a price off this site.
+
+        It sits below the approved sheet because approving is the step before it: the sender only ever
+        uploads the host's own approved numbers. The switch is owned by two deployment variables the host
+        sets, so this panel reports their state and cannot turn them on itself — that is deliberate, and the
+        text says so instead of offering a toggle that would not do anything.
+      */}
+      <div className="mt-6 border-t border-[var(--uml-line)] pt-4" data-bot="publish-switch">
+        <p className="uml-kicker">Publishing to Airbnb and VRBO</p>
+        {pubUnread && (
+          <p className="mt-2 text-sm" data-bot="publish-unread">
+            The publishing switch could not be read. That is not the same as off — treat rates as unpublishable until
+            this reads.
+          </p>
+        )}
+        {pub && (
+          <>
+            <p
+              className="mt-2 max-w-2xl text-sm"
+              data-bot="publish-state"
+              data-switch={pub.switch}
+              data-unit={pub.unit ?? 'unset'}
+            >
+              {pub.line}
+            </p>
+            <p className="mt-1 max-w-2xl text-xs text-[var(--uml-muted)]" data-bot="publish-properties">
+              {pub.properties}
+            </p>
+            <p className="mt-1 max-w-2xl text-xs text-[var(--uml-muted)]" data-bot="publish-promotion-note">
+              {pub.promotionNote}
+            </p>
+            {pub.switch === 'off' ? (
+              <p className="mt-2 max-w-2xl text-xs text-[var(--uml-muted)]" data-bot="publish-how">
+                The switch is two deployment settings, not a button here — <code>HOSPITABLE_RATE_PUSH=on</code> and{' '}
+                <code>HOSPITABLE_PRICE_UNIT</code> set to <code>cents</code> or <code>dollars</code>. Both are off today,
+                so nothing below can send.
+              </p>
+            ) : (
+              <div className="mt-3 space-y-2" data-bot="publish-action">
+                {!confirming ? (
+                  <button
+                    type="button"
+                    data-bot="publish-ask"
+                    onClick={() => setConfirming(true)}
+                    className="rounded-full border border-[var(--uml-line)] px-3 py-1 text-xs uppercase tracking-[0.12em]"
+                  >
+                    Publish {approved?.length ?? 0} approved {approved?.length === 1 ? 'night' : 'nights'}
+                  </button>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/*
+                      The second click names the count. A single button that writes to a live listing is the
+                      shape that produces an accidental send, and this is the highest-consequence write in the app.
+                    */}
+                    <button
+                      type="button"
+                      disabled={publishing}
+                      data-bot="publish-confirm"
+                      onClick={() => void publish()}
+                      className="uml-gold-btn rounded-full px-3 py-1 text-xs uppercase tracking-[0.12em] disabled:opacity-50"
+                    >
+                      {publishing ? 'Publishing…' : `Yes, send ${approved?.length ?? 0} to the calendar`}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={publishing}
+                      data-bot="publish-cancel"
+                      onClick={() => setConfirming(false)}
+                      className="rounded-full border border-[var(--uml-line)] px-3 py-1 text-xs uppercase tracking-[0.12em] disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            {published && (
+              <div className="mt-3 text-sm" data-bot="publish-result" data-ok={published.ok ? 'yes' : 'no'}>
+                <p>{published.line}</p>
+                {published.sent.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 text-xs text-[var(--uml-muted)]">
+                    {published.sent.map((row) => (
+                      <li key={row.listing} data-bot="publish-sent-row">
+                        {row.listing}: {row.dates} {row.dates === 1 ? 'night' : 'nights'} in {row.batches}{' '}
+                        {row.batches === 1 ? 'batch' : 'batches'}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {/*
+                  A refused night is named one by one. "Some nights did not send" is not actionable; the
+                  house and the reason are what a host can fix.
+                */}
+                {published.refused.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 text-xs" data-bot="publish-refused">
+                    {published.refused.slice(0, 10).map((row, index) => (
+                      <li key={`${row.listing}|${row.date ?? index}`}>
+                        {row.listing}
+                        {row.date ? ` · ${row.date}` : ''}: {row.why}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>
