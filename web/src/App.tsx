@@ -161,18 +161,19 @@ function Dashboard() {
   }, [activeTab, reportView, riverView, currentMonth]);
 
   /*
-   * The overview is the page anyone checks daily, and it recorded nothing toward the seven-day shadow gate — so a
-   * host with that habit advanced auto-pricing by zero days forever. Verified on production: a full overview visit
-   * left the clock at 1 of 7.
+   * Only the overview is guarded here, and the guard is on **books being readable**, not on which tab is open.
    *
-   * `/api/pricing/push-plan` now saves the day itself (it already loads all three live boards), so this one call is
-   * what turns the daily habit into a counted day. It is deliberately fire-and-forget and only when the portfolio
-   * tab is open: the response is not needed here, and a failed save must not interrupt the dashboard.
+   * It used to require `activeTab === 'portfolio'` — the "Our expenses" tab — so a host who opened Overview or Guests every
+   * morning advanced the seven-day shadow clock by zero. The owner's instruction on 2026-11-10 was to keep the brief recording
+   * "in the background" for six more days so auto-pricing can turn on; a tab condition is the opposite of that.
+   *
+   * `/api/pricing/push-plan` saves the day itself (it already loads all three live boards), and it refuses to save one built
+   * from unread or sample data. Fire-and-forget: a failed save must not interrupt the dashboard.
    */
   useEffect(() => {
-    if (activeTab !== 'portfolio' || booksPaused) return;
+    if (booksPaused) return;
     void api.getPushPlan().catch(() => undefined);
-  }, [activeTab, booksPaused]);
+  }, [booksPaused]);
 
   useEffect(() => {
     installUmlBridge({
