@@ -14,8 +14,9 @@ type PhotoRow = { path: string; label: string; uploadedAt: string; url: string }
 
 /**
  * The cleaner's page at `/clean/:token`. The link is the whole credential, so there is no login and
- * no dashboard. It shows the house, the day, the steps, and how to get in, and never a door code,
- * a guest name, or a rate.
+ * no dashboard. It shows the house, the day, the steps, how to get in, and — from the day before the
+ * checkout through the turn day — the door code, because the cleaner is the person who has to get
+ * inside. A guest name and a rate never appear.
  */
 export function CleanLink({ token }: { token: string }) {
   const [data, setData] = useState<Loaded | null>(null);
@@ -159,8 +160,8 @@ export function CleanLink({ token }: { token: string }) {
   }, [token, lang]);
 
   const t = lang === 'es'
-    ? { title: 'Turnos de limpieza', steps: 'Qué hacer', arrive: 'Cómo entrar', rules: 'Reglas de la casa', empty: 'No hay turnos.' }
-    : { title: 'Cleaning jobs', steps: 'What to do', arrive: 'How to get in', rules: 'House rules', empty: 'No turnovers.' };
+    ? { title: 'Turnos de limpieza', steps: 'Qué hacer', arrive: 'Cómo entrar', door: 'Código de la puerta', rules: 'Reglas de la casa', empty: 'No hay turnos.' }
+    : { title: 'Cleaning jobs', steps: 'What to do', arrive: 'How to get in', door: 'Door code', rules: 'House rules', empty: 'No turnovers.' };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8" data-bot="clean-link" data-state={state}>
@@ -325,6 +326,24 @@ export function CleanLink({ token }: { token: string }) {
                   </div>
                   <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a6f2f]">{t.arrive}</p>
                   <p className="mt-1 text-sm text-[#3d382f]">{job.arrive}</p>
+                  {/*
+                    The door code, which the API has sent since 2026-11-10 and this page never drew — so the cleaner was told
+                    "park in the driveway" and given no way in. It appears only inside the window the route enforces (the day
+                    before the checkout through the turn day), and money never appears here.
+                  */}
+                  {job.door && job.door.length > 0 && (
+                    <div className="mt-3 rounded-xl border border-[#8a6f2f]/35 bg-[#8a6f2f]/10 px-3 py-2" data-bot="clean-link-door">
+                      {job.door.map((row) => (
+                        <p key={row.label} className="text-sm text-[#3d382f]">
+                          <span className="font-semibold">{t.door}:</span>{' '}
+                          {job.door!.length > 1 ? `${row.label} ` : ''}
+                          <span className="font-mono font-bold tracking-wider" data-door={row.code}>
+                            {row.code}
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
                   {job.rules.length > 0 && (
                     <>
                       <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8a6f2f]">{t.rules}</p>
