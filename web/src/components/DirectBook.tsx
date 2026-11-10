@@ -870,7 +870,14 @@ export function DirectBook() {
                 <div data-bot="stay-open">
                   <p className="uml-kicker">Arrivals this page will quote</p>
                   <p className="mt-1 text-xs text-[var(--uml-muted)]">
-                    The shortest stay this page will quote. Picking one fills the dates and does not send a request.
+                    {bookingParts
+                      ? /*
+                         * A part is chosen, and these chips price the whole house — `openArrivals` works from `nightAsk(house)`
+                         * and knows nothing about parts. Quoting $3,600 beside a $1,790 part stay reads as the part's price.
+                         * The dates are still useful, so they are offered without a figure, and picking one re-quotes the part.
+                         */
+                        'The shortest stay this page will quote. Picking one fills the dates and quotes the part you chose — these dates are not priced for the whole house here.'
+                      : 'The shortest stay this page will quote. Picking one fills the dates and does not send a request.'}
                   </p>
                   <ul className="mt-3 flex flex-wrap gap-2">
                     {openings.map((item) => (
@@ -887,7 +894,16 @@ export function DirectBook() {
                             setStartNote('');
                           }}
                         >
-                          {arrivalChipText(item.label, formatWhole(item.direct), guestCount === null || party.ok)}
+                          {/*
+                            The price is left off while a part is chosen, through the function's own `showPrice` flag rather
+                            than a placeholder string. `item.direct` is the whole-house figure, and showing it beside the part
+                            total is the same class of error as the $1,340 overstatement: two numbers for one stay.
+                          */}
+                          {arrivalChipText(
+                            item.label,
+                            formatWhole(item.direct),
+                            (guestCount === null || party.ok) && !bookingParts,
+                          )}
                         </button>
                       </li>
                     ))}
