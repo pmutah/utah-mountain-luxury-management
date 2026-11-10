@@ -89,6 +89,12 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     checkIn: stay.checkIn,
     checkOut: stay.checkOut,
     status: stay.status,
+    /*
+     * `units` has to come through. Leaving it off made every booking read as the whole house, because absent means whole
+     * house by design — so a Garage Suite booking blocked the Recreation Wing and the Main Lodge it never sold, and the
+     * parts could never be sold alongside each other.
+     */
+    ...(stay.units && stay.units.length > 0 ? { units: stay.units } : {}),
   }));
   const blockSpans: StaySpan[] = blocks.map((block) => ({
     propertyId: block.propertyId,
@@ -171,7 +177,20 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     if (hold) return corsJson(request, { error: hold }, 409);
   }
   // A live hold for another guest means these nights are not this guest's to request yet.
-  const conflict = holdConflict(holds, [...staySpans, ...blockSpans], propertyId, alsoPropertyId, entry.checkIn, entry.checkOut, new Date());
+  const conflict = holdConflict(
+    holds,
+    [...staySpans, ...blockSpans],
+    propertyId,
+    alsoPropertyId,
+    entry.checkIn,
+    entry.checkOut,
+    new Date(),
+    /*
+     * Pass the parts so the hold check agrees with the parts check above it. Without this, a Garage Suite request was
+     * refused because a Recreation Wing booking "occupied" the house — the two gates disagreed, and the stricter one won.
+     */
+    wantedUnits.length > 0 && propertyId === 'river' && !alsoPropertyId ? wantedUnits : undefined,
+  );
   if (conflict) {
     return corsJson(request, { error: holdConflictLine(conflict), held: true, house: conflict }, 409);
   }

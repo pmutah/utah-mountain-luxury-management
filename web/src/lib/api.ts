@@ -1142,6 +1142,13 @@ export const api = {
       /** One entry per house, so a two-house booking shows both pages. */
       portalLinks: Array<{ propertyId: string; link: string | null }>;
       line: string;
+      /**
+       * A second party in the building on these nights, when the booking is one part of the Riverhouse.
+       *
+       * The building has a single door code, so two guests behind one code is a decision the host should see at the
+       * moment they accept. Null when nobody else is there.
+       */
+      sharedHouse?: string | null;
       portalLink: string | null;
       portalError: string | null;
       portalNote: string | null;

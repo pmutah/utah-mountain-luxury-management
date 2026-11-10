@@ -319,8 +319,28 @@ export function acceptedLine(plan: AcceptPlan): string {
   const shared = (plan.sharedWith ?? []).filter((unit) => typeof unit === 'string' && unit.length > 0);
   if (shared.length === 0) return line;
   const sharedNames = shared.map(partName).join(' and ');
+  /*
+   * Plain prose, not markdown: this string is rendered straight into a JSX paragraph, so `**bold**` would reach the
+   * host as literal asterisks. The emphasis belongs on a separate field the surface can style.
+   */
   return (
-    `${line} **${sharedNames} ${shared.length === 1 ? 'is' : 'are'} occupied by another party on those nights**, ` +
+    `${line} ${sharedNames} ${shared.length === 1 ? 'is' : 'are'} occupied by another party on those nights, ` +
     'so two guests share the building and the one door code opens every part. Give each part its own lock, or do not sell parts on the same nights.'
+  );
+}
+
+/**
+ * The shared-house warning on its own, so a surface can style it as a warning instead of burying it in a sentence.
+ *
+ * Null when nobody else is in the house, which is the common case — a caller can render this unconditionally.
+ */
+export function sharedHouseWarning(plan: AcceptPlan): string | null {
+  const shared = (plan.sharedWith ?? []).filter((unit) => typeof unit === 'string' && unit.length > 0);
+  if (shared.length === 0) return null;
+  const partName = (unit: string) => RIVER_UNIT_DETAIL.find((detail) => detail.id === unit)?.name ?? unit;
+  const names = shared.map(partName).join(' and ');
+  return (
+    `${names} ${shared.length === 1 ? 'is' : 'are'} occupied by another party on those nights, so two guests ` +
+    'share the building and the one door code opens every part.'
   );
 }

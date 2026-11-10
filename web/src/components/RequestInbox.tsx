@@ -30,6 +30,8 @@ export function RequestInbox() {
   const [declineNotes, setDeclineNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [accepted, setAccepted] = useState<string | null>(null);
+  /** A second party in the house after an accept. Its own line, because it must not be skimmed past. */
+  const [sharedHouse, setSharedHouse] = useState<string | null>(null);
   const [tallyLine, setTallyLine] = useState<string | null>(null);
 
   /** Decline a request. The reason is required; the guest is told unless the host unticks it. */
@@ -118,6 +120,15 @@ export function RequestInbox() {
     try {
       const result = await api.acceptBookingRequest({ id, payout });
       const parts = [result.line];
+      /*
+       * A second party in the building is its own warning, not a clause at the end of the confirmation. Two guests
+       * behind one door code is the kind of thing a host must not skim past.
+       */
+      if (result.sharedHouse) {
+        setSharedHouse(`${result.sharedHouse} Give each part its own lock, or do not sell parts on the same nights.`);
+      } else {
+        setSharedHouse(null);
+      }
       // A two-house request books both. Say so, so the host can see both houses are held.
       if (result.reservations && result.reservations.length > 1) {
         parts.push(`Both houses are saved (${result.reservations.map((row) => row.propertyId).join(' and ')}).`);
@@ -364,6 +375,14 @@ export function RequestInbox() {
       {accepted && (
         <p className="mt-3 text-sm text-slate-300" data-bot="request-inbox-confirm">
           {accepted}
+        </p>
+      )}
+      {sharedHouse && (
+        <p
+          className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200"
+          data-bot="request-inbox-shared-house"
+        >
+          {sharedHouse}
         </p>
       )}
       {!paused && rows && rows.length === 0 && !error && (

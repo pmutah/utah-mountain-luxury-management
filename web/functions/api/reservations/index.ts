@@ -1,5 +1,6 @@
 ﻿import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
+import { RIVER_UNITS } from '../../../src/lib/river-units';
 import { readJsonBody } from '../../_lib/json-body';
 import { storageReadPaused } from '../../_lib/kv-json';
 import {
@@ -63,6 +64,13 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     guestEmail?: string;
     guestPhone?: string;
     confirmationCode?: string;
+    /**
+     * Which parts of the Riverhouse this stay occupies.
+     *
+     * Absent means the whole house — the conservative reading every existing stay relies on. But a host who is
+     * recording a part sale has to be able to say which part, because a booking with no `units` blocks all three.
+     */
+    units?: string[];
   }>(request);
   if (!parsed.ok) return parsed.response;
   const body = parsed.body;
@@ -91,6 +99,17 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
         guestEmail: body.guestEmail,
         guestPhone: body.guestPhone,
         confirmationCode: body.confirmationCode,
+        /*
+         * Parts, when the host names real ones and this is the Riverhouse. A stray unit on the Ranch would be a
+         * booking for a part that does not exist, so only names we actually sell survive. An empty list is omitted
+         * entirely, because absent is what "the whole house" means everywhere else — and dropping the field silently
+         * is how a part sale used to block all three parts.
+         */
+        ...(body.propertyId === 'river' && Array.isArray(body.units)
+          ? {
+              units: body.units.filter((unit): unit is string => RIVER_UNITS.includes(unit as never)),
+            }
+          : {}),
       }),
     'Saved bookings',
   );

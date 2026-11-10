@@ -10,7 +10,7 @@ import { unitBookingConflict, otherPartsOccupied } from '../../../src/lib/river-
 import { partStayQuote } from '../../../src/lib/part-stay-quote';
 import { loadRiverUnitRates } from '../../_lib/pricing-store';
 import type { RiverUnitRates } from '../../../src/lib/river-unit-rates';
-import { acceptHold, acceptedLine, stayPlans } from '../../../src/lib/booking-accept';
+import { acceptHold, acceptedLine, sharedHouseWarning, stayPlans } from '../../../src/lib/booking-accept';
 import { quoteStay } from '../../../src/lib/quote';
 import { twoHouseParties } from '../../../src/lib/payout-suggest';
 import { guestAcceptedMail, sentLine } from '../../../src/lib/booking-mail';
@@ -354,6 +354,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       /** Both stays, so a two-house request can be checked house by house. */
       reservations: created,
       line: acceptedLine(result.plan),
+      /**
+       * A second party in the building, as its own field so the inbox can show it as a warning rather than burying it
+       * in the confirmation sentence. Null when nobody else is there.
+       */
+      sharedHouse: sharedHouseWarning(result.plan),
       plan: result.plan,
       portalLink,
       /** One entry per house, so a two-house booking shows both pages. */

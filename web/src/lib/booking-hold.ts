@@ -1,4 +1,5 @@
 import { housesForRequest, occupiedNights, type StaySpan } from './availability';
+import { unitBlockedNights } from './river-units';
 import { addDays } from './market/dates';
 import type { HouseId } from './market/types';
 
@@ -72,6 +73,13 @@ export function holdConflict(
   checkIn: string,
   checkOut: string,
   now: Date,
+  /**
+   * The parts this request takes, when it is a part of the Riverhouse.
+   *
+   * Absent means the whole house, so every existing caller keeps its behaviour. Present means only those parts are
+   * checked against the calendar — the others stay sellable, which is the point of selling the house in parts.
+   */
+  wantedUnits?: readonly string[],
 ): HouseId | null {
   const houses = housesForRequest(propertyId, alsoPropertyId);
   if (houses.length === 0) return null;
@@ -81,6 +89,23 @@ export function holdConflict(
     const live = activeHolds(holds, now).filter((hold) => hold.propertyId === house);
     if (live.some((hold) => nightsOf(hold.checkIn, hold.checkOut).some((night) => wanted.has(night)))) {
       return house;
+    }
+    /*
+     * `occupiedNights` answers a house-level question: is *any* stay on these nights. That is the right question for a
+     * whole-house request and the wrong one for a part, because a Riverhouse part booking occupies one part and leaves
+     * the others sellable. Using it for both is what made a Garage Suite booking block the Recreation Wing and the Main
+     * Lodge it never sold.
+     *
+     * `wantedUnits` names the parts this request takes. When it is absent the caller is asking about the whole house and
+     * the original behaviour stands.
+     */
+    if (wantedUnits && wantedUnits.length > 0) {
+      const blocked = wantedUnits.some(
+        (unit) =>
+          unitBlockedNights(stays as never, unit as never, checkIn, checkOut).length > 0,
+      );
+      if (blocked) return house;
+      continue;
     }
     const taken = new Set(occupiedNights(stays, house, checkIn, checkOut));
     if (taken.size > 0) return house;
