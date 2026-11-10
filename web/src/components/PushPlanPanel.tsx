@@ -140,8 +140,26 @@ export function PushPlanPanel() {
     void api
       .getPushPlan()
       .then((result) => {
+        /*
+         * A response that is not a plan is not a plan. This used to accept anything with `storageReads` not paused, so a
+         * body missing `gate` or `shadowDays` reached the render and threw, unmounting the market page.
+         *
+         * An older deployment answering during a release is a real way to get one: this page and the route are deployed
+         * together but a cached or mid-release response is not guaranteed to be the same shape.
+         */
+        const shapeOk =
+          result &&
+          typeof result === 'object' &&
+          'gate' in result &&
+          result.gate != null &&
+          'shadowDays' in result &&
+          (result as { shadowDays?: unknown }).shadowDays != null;
         if (result.storageReads === 'paused' || result.plans === null) {
           setState('paused');
+          return;
+        }
+        if (!shapeOk) {
+          setState('error');
           return;
         }
         setData(result);
@@ -338,11 +356,16 @@ export function PushPlanPanel() {
               host reads as *it will now push*. It would not: `HOSPITABLE_WRITE_TOKEN` is only ever read to
               compute this boolean, and there is no Hospitable client or outbound price call in the code.
               The sentence now comes from `pushSendState`, so the page cannot claim a send the code lacks.
+
+              `gate` itself is guarded. `data.gate.send?.line` read optional off `send` but took `gate` for granted, so a
+              response without it - a truncated read, an older deployment answering mid-release, a proxy page - threw
+              "Cannot read properties of undefined (reading 'send')" and unmounted the whole market page, taking the board
+              and the comp cards with it. Optional on the object, not only on its property.
             */}
-            {data.gate.send?.line ?? 'A rate would not leave this app: no sender is built yet.'}{' '}
-            {data.shadowDays.ready
-              ? `Shadow days ${data.shadowDays.days} of ${data.shadowDays.required}.`
-              : `Shadow day ${data.shadowDays.days} of ${data.shadowDays.required}.`}
+            {data.gate?.send?.line ?? 'A rate would not leave this app: no sender is built yet.'}{' '}
+            {data.shadowDays?.ready
+              ? `Shadow days ${data.shadowDays.days ?? 0} of ${data.shadowDays.required ?? 7}.`
+              : `Shadow day ${data.shadowDays?.days ?? 0} of ${data.shadowDays?.required ?? 7}.`}
           </p>
           <ul className="mt-4 space-y-3">
             {(data.plans ?? []).map((plan) => (
