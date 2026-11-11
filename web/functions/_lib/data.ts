@@ -1,3 +1,5 @@
+import { cancellationIncomeOf } from '../../src/lib/cancellation-income';
+
 export const PROPERTIES = {
   ranch: {
     id: 'ranch',
@@ -207,6 +209,8 @@ export function calculateMetrics(
     checkOut: string;
     payout: number;
     status?: string;
+    /** A cancellation fee the channel still paid. Never `payout` — see `cancellation-income.ts`. */
+    cancellationIncome?: number;
   }> = RESERVATIONS,
 ) {
   let revenue = 0;
@@ -223,6 +227,20 @@ export function calculateMetrics(
       stayCount++;
     }
     occupied += getOverlappingNights(res.checkIn, res.checkOut, currentMonth);
+  }
+
+  /*
+   * A cancellation fee the channel kept and paid out is real money on a stay that never happened.
+   *
+   * Added to revenue and to nothing else. It is not a stay, so `stayCount` is untouched; it has no nights to occupy;
+   * and because the cleaning fallback below is `stayCount × the house fee`, leaving the count alone is also what stops
+   * a clean being charged for a house nobody slept in. The fee lands in the check-in month, the same rule every other
+   * payout follows — and the month it is actually paid: Airbnb released this one on 2026-03-30 for a March 29 arrival.
+   */
+  for (const res of reservationList) {
+    if (res.propertyId !== propId) continue;
+    if (!res.checkIn.startsWith(currentMonth)) continue;
+    revenue += cancellationIncomeOf(res);
   }
 
   const extra = Number(extraCleaningFees[`${propId}-${currentMonth}`] || 0);

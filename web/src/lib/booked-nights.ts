@@ -219,6 +219,8 @@ export async function loadPaceStays(): Promise<PaceStay[] | null> {
       checkOut?: string;
       status?: string;
       payout?: number;
+      /** A cancellation fee the channel paid. Carried so the year pace counts it as revenue. */
+      cancellationIncome?: number;
       note?: string;
     }>;
   };
@@ -230,6 +232,9 @@ export async function loadPaceStays(): Promise<PaceStay[] | null> {
     checkOut: stay.checkOut ?? '',
     status: stay.status,
     payout: Number(stay.payout) || 0,
+    ...(typeof stay.cancellationIncome === 'number' && Number.isFinite(stay.cancellationIncome)
+      ? { cancellationIncome: stay.cancellationIncome }
+      : {}),
     partySize: noteGuestCount(typeof stay.note === 'string' ? stay.note : undefined),
     childCount: noteChildCount(typeof stay.note === 'string' ? stay.note : undefined),
   }));

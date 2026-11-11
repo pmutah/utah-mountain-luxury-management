@@ -3,6 +3,7 @@ import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
 import { applyHostNetFromSeed, datesOverlap } from './reservation-match';
+import { earnsOnCancellation } from '../../src/lib/cancellation-income';
 
 const KV_RES = 'reservations';
 const KV_OVERRIDES = 'reservationOverrides';
@@ -47,8 +48,17 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
 
   const icalSyncedCustom = custom.filter((r) => r.icalUid && r.status !== 'cancelled');
 
+  /*
+   * A cancelled stay leaves the book, because nothing downstream may read it as a booking — the calendar, the
+   * turnover list, and the `stays × fee` cleaning fallback all ask "is this cancelled" and must keep getting no.
+   *
+   * One exception, and only one: a cancelled stay whose channel still kept a cancellation fee and paid it out. That
+   * money is real, and the revenue lines are the only place it can be counted, so the row is kept. It keeps its
+   * `cancelled` status, so every stay-shaped question still answers no; it carries the fee in `cancellationIncome`,
+   * never in `payout`, so no invented figure enters revenue.
+   */
   const activeSeed = merged.filter((r) => {
-    if (cancelledIds.has(r.id) && r.status === 'cancelled') return false;
+    if (cancelledIds.has(r.id) && r.status === 'cancelled' && !earnsOnCancellation(r)) return false;
     // Drop seed row when an iCal-imported custom row already represents the same stay.
     const duplicatedByIcal = icalSyncedCustom.some(
       (ic) => ic.propertyId === r.propertyId && datesOverlap(ic, r) && !overrides[r.id]?.icalUid,
@@ -57,7 +67,7 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
   });
 
   const seedIds = new Set(activeSeed.map((r) => r.id));
-  const extraCustom = custom.filter((r) => !seedIds.has(r.id) && r.status !== 'cancelled');
+  const extraCustom = custom.filter((r) => !seedIds.has(r.id) && (r.status !== 'cancelled' || earnsOnCancellation(r)));
 
   return [...activeSeed, ...extraCustom]
     .map((r) => applyHostNetFromSeed(r))

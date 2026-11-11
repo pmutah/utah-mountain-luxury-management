@@ -1,3 +1,5 @@
+import { cancellationIncomeOf } from './cancellation-income';
+
 export type PaceStay = {
   id?: string;
   propertyId: string;
@@ -5,6 +7,8 @@ export type PaceStay = {
   checkOut: string;
   status?: string;
   payout?: number;
+  /** A cancellation fee the channel still paid. Income with no night behind it. */
+  cancellationIncome?: number;
   partySize?: number | null;
   childCount?: number | null;
 };
@@ -99,9 +103,27 @@ export function grossPace(propertyId: GoalHouse, reservations: PaceStay[], asOf:
   const mine = reservations.filter(
     (stay) => stay.propertyId === propertyId && stay.status !== 'cancelled',
   );
-  const booked = mine
-    .filter((stay) => stay.status !== 'blocked' && stay.checkIn >= window.start && stay.checkIn < window.end)
-    .reduce((sum, stay) => sum + (Number(stay.payout) || 0), 0);
+  /*
+   * A cancellation fee the channel kept counts toward the year, because it is real gross revenue — the Overview's
+   * revenue card and this pace card sit on the same screen, and leaving it out of one of them puts two different
+   * year figures in front of the same host.
+   *
+   * Only the money. `mine` above still excludes cancelled rows, so a cancelled stay holds no night and cannot make an
+   * open night look taken — which is the difference between counting a fee and counting a stay.
+   */
+  const cancellationIncome = reservations
+    .filter(
+      (stay) =>
+        stay.propertyId === propertyId &&
+        cancellationIncomeOf(stay) > 0 &&
+        stay.checkIn >= window.start &&
+        stay.checkIn < window.end,
+    )
+    .reduce((sum, stay) => sum + cancellationIncomeOf(stay), 0);
+  const booked =
+    mine
+      .filter((stay) => stay.status !== 'blocked' && stay.checkIn >= window.start && stay.checkIn < window.end)
+      .reduce((sum, stay) => sum + (Number(stay.payout) || 0), 0) + cancellationIncome;
   const paceFrom = asOf > window.start ? asOf : window.start;
   const taken = takenNights(mine, paceFrom, window.end);
   let openNightsLeft = 0;

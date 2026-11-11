@@ -120,15 +120,16 @@ export async function syncIcalIfStale(env: SettingsEnv): Promise<void> {
 }
 
 export function findCalendarGaps(
-  reservations: Array<{ propertyId: PropertyId; checkIn: string; checkOut: string }>,
+  reservations: Array<{ propertyId: PropertyId; checkIn: string; checkOut: string; status?: string }>,
   blocks: CalendarBlock[],
   propertyId: PropertyId,
   from: string,
   to: string,
 ): Array<{ start: string; end: string; nights: number }> {
   const occupied: Array<{ start: string; end: string }> = [
+    // A cancelled stay holds no nights — including one kept only because it carries a cancellation fee.
     ...reservations
-      .filter((r) => r.propertyId === propertyId)
+      .filter((r) => r.propertyId === propertyId && r.status !== 'cancelled')
       .map((r) => ({ start: r.checkIn, end: r.checkOut })),
     ...blocks.filter((b) => b.propertyId === propertyId).map((b) => ({ start: b.start, end: b.end })),
   ].sort((a, b) => a.start.localeCompare(b.start));

@@ -1,4 +1,5 @@
 import { formatCurrency, PROPERTIES, type Reservation } from '../lib/api';
+import { postsRevenue, revenueOf } from '../lib/cancellation-income';
 import { currentDayIso } from '../lib/months';
 
 function nightsBetween(checkIn: string, checkOut: string): number {
@@ -205,8 +206,15 @@ export function RevenueLog({
   month: string;
   reservations: Reservation[];
 }) {
+  /*
+   * A cancelled stay normally has no row here: the guest never arrived, so there is no money to show.
+   *
+   * The exception is a cancellation the channel still paid a fee for. That money landed, so the row appears — but
+   * it is labelled a cancellation fee and reads its figure from `cancellationIncome`, never from `payout`, so a host
+   * can see at a glance that this is a fee and not a stay that happened.
+   */
   const list = reservations.filter(
-    (r) => r.propertyId === propertyId && r.checkIn.startsWith(month) && isActiveStay(r),
+    (r) => r.propertyId === propertyId && r.checkIn.startsWith(month) && postsRevenue(r),
   );
 
   if (!list.length) {
@@ -217,9 +225,13 @@ export function RevenueLog({
     <div className="p-4 space-y-2">
       {list.map((res) => {
         const nights = nightsBetween(res.checkIn, res.checkOut);
+        const cancelled = res.status === 'cancelled';
+        const earned = revenueOf(res);
         return (
           <div
             key={res.id}
+            data-bot="revenue-row"
+            data-status={res.status ?? 'confirmed'}
             className="flex justify-between items-center p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50"
           >
             <div className="min-w-0">
@@ -227,13 +239,16 @@ export function RevenueLog({
               <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">
                 {res.checkIn.slice(5)} to {res.checkOut.slice(5)} · {nights}{' '}
                 {nights === 1 ? 'night' : 'nights'} · {sourceLabel(res.source)}
+                {cancelled ? ' · cancelled' : ''}
               </p>
             </div>
             <div className="text-right shrink-0 ml-2">
               <p className="font-black text-sm text-slate-300">
-                {res.payout > 0 ? formatCurrency(res.payout) : 'TBD'}
+                {earned > 0 ? formatCurrency(earned) : 'TBD'}
               </p>
-              <p className="text-[8px] text-slate-600 font-bold uppercase">Host-net</p>
+              <p className="text-[8px] text-slate-600 font-bold uppercase">
+                {cancelled ? 'Cancellation fee' : 'Host-net'}
+              </p>
             </div>
           </div>
         );

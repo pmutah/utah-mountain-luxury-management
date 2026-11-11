@@ -7,6 +7,7 @@ import {
   type Reservation,
 } from './api';
 import { addMonths } from './months';
+import { cancellationIncomeOf } from './cancellation-income';
 import { managementFeeRaw } from './owner-fee';
 
 export const REPORT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
@@ -293,6 +294,21 @@ function monthPropertyMetrics(
     ch.stays += 1;
     ch.stayNights += nights;
     ch.revenue += payout;
+  }
+
+  /*
+   * A cancellation fee the channel kept is income on a stay that never happened, so it is added to revenue and the
+   * channel's revenue — and to **no** stay count, stay night, or occupied night. That is the whole reason it is a
+   * field of its own rather than a `payout`: a cancelled row with a fee must not read as a booking here, on the
+   * calendar, or in the `stays × fee` cleaning fallback below.
+   */
+  for (const res of reservations) {
+    if (res.propertyId !== propertyId) continue;
+    if (!res.checkIn.startsWith(month)) continue;
+    const fee = cancellationIncomeOf(res);
+    if (fee <= 0) continue;
+    revenue += fee;
+    channels[channelLabel(res.source)].revenue += fee;
   }
 
   let occupiedNights = 0;

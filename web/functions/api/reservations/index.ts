@@ -76,7 +76,13 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     guestTotal?: number;
     source?: string;
     note?: string;
-    status?: 'confirmed' | 'blocked';
+    status?: 'confirmed' | 'blocked' | 'cancelled';
+    /**
+     * Money a stay still earned on cancellation, when the channel kept a fee. Only meaningful with
+     * `status: "cancelled"`, where it is the row's entire income — never `payout`, which stays what the booking
+     * would have paid.
+     */
+    cancellationIncome?: number;
     guestEmail?: string;
     guestPhone?: string;
     confirmationCode?: string;
@@ -95,6 +101,23 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     return corsJson(request, { error: 'propertyId, checkIn, checkOut required' }, 400);
   }
 
+  /*
+   * A cancellation fee is only income on a cancelled row. Recording one on a confirmed stay would count the same
+   * money twice — `payout` is already the money there — so it is refused rather than silently carried.
+   */
+  if (body.cancellationIncome !== undefined) {
+    if (body.status !== 'cancelled') {
+      return corsJson(
+        request,
+        { error: 'cancellationIncome applies only to a cancelled stay. A confirmed stay earns its payout.' },
+        400,
+      );
+    }
+    if (typeof body.cancellationIncome !== 'number' || !Number.isFinite(body.cancellationIncome) || body.cancellationIncome <= 0) {
+      return corsJson(request, { error: 'cancellationIncome must be a number greater than 0' }, 400);
+    }
+  }
+
   const read = await readOrRefuse(
     request,
     () =>
@@ -108,6 +131,9 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
         // claiming the guest paid nothing.
         ...(typeof body.guestTotal === 'number' && Number.isFinite(body.guestTotal) && body.guestTotal > 0
           ? { guestTotal: body.guestTotal }
+          : {}),
+        ...(typeof body.cancellationIncome === 'number' && Number.isFinite(body.cancellationIncome) && body.cancellationIncome > 0
+          ? { cancellationIncome: Math.round(body.cancellationIncome * 100) / 100 }
           : {}),
         source: body.source ?? 'Direct',
         note: body.note,
