@@ -209,6 +209,13 @@ export function tripGate(input: {
   };
 }
 
+/**
+ * What a wallet pass would be, if one existed.
+ *
+ * Kept as a named refusal rather than deleted so the catalog's `planned` row has something to point at, and so a caller that reaches
+ * for a pass gets a sentence instead of a signed-looking object. It returns `signed: false` and no `.pkpass`; making a real pass
+ * means Apple and Google signing certificates, which is a separate decision.
+ */
 export function walletPass(input: { house: string; checkIn: string; checkOut: string }): {
   signed: false;
   reason: string;
@@ -247,14 +254,39 @@ export function snowDispatch(input: { inches: number | null; live: boolean }): {
   return { dispatch: false, reason: `${input.inches} inches is under the 2 inch line.` };
 }
 
-export function inspectRooms(input: { required: string[]; submitted: string[] }): {
-  flags: string[];
+/**
+ * Photo-completeness for a cleaner turn.
+ *
+ * It was written as `inspectRooms({ required, submitted })`, flagging a room with no photo — and it had no caller, for the reason the
+ * platform keeps finding: **there is no room inventory anywhere in this repo.** A house is a set of steps ("strip and remake every
+ * bed"), not a list of named rooms, so a "missing room" check would have had to invent the rooms it complains about. A cleaner told
+ * "no photo for Bedroom 3" in a house with no bedrooms on file is worse than no check at all.
+ *
+ * What can be counted honestly is what the photo step actually needs: whether a turn has at least one photo, and how many more the
+ * host asked for. `requiredPhotos` is a count the host sets, not a list of rooms this module pretends to know.
+ */
+export function inspectTurnPhotos(input: { requiredPhotos: number; submitted: number }): {
+  complete: boolean;
+  missing: number;
+  line: string;
   visionCalled: false;
-  model: 'checklist';
+  model: 'count';
 } {
-  const have = new Set(input.submitted.map((room) => room.toLowerCase()));
-  const flags = input.required.filter((room) => !have.has(room.toLowerCase())).map((room) => `No photo for ${room}.`);
-  return { flags, visionCalled: false, model: 'checklist' };
+  const required = Number.isFinite(input.requiredPhotos) ? Math.max(0, Math.round(input.requiredPhotos)) : 0;
+  const submitted = Number.isFinite(input.submitted) ? Math.max(0, Math.round(input.submitted)) : 0;
+  const missing = Math.max(0, required - submitted);
+  return {
+    complete: missing === 0,
+    missing,
+    line:
+      required === 0
+        ? 'No photo count is set for this turn.'
+        : missing === 0
+          ? `${submitted} ${submitted === 1 ? 'photo' : 'photos'} on this turn, which meets the ${required} asked for.`
+          : `${missing} more ${missing === 1 ? 'photo is' : 'photos are'} needed: ${submitted} of ${required}.`,
+    visionCalled: false,
+    model: 'count',
+  };
 }
 
 export function draftReply(input: {

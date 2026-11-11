@@ -14,7 +14,7 @@ import {
   cutoverReady,
   draftReply,
   hoursToCheckIn,
-  inspectRooms,
+  inspectTurnPhotos,
   quoteWithTax,
   splitPay,
   stripeReadiness,
@@ -297,13 +297,29 @@ test('hours to check-in is real arithmetic in Mountain Time', () => {
   assert.equal(hoursToCheckIn({ now: new Date('2026-11-15T12:00:00Z'), checkIn: '2026-02-30', checkInTime: '4:00 PM' }), null);
 });
 
-test('cleaner pay, photo flags, and drafts do not invent or send', () => {
+test('cleaner pay, photo counts, and drafts do not invent or send', () => {
   assert.equal(cleanerPay('lindon').usd, 160);
   assert.equal(cleanerPay('ranch').usd, 350);
   assert.equal(cleanerPay('river').usd, null);
-  const photos = inspectRooms({ required: ['kitchen', 'loft'], submitted: ['kitchen'] });
-  assert.deepEqual(photos.flags, ['No photo for loft.']);
-  assert.equal(photos.visionCalled, false);
+  /*
+   * The photo check counts what the shop asked for rather than naming rooms.
+   *
+   * `inspectRooms({ required, submitted })` flagged "no photo for the loft" and had no caller, because no room inventory exists in
+   * this repo — a house is a set of steps, not a list of rooms. A cleaner told a room is missing in a house with no rooms on file is
+   * worse than no check.
+   */
+  const short = inspectTurnPhotos({ requiredPhotos: 4, submitted: 3 });
+  assert.equal(short.complete, false);
+  assert.equal(short.missing, 1);
+  assert.match(short.line, /1 more photo is needed/);
+  assert.equal(short.visionCalled, false);
+  const met = inspectTurnPhotos({ requiredPhotos: 4, submitted: 5 });
+  assert.equal(met.complete, true);
+  assert.equal(met.missing, 0);
+  // No count set is not a failure, and it does not claim completeness either.
+  const unset = inspectTurnPhotos({ requiredPhotos: 0, submitted: 0 });
+  assert.equal(unset.complete, true);
+  assert.match(unset.line, /No photo count is set/);
   assert.equal(draftReply({ text: 'come at noon', confidence: 0.99, guidelineHit: true }).action, 'hold');
   assert.equal(draftReply({ text: 'see you', confidence: 0.99, guidelineHit: false, autoReplyEnabled: true }).sent, false);
 });

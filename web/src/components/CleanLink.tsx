@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { inspectTurnPhotos } from '../lib/platform/guest-ops';
 import type { CleanJobView } from '../lib/clean-link';
 import {
   clearSent,
@@ -443,6 +444,22 @@ export function CleanLink({ token }: { token: string }) {
                         {lang === 'es'
                           ? 'Las fotos no están activadas en este sitio. Marca el paso de fotos cuando hayas hecho las camas y la cocina; no se te pedirá una foto.'
                           : 'Photos are not turned on for this site yet. Tick the photo step once the rooms are ready — you will not be asked for an image.'}
+                      </p>
+                    )}
+                    {/*
+                      What the turn actually has, counted.
+
+                      This used to say nothing until a photo appeared, so a cleaner could not tell whether one picture was
+                      enough. The count is the whole of what this site can honestly say: it has no room inventory, so it cannot
+                      claim a particular bedroom is unphotographed — it can only say how many are on file against how many the
+                      host asked for.
+                    */}
+                    {photosAvailable && (
+                      <p className="mt-1 text-sm" data-bot="clean-link-photo-count">
+                        {inspectTurnPhotos({
+                          requiredPhotos: 1,
+                          submitted: (photos[keyFor(job)] ?? []).length,
+                        }).line}
                       </p>
                     )}
                     {(photos[keyFor(job)] ?? []).length > 0 && (
