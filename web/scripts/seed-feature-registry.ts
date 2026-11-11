@@ -1,68 +1,75 @@
 /**
  * Seed the feature catalog into the production market database.
  *
- * Upsert only. No row is deleted, no expense, booking, or receipt is touched, and R2 is not involved.
- * Run from `web/`: `npx tsx scripts/seed-feature-registry.ts`
+ * Upsert only. No row is deleted, so a note a person wrote on a feature survives a reseed, and a feature that leaves the catalog keeps
+ * its history. No expense, booking, or receipt is in this table.
+ *
+ * **Why this shells out to Wrangler instead of calling the D1 HTTP API.** The previous version read `oauth_token` out of
+ * `%APPDATA%/xdg.config/.wrangler/config/default.toml` and posted it as a bearer to `api.cloudflare.com/client/v4/.../query`. That
+ * token is an **OAuth** token, and the D1 HTTP endpoint accepts only **API** tokens: it answers `401 {"code":1000,"message":"Invalid
+ * API Token"}`. The scope list was never the problem — `d1 (write)` was there. The credential type was. Wrangler refreshes and scopes
+ * its own credential, so the only path that works is `wrangler d1 execute`.
+ *
+ * Run from `web/`:
+ *   npx tsx scripts/seed-feature-registry.ts            (production)
+ *   npx tsx scripts/seed-feature-registry.ts --dry      (writes nothing)
+ *
+ * It writes the SQL with `writeFileSync` at UTF-8: a PowerShell `>` redirect produces UTF-16, and Wrangler then reads the file as
+ * binary, runs zero queries, and still exits 0 saying "Executed 0 queries". That is a success message for doing nothing, which is
+ * exactly the failure this codebase keeps finding.
  */
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FEATURE_CATALOG } from '../src/lib/platform/feature-catalog.ts';
 
-const DATABASE = '082c6644-4cb0-4fbd-b3d0-1d4d684f15a8';
-const ACCOUNT = '513c82ca37c8d7e83926801120de3eee';
 const DRY = process.argv.includes('--dry');
+const DATABASE = 'uml-market';
 
-function oauthToken(): string {
-  const path = join(process.env.APPDATA ?? '', 'xdg.config', '.wrangler', 'config', 'default.toml');
-  const line = readFileSync(path, 'utf8')
-    .split(/\r?\n/)
-    .find((row) => row.startsWith('oauth_token'));
-  const token = line?.split('=').slice(1).join('=').trim().replace(/^"|"$/g, '');
-  if (!token) throw new Error('No Wrangler OAuth token. Sign in with `npx wrangler whoami` first.');
-  return token;
+/** A single-quoted SQL string with the quote doubled, which is the only escape SQLite needs here. */
+function q(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
 }
 
-const token = DRY ? '' : oauthToken();
-
-async function run(sql: string, params: unknown[]) {
-  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/d1/database/${DATABASE}/query`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sql, params }),
-  });
-  const body = await res.json();
-  if (!res.ok) throw new Error(`${res.status} ${JSON.stringify(body.errors ?? [])}`);
-  return body.result?.[0]?.meta?.changes ?? 0;
-}
-
-const SQL = `INSERT INTO feature_registry (id, area, title, status, competitor, notes)
-VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET
-  area = excluded.area,
-  title = excluded.title,
-  status = excluded.status,
-  competitor = excluded.competitor,
-  notes = excluded.notes`;
-
-let changed = 0;
-for (const row of FEATURE_CATALOG) {
-  if (DRY) {
-    console.log('would upsert', row.id);
-    continue;
-  }
-  changed += await run(SQL, [row.id, row.area, row.title, row.status, row.competitor, row.reason]);
-}
+const SQL = FEATURE_CATALOG.map(
+  (row) =>
+    `INSERT INTO feature_registry (id, area, title, status, competitor, notes) VALUES (${q(row.id)}, ${q(row.area)}, ${q(row.title)}, ${q(row.status)}, ${q(row.competitor)}, ${q(row.reason)})
+ON CONFLICT(id) DO UPDATE SET area = excluded.area, title = excluded.title, status = excluded.status, competitor = excluded.competitor, notes = excluded.notes;`,
+).join('\n');
 
 if (DRY) {
   console.log(`dry run: ${FEATURE_CATALOG.length} rows, nothing written`);
-} else {
-  const counted = await run('SELECT COUNT(*) AS n FROM feature_registry', []);
-  const rows = await fetch(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/d1/database/${DATABASE}/query`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sql: 'SELECT COUNT(*) AS n FROM feature_registry' }),
-  }).then((res) => res.json());
-  console.log(`upserted ${FEATURE_CATALOG.length} rows into feature_registry (${changed} changed).`);
-  console.log('rows now', JSON.stringify(rows.result?.[0]?.results ?? []));
-  void counted;
+  for (const row of FEATURE_CATALOG) console.log('would upsert', row.id, `(${row.status})`);
+  process.exit(0);
+}
+
+/*
+ * Wrangler is invoked as a script through `node`, not as `npx.cmd`. On Windows, Node 24 refuses to spawn a `.cmd` file directly
+ * (`spawnSync npx.cmd EINVAL`), so the old shell-out shape fails before Wrangler runs at all.
+ */
+const wranglerBin = join(process.cwd(), '..', 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+
+const dir = mkdtempSync(join(tmpdir(), 'uml-registry-'));
+const file = join(dir, 'seed.sql');
+try {
+  writeFileSync(file, `${SQL}\nSELECT COUNT(*) AS n FROM feature_registry;\n`, 'utf8');
+  const output = execFileSync(process.execPath, [wranglerBin, 'd1', 'execute', DATABASE, '--remote', '--file', file], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  /*
+   * Wrangler exits 0 even when it ran nothing, so the answer is read out of its report rather than trusted from the exit code. A run
+   * that wrote no query is a failure here, not a quiet success.
+   */
+  const executed = /Executed (\d+) queries/.exec(output);
+  const written = /"Rows written": (\d+)/.exec(output) ?? /"rows_written": (\d+)/.exec(output);
+  if (!executed || Number(executed[1]) === 0) {
+    throw new Error(`Wrangler ran no query. It said: ${output.split('\n').slice(-4).join(' ')}`);
+  }
+  console.log(
+    `upserted ${FEATURE_CATALOG.length} rows into ${DATABASE}: ${executed[1]} queries, ${written?.[1] ?? '?'} rows written.`,
+  );
+} finally {
+  rmSync(dir, { recursive: true, force: true });
 }
