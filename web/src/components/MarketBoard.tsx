@@ -44,6 +44,7 @@ import { addonPhrase, openArrivals } from '../lib/open-arrivals';
 import { stayLengths } from '../lib/stay-lengths';
 import { stayLinkSearch } from '../lib/stay-link';
 import { grossPace, type PaceStay } from '../lib/revenue-goals';
+import { forecastGoal, trailingRevPar } from '../lib/platform/market-intel';
 
 const HOUSES: { id: HouseId; label: string }[] = [
   { id: 'river', label: 'River' },
@@ -361,6 +362,46 @@ export function MarketBoard() {
     .filter((comp): comp is NonNullable<typeof comp> => Boolean(comp));
 
   const windows = stays && paceState === 'live' ? forwardWindows(house, stays, today, closed[house] ?? []) : null;
+  /*
+   * RevPAR and the chance of the year's goal, from the same real bookings the pace cards use.
+   *
+   * `trailingRevPar` and `forecastGoal` have existed in `market-intel.ts` since the spine landed and were called only from a test.
+   * They answer the two questions the pace cards cannot: what a sellable night is actually earning, and how likely the remaining
+   * open nights are to reach a target. Both figures are computed from the live calendar here — the rate each open night would earn
+   * at the approved or published ask, and the chance it books at the comp pace — and neither changes a price.
+   */
+  const forwardEcon = useMemo(() => {
+    if (!windows || windows.length === 0) return null;
+    const win30 = windows.find((window) => window.days === 30);
+    if (!win30) return null;
+    const nights = board.nights.slice(0, 30);
+    const priced = nights.filter((night) => night.ourGuest > 0);
+    if (priced.length === 0) return null;
+    const adr = Math.round(priced.reduce((sum, night) => sum + night.ourGuest, 0) / priced.length);
+    const occupancy = win30.sellable === 0 ? 0 : win30.booked / win30.sellable;
+    const revpar = trailingRevPar([{ adr, occupancy }]);
+    /*
+     * The forecast uses each night's own probability of booking — the comp pace for its weekday — against the goal remaining. A
+     * night already booked is not in the sample: it is income, not a draw. `forecastGoal` returns seeded percentiles, so the seed
+     * is the house name, which keeps the number stable across renders instead of flickering on every paint.
+     */
+    const open = nights.filter((night) => night.action !== 'booked' && night.action !== 'closed' && night.ourGuest > 0);
+    const probability = Math.min(0.95, Math.max(0.05, win30.bookedShare / 100));
+    /*
+     * The goal remaining comes from `grossPace`, the same function the annual-goal card reads, so the two cannot disagree about
+     * what is left to earn. No stays read means no goal figure: a zero here would say the year is already made.
+     */
+    const pace = stays && stays.length >= 0 ? grossPace(house, stays, today) : null;
+    const goal = pace?.stillNeeded ?? 0;
+    const forecast = goal > 0
+      ? forecastGoal({
+          nights: open.map((night) => ({ rate: night.ourGuest, probability })),
+          goalRemaining: goal,
+          seed: house.length,
+        })
+      : null;
+    return { adr, occupancy, revpar, forecast, goal, open: open.length };
+  }, [windows, board.nights, house, stays, today]);
   const trialNight =
     (trial && shadow.nights.find((night) => night.date === trial.date)) ||
     shadow.nights.find((night) => house !== 'river' || night.date >= RIVER_FIRST_STAY) ||
@@ -603,6 +644,53 @@ export function MarketBoard() {
               );
             })}
           </div>
+          {/*
+            RevPAR and the chance of the year's goal.
+
+            Both were helpers with no caller. They answer what the three pace cards cannot: what a sellable night is actually
+            earning, and how likely the open nights are to reach the target. Neither figure sets a price, and the note says so.
+          */}
+          {forwardEcon && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2" data-bot="market-economics">
+              <article className="rounded-2xl border border-white/10 p-4" data-bot="market-revpar">
+                <p className="uml-kicker">RevPAR, next 30 nights</p>
+                <p className="font-display text-3xl uml-num mt-1" data-bot="market-revpar-value">
+                  {formatWhole(forwardEcon.revpar.revpar)}
+                </p>
+                <p className="mt-1 text-sm text-[var(--uml-muted)]">
+                  {formatWhole(forwardEcon.revpar.adr)} average nightly ask × {Math.round(forwardEcon.revpar.occupancy * 100)}% of
+                  sellable nights booked. Revenue per available night.
+                </p>
+              </article>
+              <article className="rounded-2xl border border-white/10 p-4" data-bot="market-goal-chance">
+                <p className="uml-kicker">Chance of the year&rsquo;s goal</p>
+                {forwardEcon.forecast ? (
+                  <>
+                    <p className="font-display text-3xl uml-num mt-1" data-bot="market-goal-chance-value">
+                      {Math.round(forwardEcon.forecast.chanceOfGoal * 100)}%
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--uml-muted)]">
+                      From {forwardEcon.open} open nights at the {Math.round(forwardEcon.occupancy * 100)}% pace, toward{' '}
+                      {formatWhole(forwardEcon.goal)} still to earn. The middle outcome is{' '}
+                      {formatWhole(forwardEcon.forecast.p50)}.
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-[var(--uml-muted)]" data-bot="market-goal-chance-none">
+                    {forwardEcon.goal === 0
+                      ? 'The year is already at its goal, so there is nothing left to forecast.'
+                      : 'No open priced night is left in the next 30, so there is nothing to forecast.'}
+                  </p>
+                )}
+              </article>
+            </div>
+          )}
+          {forwardEcon && (
+            <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="market-economics-note">
+              A forecast, not a promise. It uses this house&rsquo;s booked share as the chance each open night sells, and it changes
+              no price.
+            </p>
+          )}
         </div>
         {openings.length > 0 && (
           <div className="mt-6" data-bot="market-open">

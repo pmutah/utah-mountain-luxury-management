@@ -4,6 +4,7 @@ import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
 import { PLATFORM_AGENTS } from '../lib/platform/back-office';
+import { PlatformPanel } from './PlatformPanel';
 import { GuideDesk } from './GuideDesk';
 import { loadDateBlocks, loadQuoteCalendar } from '../lib/booked-nights';
 import { loadCleanFixes, loadHouseFixes } from '../lib/clean-notes';
@@ -234,16 +235,22 @@ export function AgentsHub({
         </p>
       </div>
       <div className="uml-panel rounded-3xl p-6" data-bot="agent-toggles">
-        <p className="uml-kicker">Switches</p>
+        <p className="uml-kicker">The agent roster</p>
         <ul className="mt-3 space-y-2 text-sm">
           {PLATFORM_AGENTS.map((agent) => (
             <li key={agent.id} data-bot={`agent-switch-${agent.id}`} data-on={agent.defaultOn ? 'yes' : 'no'}>
               <span className="text-[var(--uml-gold)]">{agent.name}.</span> {agent.scope}
-              {agent.risky ? ' Off until you turn it on.' : ''} Nothing is sent from this list.
+              {agent.risky ? ' Off until you turn it on.' : ''} This list is the roster; the switches that do something are in the
+              Platform panel below.
             </li>
           ))}
         </ul>
       </div>
+      {/*
+        The panel. These routes existed and nothing read them; the switches were a rendered list with no store behind them. Both are
+        wired here, and each card says whether it could not be read rather than showing a zero.
+      */}
+      <PlatformPanel />
       <div className="uml-panel rounded-3xl p-6" data-bot="agent-brief" data-blocks={closed.length}>
         <p className="uml-kicker">Tonight</p>
         <ul className="mt-4 space-y-3 text-sm">

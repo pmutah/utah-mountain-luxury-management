@@ -255,6 +255,22 @@ export const READ_ROUTES: BotRoute[] = [
     writes: false,
   },
   {
+    path: '/api/platform/switches',
+    method: 'get',
+    operationId: 'getAgentSwitches',
+    summary:
+      'The three switches a host may set — the morning text, snow in that text, and recording a shadow day from the morning run — plus the two that stay locked and why. A store that cannot be read reports every switch off with ok:false.',
+    writes: false,
+  },
+  {
+    path: '/api/platform/switches',
+    method: 'post',
+    operationId: 'setAgentSwitch',
+    summary:
+      'Set one switch. Only digest, snow, and shadowDay are accepted; a locked switch is refused 409 with the reason. None of them messages a guest or publishes a rate.',
+    writes: true,
+  },
+  {
     path: '/api/stay-guide/{token}/conditions',
     method: 'get',
     operationId: 'getStayConditions',

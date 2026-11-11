@@ -164,6 +164,68 @@ export async function readFunnel(env: unknown): Promise<DbRead<FunnelCounts>> {
   );
 }
 
+/**
+ * The funnel inside a window, split by visit so a quote that never became a request is visible.
+ *
+ * The four steps are fixed (view, quote, checkout, paid), and the interesting number is the drop between them. Counting distinct
+ * visits rather than raw rows is what makes that honest: a guest who reloaded the booking page four times is one visit on the
+ * `view` step, not four. `created_at` is stored as an ISO string, so a plain `>=` on it is a correct range — the format sorts
+ * lexicographically.
+ */
+export type FunnelFunnel = {
+  /** One row per step, in order. A step with no rows is present with zero. */
+  steps: Array<{ step: string; visits: number }>;
+  /** Visits that reached `quote` and never reached `checkout`, inside the same window. */
+  quotedNotSent: number;
+  /** Visits that reached `checkout`, which on this site means a request was saved. */
+  requests: number;
+};
+
+const STEP_ORDER = ['view', 'quote', 'checkout', 'paid'] as const;
+
+export async function readFunnelWindow(
+  env: unknown,
+  since: Date,
+): Promise<{ ok: true; funnel: FunnelFunnel } | { ok: false; reason: string }> {
+  const rows = await readRows<{ step: string; visits: number }>(
+    env,
+    `SELECT step, COUNT(DISTINCT COALESCE(visit, 'id:' || id)) AS visits
+       FROM funnel_events
+      WHERE created_at >= ?
+      GROUP BY step`,
+    since.toISOString(),
+  );
+  if (!rows.ok) return rows;
+  const byStep = new Map(rows.rows.map((row) => [row.step, Number(row.visits) || 0]));
+  const steps = STEP_ORDER.map((step) => ({ step, visits: byStep.get(step) ?? 0 }));
+  /*
+   * A quote that never became a request. It is the number a host acts on — the guest picked dates and stopped — and it is
+   * measured from the visit ids rather than guessed from the two totals, because a total can fall for a reason other than a drop:
+   * a guest who arrives straight at the booking page never records a `quote` at all.
+   */
+  const quoted = await readRows<{ total: number }>(
+    env,
+    `SELECT COUNT(*) AS total FROM (
+        SELECT q.visit FROM funnel_events q
+         WHERE q.step = 'quote' AND q.visit IS NOT NULL AND q.created_at >= ?
+           AND NOT EXISTS (
+             SELECT 1 FROM funnel_events c
+              WHERE c.visit = q.visit AND c.step IN ('checkout', 'paid')
+           )
+         GROUP BY q.visit
+     )`,
+    since.toISOString(),
+  );
+  return {
+    ok: true,
+    funnel: {
+      steps,
+      quotedNotSent: quoted.ok ? Number(quoted.rows[0]?.total) || 0 : 0,
+      requests: byStep.get('checkout') ?? 0,
+    },
+  };
+}
+
 /** Whether the tables this module needs are actually there, without assuming they are. */
 export async function dbTables(env: unknown): Promise<DbRead<{ name: string }>> {
   return readRows<{ name: string }>(

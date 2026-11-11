@@ -112,6 +112,11 @@ const HOST_ROUTES = [
    * A guest gets a forecast through the stay token instead.
    */
   'platform/conditions.ts',
+  /*
+   * The agent switches. Host only, and it writes one KV key that decides what the morning run tells the host — never a guest
+   * message and never a published rate.
+   */
+  'platform/switches.ts',
   'mcp/index.ts',
 ];
 
