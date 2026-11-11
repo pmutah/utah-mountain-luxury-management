@@ -2211,6 +2211,25 @@ export function DirectBook() {
           </section>
         </div>
       </div>
+      {/*
+        A guest booking direct is asked to read the house rules and open the agreement topics, and until now the terms and
+        privacy policy existed at `/terms` and `/privacy` with **nothing linking to them** — a page nobody can reach is not a
+        published policy. The links are the extensionless addresses, because Cloudflare Pages answers `/terms.html` with a 308
+        to `/terms`; linking the `.html` form would make every click a redirect.
+      */}
+      <footer className="mx-auto mt-10 max-w-5xl border-t border-white/10 px-1 pt-5 text-xs text-[var(--uml-muted)]" data-bot="stay-footer">
+        <nav aria-label="House policies">
+          <a href="/terms" data-bot="stay-terms" className="underline">Terms</a>
+          {' · '}
+          <a href="/privacy" data-bot="stay-privacy" className="underline">Privacy</a>
+          {' · '}
+          <a href="/accessibility" data-bot="stay-accessibility" className="underline">Accessibility</a>
+        </nav>
+        <p className="mt-2">
+          A quote on this site is a request. It does not charge a card and it does not hold a night unless the page says a hold
+          is on. Questions go to utahmountainluxury@gmail.com.
+        </p>
+      </footer>
       <div className="stay-sheet-source" data-bot="stay-guide-print">
         <p>House guide</p>
         <h2>{guide.name}</h2>

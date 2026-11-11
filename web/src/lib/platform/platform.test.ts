@@ -779,6 +779,27 @@ test('the service worker parses as plain JavaScript', () => {
   assert.equal(/Promise<|new Set<|Set<|Array<|: string\b|: void\b/.test(sw), false, 'sw.js carries TypeScript annotations');
 });
 
+test('the policies are reachable from both public entry points', () => {
+  /*
+   * The pages were built and deployed and **nothing linked to them**. A published policy nobody can open is not published,
+   * and a guest booking direct was asked to accept terms with no way to read them. This pins the links, and pins the
+   * extensionless address: Cloudflare Pages answers `/terms.html` with a 308 to `/terms`, so linking the `.html` form makes
+   * every click a redirect.
+   */
+  const book = readFileSync(join(root, 'src/components/DirectBook.tsx'), 'utf8');
+  const houses = readFileSync(join(root, 'src/components/HouseSite.tsx'), 'utf8');
+  for (const [name, page] of [['booking page', book], ['house list', houses]] as const) {
+    for (const policy of ['/terms', '/privacy', '/accessibility']) {
+      assert.match(page, new RegExp(`href="${policy}"`), `the ${name} does not link ${policy}`);
+      assert.equal(
+        new RegExp(`href="${policy}\\.html"`).test(page),
+        false,
+        `the ${name} links ${policy}.html, which Pages redirects 308`,
+      );
+    }
+  }
+});
+
 test('the market database refuses a missing binding instead of pretending it saved', async () => {
   const { funnelIsValid, marketDb, readRows, writeRow } = await import('../../../functions/_lib/platform/market-db.ts');
   assert.equal(marketDb({}), null);

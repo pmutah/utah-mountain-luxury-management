@@ -213,6 +213,20 @@ function HouseIndex() {
           )}
         </section>
       </div>
+      {/*
+        The policies, where a guest entering from the public side can reach them. These pages existed at `/terms` and
+        `/privacy` with nothing linking to them. The addresses are extensionless because Pages answers `/terms.html` with a
+        308 to `/terms`.
+      */}
+      <footer className="mx-auto mt-10 max-w-5xl border-t border-white/10 pt-5 text-xs text-[var(--uml-muted)]" data-bot="houses-footer">
+        <nav aria-label="House policies">
+          <a href="/terms" data-bot="houses-terms" className="underline">Terms</a>
+          {' · '}
+          <a href="/privacy" data-bot="houses-privacy" className="underline">Privacy</a>
+          {' · '}
+          <a href="/accessibility" data-bot="houses-accessibility" className="underline">Accessibility</a>
+        </nav>
+      </footer>
     </div>
   );
 }
