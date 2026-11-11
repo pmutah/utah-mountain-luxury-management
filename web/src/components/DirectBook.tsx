@@ -23,6 +23,9 @@ import { agreementLine, agreementNote, agreementReadComplete, agreementTopics } 
 import { applyPublicShare, bookShare, companionStayFacts, companionStayNote, publicHouse } from '../lib/house-page';
 import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
+import { formatCents, quoteWithTax } from '../lib/platform/guest-ops';
+import { sendFunnel } from '../lib/platform/funnel-client';
+import { useTurnstile } from '../lib/platform/useTurnstile';
 import { openingStay } from '../lib/booking-open';
 import { denverToday } from '../lib/market/dates';
 import { stayEventLine } from '../lib/market/events';
@@ -140,6 +143,11 @@ export function DirectBook() {
    * would either overcharge or silently skip the fee.
    */
   const [dogs, setDogs] = useState('');
+  /*
+   * The bot check, when this deployment has one. An unconfigured deployment draws nothing and the form works exactly as it
+   * did; a configured one requires a token before the button is enabled, and the server checks it again.
+   */
+  const bot = useTurnstile('book_request');
   /*
    * Per house, because the house rules differ. A single flag meant ticking "I have read the house rules" on the
    * Lindon tab also opened River's request form, on rules the guest never saw. The agreement topics were already
@@ -287,6 +295,15 @@ export function DirectBook() {
     party.ok && (calendar === 'live' ? quote.ok : calendar === 'off' && !stayRule)
       ? stayIcs(house, checkIn, checkOut)
       : null;
+  /*
+   * The funnel's second step: the guest reached a live quote for these dates. Only a real quote counts, so a page that
+   * could not read the calendar never records one. Production only, for the same reason as the view step.
+   */
+  useEffect(() => {
+    if (!import.meta.env.PROD || typeof window === 'undefined') return;
+    if (calendar !== 'live' || !quote.ok) return;
+    void sendFunnel('quote', house, { prod: true, visit: '', storage: window.sessionStorage });
+  }, [calendar, quote.ok, house]);
   /*
    * The Riverhouse parts, matched against the dates the guest picked. Only the Riverhouse has parts, and the list is
    * empty for the other two houses, so nothing about them changes.
@@ -457,6 +474,12 @@ export function DirectBook() {
     Boolean(eventStay ?? true) &&
     (agreementOpened || Boolean(eventStay));
   const submitReady = requestReady || partBookingReady;
+  /*
+   * A configured bot check also needs a token. It is folded into the readiness the button reads, so a guest never presses a
+   * button that cannot work.
+   */
+  const botBlocked = bot.enforced && !bot.token;
+  const sendReady = submitReady && !botBlocked;
   const requestHold = submitReady
     ? ''
     : requestHoldLine({
@@ -586,9 +609,19 @@ export function DirectBook() {
     window.history.replaceState(null, '', sharePath);
   }, [sharePath]);
 
+  /*
+   * The funnel's first step: this house's booking page was opened. Only in a production build, because the dev server
+   * proxies `/api` to production and a local page load must not write rows into the live market database. It stores a
+   * house and a random visit id, nothing about the guest.
+   */
+  useEffect(() => {
+    if (!import.meta.env.PROD || typeof window === 'undefined') return;
+    void sendFunnel('view', house, { prod: true, visit: '', storage: window.sessionStorage });
+  }, [house]);
+
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!submitReady) return;
+    if (!sendReady) return;
     setBusy(true);
     setError(null);
     try {
@@ -610,6 +643,8 @@ export function DirectBook() {
            * so a whole-house request is byte-for-byte the same request it always was.
            */
           ...(bookingParts ? { units: chosenParts } : {}),
+          // Only sent when the server says a check is enforced, so an unconfigured deployment sends exactly what it did.
+          ...(bot.enforced && bot.token ? { turnstileToken: bot.token } : {}),
           /*
            * What the guest is looking at, so the booking is worth the figure they agreed to.
            *
@@ -654,6 +689,13 @@ export function DirectBook() {
       };
       if (!res.ok) throw new Error(body.error || 'Could not send the request');
       setSent(true);
+      /*
+       * The funnel's third step: a request saved. It is called `checkout` in the funnel and it is **not** a payment —
+       * nothing is charged on this page, so the `paid` step is never recorded here. Production only.
+       */
+      if (import.meta.env.PROD && typeof window !== 'undefined') {
+        void sendFunnel('checkout', house, { prod: true, visit: '', storage: window.sessionStorage });
+      }
       setReceiptFailed(body.guestEmailed === false);
       setStatusPath(typeof body.statusPath === 'string' ? body.statusPath : null);
       setHoldLine(
@@ -667,6 +709,8 @@ export function DirectBook() {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send the request');
+      // A used token is spent. Reset so a second attempt carries a fresh one.
+      if (bot.enforced) bot.reset();
     } finally {
       setBusy(false);
     }
@@ -1143,6 +1187,18 @@ export function DirectBook() {
                   {quote.promotionNights > 0 ? ` ${guestPromoLine(quote.promotionNights)}` : ''}
                   {' '}Utah lodging tax is added after the rate is confirmed. Nothing is charged on this page.
                 </p>
+                <ul className="space-y-1 text-xs text-[var(--uml-muted)]" data-bot="stay-tax-estimate">
+                  {(() => {
+                    const tax = quoteWithTax({ lodging: quote.lodging, cleaning: quote.cleaning, pet: quote.petFee });
+                    return (
+                      <>
+                        <li>State estimate {formatCents(tax.stateTax)}</li>
+                        <li>County estimate {formatCents(tax.countyTax)}</li>
+                        <li>Estimated total with tax {formatCents(tax.estimatedTotal)}. {tax.note}</li>
+                      </>
+                    );
+                  })()}
+                </ul>
                 {saved !== null && (
                   <p className="text-sm" data-bot="stay-save">
                     This page is {formatWhole(saved)} below the Airbnb guest total, before tax.
@@ -1945,10 +2001,23 @@ export function DirectBook() {
                   className="min-h-24 w-full rounded-2xl border border-[var(--uml-line)] bg-transparent px-4 py-3"
                 />
                 {error && <p className="text-sm text-red-300">{error}</p>}
+                {bot.enforced && (
+                  <div className="mt-1" data-bot="stay-bot-check">
+                    <div ref={bot.host} data-bot="stay-bot-widget" />                    {bot.failed && (
+                      <p className="text-sm text-red-300" data-bot="stay-bot-failed">
+                        The bot check could not load, so the request cannot be sent from this page. Reload, or reply to the email
+                        that sent you here.
+                      </p>
+                    )}
+                    {!bot.failed && (
+                      <p className="text-xs text-[var(--uml-muted)]">A quick check that this is a person. It does not sign you in.</p>
+                    )}
+                  </div>
+                )}
                 <button
                   type="submit"
                   data-bot="stay-request"
-                  disabled={busy || !submitReady}
+                  disabled={busy || !sendReady}
                   className="rounded-full bg-[var(--uml-gold)] px-5 py-3 text-xs uppercase tracking-[0.16em] text-[var(--uml-gold-ink)] disabled:opacity-40"
                 >
                   {busy ? 'Sending' : twoHouse ? 'Request both houses' : 'Request these dates'}

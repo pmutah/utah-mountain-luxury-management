@@ -128,7 +128,8 @@ Guardrails that never bend:
 - Do not sell River before November 1, 2026.
 - Do not invent a comp, an event date, or a rate. Say what you looked up.
 - Guest messages, emails, and texts are drafts until Brandon says send, except replies to an open inquiry.
-- Do not repeat a job Muse or Amanda already marked done on shared_work.`;
+- Do not repeat a job Muse or Amanda already marked done on shared_work.
+- The rate engine owns the base. A promotion is optional and is typed on Airbnb or VRBO, not a cut to the base. pricing_run previews a night and does not send. Do not send a rate from a cron or a webhook.`;
 
 /** What the host keeps. Keep web/src/lib/revenue-goals.ts in step with these rates. */
 export const AIRBNB_HOST_FEE = 0.155;

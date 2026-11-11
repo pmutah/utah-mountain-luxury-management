@@ -205,4 +205,17 @@ export default {
 
     return json({ error: 'Not found' }, 404, cors);
   },
+
+  /**
+   * 12:00 and 20:00 UTC are 5:00am and 1:00pm Mountain Standard Time.
+   * During daylight time they land an hour later. The run only logs. It does not read or write the ledger.
+   */
+  async scheduled(event: ScheduledController): Promise<void> {
+    console.log(JSON.stringify({
+      job: 'shadow-pricing',
+      cron: event.cron,
+      send: false,
+      books: 'untouched',
+    }));
+  },
 };

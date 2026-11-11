@@ -25,8 +25,14 @@ test('a whole-house request sends no units field, so it stays the request it alw
 test('a part booking can submit when the whole house is refused', () => {
   // The whole-house quote refuses a house that is entirely taken, which is exactly when a guest looks at the parts.
   assert.match(PAGE, /const submitReady = requestReady \|\| partBookingReady;/, 'a part booking cannot submit');
-  assert.match(PAGE, /if \(!submitReady\) return;/, 'the submit handler still gates on the whole-house check');
-  assert.match(PAGE, /disabled=\{busy \|\| !submitReady\}/, 'the button is still disabled for a valid part booking');
+  /*
+   * The submit path reads one readiness value that is derived from `submitReady`, so a part booking still passes. Asserting
+   * the derivation rather than the identifier keeps this test about the behaviour: `sendReady` is `submitReady` plus the bot
+   * check, and reverting to the whole-house-only flag would drop the part path.
+   */
+  assert.match(PAGE, /const sendReady = submitReady && !botBlocked;/, 'readiness no longer derives from submitReady');
+  assert.match(PAGE, /if \(!sendReady\) return;/, 'the submit handler gates on a flag that is not submitReady-derived');
+  assert.match(PAGE, /disabled=\{busy \|\| !sendReady\}/, 'the button is still disabled for a valid part booking');
 });
 
 test('a part booking does not show the whole-house refusal', () => {

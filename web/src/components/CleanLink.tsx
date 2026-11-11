@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { CleanJobView } from '../lib/clean-link';
+import {
+  clearSent,
+  loadCachedJobs,
+  loadQueue,
+  mergeDone,
+  offlineLine,
+  queueTick,
+  saveCachedJobs,
+} from '../lib/platform/clean-offline';
 
 type Loaded = {
   jobs: CleanJobView[];
@@ -27,13 +36,99 @@ export function CleanLink({ token }: { token: string }) {
   const [photosAvailable, setPhotosAvailable] = useState(true);
   const [photoBusy, setPhotoBusy] = useState<string | null>(null);
   const [photoNote, setPhotoNote] = useState<string | null>(null);
+  /*
+   * Offline ticks. A canyon house has no signal, and a tick that vanished with the request was work a cleaner could not prove
+   * they did. `unsent` drives the one line that must never lie about whether a tick reached the server.
+   */
+  const [unsent, setUnsent] = useState(0);
+  const [offline, setOffline] = useState(false);
+  const [sending, setSending] = useState(false);
+  const storage = typeof window === 'undefined' ? undefined : window.localStorage;
+
+  /** This phone's ticks for a turn. */
+  function phoneDone(job: CleanJobView): string[] {
+    const queue = loadQueue(storage, token);
+    return queue.find((row) => row.house === job.house && row.checkout === job.checkout)?.done ?? [];
+  }
+
+  /**
+   * Send every queued turn. Called on load and whenever the browser says the connection came back.
+   *
+   * A turn leaves the queue only when the server answers ok, so a failed send keeps the tick on the phone rather than dropping
+   * it — the failure mode that used to lose a cleaner's morning.
+   */
+  async function flushQueue() {
+    const queue = loadQueue(storage, token);
+    if (queue.length === 0) {
+      setUnsent(0);
+      return;
+    }
+    setSending(true);
+    try {
+      for (const row of queue) {
+        try {
+          const res = await fetch(`/api/clean/${encodeURIComponent(token)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ house: row.house, checkout: row.checkout, done: row.done }),
+          });
+          if (res.ok) {
+            clearSent(storage, token, row.house, row.checkout);
+            const body = (await res.json().catch(() => null)) as { progress?: Loaded['progress'] } | null;
+            if (body?.progress) setData((current) => (current ? { ...current, progress: body.progress! } : current));
+          }
+        } catch {
+          // Still no signal. Leave it queued and stop trying the rest; the next flush retries all of them.
+          break;
+        }
+      }
+    } finally {
+      setSending(false);
+      setUnsent(loadQueue(storage, token).length);
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const online = () => {
+      setOffline(false);
+      void flushQueue();
+    };
+    const offline = () => setOffline(true);
+    setOffline(!window.navigator.onLine);
+    setUnsent(loadQueue(window.localStorage, token).length);
+    window.addEventListener('online', online);
+    window.addEventListener('offline', offline);
+    return () => {
+      window.removeEventListener('online', online);
+      window.removeEventListener('offline', offline);
+    };
+    // `flushQueue` reads the queue from storage each call, so it needs no dependencies to stay correct.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   /** A tick writes one step list for one turn. The page re-reads what came back. */
   async function toggle(job: CleanJobView, id: string) {
     if (!data) return;
     const key = `${job.house}:${job.checkout}`;
-    const current = data.progress.find((row) => `${row.house}:${row.checkout}` === key)?.done ?? [];
+    const current = mergeDone(
+      data.progress.find((row) => `${row.house}:${row.checkout}` === key)?.done ?? [],
+      phoneDone(job),
+    );
     const next = current.includes(id) ? current.filter((step) => step !== id) : [...current, id];
+    /*
+     * The tick is recorded on this phone **before** the request, so a dead signal cannot lose it. The queue is the record of
+     * what has not reached the server, and the line under the heading says how many turns are waiting.
+     */
+    queueTick(storage, token, { house: job.house, checkout: job.checkout, done: next });
+    setUnsent(loadQueue(storage, token).length);
+    setData({
+      ...data,
+      progress: [
+        ...data.progress.filter((row) => `${row.house}:${row.checkout}` !== key),
+        { house: job.house, checkout: job.checkout, done: next },
+      ],
+    });
     setSaving(key);
     try {
       const res = await fetch(`/api/clean/${encodeURIComponent(token)}`, {
@@ -42,14 +137,25 @@ export function CleanLink({ token }: { token: string }) {
         body: JSON.stringify({ house: job.house, checkout: job.checkout, done: next }),
       });
       const body = (await res.json()) as { progress?: Array<{ house: string; checkout: string; done: string[] }> };
-      if (res.ok && body.progress) setData({ ...data, progress: body.progress });
+      if (res.ok && body.progress) {
+        // Confirmed, so this turn leaves the queue.
+        clearSent(storage, token, job.house, job.checkout);
+        setUnsent(loadQueue(storage, token).length);
+        setData({ ...data, progress: body.progress });
+      }
+    } catch {
+      // Offline. The tick stays queued and the page says it is not sent yet.
     } finally {
       setSaving(null);
     }
   }
 
   function doneFor(job: CleanJobView): string[] {
-    return data?.progress.find((row) => row.house === job.house && row.checkout === job.checkout)?.done ?? [];
+    // The server's list and this phone's ticks, merged. A queued tick must show as ticked even before it sends.
+    return mergeDone(
+      data?.progress.find((row) => row.house === job.house && row.checkout === job.checkout)?.done ?? [],
+      phoneDone(job),
+    );
   }
 
   function keyFor(job: CleanJobView): string {
@@ -147,11 +253,28 @@ export function CleanLink({ token }: { token: string }) {
         }
         setData(body);
         setState('ready');
+        // Cached so the page opens with work to do when the signal is gone. Keyed by token, so two links never mix.
+        saveCachedJobs(storage, token, body);
+        // Anything queued from a dead spot goes now that the page has a connection.
+        void flushQueue();
         // The photos already on each turn, so a cleaner coming back sees what is attached.
         for (const job of body.jobs) void loadPhotos(job);
       })
       .catch(() => {
-        if (!cancel) setState('error');
+        if (cancel) return;
+        /*
+         * No network. The last list this phone saw is better than an error screen: a cleaner standing in a canyon with no
+         * signal needs the steps and the door window, not "the list could not be read". If nothing was cached, the page says
+         * so plainly instead of pretending there is no work.
+         */
+        const cached = loadCachedJobs<Loaded>(storage, token);
+        if (cached && Array.isArray(cached.jobs)) {
+          setData(cached);
+          setState('ready');
+          setOffline(true);
+        } else {
+          setState('error');
+        }
       });
     return () => {
       cancel = true;
@@ -214,6 +337,20 @@ export function CleanLink({ token }: { token: string }) {
           <p className="mt-4 text-sm text-[#5d564b]" data-bot="clean-link-note">
             {data.note}
           </p>
+          {/*
+            The line that must never lie. A tick that did not reach the server reads as "not sent yet", never as saved, and
+            an offline phone says the ticks are kept here rather than silently dropping them.
+          */}
+          {offlineLine({ unsent, online: !offline, saving: sending }) && (
+            <p
+              className="mt-2 rounded-xl border border-[#8a6f2f]/35 bg-[#8a6f2f]/10 px-3 py-2 text-sm text-[#3d382f]"
+              data-bot="clean-link-offline"
+              data-unsent={unsent}
+              data-online={offline ? 'no' : 'yes'}
+            >
+              {offlineLine({ unsent, online: !offline, saving: sending })}
+            </p>
+          )}
           {photoNote && (
             <p className="mt-3 text-sm text-[#8b3a2f]" data-bot="clean-link-photo-note">
               {photoNote}

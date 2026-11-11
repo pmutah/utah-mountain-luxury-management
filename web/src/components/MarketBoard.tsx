@@ -9,6 +9,7 @@ import { boardFromOverview, loadMarketOverview } from '../lib/market/overview-cl
 import { boardSourceLine } from '../lib/market/live';
 import { LiveComps } from './LiveComps';
 import { PushPlanPanel } from './PushPlanPanel';
+import { ChangeLogPanel } from './ChangeLogPanel';
 import { RiverSplitPanel } from './RiverSplitPanel';
 import { addDays, denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
@@ -137,6 +138,57 @@ const EMPTY_TAKEN: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [
 export function MarketBoard() {
   const [house, setHouse] = useState<HouseId>('river');
   const [paused, setPaused] = useState<Record<HouseId, boolean>>({ ranch: false, lindon: false, river: false });
+  /*
+   * The kill switch is read from the server, not held in this tab.
+   *
+   * It used to be `useState` alone: pressing Pause changed the button and nothing else, while the authoritative plan in
+   * `/api/pricing/push-plan` hard-coded `paused: false` for every house and kept proposing raises. A switch the plan does
+   * not read is not a switch. `pauseState` says whether the read worked, so a house whose switch could not be read is shown
+   * as paused rather than assumed off.
+   */
+  const [pauseState, setPauseState] = useState<'loading' | 'live' | 'off'>('loading');
+  const [pauseNote, setPauseNote] = useState('');
+  useEffect(() => {
+    let cancel = false;
+    api
+      .getPricingPause()
+      .then((body) => {
+        if (cancel) return;
+        setPaused({
+          ranch: body.paused.ranch === true,
+          lindon: body.paused.lindon === true,
+          river: body.paused.river === true,
+        });
+        setPauseState(body.readable ? 'live' : 'off');
+      })
+      .catch(() => {
+        if (cancel) return;
+        // A switch that could not be read is not a switch that is off.
+        setPaused({ ranch: true, lindon: true, river: true });
+        setPauseState('off');
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  async function togglePause() {
+    const next = !paused[house];
+    setPauseNote('');
+    try {
+      const body = await api.setPricingPause(house, next, next ? 'Paused from the market board.' : undefined);
+      setPaused({
+        ranch: body.state.ranch === true,
+        lindon: body.state.lindon === true,
+        river: body.state.river === true,
+      });
+      setPauseNote(body.line);
+      setPauseState('live');
+    } catch {
+      setPauseNote('The switch was not saved. This house is still treated as paused until the server answers.');
+      setPaused((current) => ({ ...current, [house]: true }));
+    }
+  }
   const [taken, setTaken] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [closed, setClosed] = useState<Record<HouseId, string[]>>(EMPTY_TAKEN);
   const [calendar, setCalendar] = useState<'loading' | 'live' | 'off'>('loading');
@@ -676,11 +728,23 @@ export function MarketBoard() {
             className="uml-nav"
             data-bot="market-pause"
             aria-pressed={paused[house]}
-            onClick={() => setPaused((current) => ({ ...current, [house]: !current[house] }))}
+            data-state={pauseState}
+            disabled={pauseState === 'off'}
+            onClick={() => void togglePause()}
           >
-            {paused[house] ? 'Resume this house' : 'Pause this house'}
+            {pauseState === 'off' ? 'Switch unreadable' : paused[house] ? 'Resume this house' : 'Pause this house'}
           </button>
         </div>
+        {pauseNote && (
+          <p className="mt-2 text-sm" data-bot="market-pause-note">
+            {pauseNote}
+          </p>
+        )}
+        {pauseState === 'off' && (
+          <p className="mt-2 text-sm" data-bot="market-pause-unread">
+            The kill switch could not be read, so every house is treated as paused. No night is raised or promoted.
+          </p>
+        )}
         <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-6" data-bot="market-digest">
           {houseShadowText(
             calendar,
@@ -919,6 +983,8 @@ export function MarketBoard() {
       {house === 'river' && <RiverSplitPanel from={today} />}
 
       <PushPlanPanel />
+
+      <ChangeLogPanel />
 
       <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-amenities">
         <p className="uml-kicker">Sample amenities</p>

@@ -17,6 +17,7 @@ import { loadRiverUnitRates } from '../../_lib/pricing-store';
 import { unitRequestCheck } from '../../../src/lib/river-unit-request';
 import { RIVER_UNIT_DETAIL } from '../../../src/lib/river-units';
 import { denverToday } from '../../../src/lib/market/dates';
+import { verifyTurnstile } from '../../_lib/platform/turnstile';
 
 interface BookingRequest {
   id: string;
@@ -77,6 +78,20 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
   if (!body || typeof body !== 'object') {
     return corsJson(request, { error: 'That request could not be read. Send the form again.' }, 400);
   }
+  /*
+   * The bot check, when this deployment has one.
+   *
+   * A deployment with no Turnstile secret accepts the request and records that nothing was verified, because refusing every
+   * guest until a widget exists would break the site rather than protect it. Once the secret is set, a missing or failed
+   * token is a refusal with a reason.
+   */
+  const bot = await verifyTurnstile({
+    env,
+    token: (body as { turnstileToken?: unknown }).turnstileToken,
+    action: 'book_request',
+    remoteIp: request.headers.get('CF-Connecting-IP'),
+  });
+  if (!bot.ok) return corsJson(request, { error: bot.reason, botCheck: 'failed' }, 403);
   const name = body.name?.trim() ?? '';
   const email = body.email?.trim() ?? '';
   const propertyId = body.propertyId?.trim() ?? '';

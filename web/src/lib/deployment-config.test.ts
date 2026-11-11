@@ -56,6 +56,26 @@ const NOT_CONFIGURED: Record<string, string> = {
   VITE_ALLOWED_EMAILS: 'a build-time duplicate of ALLOWED_EMAILS; the runtime var is the one that decides access.',
   PROD: 'set by the platform, not by us.',
   SETTINGS: 'the KV binding, configured in wrangler.toml rather than as a secret.',
+  AIRROI_API_KEY:
+    'comp calendars. Without it the market uses the fixture adapter and spends nothing. A present key still does not call AirROI until a client exists.',
+  HOOK_SECRET:
+    'the shared webhook signature. A hook with no secret is refused, so an unsigned body cannot change a stay.',
+  STRIPE_WEBHOOK_SECRET:
+    'the Stripe signature. Missing, the Stripe hook is refused. Stripe test mode is the only mode that would be accepted later.',
+  STRIPE_SECRET_KEY:
+    'card charges. A live key is refused. No test key means checkout names the gap and creates no charge.',
+  SEAM_API_KEY:
+    'lock buttons. Without it the trip portal never offers unlock, and the door code rules stay as they are.',
+  MARKET_DB:
+    'the D1 binding for comps and analytics. It is bound as `uml-market` with a preview database. High-volume rows are not written to KV.',
+  TURNSTILE_SECRET:
+    'the bot check on the booking form. Without it the route records that no bot check ran and still accepts a guest request, rather than refusing every guest until a widget exists.',
+  TURNSTILE_SITE_KEY:
+    'the public half of the same widget. Only read to draw it; a missing one means the widget cannot render, which is not the same as "not enforced".',
+  TURNSTILE_HOSTNAMES:
+    'the hosts siteverify may report. Empty means the hostname is not compared; set it to the deployment hosts before enforcing.',
+  PHOTOS:
+    'the R2 bucket for cleaner proof and galleries. It is commented in wrangler until a bucket exists. Receipts stay where they are.',
 };
 
 /** Every `env.X` the runtime actually reads. */

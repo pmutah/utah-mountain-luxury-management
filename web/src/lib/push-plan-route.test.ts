@@ -38,6 +38,31 @@ async function route() {
   return (await import('../../functions/api/pricing/push-plan.ts')) as unknown as Record<string, RouteHandler>;
 }
 
+/**
+ * A market database that answers the kill-switch statements.
+ *
+ * `paused` is a map of house to true. A house with no row is not paused, which is what the real table means by "never set".
+ * Any other statement returns nothing, so a route reading this database cannot accidentally see invented rows.
+ */
+function fakeDb(paused: Record<string, boolean> = {}) {
+  const rows = Object.entries(paused).map(([house, value]) => ({ house, paused: value ? 1 : 0, reason: null }));
+  return {
+    prepare(sql: string) {
+      const statement = {
+        bind: () => statement,
+        async all() {
+          if (/FROM house_pause/.test(sql)) return { results: rows };
+          return { results: [] };
+        },
+        async run() {
+          return { success: true };
+        },
+      };
+      return statement;
+    },
+  };
+}
+
 function sevenDays() {
   const days = [];
   // Denver's date: the route compares against `denverToday()`, and a UTC today is a day ahead
@@ -101,12 +126,20 @@ test('with fewer than seven shadow days the plan is blocked', async () => {
 test('with both gates open the plan may carry nights, and still never sends', async () => {
   const store: Store = new Map();
   store.set('shadowDays', JSON.stringify(sevenDays()));
-  const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD, HOSPITABLE_WRITE_TOKEN: 'token' };
+  const env = {
+    SETTINGS: fakeKv(store),
+    DASHBOARD_PASSWORD: PASSWORD,
+    HOSPITABLE_WRITE_TOKEN: 'token',
+    // No house is paused. Without this the switch reads unreadable and every house is treated as paused, which is the
+    // correct behaviour but would make this test assert the opposite of what it is for.
+    MARKET_DB: fakeDb(),
+  };
   const mod = await route();
   const res = await mod.onRequestGet!({ request: call(env), env, params: {} });
   const body = (await res.json()) as PlanBody;
   assert.equal(body.gate.hasToken, true);
   assert.equal(body.gate.shadowReady, true);
+  assert.equal(body.gate.paused, false, 'a bound switch with no paused house reported paused');
   assert.equal(body.sends, false);
   // Every plan is allowed once the gates are open; whether it has nights depends on the board.
   for (const plan of body.plans) {
@@ -117,6 +150,46 @@ test('with both gates open the plan may carry nights, and still never sends', as
   // The write token itself is never echoed.
   const text = JSON.stringify(body);
   assert.equal(text.includes('token"') && text.includes('"token"'), false);
+});
+
+test('a paused house is held even when every other gate is open', async () => {
+  const store: Store = new Map();
+  store.set('shadowDays', JSON.stringify(sevenDays()));
+  const env = {
+    SETTINGS: fakeKv(store),
+    DASHBOARD_PASSWORD: PASSWORD,
+    HOSPITABLE_WRITE_TOKEN: 'token',
+    MARKET_DB: fakeDb({ river: true }),
+  };
+  const mod = await route();
+  const res = await mod.onRequestGet!({ request: call(env), env, params: {} });
+  const body = (await res.json()) as PlanBody;
+  const river = body.plans.find((plan) => plan.house === 'river');
+  assert.ok(river, 'the river plan is missing');
+  // A paused house proposes nothing, whatever the shadow clock and the token say.
+  assert.equal(river.allowed, false, 'a paused house was allowed to carry a price');
+  assert.equal(river.payload, null, 'a paused house carried a payload');
+  assert.match(river.hold ?? '', /paused/i, 'the paused house does not say why it is held');
+  assert.equal(body.gate.paused, true, 'the gate does not report that a house is paused');
+  // The other two houses are unaffected by River's switch.
+  for (const plan of body.plans.filter((row) => row.house !== 'river')) {
+    assert.equal(plan.allowed, true, `${plan.house} was held by another house's switch`);
+  }
+});
+
+test('an unreadable switch pauses every house rather than claiming they are live', async () => {
+  const store: Store = new Map();
+  store.set('shadowDays', JSON.stringify(sevenDays()));
+  // No MARKET_DB at all: the switch cannot be read.
+  const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD, HOSPITABLE_WRITE_TOKEN: 'token' };
+  const mod = await route();
+  const res = await mod.onRequestGet!({ request: call(env), env, params: {} });
+  const body = (await res.json()) as PlanBody & { pause?: { readable: boolean; paused: Record<string, boolean> } };
+  assert.equal(body.pause?.readable, false, 'an unreadable switch reported itself as readable');
+  assert.deepEqual(body.pause?.paused, { ranch: true, lindon: true, river: true }, 'an unreadable switch did not pause every house');
+  for (const plan of body.plans) {
+    assert.equal(plan.allowed, false, `${plan.house} was allowed while its switch could not be read`);
+  }
 });
 
 test('a paused shadow day does not count toward the gate', async () => {

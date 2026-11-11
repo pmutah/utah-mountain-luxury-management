@@ -6,6 +6,7 @@ import { guestDepartureLine } from '../lib/departure';
 import { partStayEntranceLine, partHouseNotes, partStayCapacityLine, partStayFrom, partStayLabel, partStayLine } from '../lib/part-stay';
 import { loadQuoteCalendar } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree, rightNow, stayCalendarHold, stayCountdown } from '../lib/journey';
+import { tripGate } from '../lib/platform/guest-ops';
 import { addDays, denverToday } from '../lib/market/dates';
 import { nightAsk } from '../lib/market/rates';
 import type { HouseId } from '../lib/market/types';
@@ -784,6 +785,26 @@ export function StayApp({ token }: { token: string }) {
                 </ul>
               </Card>
             )}
+            <Card>
+              <Kicker>Check-in steps</Kicker>
+              <ul className="mt-3 space-y-2 text-sm" data-bot="stay-checkin-steps">
+                {tripGate({
+                  details: true,
+                  agreement: rulesRead && agreementOpened,
+                  idVerified: false,
+                  depositSettled: false,
+                  hoursUntilCheckIn: 48,
+                  otpOk: false,
+                  nightBeforeFree: false,
+                }).steps.map((step) => (
+                  <li key={step.id} data-done={step.done ? 'yes' : 'no'}>
+                    {step.done ? 'Done. ' : 'Still open. '}
+                    {step.note}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-white/60">The door code on this page still follows the time window and the house rules. These steps do not hide a code that window already opened, and they do not open a lock.</p>
+            </Card>
             <Card>
               <Kicker>Getting in</Kicker>
               {access.phase === 'after' ? (

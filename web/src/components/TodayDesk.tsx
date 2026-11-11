@@ -7,12 +7,15 @@ import { checkoutNightIsFree } from '../lib/journey';
 import type { HouseId } from '../lib/market/types';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { HouseSettings } from './HouseSettings';
+import { nightsAtRisk, nightsAtRiskLine } from '../lib/platform/nights-at-risk';
 import { codesOpenTomorrow } from '../lib/house-stay';
 import { formatWhole } from '../lib/luxury';
 import { currentDayIso } from '../lib/months';
 import { occupancyCalendar, occupancyFilename } from '../lib/occupancy-calendar';
 import { grossPace, type GoalHouse } from '../lib/revenue-goals';
 import { buildTodayDesk, buildTurnovers, type StayMove } from '../lib/today';
+import { MissionMap } from './MissionMap';
+import { MorningList } from './MorningList';
 import { jobLeaveAt2, turnHours } from '../lib/turn-clock';
 import { turnLoad } from '../lib/turn-load';
 
@@ -103,6 +106,8 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
         {codesOpenTomorrow(reservations, asOf, 'list')}
       </p>
       <h2 className="font-display text-4xl leading-none mt-1">The next seven days</h2>
+      <MissionMap reservations={reservations} asOf={asOf} />
+      <MorningList />
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {HOUSES.map((house) => {
           const pace = grossPace(house.id, reservations, asOf);
@@ -125,6 +130,34 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
       <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
         <MoveList title="Arriving" moves={desk.arrivals} empty="No arrivals this week." />
         <MoveList title="Leaving" moves={desk.departures} empty="No departures this week." />
+      </div>
+      {/*
+        Nights at risk, from the plan's Mission Control list. It counts open nights that sit in a run too short for the
+        house's own minimum stay — nights no guest can book at any price — rather than predicting whether a night sells.
+        It needs the calendar, so it says so until the calendar has been read.
+      */}
+      <div className="mt-6" data-bot="today-at-risk">
+        <p className="uml-kicker">Nights at risk</p>
+        {closed === null ? (
+          <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="today-at-risk-unread">
+            The calendar could not be read, so this does not count a stranded night.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm" data-bot="today-at-risk-line">
+            {nightsAtRiskLine(
+              nightsAtRisk({
+                reservations: reservations.map((stay) => ({
+                  propertyId: stay.propertyId,
+                  checkIn: stay.checkIn,
+                  checkOut: stay.checkOut,
+                  status: stay.status,
+                })),
+                asOf,
+                closed,
+              }),
+            )}
+          </p>
+        )}
       </div>
       <div className="mt-6" data-bot="today-calendar">
         <p className="text-sm text-[var(--uml-muted)]">

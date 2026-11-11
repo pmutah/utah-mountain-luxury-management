@@ -1295,8 +1295,32 @@ export const api = {
       summary: string | null;
       gate: { shadowReady: boolean; hasToken: boolean; paused: boolean; calendarReady: boolean };
       shadowDays: { days: number; required: number; ready: boolean };
+      /** The per-house kill switch as the plan read it. `readable: false` means every house was treated as paused. */
+      pause?: { paused: Record<string, boolean>; readable: boolean; why?: string; reasons?: Record<string, string> };
       storageReads?: 'ok' | 'paused';
     }>('/api/pricing/push-plan'),
+  /** The per-house pricing kill switch. A failed read reports every house paused, never off. */
+  getPricingPause: () =>
+    request<{
+      paused: Record<string, boolean>;
+      readable: boolean;
+      why?: string;
+      reasons: Record<string, string>;
+      lines: Record<string, string>;
+      sends: false;
+    }>('/api/pricing/pause'),
+  setPricingPause: (house: string, paused: boolean, reason?: string) =>
+    request<{
+      house: string;
+      paused: boolean;
+      state: Record<string, boolean>;
+      readable: boolean;
+      line: string;
+      sends: false;
+    }>('/api/pricing/pause', {
+      method: 'POST',
+      body: JSON.stringify({ house, paused, ...(reason ? { reason } : {}) }),
+    }),
   /** Todd's read-only links. Host only, and making one does not send it. */
   getOwnerLinks: () =>
     request<{

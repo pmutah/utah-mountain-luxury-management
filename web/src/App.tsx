@@ -7,6 +7,8 @@ import {
   type RiverView,
 } from './lib/bot-nav';
 import { installUmlBridge, syncDocumentView } from './lib/uml-bridge';
+import { seasonFor } from './lib/platform/back-office';
+import { TabErrorBoundary } from './components/TabErrorBoundary';
 import { rescueLegacyLink, servedPath } from './lib/public-paths';
 import { LoginGate } from './components/LoginGate';
 import { Header } from './components/Header';
@@ -183,6 +185,12 @@ function Dashboard() {
     });
   }, [activeTab, reportView, riverView, currentMonth, go]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.season = seasonFor(currentMonth);
+    root.dataset.particles = 'off';
+  }, [currentMonth]);
+
   if (error && !data) {
     return (
       <div className="min-h-screen bg-[var(--uml-bg)] text-[var(--uml-ink)] flex flex-col items-center justify-center gap-4 p-6">
@@ -279,6 +287,7 @@ function Dashboard() {
             Nothing was written over them.
           </div>
         )}
+        <TabErrorBoundary>
         <Suspense fallback={<LoadingSkeleton />}>
         {activeTab === 'ours' ? (
           <main>
@@ -435,6 +444,7 @@ function Dashboard() {
           </main>
         ) : null}
         </Suspense>
+        </TabErrorBoundary>
       </div>
       <nav
           aria-label="Primary"

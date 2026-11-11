@@ -3,6 +3,7 @@ import { api, type Reservation, type SharedWorkItem } from '../lib/api';
 import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
+import { PLATFORM_AGENTS } from '../lib/platform/back-office';
 import { GuideDesk } from './GuideDesk';
 import { loadDateBlocks, loadQuoteCalendar } from '../lib/booked-nights';
 import { loadCleanFixes, loadHouseFixes } from '../lib/clean-notes';
@@ -231,6 +232,17 @@ export function AgentsHub({
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
           Five agents already run. Tonightâ€™s brief is read from the calendar, the preference cards, and the shadow run. It does not claim a job, send a text, or change the books.
         </p>
+      </div>
+      <div className="uml-panel rounded-3xl p-6" data-bot="agent-toggles">
+        <p className="uml-kicker">Switches</p>
+        <ul className="mt-3 space-y-2 text-sm">
+          {PLATFORM_AGENTS.map((agent) => (
+            <li key={agent.id} data-bot={`agent-switch-${agent.id}`} data-on={agent.defaultOn ? 'yes' : 'no'}>
+              <span className="text-[var(--uml-gold)]">{agent.name}.</span> {agent.scope}
+              {agent.risky ? ' Off until you turn it on.' : ''} Nothing is sent from this list.
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="uml-panel rounded-3xl p-6" data-bot="agent-brief" data-blocks={closed.length}>
         <p className="uml-kicker">Tonight</p>

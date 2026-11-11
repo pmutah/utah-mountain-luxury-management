@@ -1,5 +1,6 @@
 import { isAuthConfigured, isAuthenticated, unauthorized } from './_lib/auth';
 import { isMuseAuthorized, isPublicMusePath } from './_lib/muse/auth';
+import { SECURITY_HEADERS } from '../src/lib/platform/back-office';
 
 /**
  * An owner portal page. `owner/links` is the host route that mints these, so it must not match: the
@@ -21,17 +22,32 @@ const CLEAN_PAGE = /^\/api\/clean\/(?!links\/?$|photos\/?$|photo\/?$|progress\/?
  * was exposed, but the middleware is supposed to be the first gate and it was waving through the
  * host's own booking desk.
  */
-const PUBLIC_BOOK = new Set(['/api/book', '/api/book/', '/api/book/availability']);
+const PUBLIC_BOOK = new Set([
+  '/api/book',
+  '/api/book/',
+  '/api/book/availability',
+  '/api/book/quote',
+  '/api/book/quote/',
+  '/api/book/turnstile',
+]);
 
 /** A guest's own request page. The token is the credential. */
 const BOOK_REQUEST_PAGE = /^\/api\/book\/request\/[^/]+\/?$/;
+
+function withSecurity(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    if (!headers.has(key)) headers.set(key, value);
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
 
 export const onRequest: PagesFunction<{
   DASHBOARD_PASSWORD?: string;
   MUSE_BOT_SECRET?: string;
 }> = async (context) => {
   const url = new URL(context.request.url);
-  if (!url.pathname.startsWith('/api/')) return context.next();
+  if (!url.pathname.startsWith('/api/')) return withSecurity(await context.next());
   if (
     url.pathname.startsWith('/api/auth/') ||
     url.pathname.startsWith('/api/stay-preferences/') ||
@@ -46,6 +62,8 @@ export const onRequest: PagesFunction<{
      * `/api/owner/links` through, which is the host route that MINTS links. A test caught that.
      */
     PUBLIC_BOOK.has(url.pathname) ||
+    url.pathname.startsWith('/api/hooks/') ||
+    url.pathname === '/api/funnel' ||
     BOOK_REQUEST_PAGE.test(url.pathname) ||
     OWNER_PAGE.test(url.pathname) ||
     CLEAN_PAGE.test(url.pathname) ||
@@ -54,10 +72,10 @@ export const onRequest: PagesFunction<{
     url.pathname === '/health' ||
     context.request.method === 'OPTIONS'
   ) {
-    return context.next();
+    return withSecurity(await context.next());
   }
-  if (isMuseAuthorized(context.request, context.env)) return context.next();
-  if (!isAuthConfigured(context.env)) return context.next();
-  if (isAuthenticated(context.request, context.env)) return context.next();
-  return unauthorized(context.request);
+  if (isMuseAuthorized(context.request, context.env)) return withSecurity(await context.next());
+  if (!isAuthConfigured(context.env)) return withSecurity(await context.next());
+  if (isAuthenticated(context.request, context.env)) return withSecurity(await context.next());
+  return withSecurity(unauthorized(context.request));
 };

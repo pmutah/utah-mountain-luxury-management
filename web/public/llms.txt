@@ -61,6 +61,14 @@ Signed-in browser: `/api/muse/enter?token=` or `/api/amanda/enter?token=`.
 - `GET /api/pricing/push-plan` — what a rate push would change. Booked, closed, paused, locked, and held nights are never in it. It answers `sends:false` and has no writer, so no price can leave from it.
 - `GET/POST/DELETE /api/pricing/approved-rates` — the one path from the pricing engine to a guest. `POST { house, date, guest }` approves one night, and that night quotes this price on our own page and in the guest month grid. It is refused on a booked, closed, held, or paused night, and outside the floor, the ceiling, the 8% raise cap, and the published 20% promotion. `DELETE ?house=&date=` returns the night to the card. It does not send anything to Airbnb, VRBO, or Hospitable.
 - `GET/POST /api/pricing/shadow-days` — the durable seven-day clock. The write token is never returned.
+- `GET /api/platform/health`, `GET /api/platform/registry`, `GET /api/platform/status`, and `GET /api/platform/funnel` — host only. Health names which bindings and keys exist and never returns a secret. The registry is the feature catalog with how many rows sit in D1; POST seeds it with an upsert that deletes nothing. Status is the morning list of missing keys. Funnel is counts only, with no address, name, phone, or device. Nothing here sends or charges.
+- `POST /api/funnel` — public. Records one funnel step (`view`, `quote`, `checkout`, `paid`) with a house and an optional random visit id in the market database. No address, name, phone, or device. A step outside those four is refused, and a day at its ceiling is refused rather than filling the table.
+- `GET /api/book/quote` — public tax estimate. It is not added to the quoted stay and nothing is charged.
+- `GET /api/book/turnstile` — public. The Turnstile site key and whether a bot check is enforced. Never the secret. An unconfigured deployment says so, and the booking route records that no bot check ran rather than claiming one did.
+- `POST /api/hooks/hospitable`, `POST /api/hooks/stripe`, and `POST /api/hooks/seam` — signed webhooks. A bad signature is refused. The books are not written.
+- `GET/POST /api/pricing/pause` — the per-house pricing kill switch, host only. `POST { house, paused, reason? }` sets one house. The authoritative plan reads it, so a paused house is never raised or promoted. A switch that cannot be read reports **every house paused**, never off; this does not change a published rate and sends nothing.
+- `GET /api/pricing/changes` — the rate change log, host only. One row per night whose rate moved, with the reason, newest first. Every row is a shadow row and says nothing was sent. A failed read says the log could not be read rather than showing an empty log.
+- `GET /api/mcp` — read-only tools. Bulk delete is refused.
 
 ### Do not
 

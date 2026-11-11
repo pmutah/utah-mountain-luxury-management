@@ -15,3 +15,4 @@ service-account*.json
 web/_worker.bundle
 
 web/.tmp-fn-build/
+uml-data-backups/

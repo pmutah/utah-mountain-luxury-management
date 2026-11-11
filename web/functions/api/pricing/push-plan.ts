@@ -14,6 +14,8 @@ import { grossPace } from '../../../src/lib/revenue-goals';
 import type { YearPace } from '../../../src/lib/market/fill';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
 import type { HouseId } from '../../../src/lib/market/types';
+import { readPause } from '../../_lib/platform/pause-store';
+import { logChanges } from '../../_lib/platform/change-log';
 import type { SettingsEnv } from '../../_lib/kv';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
@@ -81,6 +83,15 @@ async function buildPlanResponse(request: Request, env: Env): Promise<Response> 
   ];
 
   const clock = shadowClockFromSaved(saved, today);
+  /*
+   * The per-house kill switch, read once.
+   *
+   * This used to be hard-coded `paused: false` for all three houses further down, so the Pause button on the Market board
+   * changed a `useState` and the plan kept proposing raises. A switch the authoritative plan does not read is not a
+   * switch. A switch that cannot be read is treated as paused: proposing a price for a house whose kill switch might be on
+   * is the wrong way to be wrong.
+   */
+  const pause = await readPause(env);
 
   /*
    * One pass over the three houses, building everything the plan and the shadow digest need.
@@ -97,6 +108,7 @@ async function buildPlanResponse(request: Request, env: Env): Promise<Response> 
     taken: string[];
     closed: string[];
     pace: YearPace;
+    paused: boolean;
   }> = [];
 
   for (const house of HOUSES) {
@@ -141,7 +153,15 @@ async function buildPlanResponse(request: Request, env: Env): Promise<Response> 
      * said why. The reservations are already in hand, so the pace is real rather than assumed.
      */
     const pace: YearPace = grossPace(house, stays, today).stillNeeded > 0 ? 'short' : 'met';
-    runs.push({ house, board, run: runShadow(board, taken, false, today, pace, closed), taken, closed, pace });
+    runs.push({
+      house,
+      board,
+      run: runShadow(board, taken, pause.paused[house], today, pace, closed),
+      taken,
+      closed,
+      pace,
+      paused: pause.paused[house],
+    });
   }
 
   /*
@@ -159,7 +179,7 @@ async function buildPlanResponse(request: Request, env: Env): Promise<Response> 
     const digest = portfolioDigest({
       asOf: today,
       taken: Object.fromEntries(runs.map((row) => [row.house, row.taken])) as Record<HouseId, string[]>,
-      paused: { river: false, ranch: false, lindon: false },
+      paused: Object.fromEntries(runs.map((row) => [row.house, row.paused])) as Record<HouseId, boolean>,
       pace: Object.fromEntries(runs.map((row) => [row.house, row.pace])) as Record<HouseId, YearPace>,
       calendarLive: true,
       boards: Object.fromEntries(runs.map((row) => [row.house, row.board])),
@@ -202,10 +222,56 @@ async function buildPlanResponse(request: Request, env: Env): Promise<Response> 
      * and the docs still use it, and a deployment with only that set should not read as "no token".
      */
     hasToken: Boolean(env.HOSPITABLE_PAT?.trim() || env.HOSPITABLE_WRITE_TOKEN?.trim()),
-    paused: false,
+    /*
+     * Paused if **any** house is paused. `pushPlanAll` is called per house below and each run already carries its own
+     * paused flag from `runShadow`, so this is the overall gate: a host who paused one house should not read a plan whose
+     * summary claims all three are live.
+     */
+    paused: runs.some((row) => row.paused),
     calendarReady: true,
   };
-  const plans = runs.map((row) => pushPlanAll([row.run], gate, today)[0]!);
+  const plans = runs.map((row) => pushPlanAll([row.run], {
+    ...gate,
+    // Per house, so a paused house's own plan says why rather than inheriting another house's state.
+    paused: row.paused,
+  }, today)[0]!);
+
+  /*
+   * The change log: one row per night that actually moved.
+   *
+   * The plan requires it, the table has existed since `0001_market.sql`, and nothing had ever written to it. This records the
+   * shadow plan's own moves — a night whose proposed ask differs from the published one — with the reason it moved. It runs
+   * after the plans are built and before the gate is judged in the response, because a change is a fact about the plan rather
+   * than about permission: a blocked plan still describes what it would do, and logging it under `mode: 'shadow'` says so.
+   *
+   * A failed write is reported in the response. A change log that silently drops rows is worse than none, because the next
+   * reader believes it is complete.
+   */
+  const moved = plans.flatMap((plan) =>
+    plan.nights.map((night) => ({
+      house: plan.house,
+      date: night.date,
+      beforeRate: night.from,
+      afterRate: night.to,
+      /*
+       * `PushNight` carries the kind and the band, not a written reason, so the reason is composed from what the plan already
+       * knows: what it is doing, and how far the night still sits from its comps. A log row that says only "$179 to $193" is a
+       * true statement that explains nothing.
+       */
+      reason:
+        night.kind === 'promote'
+          ? 'A 20% fill promotion on a night the fill rules call short.'
+          : night.kind === 'restore'
+            ? 'Back to the published base after the promotion ended.'
+            : `A raise toward p85 of the comp band${typeof night.percentileAfter === 'number' ? `, now at p${night.percentileAfter}` : ''}${night.bandP75 ? `, band top $${night.bandP75}` : ''}.`,
+      mode: 'shadow' as const,
+    })),
+  );
+  const logged = await logChanges(env, moved);
+  // The count the desk can check: how many nights this plan logged, and whether the log took them.
+  const changeLog = logged.ok
+    ? { written: logged.written, skipped: logged.skipped, stored: true }
+    : { written: logged.written, skipped: 0, stored: false, reason: logged.reason };
 
   return corsJson(
     request,
@@ -230,8 +296,24 @@ async function buildPlanResponse(request: Request, env: Env): Promise<Response> 
         recordedToday: shadowRecorded,
       },
       storageReads: 'ok',
+      /**
+       * The kill switch as the plan read it. A host looking at "nothing to push" needs to know whether that is because every
+       * night is already priced or because the house is paused — and `readable: false` means every house is treated as
+       * paused, so a plan that looks quiet is not mistaken for a plan that is live.
+       */
+      pause: {
+        paused: pause.paused,
+        readable: pause.ok,
+        why: pause.ok ? undefined : pause.why,
+        reasons: pause.ok ? pause.reasons : {},
+      },
       /** True on every response: this route has no writer, so no price can leave from it. */
       sends: false,
+      /**
+       * What the change log took. A plan that moved nights and could not log them says so here rather than reading as though
+       * every change were recorded.
+       */
+      changeLog,
     },
     200,
     { 'Cache-Control': 'no-store' },

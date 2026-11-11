@@ -12,3 +12,18 @@ id = "a211af7ec8bd4c2e973d6421cccd8beb"
 # Muse (Meta) and Amanda (Grok bot) full API.
 # Set MUSE_BOT_SECRET and optionally AMANDA_BOT_SECRET.
 # Either bearer works on /api/muse/*, /api/amanda/*, and every other /api/* route.
+
+# Market rows go in D1. Expenses, bookings, and receipts stay in KV exactly where they are.
+# Created 2026-11-10: `uml-market` for production, `uml-market-preview` for preview and tests.
+# Migration: web/migrations/0001_market.sql, applied to both through the D1 API.
+[[d1_databases]]
+binding = "MARKET_DB"
+database_name = "uml-market"
+database_id = "082c6644-4cb0-4fbd-b3d0-1d4d684f15a8"
+preview_database_id = "88056dc7-b0f1-423d-aa03-bc38ad212f9c"
+
+# Cleaner photos go in R2 when the bucket exists. Receipts stay where they are.
+# R2 is not enabled on this account yet, so this stays commented until the owner turns it on.
+# [[r2_buckets]]
+# binding = "PHOTOS"
+# bucket_name = "uml-photos"

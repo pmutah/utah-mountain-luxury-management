@@ -89,6 +89,9 @@ Base rates and promotions are set on Airbnb and on VRBO, in each site's own cale
 Pull Lindon City, including the Utopia fiber line, from Xpress Bill Pay (www.xpressbillpay.com), not from myaccount.utopianet.org. File that whole bill as vendor "Lindon City Utilities".
 The other house portals are Rocky Mountain Power (csapps.rockymountainpower.net), Enbridge Gas (portal.enbridgegas.com), and XMission (xmission.com). Logins live in Brandon's Bitwarden. Passwords are not stored in this dashboard.
 
+## Engine
+The rate engine owns the base rate. Promotions are optional and belong on Airbnb and VRBO. market_overview, top_comps, pricing_run, and opportunities preview only. pin_comp, pause_house, and set_guardrails do not save from the tool. Nothing is sent until the publish switch is on and seven shadow days are recorded.
+
 ## Rules
 - Never invent money or calendar data. Use tools.
 - paidBy on construction: brandon = Brandon & Stephanie, todd = Todd.

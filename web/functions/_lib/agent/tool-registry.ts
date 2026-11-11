@@ -143,7 +143,7 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
   {
     name: 'manage_pricing',
     description:
-      'Yield pricing. yield_plan is the daily to-do list for all three houses: pace to goal, next 8 weekends, and the Airbnb and VRBO moves to make. suggest_rate_adjustment prices one house and date range. A night the host has already approved comes back with approved:true, held at that price and with no promotion — that number is the decision, so do not propose a different one for it. Do not lower the base. Do not set anything in Hospitable. Also comps, snapshots, and alerts.',
+      'Yield pricing. yield_plan is the daily to-do list for all three houses. suggest_rate_adjustment prices one house and date range. The rate engine owns the base: market_overview, top_comps, pricing_run, and opportunities preview and do not send. pin_comp, pause_house, and set_guardrails do not save. Do not lower the base. Do not set anything in Hospitable.',
     parameters: {
       type: 'object',
       properties: {
@@ -158,6 +158,13 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
             'record_manual_snapshot',
             'suggest_rate_adjustment',
             'yield_plan',
+            'market_overview',
+            'top_comps',
+            'pin_comp',
+            'pricing_run',
+            'set_guardrails',
+            'pause_house',
+            'opportunities',
           ],
         },
         days: { type: 'number', description: 'yield_plan horizon in days (default 90)' },

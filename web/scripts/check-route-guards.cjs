@@ -98,8 +98,15 @@ const HOST_ROUTES = [
   'stay-guide/[token]/stay-message.ts',
   'pricing/approved-rates.ts',
   'pricing/publish-rates.ts',
+  'pricing/pause.ts',
+  'pricing/changes.ts',
   'owner/links.ts',
   'pricing/shadow-days.ts',
+  'platform/health.ts',
+  'platform/registry.ts',
+  'platform/status.ts',
+  'platform/funnel.ts',
+  'mcp/index.ts',
 ];
 
 /**
@@ -189,6 +196,12 @@ const PUBLIC_ROUTES = [
   'esign/sign/[token].ts', // The token is the credential.
   'esign/sign/[token]/file.ts',
   'book/index.ts', // The public direct request form. A guest has no cookie before they ask.
+  'book/quote.ts', // Tax estimate. No ledger, no card.
+  'book/turnstile.ts', // The public site key and whether a bot check is enforced. Never the secret.
+  'funnel.ts', // A public page's funnel step. Stores a step and a house, no identity.
+  'hooks/hospitable.ts', // Signed webhook. Refuses a bad signature and does not write the books.
+  'hooks/stripe.ts',
+  'hooks/seam.ts',
   'stay-guide/[token]/chat.ts',
   'stay-guide/[token]/control.ts',
   'stay-guide/[token]/manifest.ts',

@@ -6,6 +6,8 @@ import { loadExtraCleaningFees } from '../kv';
 import { kvGet, storageReadPaused } from '../kv-json';
 import { authCookieHeader } from '../auth';
 import { occupiedNights } from '../../../src/lib/availability';
+import { guardNight } from '../market/rate-engine';
+import { loadComps, opportunities, pickTop } from '../../../src/lib/platform/market-intel';
 import {
   getAllReservations,
   filterReservations,
@@ -746,6 +748,48 @@ async function handlePricing(
   action: string,
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
+  if (action === 'market_overview' || action === 'pricing_run' || action === 'top_comps' || action === 'pin_comp' || action === 'set_guardrails' || action === 'pause_house' || action === 'opportunities') {
+    const house = args.propertyId === 'ranch' || args.propertyId === 'lindon' || args.propertyId === 'river' ? args.propertyId : 'river';
+    if (action === 'market_overview') {
+      return { targets: { river: 85, ranch: 70, lindon: 55 }, send: false, source: 'The engine owns the base. This does not send a rate.' };
+    }
+    if (action === 'top_comps') {
+      const loaded = loadComps({ house });
+      return { ...loaded, picked: pickTop(loaded.comps, { houseSleeps: house === 'lindon' ? 12 : 20 }), send: false };
+    }
+    if (action === 'pin_comp' || action === 'pause_house' || action === 'set_guardrails') {
+      return {
+        ok: false,
+        saved: false,
+        send: false,
+        error: 'That setting is not stored from this tool. Nothing was written, and nothing was sent.',
+      };
+    }
+    if (action === 'opportunities') {
+      return {
+        opportunities: opportunities({ ours: ['wifi'], comps: [['wifi', 'hot tub'], ['hot tub'], ['hot tub']] }),
+        send: false,
+      };
+    }
+    return {
+      send: false,
+      decision: guardNight({
+        house,
+        date: String(args.date ?? '2026-12-08'),
+        ourGuest: Number(args.nightlyRate ?? 179),
+        compRates: [400, 420, 450],
+        floorGuest: 51,
+        ceilingGuest: 4000,
+        booked: false,
+        closed: false,
+        holiday: false,
+        paused: false,
+        killSwitch: false,
+        nights: house === 'river' ? 2 : 1,
+      }),
+    };
+  }
+
   if (action === 'list_comp_set') {
     return { comps: await loadCompSet(env) };
   }
