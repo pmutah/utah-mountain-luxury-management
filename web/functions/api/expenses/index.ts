@@ -15,6 +15,7 @@ import { parsePaidBy } from '../../_lib/paid-by';
 import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt-store';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
+import { allowedHouses, refuseReadOnly, resolveCaller, stripHouses } from '../../_lib/roles';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv & { DASHBOARD_PASSWORD?: string };
 
@@ -27,7 +28,19 @@ export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env }) 
     await persistMissingPaidDates(env);
     const all = withReceiptUrls(await mergeAllExpenses(env));
     const custom = withReceiptUrls(await loadCustomExpenses(env));
-    return corsJson(request, { expenses: all, custom });
+    /*
+     * The role decides which houses leave the server.
+     *
+     * The plan asks for an owner who "sees Ranch and River read-only". Hiding Lindon in the browser would still send it, so the
+     * filter is here. An admin, a bot bearer, and the shared password all resolve to admin and see every row, exactly as before.
+     */
+    const caller = resolveCaller(request, env);
+    if (caller.kind === 'denied') return hostDenied(request, env);
+    return corsJson(request, {
+      expenses: stripHouses(all, caller.role),
+      custom: stripHouses(custom, caller.role),
+      ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role), readOnly: true } : {}),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (/limit exceeded|paused for the rest of the day|could not be read/i.test(message)) {
@@ -39,6 +52,9 @@ export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env }) 
 
 export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
+  // An owner reads and does not write. 403 with a reason, distinct from the 401 an unauthenticated caller gets.
+  const readOnly = refuseReadOnly(request, env, corsJson);
+  if (readOnly) return readOnly;
   if (!env.SETTINGS) {
     return corsJson(
       request,

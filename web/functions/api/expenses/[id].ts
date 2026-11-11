@@ -9,8 +9,17 @@ import { archiveExpense } from '../../_lib/expense-archive';
 import { readOrRefuse } from '../../_lib/read-guard';
 import { storageReadPaused } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
+import { audit } from '../../_lib/platform/audit-store';
+import { resolveCaller } from '../../_lib/roles';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
+
+/** Who to record. A role and, when the caller signed in by email, that address — never a guest or a phone. */
+function auditActor(request: Request, env: unknown): { role: 'admin' | 'owner' | 'cleaner' | 'vendor'; email?: string } {
+  const caller = resolveCaller(request, env);
+  if (caller.kind !== 'host') return { role: 'admin' };
+  return caller.via === 'email' && caller.role !== 'admin' ? { role: caller.role, email: caller.email } : { role: caller.role };
+}
 
 export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
@@ -104,8 +113,19 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
   }
 
   await saveCustomExpenses(env, custom);
+  /*
+   * Record the edit. The entry names the row and which fields changed — not their values, because an amount is the private
+   * detail this log exists to leave in one place.
+   */
+  const changed = Object.keys(body).filter((key) => body[key as keyof typeof body] !== undefined);
+  const logged = await audit(env, {
+    actor: auditActor(request, env),
+    action: 'expense.update',
+    target: id,
+    note: changed.length > 0 ? `Fields changed: ${changed.slice(0, 8).join(', ')}.` : 'A patch with no changed field.',
+  });
   const [enriched] = withReceiptUrls([custom[idx]!]);
-  return corsJson(request, enriched);
+  return corsJson(request, { ...enriched, ...(logged.ok ? {} : { auditFailed: logged.reason }) });
 };
 
 export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
@@ -152,8 +172,25 @@ export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env,
   // Archived above, so this is a deletion we mean. The reason is what lets the ledger guard tell
   // this apart from a wipe caused by a bad read.
   await saveCustomExpenses(env, custom, { allowShrinkReason: `Expense ${id} archived, then removed.` });
+  /*
+   * Record it. The entry names the row and the reason, never the amount or the vendor — an audit trail that repeats the
+   * detail is a second copy of the thing it exists to protect. A failed log does not undo the removal, and the response says so,
+   * because the archive above is the restore path and losing that would be worse than a missing log line.
+   */
+  const logged = await audit(env, {
+    actor: auditActor(request, env),
+    action: 'expense.remove',
+    target: id,
+    note: reason ? `Reason given. Archived and restorable.` : 'Archived and restorable.',
+  });
   // The row is restorable, and the answer says so, so a host who deleted by mistake knows the way back.
-  return corsJson(request, { ok: true, id, archived: true, restore: `POST /api/expenses/archive?restore=${id}` });
+  return corsJson(request, {
+    ok: true,
+    id,
+    archived: true,
+    restore: `POST /api/expenses/archive?restore=${id}`,
+    ...(logged.ok ? {} : { auditFailed: logged.reason }),
+  });
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

@@ -2504,3 +2504,32 @@ The house list and the house page name the next stay a booked or closed house ca
 - **The second bug in the same file:** the cache held only `/` and the manifest, not the bundle. Assets are requested on the first visit *before* the worker controls the page, so a "cache on miss" branch never sees them — the shell loaded and the app could not mount, a blank page. The worker now reads the hashed filenames out of the shell at install and precaches them.
 - **Verified in a browser with the network actually emulated off.** Loaded the cleaner link, confirmed the cache held `/assets/index-*.js` and the CSS, set Chrome to offline, reloaded: the page still rendered its turnover and read "Offline. Your ticks are kept on this phone." Ticked a step: it showed done, `uml.clean.queue` held it, and the line read "Offline. 1 turn kept on this phone and will send when the signal returns." Restored the network: the queue drained to `[]` and a server read confirmed `river 2026-11-22: beds`. Then the verification tick was cleared.
 - The API is never cached, in either direction — a cached expense list or door window shown as current would break the one standard this app holds. 1841 passing.
+
+## 2026-11-11 — Google sign-in never worked, and the roles were a comment
+
+**The production bug, found while testing something else.** `functions/_lib/email-session.ts` used `Buffer.from(...)`. `Buffer` does not exist at `compatibility_date = 2024-12-01` without `nodejs_compat`, and the bundler does not say so — it leaves a bare global that throws on use. Proved on a running Pages runtime: `hasBuffer: false`, and the call threw `ReferenceError: Buffer is not defined`.
+
+That alone would have been survivable if it failed loudly. It did not. `hostOnly` treats a throw as "not authenticated", so:
+
+- The login screen offered **Sign in with Google**, and Google's token verified.
+- The session cookie was set correctly.
+- **Every subsequent request was refused 401** — by the throw inside `hostOnly`, and also by the middleware.
+
+So email sign-in has been broken in production since the day it shipped, and the password path working is exactly why nobody noticed. There was always another way in.
+
+**Two bugs, not one.** Fixing `Buffer` was not enough: the middleware is the *first* gate on every `/api/*` request and only ever asked `isAuthenticated`, which reads the password cookie. A caller holding a perfectly good emailed session was refused before any route ran, so `hostOnly`'s session support was unreachable. Both are fixed, and `emailSessionValid` is now one shared check used by the middleware and the route gate.
+
+- Base64url is hand-written over `btoa`/`atob` with `TextEncoder`, since `btoa` throws above U+00FF and an address is not guaranteed ASCII.
+- A test now walks every Worker module and fails on `Buffer`, `require(`, or a `node:` import. A grep is the right tool because the type checker sees the `node` types and the bundler stays silent — which is why this survived a deploy.
+
+**The roles were a comment.** `can()` and `appendAudit()` in `back-office.ts` were called **only from a test**. No route read them, so "Todd sees Ranch and River read-only" and "every change is logged" were sentences in a catalog, not behaviour. `ROLE_EMAILS` now maps an address to a role from the **signed session**, never from a request field:
+
+- An owner receives no Lindon from `/api/expenses` or `/api/reservations` — stripped on the server, because hiding a house in the browser has still sent it.
+- A write from an owner is **403 `read-only`**, distinct from the 401 an unauthenticated caller gets.
+- The password, a bot bearer, and an unmapped allowlisted address are still admin, so nothing that worked before changed.
+
+**And the audit log now has a writer.** `audit-store.ts` appends who/what/which row/when to KV, refuses a bulk delete before writing, caps the oldest out, and reports a failed read instead of showing an empty log. Expense edits and removals record an entry naming the row and the changed **field names** — not their values, because an amount is the detail the log exists to leave in one place. `GET /api/platform/audit` is admin only: an owner reading it would learn about Lindon.
+
+**Verified against a running server, not asserted.** With a real signed owner session: expenses returned 51 rows, `readOnly: true`, `houses: ranch,river`, **no Lindon**; reservations 52 rows, same. The same session's write got 403 `read-only`. The admin password saw 98 rows including Lindon. A real edit produced `admin: expense.update on clean-l1. Fields changed: note.` The row was then restored and the probe route removed.
+
+1846 tests, route guards 84 host routes, functions typecheck, build.

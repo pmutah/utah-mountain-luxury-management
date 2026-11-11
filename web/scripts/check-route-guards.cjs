@@ -106,6 +106,7 @@ const HOST_ROUTES = [
   'platform/registry.ts',
   'platform/status.ts',
   'platform/funnel.ts',
+  'platform/audit.ts',
   'mcp/index.ts',
 ];
 

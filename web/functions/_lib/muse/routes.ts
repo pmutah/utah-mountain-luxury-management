@@ -277,6 +277,13 @@ export const READ_ROUTES: BotRoute[] = [
     writes: false,
   },
   {
+    path: '/api/platform/audit',
+    method: 'get',
+    operationId: 'getAuditLog',
+    summary: 'Who changed what, and when. Admin only. No amount, guest name, phone, or receipt body is recorded.',
+    writes: false,
+  },
+  {
     path: '/api/mcp',
     method: 'get',
     operationId: 'listMcpTools',

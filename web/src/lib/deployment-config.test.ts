@@ -56,6 +56,8 @@ const NOT_CONFIGURED: Record<string, string> = {
   VITE_ALLOWED_EMAILS: 'a build-time duplicate of ALLOWED_EMAILS; the runtime var is the one that decides access.',
   PROD: 'set by the platform, not by us.',
   SETTINGS: 'the KV binding, configured in wrangler.toml rather than as a secret.',
+  ROLE_EMAILS:
+    'the role map, e.g. `owner=todd@example.com;cleaner=someone@example.com`. An address on the allowlist with no mapping is admin, so this only narrows an account when it names one.',
   AIRROI_API_KEY:
     'comp calendars. Without it the market uses the fixture adapter and spends nothing. A present key still does not call AirROI until a client exists.',
   HOOK_SECRET:

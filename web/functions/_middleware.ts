@@ -1,4 +1,5 @@
 import { isAuthConfigured, isAuthenticated, unauthorized } from './_lib/auth';
+import { emailSessionValid } from './_lib/roles';
 import { isMuseAuthorized, isPublicMusePath } from './_lib/muse/auth';
 import { SECURITY_HEADERS } from '../src/lib/platform/back-office';
 
@@ -77,5 +78,18 @@ export const onRequest: PagesFunction<{
   if (isMuseAuthorized(context.request, context.env)) return withSecurity(await context.next());
   if (!isAuthConfigured(context.env)) return withSecurity(await context.next());
   if (isAuthenticated(context.request, context.env)) return withSecurity(await context.next());
+  /*
+   * An emailed session counts as a way in here too.
+   *
+   * This is the second half of the reason Google sign-in never worked in production. The middleware is the **first** gate on
+   * every `/api/*` request, and it only ever asked `isAuthenticated`, which reads the password cookie. A caller holding a
+   * perfectly good emailed session was refused 401 by the middleware, so `hostOnly` — which does understand the session — was
+   * never reached. The login screen offered Google sign-in, the token verified, the cookie was set, and the very next request
+   * was denied.
+   *
+   * `emailSessionValid` verifies the signature and the allowlist exactly as `hostOnly` does, so this is not a widening of
+   * access: it is the same check, in the gate that runs first.
+   */
+  if (emailSessionValid(context.request, context.env)) return withSecurity(await context.next());
   return withSecurity(unauthorized(context.request));
 };

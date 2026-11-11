@@ -68,6 +68,7 @@ Signed-in browser: `/api/muse/enter?token=` or `/api/amanda/enter?token=`.
 - `POST /api/hooks/hospitable`, `POST /api/hooks/stripe`, and `POST /api/hooks/seam` — signed webhooks. A bad signature is refused. The books are not written.
 - `GET/POST /api/pricing/pause` — the per-house pricing kill switch, host only. `POST { house, paused, reason? }` sets one house. The authoritative plan reads it, so a paused house is never raised or promoted. A switch that cannot be read reports **every house paused**, never off; this does not change a published rate and sends nothing.
 - `GET /api/pricing/changes` — the rate change log, host only. One row per night whose rate moved, with the reason, newest first. Every row is a shadow row and says nothing was sent. A failed read says the log could not be read rather than showing an empty log.
+- `GET /api/platform/audit` — the audit log, admin only. Who changed what and when, newest first. No amount, guest name, phone, or receipt body. A failed read says the log could not be read rather than showing an empty log. An owner account is refused, because the log names work on houses an owner does not see.
 - `GET /api/mcp` — read-only tools. Bulk delete is refused.
 
 ### Do not

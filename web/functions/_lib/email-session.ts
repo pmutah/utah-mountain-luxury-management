@@ -26,16 +26,40 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 const encoder = new TextEncoder();
 
+/*
+ * Base64url **without `Buffer`**.
+ *
+ * This file used `Buffer.from(...)`, which does not exist in the Workers runtime at this compatibility date (verified on a
+ * running Pages runtime: `hasBuffer: false`, and the call threw `ReferenceError: Buffer is not defined`). The bundler does not
+ * report it, so every email sign-in threw inside `hostOnly`, which treats a throw as "not authenticated" and answers 401.
+ *
+ * The effect in production was that **Google sign-in never worked**: the login screen offered it, the Google token verified,
+ * the cookie was issued — and then every request carrying it was refused. The password path kept working, which is why this
+ * survived unnoticed: there is always another way in.
+ *
+ * `btoa`/`atob` are present, so they do the encoding. Strings are converted to bytes by `TextEncoder` first, because `btoa`
+ * throws on any character above U+00FF and an email address is not guaranteed to be ASCII.
+ */
+function bytesToB64url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 function b64url(value: string): string {
-  return Buffer.from(value, 'utf8').toString('base64url');
+  return bytesToB64url(encoder.encode(value));
 }
 
 function fromB64url(value: string): string {
-  return Buffer.from(value, 'base64url').toString('utf8');
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }
 
 function sign(secret: string, payload: string): string {
-  return Buffer.from(hmacSha256(encoder.encode(secret), encoder.encode(payload))).toString('base64url');
+  return bytesToB64url(hmacSha256(encoder.encode(secret), encoder.encode(payload)));
 }
 
 /** Constant-time compare, so a wrong signature cannot be found one byte at a time. */

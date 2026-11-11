@@ -10,6 +10,7 @@ import {
 } from '../../_lib/reservations-store';
 import type { AgentEnv } from '../../_lib/agent/types';
 import { readOrRefuse } from '../../_lib/read-guard';
+import { allowedHouses, resolveCaller, stripHouses } from '../../_lib/roles';
 import { refreshIcalInBackground } from '../../_lib/ical-refresh';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, waitUntil }) => {
@@ -45,7 +46,18 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, wait
       when: when ?? undefined,
     });
   }
-  return corsJson(request, { reservations: list, storageReads: 'ok' });
+  /*
+   * The owner reads Ranch and River only. A `propertyId=lindon` request from an owner is answered with an empty list and a
+   * line naming the allowed houses, rather than with Lindon's stays — the plan's requirement is that Todd does not see that
+   * house, so it must not leave the server.
+   */
+  const caller = resolveCaller(request, env);
+  if (caller.kind === 'denied') return hostDenied(request, env);
+  return corsJson(request, {
+    reservations: stripHouses(list, caller.role),
+    storageReads: 'ok',
+    ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role), readOnly: true } : {}),
+  });
 };
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {

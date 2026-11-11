@@ -3,8 +3,8 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { acceptLedgerRead, backupDirAllowed, integrityBaseline } from './integrity.ts';
 import { FEATURE_CATALOG } from './feature-catalog.ts';
 import { forecastGoal, loadComps, paceWindows, pickTop, rateBand, weekKey } from './market-intel.ts';
@@ -798,6 +798,227 @@ test('the policies are reachable from both public entry points', () => {
       );
     }
   }
+});
+
+test('an owner is read-only and never receives Lindon', async () => {
+  const {
+    resolveCaller,
+    roleFor,
+    parseRoleEmails,
+    stripHouses,
+    allowedHouses,
+    mayReadHouse,
+    canDo,
+    refuseReadOnly,
+  } = await import('./../../../functions/_lib/roles.ts');
+  const { signSession } = await import('./../../../functions/_lib/email-session.ts');
+
+  const secret = 'a-secret-long-enough-to-sign';
+  const ownerEmail = 'todd@example.com';
+  const env = {
+    SESSION_SECRET: secret,
+    ALLOWED_EMAILS: `pmutah@gmail.com,${ownerEmail}`,
+    ROLE_EMAILS: `owner=${ownerEmail};cleaner=cleaner@example.com`,
+    DASHBOARD_PASSWORD: 'pw',
+  };
+
+  // The role is read from the signed session, never from a request field.
+  assert.equal(roleFor(ownerEmail, env), 'owner');
+  assert.equal(roleFor('pmutah@gmail.com', env), 'admin', 'an unmapped allowlisted address lost admin');
+  assert.deepEqual(parseRoleEmails('owner=a@x.com,b@x.com;cleaner=c@x.com'), [
+    { email: 'a@x.com', role: 'owner' },
+    { email: 'b@x.com', role: 'owner' },
+    { email: 'c@x.com', role: 'cleaner' },
+  ]);
+
+  const ownerCookie = signSession(ownerEmail, secret);
+  const ownerCaller = resolveCaller(
+    new Request('https://x/api/expenses', { headers: { Cookie: `wpm_auth=${ownerCookie}` } }),
+    env,
+  );
+  assert.deepEqual(ownerCaller, { kind: 'host', role: 'owner', via: 'email', email: ownerEmail });
+
+  // The shared password is still admin, so the existing way in is unchanged.
+  const pwCaller = resolveCaller(
+    new Request('https://x/api/expenses', { headers: { Cookie: `wpm_auth=${btoa('wpm:pw').replace(/=+$/, '')}` } }),
+    env,
+  );
+  assert.deepEqual(pwCaller, { kind: 'host', role: 'admin', via: 'password' });
+  // And no credential is denied, not admitted.
+  assert.equal(resolveCaller(new Request('https://x/api/expenses'), env).kind, 'denied');
+
+  // What the owner may do.
+  assert.equal(canDo('owner', 'read-owner'), true);
+  assert.equal(canDo('owner', 'edit-expense'), false);
+  assert.equal(canDo('owner', 'read-ledger'), false);
+  assert.deepEqual(allowedHouses('owner'), ['ranch', 'river']);
+  assert.equal(mayReadHouse('owner', 'lindon'), false);
+  assert.equal(mayReadHouse('owner', 'ranch'), true);
+  assert.equal(allowedHouses('admin'), null, 'an admin was narrowed to a house list');
+  assert.equal(mayReadHouse('admin', 'lindon'), true);
+
+  /*
+   * The point of the whole module: Lindon must not leave the server. A row with no house is kept — the household ledger is
+   * not a house, and dropping it would change a total the owner is reading.
+   */
+  const rows = [
+    { propertyId: 'ranch', amount: 100 },
+    { propertyId: 'lindon', amount: 200 },
+    { propertyId: 'river', amount: 300 },
+    { amount: 400 },
+  ];
+  const forOwner = stripHouses(rows, 'owner');
+  assert.deepEqual(forOwner.map((row) => row.propertyId ?? 'household'), ['ranch', 'river', 'household']);
+  assert.equal(forOwner.some((row) => row.propertyId === 'lindon'), false, 'Lindon reached an owner');
+  // An admin sees every row, unchanged.
+  assert.equal(stripHouses(rows, 'admin').length, 4);
+
+  // A write from an owner is 403 with a reason a client can act on, and not 401.
+  const refused = refuseReadOnly(
+    new Request('https://x/api/expenses', { headers: { Cookie: `wpm_auth=${ownerCookie}` } }),
+    env,
+    (req, body, status = 200) => new Response(JSON.stringify(body), { status }),
+  );
+  assert.ok(refused, 'an owner was allowed to write');
+  assert.equal(refused!.status, 403);
+  const refusedBody = (await refused!.json()) as { code: string };
+  assert.equal(refusedBody.code, 'read-only');
+  // An admin is not refused.
+  assert.equal(
+    refuseReadOnly(new Request('https://x/api/expenses', { headers: { Cookie: `wpm_auth=${btoa('wpm:pw').replace(/=+$/, '')}` } }), env),
+    null,
+  );
+});
+
+test('the role matrix is enforced by the routes that carry the books', () => {
+  /*
+   * `can()` and `appendAudit()` were defined in `back-office.ts` and **called only from a test** — no route read them, so
+   * "Todd sees Ranch and River read-only" was a sentence in a catalog. This pins that the enforcement is in the routes.
+   */
+  const expenses = readFileSync(join(root, 'functions/api/expenses/index.ts'), 'utf8');
+  const reservations = readFileSync(join(root, 'functions/api/reservations/index.ts'), 'utf8');
+  for (const [name, source] of [['expenses', expenses], ['reservations', reservations]] as const) {
+    assert.match(source, /stripHouses\(/, `${name} does not strip a house an owner may not see`);
+    assert.match(source, /resolveCaller\(/, `${name} does not resolve the caller's role`);
+  }
+  assert.match(expenses, /refuseReadOnly\(/, 'the expense write path does not refuse a read-only account');
+
+  // And the matrix itself still says what the plan says.
+  const backOffice = readFileSync(join(root, 'src/lib/platform/back-office.ts'), 'utf8');
+  assert.match(backOffice, /owner: \['read-owner'\]/, 'the owner role stopped being read-only');
+});
+
+test('the audit log actually records a change, and refuses a bulk delete', async () => {
+  const { audit, readAudit, auditLine, isBulkDelete, AUDIT_LIMIT } = await import('./../../../functions/_lib/platform/audit-store.ts');
+  /*
+   * The defect: `appendAudit` in `back-office.ts` was called only from a test, and no route wrote an entry. "Every change is
+   * logged" was a rule with no writer — the same shape as the kill switch and the change log.
+   */
+  const kv = (() => {
+    const map = new Map<string, string>();
+    return {
+      get: async (key: string) => map.get(key) ?? null,
+      put: async (key: string, value: string) => void map.set(key, value),
+      raw: map,
+    };
+  })();
+  const env = { SETTINGS: kv } as never;
+
+  assert.equal(isBulkDelete('delete-expenses'), true);
+  assert.equal(isBulkDelete('bulk-delete'), true);
+  assert.equal(isBulkDelete('expense.remove'), false, 'an ordinary removal was treated as a bulk delete');
+
+  // A bulk delete is refused and writes nothing.
+  const refused = await audit(env, { actor: { role: 'admin' }, action: 'delete-reservations', target: 'all' });
+  assert.equal(refused.ok, false);
+  assert.equal(kv.raw.has('auditLog'), false, 'a refused action still wrote the log');
+
+  // A real change is written with the actor and the row.
+  const written = await audit(env, {
+    actor: { role: 'owner', email: 'todd@example.com' },
+    action: 'expense.remove',
+    target: 'exp-123',
+    note: 'Archived and restorable.',
+  });
+  assert.equal(written.ok, true);
+  const stored = JSON.parse(kv.raw.get('auditLog')!) as unknown[];
+  assert.equal(stored.length, 1);
+
+  const read = await readAudit(env, 10);
+  assert.equal(read.ok, true);
+  const entries = read.ok ? read.entries : [];
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]!.action, 'expense.remove');
+  assert.equal(entries[0]!.target, 'exp-123');
+  assert.equal(entries[0]!.actor.email, 'todd@example.com');
+
+  // The line names the actor and the row, and does not repeat an amount.
+  const line = auditLine(entries[0]!);
+  assert.match(line, /owner todd@example\.com/);
+  assert.match(line, /expense\.remove on exp-123/);
+  assert.equal(/\$\d/.test(line), false, 'the audit line carries a money figure');
+
+  // Newest first.
+  await audit(env, { actor: { role: 'admin' }, action: 'expense.update', target: 'exp-456' });
+  const two = await readAudit(env, 10);
+  assert.equal(two.ok && two.entries[0]!.target, 'exp-456', 'the log is not newest first');
+
+  // A failed read is reported, never rendered as an empty log.
+  const broken = { SETTINGS: { get: async () => { throw new Error('KV GET limit exceeded'); }, put: async () => {} } } as never;
+  const brokenRead = await readAudit(broken, 10);
+  assert.equal(brokenRead.ok, false);
+  assert.match(brokenRead.ok === false ? brokenRead.reason : '', /could not be read/);
+  const brokenWrite = await audit(broken, { actor: { role: 'admin' }, action: 'expense.update', target: 'x' });
+  assert.equal(brokenWrite.ok, false);
+
+  // The cap drops the oldest, and it is bounded.
+  assert.ok(AUDIT_LIMIT >= 100 && AUDIT_LIMIT <= 20000);
+
+  /*
+   * And the routes that carry the books actually call it. A store with no caller is the defect this whole test exists for.
+   */
+  const expenseRoute = readFileSync(join(root, 'functions/api/expenses/[id].ts'), 'utf8');
+  assert.match(expenseRoute, /await audit\(env,/, 'the expense route does not record a change');
+  assert.match(expenseRoute, /action: 'expense\.remove'/, 'a removal is not recorded');
+  assert.match(expenseRoute, /action: 'expense\.update'/, 'an edit is not recorded');
+  const auditRoute = readFileSync(join(root, 'functions/api/platform/audit.ts'), 'utf8');
+  assert.match(auditRoute, /readAudit\(/, 'nothing exposes the audit log');
+});
+
+test('no Worker module reaches for a Node built-in at runtime', () => {
+  /*
+   * The defect this exists for, measured on a running Pages runtime: `email-session.ts` used `Buffer.from(...)`, and
+   * `Buffer` does not exist at `compatibility_date = 2024-12-01` without `nodejs_compat`. Wrangler's bundler did not
+   * complain — it left `Buffer` as a bare global reference that throws on use.
+   *
+   * The consequence was not a broken page. `hostOnly` treats a throw as "not authenticated", so every request carrying an
+   * emailed session was refused **401**, which meant Google sign-in never worked in production from the day it shipped: the
+   * login screen offered it, the token verified, the cookie was set, and the next request denied it. The password path kept
+   * working, which is why nobody noticed.
+   *
+   * A grep is the right tool here because the failure is invisible to the type checker (the `node` types are present in
+   * `tsconfig.functions.json`) and to the bundler.
+   */
+  const root = join(process.cwd(), 'functions');
+  const offenders: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!/\.ts$/.test(entry.name) || /\.test\.ts$/.test(entry.name)) continue;
+      const text = readFileSync(full, 'utf8');
+      // Strip comments so the explanation above does not trip its own guard.
+      const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      if (/\bBuffer\s*[.(]/.test(code) || /\brequire\s*\(/.test(code) || /from 'node:/.test(code)) {
+        offenders.push(relative(process.cwd(), full).replace(/\\/g, '/'));
+      }
+    }
+  };
+  walk(root);
+  assert.deepEqual(offenders, [], 'these Worker modules use a Node built-in that does not exist at this compatibility date');
 });
 
 test('the market database refuses a missing binding instead of pretending it saved', async () => {
