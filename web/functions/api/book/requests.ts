@@ -12,6 +12,7 @@ import { loadApprovedRates } from '../../_lib/pricing-store';
 import { addDays, denverToday } from '../../../src/lib/market/dates';
 import type { HouseId } from '../../../src/lib/market/types';
 import type { SettingsEnv } from '../../_lib/kv';
+import { allowedHouses, resolveCaller } from '../../_lib/roles';
 
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
 
@@ -95,10 +96,23 @@ export const onRequestGet: PagesFunction<SettingsEnv & { DASHBOARD_PASSWORD?: st
     approved = [];
   }
 
+  /*
+   * The inbox, filtered by role.
+   *
+   * A request row carries the guest's name, email, phone, and the houses — so an owner read every Lindon enquiry from this list. `InboxRow`
+   * holds `houses` as a list, because one request can span two, so the rule is: keep a row only when at least one of its houses is readable.
+   * The summary and tally are rebuilt from what remains rather than passed through, or the counts would still include the house the list
+   * hides.
+   */
+  const caller = resolveCaller(request, env);
+  if (caller.kind === 'denied') return hostDenied(request, env);
+  const readable = allowedHouses(caller.role);
+  const visibleRows =
+    readable === null ? rows : rows.filter((row) => row.houses.some((house) => readable.includes(house)));
   return corsJson(
     request,
     {
-      rows: rows.map((row) => {
+      rows: visibleRows.map((row) => {
         const record = declined.get(row.id);
         const saved = requests.find((item) => item.id === row.id);
         /*
@@ -145,9 +159,10 @@ export const onRequestGet: PagesFunction<SettingsEnv & { DASHBOARD_PASSWORD?: st
             : suggestedPayoutLine(payouts),
         };
       }),
-      summary: inboxSummary(rows, hidden),
+      summary: inboxSummary(visibleRows, hidden),
       declineTally: tally,
       storageReads: 'ok',
+      ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role) } : {}),
     },
     200,
     { 'Cache-Control': 'no-store' },

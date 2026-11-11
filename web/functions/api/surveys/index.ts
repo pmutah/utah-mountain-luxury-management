@@ -5,6 +5,7 @@ import { getAllReservations } from '../../_lib/reservations-store';
 import { gmailHealth, loadGmailTokens } from '../../_lib/gmail-store';
 import { isTwilioConfigured, twilioFromNumber } from '../../_lib/twilio-sms';
 import { storageReadPaused } from '../../_lib/kv-json';
+import { allowedHouses, resolveCaller, stripHouses } from '../../_lib/roles';
 import type { AgentEnv } from '../../_lib/agent/types';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
@@ -36,10 +37,20 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
   const upcoming = reservations.filter(
     (r) => r.status !== 'cancelled' && r.status !== 'blocked' && r.checkOut >= today,
   );
+  /*
+   * The guest list, filtered by role.
+   *
+   * This is the page that lists every upcoming guest by name, and it returned all of them to any host session — including Lindon's, and
+   * including the surveys tied to those stays. An owner reading it saw the guests of a house he is not part of. Both lists are filtered,
+   * and the survey row carries its `propertyId`, so the same rule applies to it.
+   */
+  const caller = resolveCaller(request, env);
+  if (caller.kind === 'denied') return hostDenied(request, env);
   return corsJson(request, {
-    surveys,
-    reservations: upcoming,
+    surveys: stripHouses(surveys, caller.role),
+    reservations: stripHouses(upcoming, caller.role),
     storageReads: 'ok',
+    ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role) } : {}),
     /*
      * This is the shape the guests page renders, and it used to say `connected: Boolean(gmail)` — an
      * email string on file, not a working mailbox. The dashboard showed a connected account while every

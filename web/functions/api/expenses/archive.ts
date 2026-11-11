@@ -6,6 +6,7 @@ import { deleteStoredReceipt } from '../../_lib/receipt-store';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import { storageReadPaused } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
+import { allowedHouses, resolveCaller } from '../../_lib/roles';
 
 type ArchiveEnv = SettingsEnv & FirebaseStorageEnv;
 
@@ -32,11 +33,28 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     const message = err instanceof Error ? err.message : 'The archive failed';
     return corsJson(request, { error: message }, 500);
   }
+  const caller = resolveCaller(request, env);
+  if (caller.kind === 'denied') return hostDenied(request, env);
+  /*
+   * An owner reads Ranch and River. The archive listed every removed expense with its house, note, and amount — so a deleted Lindon bill
+   * came back here even though the live ledger would not show it. It is filtered the same way, and the line is rebuilt from the rows that
+   * remain so the count and the list agree.
+   *
+   * The house sits on the nested `expense`, not on the archive row, so the filter reads that path rather than the generic `stripHouses`.
+   */
+  const readable = allowedHouses(caller.role);
+  const visible =
+    readable === null
+      ? rows
+      : rows.filter((row) => {
+          const house = row.expense.propertyId;
+          return !house || readable.includes(house as 'ranch' | 'lindon' | 'river');
+        });
   return corsJson(
     request,
     {
       // Only what a host needs to recognize the row. No receipt bytes, and no second ledger.
-      archived: rows.map((row) => ({
+      archived: visible.map((row) => ({
         id: row.expense.id,
         removedAt: row.removedAt,
         ...(row.reason ? { reason: row.reason } : {}),
@@ -46,8 +64,9 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
         date: row.expense.paidDate ?? row.expense.month ?? null,
         hasReceipt: Boolean(row.expense.receiptStoragePath),
       })),
-      line: archiveLine(rows),
+      line: archiveLine(visible),
       storageReads: 'ok',
+      ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role) } : {}),
     },
     200,
     { 'Cache-Control': 'no-store' },

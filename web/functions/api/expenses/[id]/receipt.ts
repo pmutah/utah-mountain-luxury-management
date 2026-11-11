@@ -5,6 +5,7 @@ import { loadStoredReceipt } from '../../../_lib/receipt-store';
 import { readOrRefuse } from '../../../_lib/read-guard';
 import type { FirebaseStorageEnv } from '../../../_lib/gcs';
 import type { SettingsEnv } from '../../../_lib/kv';
+import { mayReadHouse, resolveCaller } from '../../../_lib/roles';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
 
@@ -18,6 +19,21 @@ export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env, pa
   const read = await readOrRefuse(request, () => loadCustomExpenses(env), 'Saved expenses');
   if (!read.ok) return read.response;
   const expense = read.value.find((e) => e.id === id);
+  /*
+   * A house this caller may not read has no receipt they may read, and it is answered as "no receipt" rather than refused.
+   *
+   * Without this, the receipt list was filtered by role and the file was not: an owner could not see a Lindon bill in `/api/expenses`, but
+   * could fetch its PDF by id if he had or guessed the id. Answering 404 rather than 403 keeps it from confirming that a Lindon bill with
+   * that id exists.
+   */
+  const caller = resolveCaller(request, env);
+  if (caller.kind === 'denied') return hostDenied(request, env);
+  if (expense?.propertyId && !mayReadHouse(caller.role, expense.propertyId)) {
+    return new Response(JSON.stringify({ error: 'No receipt for this expense' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
   if (!expense?.receiptStoragePath) {
     return new Response(JSON.stringify({ error: 'No receipt for this expense' }), {
       status: 404,

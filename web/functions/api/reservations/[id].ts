@@ -4,7 +4,7 @@ import { readJsonBody } from '../../_lib/json-body';
 import { updateReservation, updateReservationStatus, getAllReservations } from '../../_lib/reservations-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv, ReservationRecord, ReservationStatus } from '../../_lib/agent/types';
-import { refuseReadOnly } from '../../_lib/roles';
+import { refuseReadOnly, mayReadHouse, resolveCaller } from '../../_lib/roles';
 import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 
 export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
@@ -103,7 +103,19 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, para
   const read = await readOrRefuse(request, () => getAllReservations(env), 'Saved bookings');
   if (!read.ok) return read.response;
   const r = read.value.find((x) => x.id === id);
-  if (!r) return corsJson(request, { error: 'Not found' }, 404);
+  /*
+   * The list route strips Lindon, so fetching a Lindon booking **by id** was the way around it: an owner who knew or guessed an id got
+   * the whole row, guest name included. The check is `mayReadHouse`, the same one the rest of the codebase asks, so the two routes cannot
+   * disagree.
+   *
+   * A house the caller may not read is answered as **not found**, not as forbidden. A 403 would confirm the row exists, which tells an
+   * owner there are Lindon bookings with that id.
+   */
+  const caller = resolveCaller(request, env);
+  if (caller.kind === 'denied') return hostDenied(request, env);
+  if (!r || (r.propertyId && !mayReadHouse(caller.role, r.propertyId))) {
+    return corsJson(request, { error: 'Not found' }, 404);
+  }
   return corsJson(request, r);
 };
 

@@ -264,6 +264,163 @@ for (const rel of unclassified) {
   problems.push(`${rel}: not listed as a host, guest, or public route. Decide who may call it.`);
 }
 
+/**
+ * A host route that hands back guest data must filter it by role.
+ *
+ * This is the third time the same defect has appeared. `/api/expenses` and `/api/reservations` filtered by role, so "Todd sees Ranch and
+ * River" looked enforced — but the Overview tab called `/api/portfolio/metrics` and `/api/portfolio/history`, which never asked. One
+ * request returned Lindon's revenue and all 34 of its bookings with the guest's name. Fixing those two would have left the booking
+ * inbox, the guest list, the expense archive and the agent briefing with the same hole, because each is a separate route that returns
+ * the same fields.
+ *
+ * So the rule is mechanical rather than remembered: a host route whose response carries a guest's name, email, phone, or the booking
+ * rows themselves must either filter by role or be named below with the reason it never carries a house a role cannot see.
+ */
+const GUEST_DATA = /guestName|guestEmail|guestPhone/;
+/*
+ * Reading a store that carries guests is the same exposure **when the rows are returned**. `surveys/index.ts` returns `loadSurveys(...)` and
+ * `getAllReservations(...)` and mentions no guest field at all, which is why the first version of this check passed it while it returned
+ * every guest's name and every Lindon booking.
+ *
+ * A write route that reads the ledger to validate an edit is a different case: it returns the one row it wrote, at most. That is why the
+ * check is limited to a `GET` handler below, and why the one-row routes ask `mayReadHouse` at the point they look a row up.
+ */
+const GUEST_STORE = /loadSurveys\(|getAllReservations\(|mergeAllExpenses\(|loadCustomExpenses\(/;
+/*
+ * What counts as filtering by role. A list route strips; a one-row route asks `mayReadHouse`, which is the more precise question and is
+ * the same helper the rest of the codebase uses. Either is a decision about who may see the row.
+ */
+/*
+ * What counts as filtering by role:
+ *
+ *   - `stripHouses` / `stripPortfolioHouses` — the shared helpers for a flat `propertyId`.
+ *   - `mayReadHouse` — the precise question for a one-row lookup.
+ *   - `allowedHouses` — the route reads the allowed list and filters a shape the helpers do not fit: an archive row whose house is nested
+ *     inside `expense`, or an inbox row that carries `houses` as a list because one request can span two.
+ *
+ * The last one is the weakest of the three, because it only proves the route asked which houses are allowed. That is still a decision
+ * rather than an oversight, and the routes that use it are covered by a behavioural test of their own.
+ */
+const ROLE_FILTER = /stripHouses\(|stripPortfolioHouses\(|mayReadHouse\(|allowedHouses\(/;
+/*
+ * Routes that carry guest data and may skip the role filter, with the reason. An entry here is a claim that has to survive review: the
+ * list is short and each line says why.
+ */
+const GUEST_DATA_OK = new Map([
+  [
+    'book/index.ts',
+    'A guest posting their own request. Public by design; it writes a row and returns the guest their own link, never another guest.',
+  ],
+  [
+    'book/accept.ts',
+    'Turns one named request into a booking. Host only, and it takes an id rather than returning a list of guests.',
+  ],
+  [
+    'book/decline.ts',
+    'Declines one named request. Host only, one id, no list.',
+  ],
+  [
+    'book/discard.ts',
+    'Clears one named request. Host only, one id, no list.',
+  ],
+  [
+    'surveys/send.ts',
+    'Sends to one named guest by id. It returns a send result, not a guest list.',
+  ],
+  [
+    'surveys/mint-links.ts',
+    'Mints stay links and returns tokens, not names.',
+  ],
+  [
+    'surveys/reset.ts',
+    'Resets one guest card by token. No list comes back.',
+  ],
+  [
+    'clean/[token].ts',
+    'A cleaner link. The token is the credential and the page carries no guest name by design.',
+  ],
+  [
+    'stay-guide/[token]/index.ts',
+    'One stay behind one token: the guest reading their own guide. It resolves the stay from the token, never from a request field.',
+  ],
+  [
+    'stay-guide/[token]/chat.ts',
+    'One stay behind one token. The concierge answers for that stay only.',
+  ],
+  [
+    'stay-preferences/[token].ts',
+    'One guest writing their own preferences through their own token.',
+  ],
+  [
+    'stay-guide/[token]/stay-message.ts',
+    'One stay behind one token. It lists the messages that stay could receive and sends one by hand; it returns no guest list and no house '
+      + 'a role cannot see, because the stay comes from the token rather than from the request.',
+  ],
+  [
+    'expenses/[id]/photos/[photoId].ts',
+    'Serves one item photo for one expense id, checked with mayReadHouse before the bytes are read. It is a file, not a list.',
+  ],
+  [
+    'clean/photos.ts',
+    'A cleaner link, which is the credential. The rows are cleaner room photos grouped by turn; the page carries no guest name by design.',
+  ],
+  [
+    'clean/progress.ts',
+    'Cleaner tick state for a token or the host desk. It reports steps done against a turn, not a guest.',
+  ],
+  [
+    'agent/briefing.ts',
+    'The nightly brief as one line, built from the calendar. It names a house and a night count, not a guest, and it is cached.',
+  ],
+  [
+    'pricing/approved-rates.ts',
+    'The approved-rate sheet: house, date, and a guest price. It reads reservations only to refuse a booked night, and returns no guest.',
+  ],
+  [
+    'pricing/push-plan.ts',
+    'What a rate push would change, per house and night. It counts booked nights to exclude them; no name, email, or phone is in the answer.',
+  ],
+  [
+    'pricing/river-split.ts',
+    'Whole-versus-parts arithmetic for the Riverhouse. It compares expected value over the calendar and returns figures, not guests.',
+  ],
+  [
+    'pricing/river-units.ts',
+    'The three River parts and their prices. It reports free nights per part, which is availability rather than a person.',
+  ],
+  [
+    'platform/daily.ts',
+    'The morning run. It returns counts (arrivals, departures, nights at risk) and the composed text, never a guest row, and the text goes to '
+      + 'the host rather than out to anyone.',
+  ],
+]);
+(function walk(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walk(file);
+      continue;
+    }
+    if (!entry.name.endsWith('.ts')) continue;
+    const rel = path.relative(root, file).replace(/\\/g, '/');
+    if (!HOST_ROUTES.includes(rel)) continue;
+    const text = fs.readFileSync(file, 'utf8');
+    /*
+     * Only a route that can be asked for rows is in scope. A POST that reads the ledger to validate one edit returns the row it wrote,
+     * which the write guard and the audit log already cover; the exposure this check exists for is a **list of somebody else's guests**,
+     * and that only comes out of a read handler.
+     */
+    const readable = /export const onRequestGet\b/.test(text);
+    if (!readable) continue;
+    if (!GUEST_DATA.test(text) && !GUEST_STORE.test(text)) continue;
+    if (ROLE_FILTER.test(text)) continue;
+    if (GUEST_DATA_OK.has(rel)) continue;
+    problems.push(
+      `${rel}: returns a guest's name, email, or phone and does not filter by role. Use stripHouses or stripPortfolioHouses, or add it to GUEST_DATA_OK with the reason.`,
+    );
+  }
+})(root);
+
 // A door-code preview must not lean on `isAuthenticated`, which passes when no password is set. The
 // route files are covered above, but the shared concierge helper is where the guest guide actually
 // decides, so it is checked here too.
