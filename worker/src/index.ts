@@ -156,6 +156,9 @@ function json(data: unknown, status = 200, headers: HeadersInit = {}) {
   });
 }
 
+/** What the scheduled run reads. Two names only: where the app is, and the secret it accepts on the morning route. */
+type ScheduledEnv = { PAGES_ORIGIN?: string; CRON_SECRET?: string };
+
 export default {
   async fetch(request: Request, env: { CORS_ORIGINS?: string }): Promise<Response> {
     const allowed = env.CORS_ORIGINS ?? '*';
@@ -208,14 +211,45 @@ export default {
 
   /**
    * 12:00 and 20:00 UTC are 5:00am and 1:00pm Mountain Standard Time.
-   * During daylight time they land an hour later. The run only logs. It does not read or write the ledger.
+   * During daylight time they land an hour later.
+   *
+   * The 12:00 run asks the Pages app for the morning digest, which is the only thing that makes the seven-day shadow clock advance
+   * without a host sitting at the dashboard, and the only thing that texts him. The 20:00 run does not: a second text in one day
+   * is noise, and the app refuses it anyway by date. Both runs log either way, and neither reads or writes the ledger itself.
+   *
+   * It calls one route with one secret. `CRON_SECRET` is not a host bearer: the app accepts it only on `/api/platform/daily`, so a
+   * leaked cron secret cannot read the books.
    */
-  async scheduled(event: ScheduledController): Promise<void> {
-    console.log(JSON.stringify({
-      job: 'shadow-pricing',
-      cron: event.cron,
-      send: false,
-      books: 'untouched',
-    }));
+  async scheduled(event: ScheduledController, env: ScheduledEnv, ctx: ExecutionContext): Promise<void> {
+    const base = (env.PAGES_ORIGIN ?? 'https://wilhite-portfolio.pages.dev').replace(/\/+$/, '');
+    const secret = env.CRON_SECRET ?? '';
+    const morning = event.cron === '0 12 * * *';
+    let result: { status: number; body: unknown } | null = null;
+    if (morning && secret) {
+      try {
+        const response = await fetch(`${base}/api/platform/daily`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from: 'cron', cron: event.cron }),
+        });
+        const body = (await response.json().catch(() => ({}))) as unknown;
+        result = { status: response.status, body };
+      } catch (err) {
+        result = { status: 0, body: err instanceof Error ? err.message : 'The morning run could not be reached.' };
+      }
+    }
+    console.log(
+      JSON.stringify({
+        job: 'shadow-pricing',
+        cron: event.cron,
+        called: morning ? 'daily' : null,
+        // A schedule that never reached the app is said so here, because the app will not have logged anything.
+        reason: morning && !secret ? 'CRON_SECRET is not set on this worker, so the morning run was not called.' : undefined,
+        result,
+        send: Boolean(morning && secret),
+        books: 'untouched',
+      }),
+    );
+    void ctx;
   },
 };

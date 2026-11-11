@@ -1,5 +1,5 @@
 import { isAuthConfigured, isAuthenticated, unauthorized } from './_lib/auth';
-import { emailSessionValid, refuseReadOnly } from './_lib/roles';
+import { cronAuthorized, emailSessionValid, refuseReadOnly } from './_lib/roles';
 import { isMuseAuthorized, isPublicMusePath } from './_lib/muse/auth';
 import { SECURITY_HEADERS } from '../src/lib/platform/back-office';
 
@@ -84,6 +84,16 @@ export const onRequest: PagesFunction<{
     return withSecurity(await context.next());
   }
   if (isMuseAuthorized(context.request, context.env)) return withSecurity(await context.next());
+  /*
+   * The worker cron.
+   *
+   * It holds `CRON_SECRET` as a bearer and no cookie, and it calls exactly one route: the morning run. The middleware is the first
+   * gate, so without this the cron was refused 401 before the route could compare the secret. It is scoped to that one path so a
+   * cron secret cannot reach the ledger, the receipts, or the guest surveys.
+   */
+  if (url.pathname === '/api/platform/daily' && cronAuthorized(context.request, context.env)) {
+    return withSecurity(await context.next());
+  }
   if (!isAuthConfigured(context.env)) return withSecurity(await context.next());
   if (isAuthenticated(context.request, context.env)) return withSecurity(await context.next());
   /*

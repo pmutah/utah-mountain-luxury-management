@@ -200,6 +200,29 @@ export function readOnlyRefusal(): { error: string; code: 'read-only'; authRequi
 }
 
 /**
+ * Whether this request carries the worker's `CRON_SECRET` bearer.
+ *
+ * Exported so the middleware and the morning route share one comparison. It is deliberately **not** part of `hostOnly`: a cron
+ * secret that could sign in like a host would unlock the ledger, the receipts, and the guest surveys. The middleware lets it through
+ * for `/api/platform/daily` and nothing else, and the route compares it again for itself.
+ *
+ * The comparison does not return early on the first differing byte. The timing difference is small over a network, but a secret
+ * check is the wrong place to be casual.
+ */
+export function cronAuthorized(request: Request, env: unknown): boolean {
+  const expected = typeof (env as Record<string, unknown> | null)?.CRON_SECRET === 'string'
+    ? ((env as Record<string, unknown>).CRON_SECRET as string).trim()
+    : '';
+  if (!expected) return false;
+  const authorization = request.headers.get('Authorization') ?? '';
+  const bearer = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  if (!bearer || bearer.length !== expected.length) return false;
+  let diff = 0;
+  for (let index = 0; index < expected.length; index += 1) diff |= expected.charCodeAt(index) ^ bearer.charCodeAt(index);
+  return diff === 0;
+}
+
+/**
  * Refuse a write from a read-only role.
  *
  * Returns a 403 with a `read-only` code, or null when the caller may write. A route calls this **after** `hostOnly`, so an

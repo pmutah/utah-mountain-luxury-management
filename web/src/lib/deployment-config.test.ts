@@ -82,6 +82,10 @@ const NOT_CONFIGURED: Record<string, string> = {
     'the canyon road feed. The National Weather Service needs no key and covers snow, forecast, and winter alerts; a road feed needs this key **and** UDOT_ROAD_ENDPOINT before anything is called. With neither, the desk says the road is not connected rather than implying it is open.',
   UDOT_ROAD_ENDPOINT:
     "the URL that key belongs to. Not guessed: a wrong endpoint would answer a plausible failure that reads like a road report.",
+  CRON_SECRET:
+    'the worker cron secret. Not a host bearer: the app accepts it only on /api/platform/daily, so a leaked cron secret cannot read the books. Without it the worker logs that the morning run was not called.',
+  HOST_DIGEST_TO:
+    'the number the morning text goes to. Unset means the run composes the text and sends nothing, which is the intended state until the owner names a number.',
 };
 
 /** Every `env.X` the runtime actually reads. */

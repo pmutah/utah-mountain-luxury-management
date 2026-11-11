@@ -117,6 +117,11 @@ const HOST_ROUTES = [
    * message and never a published rate.
    */
   'platform/switches.ts',
+  /*
+   * The morning run. Host only, plus a `CRON_SECRET` bearer the worker uses for this one path. It records a shadow day, builds the
+   * morning list, and sends at most one text to the host per date.
+   */
+  'platform/daily.ts',
   'mcp/index.ts',
 ];
 

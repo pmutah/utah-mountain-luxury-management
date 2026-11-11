@@ -263,12 +263,19 @@ export const READ_ROUTES: BotRoute[] = [
     writes: false,
   },
   {
-    path: '/api/platform/switches',
+    path: '/api/platform/daily',
     method: 'post',
-    operationId: 'setAgentSwitch',
+    operationId: 'runMorningDigest',
     summary:
-      'Set one switch. Only digest, snow, and shadowDay are accepted; a locked switch is refused 409 with the reason. None of them messages a guest or publishes a rate.',
+      'The morning run: records today\'s shadow day from the live calendar, builds the morning list, reads the snow when that switch is on, and sends at most one text to the host per date. Authorised by a host session or the worker\'s CRON_SECRET bearer, which is accepted on this route only.',
     writes: true,
+  },
+  {
+    path: '/api/platform/daily',
+    method: 'get',
+    operationId: 'readMorningDigestSetup',
+    summary: 'What the morning run would use: the three switches, whether Twilio is configured, and whether a recipient is set. Sends nothing.',
+    writes: false,
   },
   {
     path: '/api/stay-guide/{token}/conditions',
