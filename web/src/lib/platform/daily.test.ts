@@ -9,6 +9,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cronAuthorized } from '../../../functions/_lib/roles.ts';
+import { daySawRealComps } from '../market/shadow-log.ts';
 import { onRequestGet, onRequestPost } from '../../../functions/api/platform/daily.ts';
 
 const root = join(process.cwd());
@@ -26,6 +27,28 @@ function fakeKv(seed: Record<string, string> = {}) {
 function context(env: Record<string, unknown>, request: Request) {
   return { request, env, params: {}, data: {}, next: async () => new Response(null), waitUntil: () => {}, passThroughOnException: () => {} } as never;
 }
+
+test('a hand-written digest cannot satisfy the shadow gate', () => {
+  /*
+   * The hole this closes, and it was mine. `daySawRealComps` rejects a digest that *says* "sample comps" — so a digest that says nothing
+   * about comps at all passes it. The morning run's first version composed exactly such a line, which means seven mornings of a run that
+   * never read a comp would have unlocked the rate switch on a market nobody measured. That is the failure the gate exists to prevent.
+   *
+   * The run now reads the board and refuses to record a day whose measured nights are too thin, so the test asserts both halves: the
+   * predicate is not fooled by silence, and the route refuses on a thin market.
+   */
+  const silent = `Morning run for 2026-11-12. 0 arriving, 0 leaving, 0 nights no stay can sell inside 14 days. Nothing sent to Hospitable.`;
+  // The raw predicate is fooled by a silent digest — this is why the route must not rely on it alone.
+  assert.equal(daySawRealComps(silent), true, 'the predicate is stricter than expected; the route guard may be redundant');
+
+  // The route's own gate: fewer than five measured nights refuses.
+  const route = readFileSync(join(root, 'functions/api/platform/daily.ts'), 'utf8');
+  assert.match(route, /measured < 5/, 'the morning run records a shadow day from a thin market');
+  assert.match(route, /readMarketBoard\(/, 'the morning run composes a digest instead of reading the board');
+  assert.match(route, /after\.dates\.includes\(today\)/, 'the run does not check that the day it wrote actually counts');
+  // And it says so rather than silently doing nothing.
+  assert.match(route, /carries no measured comp asks|only \$\{measured\}/);
+});
 
 test('the cron secret is not a host bearer', () => {
   /*

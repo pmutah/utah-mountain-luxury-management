@@ -33,6 +33,8 @@ import { cronAuthorized } from '../../_lib/roles';
 import { sendTwilioSms, isTwilioConfigured } from '../../_lib/twilio-sms';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
+import { loadLiveNights, loadApprovedRates } from '../../_lib/pricing-store';
+import { buildMarketBoard } from '../../../src/lib/market/board';
 import { readConditions } from '../../_lib/platform/weather';
 import { addDays, denverToday } from '../../../src/lib/market/dates';import { nightsAtRisk, nightsAtRiskLine } from '../../../src/lib/platform/nights-at-risk';
 import { mergeSavedShadowDay, shadowClockFromSaved, type SavedShadowDay } from '../../../src/lib/market/shadow-log';
@@ -126,25 +128,46 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         shadowNote = `Shadow day ${clock.days} of 7 already recorded.`;
       } else {
         /*
-         * The digest text a shadow day carries has to state that nothing was sent. Rather than composing a second, weaker digest
-         * here, the line records what this run observed and says the unsent sentence the store requires.
+         * The shadow day must be built from a **real** market, or it does not count.
+         *
+         * The first version of this run composed its own sentence and saved it. That would have been a worse bug than the one it replaced:
+         * `daySawRealComps` only rejects a digest that *says* "sample comps", and a hand-written line says nothing about comps at all — so it
+         * passed the check while having read no comp. Seven mornings of that would have unlocked the rate switch on a market nobody measured,
+         * which is exactly what the gate exists to prevent.
+         *
+         * So the board is read for real, and a board with no measured nights refuses to record rather than counting as a day.
          */
-        const digest = [
-          `Morning run for ${today}.`,
-          `${arrivals.length} arriving, ${departures.length} leaving, ${riskyNights} nights no stay can sell inside 14 days.`,
-          snowLine,
-          'Nothing sent to Hospitable.',
-        ]
-          .filter(Boolean)
-          .join(' ');
-        try {
-          const merged = mergeSavedShadowDay(saved, { date: today, digest, savedAt: new Date().toISOString() });
-          await kvPut(env, SHADOW_KEY, merged);
-          shadowNote = `Shadow day ${shadowClockFromSaved(merged, today).days} of 7 recorded.`;
-        } catch (err) {
-          shadowNote = storageReadPaused(err)
-            ? 'The shadow day could not be written.'
-            : 'The shadow day was not recorded.';
+        const board = await readMarketBoard(env);
+        if (!board.ok) {
+          shadowNote = `The shadow day was not recorded: ${board.reason}`;
+        } else {
+          const digest = [
+            `Morning run for ${today}.`,
+            `${arrivals.length} arriving, ${departures.length} leaving, ${riskyNights} nights no stay can sell inside 14 days.`,
+            `Market: ${board.measuredNights} measured nights, median ${board.median === null ? 'not measured' : `$${board.median}`}.`,
+            snowLine,
+            'Nothing sent to Hospitable.',
+          ]
+            .filter(Boolean)
+            .join(' ');
+          try {
+            const merged = mergeSavedShadowDay(saved, { date: today, digest, savedAt: new Date().toISOString() });
+            /*
+             * The store refuses a digest that cannot count. That refusal is the answer, not a failure to paper over: a day saved but
+             * ineligible would read as progress while the clock stayed still.
+             */
+            const after = shadowClockFromSaved(merged, today);
+            if (!after.dates.includes(today)) {
+              shadowNote = `The shadow day was not counted: the market it read carries no measured comp asks.`;
+            } else {
+              await kvPut(env, SHADOW_KEY, merged);
+              shadowNote = `Shadow day ${after.days} of 7 recorded.`;
+            }
+          } catch (err) {
+            shadowNote = storageReadPaused(err)
+              ? 'The shadow day could not be written.'
+              : 'The shadow day was not recorded.';
+          }
         }
       }
     }
@@ -223,8 +246,57 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 };
 
-async function readShadowDays(env: Env): Promise<SavedShadowDay[]> {
+/**
+ * The market as it actually stands, for the shadow day to record.
+ *
+ * This builds the board **in process**, from the same functions `/api/market/overview` uses, rather than fetching that route over HTTP. My
+ * first version did fetch it, and the run answered "the river board answered 401": the overview route is host-gated, and a cron call carries no
+ * session, so it could never have read its own market. A cron asking the app to authorise itself is the wrong shape.
+ *
+ * `measuredNights` counts nights whose band came from a **saved comp ask**, and `median` is the median of those measured nights only — the
+ * same `liveMedianAsk` the market page shows. A house with no saved comps reports zero and the day is not recorded.
+ */
+async function readMarketBoard(
+  env: Env,
+): Promise<{ ok: true; measuredNights: number; median: number | null } | { ok: false; reason: string }> {
   try {
+    const from = denverToday();
+    const days = 90;
+    const approved = (await loadApprovedRates(env)).map((row) => ({ house: row.house, date: row.date, guest: row.guest }));
+    const stays = await getAllReservations(env);
+    const rows: Array<{ measured: number; median: number | null }> = [];
+    for (const house of HOUSES) {
+      const live = await loadLiveNights(env, house, from, days);
+      const board = buildMarketBoard(
+        house,
+        from,
+        days,
+        undefined,
+        live ?? null,
+        approved.filter((row) => row.house === house).map((row) => ({ date: row.date, guest: row.guest })),
+      );
+      void stays;
+      rows.push({
+        measured: board.summary.measuredNights,
+        median: board.summary.liveMedianAsk,
+      });
+    }
+    const measured = Math.min(...rows.map((row) => row.measured));
+    const medians = rows.map((row) => row.median).filter((value): value is number => typeof value === 'number');
+    const median = medians.length > 0 ? Math.round(medians.reduce((sum, value) => sum + value, 0) / medians.length) : null;
+    if (measured < 5) {
+      return {
+        ok: false,
+        reason: `only ${measured} of the next 30 nights carry a saved comp ask, and a shadow day needs a measured market`,
+      };
+    }
+    return { ok: true, measuredNights: measured, median };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : 'the market could not be read' };
+  }
+}
+
+async function readShadowDays(env: Env): Promise<SavedShadowDay[]> {  try {
     const saved = await kvGet<unknown>(env, SHADOW_KEY, []);
     if (!Array.isArray(saved)) return [];
     return saved.filter(
