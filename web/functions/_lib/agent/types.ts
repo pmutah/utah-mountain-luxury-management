@@ -41,8 +41,8 @@ export interface ReservationRecord {
    * Money a **cancelled** booking still earned, when the channel kept a cancellation fee and paid it out anyway.
    *
    * Deliberately not `payout`. On a cancelled row `payout` holds what the stay *would* have paid — the live book has
-   * twenty such rows, several over a thousand dollars, and none of that money ever arrived. A fee is only income when
-   * this field says so, so no existing cancelled row changes value.
+   * sixteen cancelled rows, twelve of them carrying a payout, and none of that money ever arrived. A fee is only
+   * income when this field says so, so no existing cancelled row changes value.
    */
   cancellationIncome?: number;
   source: string;

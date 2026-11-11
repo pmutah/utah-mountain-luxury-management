@@ -16,6 +16,11 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
     status?: ReservationStatus;
     note?: string;
     payout?: number;
+    /**
+     * Money a cancelled stay still earned, when the channel kept a cancellation fee. Its own field, never `payout`,
+     * because on a cancelled row `payout` is the figure the stay would have paid and reading it would invent money.
+     */
+    cancellationIncome?: number;
     guestName?: string;
     guestEmail?: string;
     guestPhone?: string;
@@ -42,6 +47,20 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
       return corsJson(request, { error: 'payout must be a number ≥ 0' }, 400);
     }
     patch.payout = payout;
+  }
+  /*
+   * A cancellation fee is money that arrived, so it is checked the same way a payment is: a real, positive figure.
+   * A zero or negative value records no fee rather than a fee of nothing, and a blank one is refused instead of
+   * being read as `0` — `Number('')` is `0`, which would silently clear a fee that is already on the row.
+   */
+  if (body.cancellationIncome !== undefined) {
+    if (typeof body.cancellationIncome !== 'number' || !Number.isFinite(body.cancellationIncome)) {
+      return corsJson(request, { error: 'cancellationIncome must be a number' }, 400);
+    }
+    if (body.cancellationIncome <= 0) {
+      return corsJson(request, { error: 'cancellationIncome must be greater than 0' }, 400);
+    }
+    patch.cancellationIncome = Math.round(body.cancellationIncome * 100) / 100;
   }
 
   if (body.status) {

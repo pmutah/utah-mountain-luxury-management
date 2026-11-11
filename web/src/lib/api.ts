@@ -102,6 +102,13 @@ export interface Reservation {
     reference?: string;
     note?: string;
   }>;
+  /**
+   * Money a **cancelled** booking still earned, when the channel kept a cancellation fee and paid it out anyway.
+   *
+   * Its own field, never `payout`: on a cancelled row `payout` is what the stay would have paid, and reading that as
+   * income would invent money that never arrived. Absent means no fee, which is every other cancelled stay.
+   */
+  cancellationIncome?: number;
   source: string;
   status?: string;
   note?: string;

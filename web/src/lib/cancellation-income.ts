@@ -3,7 +3,7 @@
  *
  * A cancelled booking normally carries no income. The guest never stayed, so the `payout` on the row is what the
  * booking *would* have paid, and reading it as income would invent money that never arrived — the live book holds
- * twenty such rows, several with four-figure payouts, and none of that cash exists.
+ * sixteen cancelled rows, twelve of them carrying a payout, and none of that cash exists.
  *
  * But a channel sometimes keeps a cancellation fee under the host's own policy and pays it out anyway. That money is
  * real: it lands in the bank while the stay never happens. So it is recorded in its **own** field,

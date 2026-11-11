@@ -24,6 +24,7 @@ import { applyPublicShare, bookShare, companionStayFacts, companionStayNote, pub
 import { LISTING_TITLE } from '../lib/listing';
 import { formatWhole } from '../lib/luxury';
 import { formatCents, quoteWithTax } from '../lib/platform/guest-ops';
+import { CANCELLATION_LINE, houseFaq } from '../lib/guest-content';
 import { sendFunnel } from '../lib/platform/funnel-client';
 import { useTurnstile } from '../lib/platform/useTurnstile';
 import { openingStay } from '../lib/booking-open';
@@ -604,7 +605,14 @@ export function DirectBook() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const node = document.querySelector('meta[property="og:url"]');
-    if (node) node.setAttribute('content', `https://wilhite-portfolio.pages.dev${sharePath}`);
+    /*
+     * The share tag follows the origin the page is actually served from.
+     *
+     * This hardcoded the pages.dev host, so a link shared from any other host — a custom domain after the DNS cutover, a preview
+     * alias — told every social preview to look somewhere else. `window.location.origin` is the honest answer, and it falls back
+     * to the known host only when there is no window at all.
+     */
+    if (node) node.setAttribute('content', `${window.location.origin}${sharePath}`);
     if (`${window.location.pathname}${window.location.search}` === sharePath) return;
     window.history.replaceState(null, '', sharePath);
   }, [sharePath]);
@@ -2218,7 +2226,28 @@ export function DirectBook() {
         to `/terms`; linking the `.html` form would make every click a redirect.
       */}
       <footer className="mx-auto mt-10 max-w-5xl border-t border-white/10 px-1 pt-5 text-xs text-[var(--uml-muted)]" data-bot="stay-footer">
-        <nav aria-label="House policies">
+        <div className="mt-6">
+          {/*
+            The same questions as the house page, answered from this house's own facts, in a footer block a guest scrolls past
+            while deciding. `<details>` needs no JavaScript and is announced as a disclosure by a screen reader.
+          */}
+          <details className="rounded-2xl border border-white/10 px-4 py-3" data-bot="stay-faq">
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-widest">
+              Questions before you book
+            </summary>
+            <dl className="mt-3 space-y-2">
+              {houseFaq(house).map((row) => (
+                <div key={row.question}>
+                  <dt className="font-semibold">{row.question}</dt>
+                  <dd className="mt-1 text-white/60" data-bot="stay-faq-answer">
+                    {row.answer}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        </div>
+        <nav aria-label="House policies" className="mt-3">
           <a href="/terms" data-bot="stay-terms" className="underline">Terms</a>
           {' · '}
           <a href="/privacy" data-bot="stay-privacy" className="underline">Privacy</a>
@@ -2228,6 +2257,15 @@ export function DirectBook() {
         <p className="mt-2">
           A quote on this site is a request. It does not charge a card and it does not hold a night unless the page says a hold
           is on. Questions go to utahmountainluxury@gmail.com.
+        </p>
+        {/*
+          The cancellation terms sit above the links rather than inside them. A guest deciding whether to send a request asks this
+          before almost anything else, and burying it in a terms page nobody opens is how a booking page looks cheaper than the
+          policy behind it. The wording is the owner's rule until he sets one: the terms are confirmed in writing with the booking,
+          and nothing is charged to send a request.
+        */}
+        <p className="mt-2" data-bot="stay-cancellation">
+          {CANCELLATION_LINE}
         </p>
       </footer>
       <div className="stay-sheet-source" data-bot="stay-guide-print">

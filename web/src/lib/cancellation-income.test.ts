@@ -8,9 +8,8 @@
  *
  * The trap this file exists to prevent: **`payout` on a cancelled row is not income.** It is the figure the stay
  * would have paid. Writing the fee into `payout` would make the board look right on one row and silently wrong on
- * every other cancelled stay, because the live book holds twenty of them with four-figure payouts that never
- * arrived. The fee therefore lives in `cancellationIncome`, and that field alone decides whether a cancelled row
- * posts.
+ * every other cancelled stay, because the live book holds twelve cancelled rows carrying payouts that never arrived.
+ * The fee therefore lives in `cancellationIncome`, and that field alone decides whether a cancelled row posts.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';

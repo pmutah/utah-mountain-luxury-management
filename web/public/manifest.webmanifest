@@ -1,8 +1,9 @@
 {
-  "name": "Utah Mountain Luxury Management",
-  "short_name": "UML Management",
-  "description": "Short-term rental management for The Ranch House, The Lindon House, and The River House",
-  "start_url": "/",
+  "name": "Utah Mountain Luxury",
+  "short_name": "UML",
+  "description": "Three mountain homes in Utah County — the River House, the Ranch House, and the Lindon House. Book direct.",
+  "start_url": "/houses/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#07110f",
   "theme_color": "#07110f",

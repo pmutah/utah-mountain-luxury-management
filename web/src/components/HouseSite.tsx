@@ -10,6 +10,8 @@ import { HouseDays } from './HouseDays';
 import { denverHour, quietNow } from '../lib/stay-rhythm';
 import { ArriveReady } from './ArriveReady';
 import { HouseManual } from './HouseManual';
+import { HouseGallery } from './HouseGallery';
+import { HouseFaq, HouseReviews } from './HouseSocialProof';
 import { bookingRules } from '../lib/booking-rules';
 import { houseOffers, housePageAside, type HouseAsideParty, type HouseListStay } from '../lib/house-offer';
 import { heldSearchLines, houseCardLines, houseMonthPace, houseNextStayLine, housePageRhythm, housePartyLine, houseQuoteCaption, houseQuotePending, houseRhythms, otherStayRules, partyFitList, quotedStayHref, quotedStayPaint, searchHouses, shortestFixLines, stayRuleLines } from '../lib/house-search';
@@ -634,10 +636,9 @@ function HousePage({ house }: { house: PublicHouse }) {
           <BrandMark />
         </div>
         {house.photo.src && (
-          <figure className="overflow-hidden rounded-3xl">
-            <img src={house.photo.src} alt={house.name} className="h-72 w-full object-cover sm:h-96" data-bot="house-photo" />
-            <figcaption className="px-1 pt-3 text-xs text-[var(--uml-muted)]">{house.photo.caption}</figcaption>
-          </figure>
+          <div data-bot="house-photo-wrap">
+            <HouseGallery house={house.id} />
+          </div>
         )}
         <p className="uml-kicker mt-8">{house.id}</p>
         <h1 className="font-display text-5xl">{house.name}</h1>
@@ -695,6 +696,8 @@ function HousePage({ house }: { house: PublicHouse }) {
             ))}
           </div>
         )}
+        <HouseReviews house={house.id} />
+        <HouseFaq house={house.id} />
         <ul className="mt-6 space-y-2 text-sm" data-bot="house-rules">
           {house.rules.map((rule) => (
             <li key={rule}>{rule}</li>

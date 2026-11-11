@@ -199,7 +199,7 @@ export function groupQuotePending(): { label: string } {
   return { label };
 }
 
-export type PublicShare = { title: string; description: string; url: string };
+export type PublicShare = { title: string; description: string; url: string; image?: string };
 
 // A quote charges no card. A request does hold the dates for 30 minutes, so this line does not claim
 // the page holds nothing.
@@ -212,8 +212,8 @@ const DASHBOARD_SHARE = {
   url: `${ORIGIN}/`,
 };
 
-function shareText(title: string, description: string, url: string): PublicShare {
-  const share = { title, description, url };
+function shareText(title: string, description: string, url: string, image?: string): PublicShare {
+  const share = { title, description, url, ...(image ? { image } : {}) };
   if (/\$|door\s*code|wi-?fi|password|\b801\b/i.test(`${title} ${description}`)) {
     return { title: 'Utah Mountain Luxury', description: SHARE_HOLD, url };
   }
@@ -223,10 +223,20 @@ function shareText(title: string, description: string, url: string): PublicShare
 /** Tab and share text for a public house page. No price, and it does not say a house is open. */
 export function publicShare(page: HouseId | 'index'): PublicShare {
   if (page === 'index') {
-    return shareText('The houses · Utah Mountain Luxury', `River, Ranch, and Lindon. ${SHARE_HOLD}`, `${ORIGIN}/houses/`);
+    return shareText(
+      'The houses · Utah Mountain Luxury',
+      `River, Ranch, and Lindon. ${SHARE_HOLD}`,
+      `${ORIGIN}/houses/`,
+      `${ORIGIN}/houses/river.jpg`,
+    );
   }
   const house = publicHouse(page);
-  return shareText(`${house.name} · Utah Mountain Luxury`, `${house.title}. ${SHARE_HOLD}`, `${ORIGIN}${house.pageHref}`);
+  /*
+   * The share image is the house's own first photo, at an absolute URL. A relative path is ignored by most social scrapers, which
+   * is why a shared link used to preview as a bare title.
+   */
+  const image = house.photo.src ? `${ORIGIN}${house.photo.src}` : undefined;
+  return shareText(`${house.name} · Utah Mountain Luxury`, `${house.title}. ${SHARE_HOLD}`, `${ORIGIN}${house.pageHref}`, image);
 }
 
 function partyBits(guests = '', children = ''): string {
@@ -350,12 +360,26 @@ export function applyPublicShare(share: PublicShare): () => void {
   setMeta('meta[property="og:title"]', share.title);
   setMeta('meta[property="og:description"]', share.description);
   setMeta('meta[property="og:url"]', share.url);
+  /*
+   * The share image.
+   *
+   * `index.html` carries an image and a Twitter card for the houses index, because a scraper that never runs this JavaScript has
+   * to see them. A house page overrides both with its own photo here. Setting an empty string would tell the scraper "no image",
+   * which is worse than leaving the generic one, so the tags are only touched when a share actually has an image.
+   */
+  if (share.image) {
+    setMeta('meta[property="og:image"]', share.image);
+    setMeta('meta[name="twitter:image"]', share.image);
+  }
+  setMeta('meta[name="twitter:title"]', share.title);
+  setMeta('meta[name="twitter:description"]', share.description);
   return () => {
     document.title = DASHBOARD_SHARE.title;
     setMeta('meta[name="description"]', DASHBOARD_SHARE.description);
     setMeta('meta[property="og:title"]', DASHBOARD_SHARE.title);
     setMeta('meta[property="og:description"]', DASHBOARD_SHARE.ogDescription);
     setMeta('meta[property="og:url"]', DASHBOARD_SHARE.url);
+    setMeta('meta[property="og:image"]', '');
   };
 }
 
