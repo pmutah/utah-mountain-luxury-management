@@ -258,3 +258,84 @@ export function stripHouses<T extends { propertyId?: string }>(rows: readonly T[
     return allowed.includes(house as 'ranch' | 'lindon' | 'river');
   });
 }
+
+/**
+ * The portfolio figures a role may see, with an unreadable house left **absent** rather than zeroed.
+ *
+ * This exists because the two Overview routes — `/api/portfolio/metrics` and `/api/portfolio/history` — never consulted the role at
+ * all. `/api/expenses` and `/api/reservations` stripped Lindon, so the owner role looked enforced; but the Overview tab fetched the
+ * metrics payload, which carried Lindon's revenue, its profit, its occupancy, and **every Lindon booking with the guest's name**. One
+ * request from the same session read the house the role exists to hide. A role enforced on two routes out of four is not a role.
+ *
+ * A `null` is deliberate and not a zero: `null` says "this house is not yours to see", while `0` would say "Lindon earned nothing this
+ * month" — a different and false statement. The payload reports which houses it omitted so the client can leave the card out instead of
+ * drawing a house that reads as empty.
+ */
+export function stripPortfolioHouses<T extends Record<string, unknown>>(
+  payload: T,
+  role: Role,
+): T & { houses?: readonly string[]; houseOmitted?: readonly string[] } {
+  const allowed = allowedHouses(role);
+  if (allowed === null) return payload;
+  const out = { ...payload } as Record<string, unknown>;
+  const omitted: string[] = [];
+  for (const house of ['ranch', 'lindon', 'river'] as const) {
+    if (!allowed.includes(house)) {
+      out[house] = null;
+      omitted.push(house);
+    }
+  }
+  /*
+   * The totals have to be rebuilt from the houses that remain, or the owner reads a portfolio figure that includes a house whose card
+   * says `null`. Both are recomputed from the stripped payload, so the headline and the cards cannot disagree.
+   */
+  const kept = (['ranch', 'lindon', 'river'] as const).filter((house) => allowed.includes(house));
+  const revenueOf = (row: unknown): number => {
+    const value = (row as { revenue?: unknown } | null | undefined)?.revenue;
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  };
+  const profitOf = (row: unknown): number => {
+    const value = (row as { profit?: unknown } | null | undefined)?.profit;
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  };
+  out.totalRevenue = kept.reduce((sum, house) => sum + revenueOf(out[house]), 0);
+  out.totalProfit = kept.reduce((sum, house) => sum + profitOf(out[house]), 0);
+
+  /*
+   * The occupancy average is not a sum, so it is recomputed over the houses still present. Without this the owner read an average that
+   * silently included a house they cannot see, and could infer its occupancy from the difference.
+   */
+  const occupancyOf = (row: unknown): number | null => {
+    const value = (row as { occupancy?: unknown } | null | undefined)?.occupancy;
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  };
+  const occupancies = kept.map((house) => occupancyOf(out[house])).filter((value): value is number => value !== null);
+  if (occupancies.length > 0) {
+    out.avgOccupancy = occupancies.reduce((sum, value) => sum + value, 0) / occupancies.length;
+  }
+
+  // The booking list and the expense list are filtered too. These are what carry a guest's name.
+  if (Array.isArray(out.reservations)) out.reservations = stripHouses(out.reservations as Array<{ propertyId?: string }>, role);
+  if (Array.isArray(out.expenses)) out.expenses = stripHouses(out.expenses as Array<{ propertyId?: string }>, role);
+  /*
+   * `properties` is the address book for the three houses. A house the role may not see is dropped from it as well, so the address of
+   * Lindon does not arrive in a payload that is otherwise stripped.
+   */
+  if (Array.isArray(out.properties)) {
+    out.properties = (out.properties as Array<{ id?: string }>).filter((row) => {
+      const id = row?.id;
+      return !id || allowed.includes(id as 'ranch' | 'lindon' | 'river');
+    });
+  }
+
+  // A nested previous-month block carries the same houses, so it gets the same treatment.
+  const previous = out.previous;
+  if (previous && typeof previous === 'object') {
+    out.previous = stripPortfolioHouses(previous as Record<string, unknown>, role);
+  }
+  if (Array.isArray(out.history)) {
+    out.history = (out.history as Array<Record<string, unknown>>).map((row) => stripPortfolioHouses(row, role));
+  }
+
+  return { ...(out as T), houses: allowed, houseOmitted: omitted };
+}

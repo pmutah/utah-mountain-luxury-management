@@ -5,6 +5,7 @@ import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { storageReadPaused } from '../../_lib/kv-json';
 import { currentYearMonth, monthRange } from '../../_lib/months';
 import { getAllReservations } from '../../_lib/reservations-store';
+import { resolveCaller, stripPortfolioHouses } from '../../_lib/roles';
 
 export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
@@ -84,15 +85,26 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     };
   });
 
-  return corsJson(request, {
-    endMonth,
-    count,
-    history,
-    reservations,
-    properties: Object.values(PROPERTIES),
-    // Nothing below this point runs on a paused read, so it is always the real store.
-    storageReads: 'ok' as const,
-  });
+  /*
+   * The role filter, on the whole payload: `history` rows, the booking list, the address book, and the per-month blocks. The Overview
+   * tab charts this history, and it used to hand an owner twelve months of Lindon revenue and every Lindon guest name.
+   */
+  const caller = resolveCaller(request, env);
+  if (caller.kind === 'denied') return hostDenied(request, env);
+  return corsJson(
+    request,
+    stripPortfolioHouses(
+      {
+        endMonth,
+        count,
+        history,
+        reservations,
+        properties: Object.values(PROPERTIES),
+        storageReads: 'ok' as const,
+      },
+      caller.role,
+    ),
+  );
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

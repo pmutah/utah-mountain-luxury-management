@@ -9,12 +9,34 @@ import { currentDayIso, formatMonthLabel } from './months';
 
 export type HouseId = 'ranch' | 'lindon' | 'river';
 
+/**
+ * The figures for one house, or `null` when the signed-in account may not see it.
+ *
+ * A house the server omitted arrives as `null`, so every consumer has to answer the same question: is this house yours to show? This
+ * is the one place that answers it. Returning `null` rather than a zeroed object is deliberate — a house the owner cannot see must not
+ * render as a house that earned nothing.
+ */
+export function houseMetrics(data: PortfolioData, house: HouseId): PropertyMetrics | null {
+  return data[house] ?? null;
+}
+
+/** The houses in this payload, in the order the dashboard shows them. An omitted house is left out. */
+export function visibleHouses(data: PortfolioData): HouseId[] {
+  return (['ranch', 'lindon', 'river'] as const).filter((house) => data[house] != null);
+}
+
+/**
+ * Revenue over the houses in this payload.
+ *
+ * A `null` house contributes nothing because it is **not there**, and the server has already rebuilt `totalRevenue` over the houses
+ * that remain. This sums the same set, so the headline and the cards cannot disagree.
+ */
 export function portfolioRevenue(data: PortfolioData) {
-  return data.ranch.revenue + data.lindon.revenue + data.river.revenue;
+  return (data.totalRevenue ?? visibleHouses(data).reduce((sum, house) => sum + (data[house]?.revenue ?? 0), 0)) || 0;
 }
 
 export function portfolioProfit(data: PortfolioData) {
-  return data.ranch.profit + data.lindon.profit + data.river.profit;
+  return (data.totalProfit ?? visibleHouses(data).reduce((sum, house) => sum + (data[house]?.profit ?? 0), 0)) || 0;
 }
 
 export function formatWhole(value: number) {
@@ -34,15 +56,21 @@ export interface WaterfallBand {
 }
 
 export function waterfallBands(data: PortfolioData, only?: HouseId): WaterfallBand[] {
-  const metrics = only ? [data[only]] : [data.ranch, data.lindon, data.river];
+  /*
+   * Only the houses in this payload. This array was the literal three, so an owner's waterfall tallied Lindon's cleaning, mortgage and
+   * operating cost into the portfolio's costs — and then showed Brandon's share climbing by Lindon's profit. A waterfall built from a
+   * house the viewer cannot see is a total that leaks it.
+   */
+  const houses = only ? (data[only] ? [only] : []) : visibleHouses(data);
+  const metrics = houses.map((house) => data[house]!) as PropertyMetrics[];
   const sum = (pick: (m: PropertyMetrics) => number) => metrics.reduce((s, m) => s + pick(m), 0);
-  const distFee = (id: HouseId) => (only && only !== id ? 0 : (data[id].dist?.mgtFee ?? 0));
+  const distFee = (id: HouseId) => (only && only !== id ? 0 : (data[id]?.dist?.mgtFee ?? 0));
   const distSide = (id: HouseId, side: 'brandon' | 'todd') =>
-    only && only !== id ? 0 : (data[id].dist?.[side] ?? 0);
+    only && only !== id ? 0 : (data[id]?.dist?.[side] ?? 0);
 
-  const includeLindon = !only || only === 'lindon';
+  const includeLindon = (!only || only === 'lindon') && data.lindon != null;
   const brandon =
-    distSide('ranch', 'brandon') + distSide('river', 'brandon') + (includeLindon ? data.lindon.profit : 0);
+    distSide('ranch', 'brandon') + distSide('river', 'brandon') + (includeLindon ? (data.lindon?.profit ?? 0) : 0);
   const todd = distSide('ranch', 'todd') + distSide('river', 'todd');
   const fee = distFee('ranch') + distFee('river');
 
@@ -87,7 +115,7 @@ export function waterfallBands(data: PortfolioData, only?: HouseId): WaterfallBa
 }
 
 export function hostPayout(data: PortfolioData, only?: HouseId) {
-  if (only) return data[only].revenue;
+  if (only) return data[only]?.revenue ?? 0;
   return portfolioRevenue(data);
 }
 
@@ -201,17 +229,21 @@ export function morningBriefing(data: PortfolioData): string {
   const rev = portfolioRevenue(data);
   const prev = data.previous?.totalRevenue;
   const month = formatMonthLabel(data.month);
-  const houses: Array<{ name: string; occ: number }> = [
-    { name: 'Ranch', occ: data.ranch.occupancy },
-    { name: 'Lindon', occ: data.lindon.occupancy },
-    { name: 'River', occ: data.river.occupancy },
-  ].sort((a, b) => b.occ - a.occ);
+  /*
+   * Only the houses this account may see. An omitted house is `null`, and reading `.occupancy` off it is how the brief would have
+   * named a house the viewer is not allowed to know about.
+   */
+  const houses: Array<{ name: string; occ: number }> = visibleHouses(data)
+    .map((house) => ({ name: house === 'ranch' ? 'Ranch' : house === 'lindon' ? 'Lindon' : 'River', occ: data[house]?.occupancy ?? 0 }))
+    .sort((a, b) => b.occ - a.occ);
   const lead = houses[0];
   let opener = `${month} shows ${formatWhole(rev)} in host payouts.`;
   if (prev != null && prev !== 0) {
     const delta = rev - prev;
     opener = `${month} is ${formatWhole(Math.abs(delta))} ${delta >= 0 ? 'ahead of' : 'behind'} last month.`;
   }
+  // No visible house means no "most booked" sentence, rather than one built from an empty array.
+  if (!lead) return opener;
   const booked = `${lead.name} is ${lead.occ.toFixed(0)}% booked.`;
   const upcoming = nextStay(data.reservations);
   if (!upcoming) return `${opener} ${booked}`;

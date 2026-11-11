@@ -73,7 +73,25 @@ export function PropertyDetail({
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
   onError: (msg: string) => void;
 }) {
-  const metrics: PropertyMetrics = data[tab];
+  /*
+   * A house this account may not see arrives as `null`, and this is the page a direct link reaches: an owner could type `#/lindon` or
+   * click the chip, and the component read `data.lindon.profit` off a null. Rather than a white screen or a zeroed house, it says the
+   * house is not part of this account's view. The server has already withheld every figure, so there is nothing here to show even if the
+   * page wanted to.
+   */
+  const metrics: PropertyMetrics | null = data[tab] ?? null;
+  if (!metrics) {
+    return (
+      <div className="uml-panel rounded-3xl px-6 py-8" data-bot="property-not-visible" data-house={tab}>
+        <p className="uml-kicker">{tab}</p>
+        <p className="font-display text-3xl mt-1">Not part of this account</p>
+        <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">
+          This account reads the houses its owner is part of. This house is not one of them, so no figure is shown — and none was sent to
+          this browser.
+        </p>
+      </div>
+    );
+  }
   const monthReservations = data.reservations.filter(
     (r) => r.propertyId === tab && r.checkIn.startsWith(data.month),
   );

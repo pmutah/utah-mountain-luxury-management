@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { PROPERTIES, formatCurrency, type PortfolioData } from './api';
 import { formatMonthLabel } from './months';
 import { MANAGEMENT_FEE_LABEL } from './owner-fee';
-import { formatWhole, morningBriefing, portfolioProfit, portfolioRevenue, propertyHealth, waterfallBands } from './luxury';
+import { formatWhole, morningBriefing, portfolioProfit, portfolioRevenue, propertyHealth, visibleHouses, waterfallBands } from './luxury';
 
 export async function downloadOwnerLetter(data: PortfolioData) {
   const pdf = await PDFDocument.create();
@@ -48,10 +48,11 @@ export async function downloadOwnerLetter(data: PortfolioData) {
   );
   y -= 6;
 
-  for (const id of ['ranch', 'lindon', 'river'] as const) {
-    const health = propertyHealth(id, data[id]);
+  for (const id of visibleHouses(data)) {
+    const metrics = data[id]!;
+    const health = propertyHealth(id, metrics);
     write(
-      `${PROPERTIES[id].name}: ${formatCurrency(data[id].revenue)} payout, ${data[id].occupancy.toFixed(0)}% occupied, health ${health.score}.`,
+      `${PROPERTIES[id].name}: ${formatCurrency(metrics.revenue)} payout, ${metrics.occupancy.toFixed(0)}% occupied, health ${health.score}.`,
       12,
     );
   }

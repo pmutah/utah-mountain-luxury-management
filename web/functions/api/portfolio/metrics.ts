@@ -5,6 +5,7 @@ import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { storageReadPaused } from '../../_lib/kv-json';
 import { addMonths, currentYearMonth } from '../../_lib/months';
 import { getAllReservations } from '../../_lib/reservations-store';
+import { resolveCaller, stripPortfolioHouses } from '../../_lib/roles';
 
 /**
  * The portfolio figures for a month.
@@ -103,7 +104,15 @@ export const onRequestGet: PagesFunction<SettingsEnv> = async ({ request, env })
     };
   }
 
-  return corsJson(request, payload);
+  /*
+   * The role filter. It runs on the **whole payload**, after every figure is built, because that is the only place where it cannot be
+   * forgotten: the stripped response carries `lindon: null`, a rebuilt total, a rebuilt average, and a booking list with no Lindon row
+   * in it. `/api/expenses` and `/api/reservations` already did this; these two routes are what the Overview tab actually calls, so the
+   * owner role was enforced on the two routes the owner rarely visits.
+   */
+  const caller = resolveCaller(request, env);
+  if (caller.kind === 'denied') return hostDenied(request, env);
+  return corsJson(request, stripPortfolioHouses(payload, caller.role));
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

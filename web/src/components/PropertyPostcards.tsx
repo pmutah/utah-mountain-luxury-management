@@ -1,6 +1,6 @@
 import { PROPERTIES, formatCurrency, type PortfolioData, type Reservation } from '../lib/api';
 import { currentDayIso } from '../lib/months';
-import { propertyHealth, type HealthSignals, type HouseId } from '../lib/luxury';
+import { propertyHealth, visibleHouses, type HealthSignals, type HouseId } from '../lib/luxury';
 import { HOUSE_PHOTOS } from '../lib/house-photos';
 import { HealthDial } from './HealthDial';
 
@@ -58,11 +58,15 @@ export function PropertyPostcards({
   onOpenBuild: () => void;
   signals?: (id: HouseId) => HealthSignals;
 }) {
-  const ids: HouseId[] = ['ranch', 'lindon', 'river'];
+  /*
+   * Only the houses in this payload. An owner's card grid drew all three, so Lindon appeared with its revenue and its next arrival —
+   * which is the guest's name — beside two houses the owner is allowed to see.
+   */
+  const ids = visibleHouses(data);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {ids.map((id) => {
-        const metrics = data[id];
+        const metrics = data[id]!;
         const health = propertyHealth(id, metrics, signals?.(id));
         const stay = nextArrival(data.reservations, id);
         const when = stay

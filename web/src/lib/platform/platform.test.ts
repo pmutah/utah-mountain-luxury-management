@@ -1018,6 +1018,20 @@ test('the role matrix is enforced by the routes that carry the books', () => {
     assert.match(source, /refuseReadOnly\(/, `${name} does not refuse a read-only account`);
   }
   /*
+   * The Overview routes carry the same house filter as the ledger routes.
+   *
+   * The defect: `/api/expenses` and `/api/reservations` stripped Lindon, so the owner role looked enforced — but the Overview tab
+   * reads `/api/portfolio/metrics` and `/api/portfolio/history`, and neither one consulted the role at all. A single request from
+   * the same session returned Lindon's revenue, its profit, its occupancy, and **every Lindon booking with the guest's name**. A
+   * role enforced on the two routes an owner rarely visits is not a role.
+   */
+  const metricsRoute = readFileSync(join(root, 'functions/api/portfolio/metrics.ts'), 'utf8');
+  const historyRoute = readFileSync(join(root, 'functions/api/portfolio/history.ts'), 'utf8');
+  for (const [name, source] of [['metrics', metricsRoute], ['history', historyRoute]] as const) {
+    assert.match(source, /stripPortfolioHouses\(/, `${name} does not filter the houses an owner may not see`);
+    assert.match(source, /resolveCaller\(/, `${name} does not resolve the caller's role`);
+  }
+  /*
    * The same defect at the gate that runs first: the middleware only asked "are you signed in", so a role no route checked
    * wrote anything it could reach. It now refuses a non-GET from a read-only session before any route sees it.
    */

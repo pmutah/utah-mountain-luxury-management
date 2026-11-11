@@ -7,6 +7,7 @@ import {
   portfolioProfit,
   portfolioRevenue,
   propertyHealth,
+  visibleHouses,
   type HouseId,
 } from '../lib/luxury';
 import { StatCard } from './StatCard';
@@ -74,10 +75,17 @@ export function PortfolioOverview({
       cancel = true;
     };
   }, []);
-  const { ranch, lindon, previous } = data;
+  const { previous } = data;
   const rev = portfolioRevenue(data);
   const profit = portfolioProfit(data);
-  const occ = data.avgOccupancy ?? (ranch.occupancy + lindon.occupancy) / 2;
+  /*
+   * The occupancy average over the houses in this payload only. `data.lindon` is `null` for an owner, and the old expression added
+   * `lindon.occupancy` unconditionally — which both crashed and, worse, used a figure from a house the role exists to hide.
+   */
+  const visible = visibleHouses(data);
+  const occ =
+    data.avgOccupancy ??
+    (visible.length > 0 ? visible.reduce((sum, house) => sum + (data[house]?.occupancy ?? 0), 0) / visible.length : 0);
   const year = Number(data.month.slice(0, 4));
   const reservations = history?.reservations?.length ? history.reservations : data.reservations;
   const series = history?.history ?? [];
@@ -146,14 +154,16 @@ export function PortfolioOverview({
       <PropertyPostcards data={data} onOpen={onOpenHouse} onOpenBuild={onOpenBuild} signals={signals} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {(['ranch', 'lindon', 'river'] as const).map((id) => {
-          const health = propertyHealth(id, data[id], signals(id));
+        {/* Only the houses this account may see. A `null` house has no health to draw and no profit to name. */}
+        {visibleHouses(data).map((id) => {
+          const metrics = data[id]!;
+          const health = propertyHealth(id, metrics, signals(id));
           return (
             <div key={id} className="uml-panel rounded-3xl p-5">
               <p className="uml-kicker">{id}</p>
               <div className="mt-2 flex items-start justify-between gap-3">
                 <HealthDial score={health.score} factors={health.factors} />
-                <p className="text-right text-sm text-[var(--uml-muted)]">{formatCurrency(data[id].profit)} net</p>
+                <p className="text-right text-sm text-[var(--uml-muted)]">{formatCurrency(metrics.profit)} net</p>
               </div>
             </div>
           );

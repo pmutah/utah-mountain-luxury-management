@@ -338,9 +338,16 @@ export interface PropertyMetrics {
 
 export interface PortfolioData {
   month: string;
-  ranch: PropertyMetrics;
-  lindon: PropertyMetrics;
-  river: PropertyMetrics;
+  /**
+   * A house the signed-in role may not see arrives as `null`, never as a zeroed object.
+   *
+   * An owner session reads Ranch and River only, and the server omits Lindon from this payload — including its revenue, its profit, and
+   * its bookings. `null` says "not yours to see"; a zero would say "this house earned nothing", which is a different and false thing. A
+   * control that draws the house has to handle the null rather than reading `.profit` off it.
+   */
+  ranch: PropertyMetrics | null;
+  lindon: PropertyMetrics | null;
+  river: PropertyMetrics | null;
   totalRevenue: number;
   totalProfit: number;
   avgOccupancy: number;
@@ -348,11 +355,15 @@ export interface PortfolioData {
   expenses: Expense[];
   extraCleaningFees: Record<string, number>;
   storageReads?: 'ok' | 'paused';
+  /** The houses this account may read. Absent on an admin session, which may read every house. */
+  houses?: string[];
+  /** Houses the server left out of this payload, so a card can be omitted instead of drawn empty. */
+  houseOmitted?: string[];
   previousMonth?: string;
   previous?: {
-    ranch: PropertyMetrics;
-    lindon: PropertyMetrics;
-    river: PropertyMetrics;
+    ranch: PropertyMetrics | null;
+    lindon: PropertyMetrics | null;
+    river: PropertyMetrics | null;
     totalRevenue: number;
     totalProfit: number;
     avgOccupancy: number;
