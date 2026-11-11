@@ -17,6 +17,7 @@ import { currentYearMonth } from '../lib/months';
 import { todayInUtah } from '../lib/paid-date';
 import { fileFromClipboard, isChatPasteTarget, prepareReceiptFile } from '../lib/receipt-image';
 import { HouseholdExpenseRow } from './HouseholdExpenseRow';
+import { useReadOnly } from '../lib/platform/viewer';
 
 const CATEGORIES = ['Furnishings', 'Decor', 'Supplies', 'Other'] as const;
 
@@ -31,6 +32,7 @@ export function OurExpenses({
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
   onError: (msg: string) => void;
 }) {
+  const readOnly = useReadOnly();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -431,6 +433,23 @@ export function OurExpenses({
         </div>
       </div>
 
+      {/*
+        A read-only account is not shown a form it cannot submit. The middleware refuses the write either way; this just stops
+        the owner from typing a whole receipt into a button that answers 403.
+      */}
+      {readOnly && (
+        <section
+          className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-800"
+          data-bot="ours-read-only"
+        >
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Read only</p>
+          <p className="mt-1 text-sm text-slate-300">
+            This account can read the household ledger and cannot add or remove a purchase. Ask Brandon to make the change.
+          </p>
+        </section>
+      )}
+
+      {!readOnly && (
       <section className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-rose-800/40">
         <div className="flex items-center gap-2 mb-3">
           <Plus className="w-4 h-4 text-rose-400" />
@@ -664,6 +683,7 @@ export function OurExpenses({
           </div>
         </div>
       </section>
+      )}
 
       <section className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-800">
         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-3">
@@ -754,24 +774,28 @@ export function OurExpenses({
                     {row.reason ? ` · removed: ${row.reason}` : ''}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  disabled={restoring === row.id}
-                  onClick={() => void restoreExpense(row.id)}
-                  data-bot="expense-archive-restore"
-                  className="rounded-full border border-slate-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-200 disabled:opacity-50"
-                >
-                  {restoring === row.id ? 'Restoring…' : 'Restore'}
-                </button>
-                <button
-                  type="button"
-                  disabled={restoring === row.id}
-                  onClick={() => void purgeExpense(row.id, row.description || row.id)}
-                  data-bot="expense-archive-purge"
-                  className="rounded-full border border-rose-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-rose-200 disabled:opacity-50"
-                >
-                  Delete for good
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    disabled={restoring === row.id}
+                    onClick={() => void restoreExpense(row.id)}
+                    data-bot="expense-archive-restore"
+                    className="rounded-full border border-slate-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-200 disabled:opacity-50"
+                  >
+                    {restoring === row.id ? 'Restoring…' : 'Restore'}
+                  </button>
+                )}
+                {!readOnly && (
+                  <button
+                    type="button"
+                    disabled={restoring === row.id}
+                    onClick={() => void purgeExpense(row.id, row.description || row.id)}
+                    data-bot="expense-archive-purge"
+                    className="rounded-full border border-rose-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-rose-200 disabled:opacity-50"
+                  >
+                    Delete for good
+                  </button>
+                )}
               </li>
             ))}
           </ul>

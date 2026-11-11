@@ -6,7 +6,7 @@ import { guestDepartureLine } from '../lib/departure';
 import { partStayEntranceLine, partHouseNotes, partStayCapacityLine, partStayFrom, partStayLabel, partStayLine } from '../lib/part-stay';
 import { loadQuoteCalendar } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree, rightNow, stayCalendarHold, stayCountdown } from '../lib/journey';
-import { tripGate } from '../lib/platform/guest-ops';
+import { tripGate, hoursToCheckIn } from '../lib/platform/guest-ops';
 import { addDays, denverToday } from '../lib/market/dates';
 import { nightAsk } from '../lib/market/rates';
 import type { HouseId } from '../lib/market/types';
@@ -368,6 +368,14 @@ export function StayApp({ token }: { token: string }) {
   });
   const leaving = mergeHouseCheckout(data.propertyId, checkoutSteps(guide.checkout));
   const leavingDone = checkoutDoneCount(leaving, checkoutOn);
+  /*
+   * A real countdown to this stay's check-in.
+   *
+   * The steps card used to pass `48` regardless of the date, so "within 24 hours" could never be true and the hours shown in
+   * any copy were fiction. This reads the stay's own date and the house's own published time. A date the helper cannot parse
+   * yields `null`, and the card then shows no countdown rather than a plausible wrong one.
+   */
+  const checkInHours = hoursToCheckIn({ now: new Date(), checkIn: data.checkIn, checkInTime: guide.checkInTime });
   const offers = guestOffers({
     house: data.propertyId,
     phase: access.phase,
@@ -787,22 +795,51 @@ export function StayApp({ token }: { token: string }) {
             )}
             <Card>
               <Kicker>Check-in steps</Kicker>
-              <ul className="mt-3 space-y-2 text-sm" data-bot="stay-checkin-steps">
-                {tripGate({
-                  details: true,
+              {/*
+                The two steps this site actually runs.
+
+                This card used to pass a literal forty-eight hours, an always-false one-time code, and an always-off early
+                night, so the countdown was the same on every stay, the early check-in offer never appeared, and the
+                ID/deposit steps said "Still open" to every guest even though Stripe Identity and a deposit processor are not
+                connected. The real hours are computed from this stay's check-in date and the house's own check-in time, the
+                early night comes from the calendar, and an unconnected step is named as not set up rather than left looking
+                like the guest's fault.
+              */}
+              {(() => {
+                const gate = tripGate({
+                  details: data.hasSurvey === true || data.preferencesDone,
                   agreement: rulesRead && agreementOpened,
                   idVerified: false,
                   depositSettled: false,
-                  hoursUntilCheckIn: 48,
+                  hoursUntilCheckIn: checkInHours,
                   otpOk: false,
-                  nightBeforeFree: false,
-                }).steps.map((step) => (
-                  <li key={step.id} data-done={step.done ? 'yes' : 'no'}>
-                    {step.done ? 'Done. ' : 'Still open. '}
-                    {step.note}
-                  </li>
-                ))}
-              </ul>
+                  nightBeforeFree: nightBeforeFree === true,
+                });
+                return (
+                  <>
+                    <ul className="mt-3 space-y-2 text-sm" data-bot="stay-checkin-steps">
+                      {gate.steps.map((step) => (
+                        <li key={step.id} data-done={step.done ? 'yes' : 'no'}>
+                          {step.done ? 'Done. ' : 'Still open. '}
+                          {step.note}
+                        </li>
+                      ))}
+                    </ul>
+                    {gate.notSetUp.length > 0 && (
+                      <p className="mt-2 text-xs text-white/55" data-bot="stay-checkin-not-set-up">
+                        This site does not run an ID check or collect a deposit, so there is nothing here for you to finish. The
+                        house will arrange anything else with you directly.
+                      </p>
+                    )}
+                    {gate.earlyCheckInOffer && (
+                      <p className="mt-2 text-xs text-[#d7cfc3]" data-bot="stay-early-offer">
+                        The night before your arrival is open. Ask us about arriving a night early — that night is not added to
+                        your stay unless we both agree.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
               <p className="mt-2 text-xs text-white/60">The door code on this page still follows the time window and the house rules. These steps do not hide a code that window already opened, and they do not open a lock.</p>
             </Card>
             <Card>

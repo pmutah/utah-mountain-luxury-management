@@ -10,8 +10,9 @@ import {
 } from '../../_lib/reservations-store';
 import type { AgentEnv } from '../../_lib/agent/types';
 import { readOrRefuse } from '../../_lib/read-guard';
-import { allowedHouses, resolveCaller, stripHouses } from '../../_lib/roles';
+import { allowedHouses, refuseReadOnly, resolveCaller, stripHouses } from '../../_lib/roles';
 import { refreshIcalInBackground } from '../../_lib/ical-refresh';
+import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, waitUntil }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
@@ -62,6 +63,9 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, wait
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
+  // An owner reads the book. The middleware refuses the method too, and the route says so for itself.
+  const readOnly = refuseReadOnly(request, env, corsJson);
+  if (readOnly) return readOnly;
   const parsed = await readJsonBody<{
     guestName: string;
     propertyId: 'ranch' | 'lindon' | 'river';
@@ -126,7 +130,18 @@ export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) =
     'Saved bookings',
   );
   if (!read.ok) return read.response;
-  return corsJson(request, read.value, 201);
+  /*
+   * A booking is a change to the book, so it is recorded. The entry names the row and the house only — not the guest, not the
+   * money, because both live in the booking itself and an audit log is not a second copy of it.
+   */
+  const created = read.value as { id?: string; propertyId?: string };
+  const logged = await audit(env, {
+    actor: auditActorFor(request, env),
+    action: 'reservation.create',
+    target: String(created?.id ?? 'a booking'),
+    note: `${created?.propertyId ?? 'a house'}, ${body.checkIn} to ${body.checkOut}.`,
+  });
+  return corsJson(request, { ...read.value, ...(logged.ok ? {} : { auditFailed: logged.reason }) }, 201);
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

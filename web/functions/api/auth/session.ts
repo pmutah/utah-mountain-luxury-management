@@ -3,6 +3,7 @@ import { isAuthConfigured } from '../../_lib/auth';
 import { emailAllowlist, isAllowedEmail } from '../../_lib/email-allowlist';
 import { readSession, sessionSecret } from '../../_lib/email-session';
 import { isMuseAuthorized } from '../../_lib/muse/auth';
+import { roleFor } from '../../_lib/roles';
 
 type Env = {
   DASHBOARD_PASSWORD?: string;
@@ -11,6 +12,7 @@ type Env = {
   SESSION_SECRET?: string;
   ALLOWED_EMAILS?: string;
   VITE_ALLOWED_EMAILS?: string;
+  ROLE_EMAILS?: string;
 };
 
 /**
@@ -32,7 +34,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (secret) {
     const session = readSession(request, secret);
     if (session.ok && isAllowedEmail(session.email, emailAllowlist(env))) {
-      return corsJson(request, { authenticated: true, authRequired: true, email: session.email });
+      /*
+       * The role travels with the session, so the browser can hide a control it is not allowed to use instead of offering a
+       * button that answers 403. The server still decides — this is a courtesy, never the gate. An owner is told it is
+       * read-only, and which houses it may read.
+       */
+      const role = roleFor(session.email, env);
+      return corsJson(request, {
+        authenticated: true,
+        authRequired: true,
+        email: session.email,
+        role,
+        readOnly: role === 'owner',
+        houses: role === 'owner' ? ['ranch', 'river'] : null,
+      });
     }
     /*
      * A valid signature for an address that is no longer on the list is not a session. It is reported

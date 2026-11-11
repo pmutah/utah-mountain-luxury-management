@@ -377,6 +377,15 @@ export interface SessionInfo {
   email?: string;
   name?: string | null;
   code?: string;
+  /**
+   * The role the server mapped this address to. `owner` reads and does not write.
+   *
+   * Present so the dashboard can hide a control that would answer 403. The server is still the gate.
+   */
+  role?: 'admin' | 'owner' | 'cleaner' | 'vendor';
+  readOnly?: boolean;
+  /** Houses this account may read. `null` means every house. */
+  houses?: string[] | null;
 }
 
 export interface AgentMessage {
@@ -814,7 +823,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  getExpenses: () => request<{ expenses: Expense[]; custom: Expense[] }>('/api/expenses'),
+  getExpenses: () =>
+    request<{ expenses: Expense[]; custom: Expense[]; readOnly?: boolean; houses?: string[] }>('/api/expenses'),
   /** A delete is archived first, so `archived` says the row can be put back. */
   deleteExpense: (id: string, reason?: string) =>
     request<{ ok: boolean; archived?: boolean; restore?: string }>(

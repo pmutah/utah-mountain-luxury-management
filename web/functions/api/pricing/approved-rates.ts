@@ -10,6 +10,7 @@ import { isRealDay } from '../../../src/lib/market/dates';
 import { approvalBase, approvedGuestRate, sheetLine, sheetUsable, type ApprovedRate } from '../../../src/lib/market/rate-sheet';
 import { batchRows, decideBatch } from '../../../src/lib/market/rate-batch';
 import { nightAsk } from '../../../src/lib/market/rates';
+import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 
 type HouseId = 'ranch' | 'lindon' | 'river';
 
@@ -171,6 +172,16 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
     return corsJson(request, { error: message }, 500);
   }
   const sheet = written.sheet;
+  /*
+   * An approved price is what a guest can be quoted, so it is recorded. The entry names the house and the night — not the
+   * new number, because the sheet already holds it and the log is not a price history.
+   */
+  const logged = await audit(env, {
+    actor: auditActorFor(request, env),
+    action: 'pricing.approve',
+    target: `${house} ${date}`,
+    note: `One night approved${written.dropped > 0 ? `, ${written.dropped} furthest-out dropped` : ''}.`,
+  });
   // A write that evicted another night's approval says so. Dropping one silently is how a whole
   // house's sheet disappeared before, so the desk is told rather than left to notice a price move.
   const droppedLine =
@@ -185,6 +196,7 @@ export const onRequestPost: PagesFunction<SettingsEnv> = async ({ request, env }
       nights: sheet.filter((entry) => entry.house === house).length,
       dropped: written.dropped,
       line: `${sheetLine(sheet, house)}${droppedLine}`,
+      ...(logged.ok ? {} : { auditFailed: logged.reason }),
     },
     201,
     { 'Cache-Control': 'no-store' },
@@ -301,6 +313,16 @@ export const onRequestPut: PagesFunction<SettingsEnv> = async ({ request, env })
     written.dropped > 0
       ? ` The sheet was full, so ${written.dropped === 1 ? 'the furthest-out night was' : `${written.dropped} furthest-out nights were`} dropped.`
       : '';
+  /*
+   * A batch is the common path — the ladder approves a whole plan at once — so it is recorded too, with the count rather than
+   * a hundred rows in the log. A batch of a hundred nights is one decision by one person.
+   */
+  const logged = await audit(env, {
+    actor: auditActorFor(request, env),
+    action: 'pricing.approve-batch',
+    target: house,
+    note: `${plan.approved} of ${requested.length} nights approved, ${plan.refused} refused.`,
+  });
   return corsJson(
     request,
     {
@@ -311,6 +333,7 @@ export const onRequestPut: PagesFunction<SettingsEnv> = async ({ request, env })
       refused: plan.refused,
       dropped: written.dropped,
       line: `${plan.line}${droppedLine} ${sheetLine(written.sheet, house)}`.trim(),
+      ...(logged.ok ? {} : { auditFailed: logged.reason }),
     },
     200,
     { 'Cache-Control': 'no-store' },
@@ -318,7 +341,8 @@ export const onRequestPut: PagesFunction<SettingsEnv> = async ({ request, env })
 };
 
 /** Take one approval back. The night returns to the published card. */
-export const onRequestDelete: PagesFunction<SettingsEnv> = async ({ request, env }) => {  if (!hostOnly(request, env)) return hostDenied(request, env);
+export const onRequestDelete: PagesFunction<SettingsEnv> = async ({ request, env }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
   const url = new URL(request.url);
   const house = houseFrom(url.searchParams.get('house'));
   const date = url.searchParams.get('date') ?? '';
@@ -333,9 +357,20 @@ export const onRequestDelete: PagesFunction<SettingsEnv> = async ({ request, env
     const message = err instanceof Error ? err.message : 'The clear failed';
     return corsJson(request, { error: message }, 500);
   }
+  const logged = await audit(env, {
+    actor: auditActorFor(request, env),
+    action: 'pricing.clear',
+    target: `${house} ${date}`,
+    note: 'Approval removed. The night returns to the published card.',
+  });
   return corsJson(
     request,
-    { ok: true, nights: sheet.filter((entry) => entry.house === house).length, line: sheetLine(sheet, house) },
+    {
+      ok: true,
+      nights: sheet.filter((entry) => entry.house === house).length,
+      line: sheetLine(sheet, house),
+      ...(logged.ok ? {} : { auditFailed: logged.reason }),
+    },
     200,
     { 'Cache-Control': 'no-store' },
   );

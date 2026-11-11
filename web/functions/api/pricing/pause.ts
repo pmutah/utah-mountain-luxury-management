@@ -3,8 +3,10 @@ import { corsJson } from '../../_lib/data';
 import { readJsonBody } from '../../_lib/json-body';
 import { pauseLine, readPause, writePause, HOUSES, type HouseId } from '../../_lib/platform/pause-store';
 import { failSoft } from '../../_lib/platform/http';
+import { audit, auditActorFor } from '../../_lib/platform/audit-store';
+import type { SettingsEnv } from '../../_lib/kv';
 
-type Env = { DASHBOARD_PASSWORD?: string; MARKET_DB?: unknown };
+type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string; MARKET_DB?: unknown };
 
 function houseFrom(value: unknown): HouseId | null {
   return value === 'ranch' || value === 'lindon' || value === 'river' ? value : null;
@@ -55,6 +57,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const reason = typeof parsed.body.reason === 'string' ? parsed.body.reason : null;
     const written = await writePause(env, house, parsed.body.paused, reason);
     if (!written.ok) return corsJson(request, { error: written.reason, paused: null }, 503);
+    /*
+     * The switch decides whether a house can be raised at all, so flipping it is recorded. The note carries the house and the
+     * new state, never a rate.
+     */
+    const logged = await audit(env, {
+      actor: auditActorFor(request, env),
+      action: 'pricing.pause',
+      target: house,
+      note: `${parsed.body.paused ? 'Paused' : 'Resumed'}${reason ? ', with a reason' : ''}.`,
+    });
     const read = await readPause(env);
     return corsJson(request, {
       house,
@@ -64,6 +76,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       line: pauseLine(house, written.paused, reason ?? undefined),
       sends: false,
       note: 'This does not change a published rate. Nothing is sent to Airbnb, VRBO, or Hospitable.',
+      ...(logged.ok ? {} : { auditFailed: logged.reason }),
     });
   } catch (err) {
     return failSoft(request, err, 'The pricing pause switch');

@@ -1,5 +1,5 @@
 import { isAuthConfigured, isAuthenticated, unauthorized } from './_lib/auth';
-import { emailSessionValid } from './_lib/roles';
+import { emailSessionValid, refuseReadOnly } from './_lib/roles';
 import { isMuseAuthorized, isPublicMusePath } from './_lib/muse/auth';
 import { SECURITY_HEADERS } from '../src/lib/platform/back-office';
 
@@ -90,6 +90,26 @@ export const onRequest: PagesFunction<{
    * `emailSessionValid` verifies the signature and the allowlist exactly as `hostOnly` does, so this is not a widening of
    * access: it is the same check, in the gate that runs first.
    */
-  if (emailSessionValid(context.request, context.env)) return withSecurity(await context.next());
+  if (emailSessionValid(context.request, context.env)) {
+    /*
+     * A read-only account cannot write, on **any** route.
+     *
+     * `refuseReadOnly` existed and was called by one route — expense create — so an owner session could still PATCH or
+     * delete an expense, add a booking, or change a rate. Asking every route to remember is how that happened once
+     * already. The check belongs in the gate that runs first, where a route added next year is covered without knowing
+     * about it. Reads pass through; only a method that changes something is refused.
+     */
+    const writes = !['GET', 'HEAD', 'OPTIONS'].includes(context.request.method.toUpperCase());
+    if (writes) {
+      const readOnly = refuseReadOnly(context.request, context.env, (_req, body, status = 200) =>
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+        }),
+      );
+      if (readOnly) return withSecurity(readOnly);
+    }
+    return withSecurity(await context.next());
+  }
   return withSecurity(unauthorized(context.request));
 };

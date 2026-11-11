@@ -4,9 +4,13 @@ import { readJsonBody } from '../../_lib/json-body';
 import { updateReservation, updateReservationStatus, getAllReservations } from '../../_lib/reservations-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv, ReservationRecord, ReservationStatus } from '../../_lib/agent/types';
+import { refuseReadOnly } from '../../_lib/roles';
+import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 
 export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
+  const readOnly = refuseReadOnly(request, env, corsJson);
+  if (readOnly) return readOnly;
   const id = params.id as string;
   const parsed = await readJsonBody<{
     status?: ReservationStatus;
@@ -48,7 +52,13 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
     );
     if (!read.ok) return read.response;
     if (!read.value) return corsJson(request, { error: 'Not found' }, 404);
-    return corsJson(request, read.value);
+    const logged = await audit(env, {
+      actor: auditActorFor(request, env),
+      action: 'reservation.status',
+      target: id,
+      note: `Status is now ${body.status}.`,
+    });
+    return corsJson(request, { ...read.value, ...(logged.ok ? {} : { auditFailed: logged.reason }) });
   }
 
   if (Object.keys(patch).length === 0) {
@@ -59,7 +69,13 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
   if (!read.ok) return read.response;
   const updated = read.value;
   if (!updated) return corsJson(request, { error: 'Not found' }, 404);
-  return corsJson(request, updated);
+  const logged = await audit(env, {
+    actor: auditActorFor(request, env),
+    action: 'reservation.update',
+    target: id,
+    note: `Fields changed: ${Object.keys(patch).slice(0, 8).join(', ')}.`,
+  });
+  return corsJson(request, { ...updated, ...(logged.ok ? {} : { auditFailed: logged.reason }) });
 };
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, params }) => {

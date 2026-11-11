@@ -13,6 +13,7 @@ import {
   cleanerPay,
   cutoverReady,
   draftReply,
+  hoursToCheckIn,
   inspectRooms,
   quoteWithTax,
   splitPay,
@@ -39,6 +40,7 @@ import { onRequestGet as healthGet } from '../../../functions/api/platform/healt
 import { onRequestGet as quoteGet } from '../../../functions/api/book/quote.ts';
 import { onRequestPost as mcpPost } from '../../../functions/api/mcp/index.ts';
 import { onRequestPost as stripeHook } from '../../../functions/api/hooks/stripe.ts';
+import { onRequest as middleware } from '../../../functions/_middleware.ts';
 
 const root = join(process.cwd());
 
@@ -199,6 +201,7 @@ test('the door stays shut until every step, the window, and a code', () => {
     hoursUntilCheckIn: 48,
     otpOk: true,
     nightBeforeFree: true,
+    connected: { id: true, deposit: true },
   });
   assert.equal(early.doorRevealed, false);
   assert.equal(early.unlock, false);
@@ -211,8 +214,87 @@ test('the door stays shut until every step, the window, and a code', () => {
     hoursUntilCheckIn: 20,
     otpOk: true,
     nightBeforeFree: false,
+    connected: { id: true, deposit: true },
   });
   assert.equal(open.doorRevealed, true);
+  // A date that could not be read is not a window: no countdown means no code.
+  assert.equal(
+    tripGate({
+      details: true,
+      agreement: true,
+      idVerified: true,
+      depositSettled: true,
+      hoursUntilCheckIn: null,
+      otpOk: true,
+      nightBeforeFree: false,
+      connected: { id: true, deposit: true },
+    }).doorRevealed,
+    false,
+  );
+});
+
+test('the steps card shows only what this site can actually collect', () => {
+  /*
+   * The defect: the card drew four steps and passed `idVerified: false` and `depositSettled: false` literally, so every guest
+   * read "Still open. ID check is not set up" and "Still open. Deposit is arranged directly" — two things no route here does.
+   * An unconnected step is now left out and named as not set up.
+   */
+  const gate = tripGate({
+    details: true,
+    agreement: true,
+    idVerified: false,
+    depositSettled: false,
+    hoursUntilCheckIn: 100,
+    otpOk: false,
+    nightBeforeFree: false,
+  });
+  assert.deepEqual(gate.steps.map((step) => step.id), ['details', 'agreement']);
+  assert.deepEqual(gate.notSetUp, ['id', 'deposit']);
+  assert.equal(gate.doorRevealed, false);
+  const connected = tripGate({
+    details: false,
+    agreement: false,
+    idVerified: false,
+    depositSettled: false,
+    hoursUntilCheckIn: 1,
+    otpOk: true,
+    nightBeforeFree: false,
+    connected: { id: true, deposit: true },
+  });
+  assert.deepEqual(connected.steps.map((step) => step.id), ['details', 'agreement', 'id', 'deposit']);
+  assert.deepEqual(connected.notSetUp, []);
+
+  // And the card reads the stay's own date and the house's own time instead of a literal.
+  const stay = readFileSync(join(root, 'src/components/StayApp.tsx'), 'utf8');
+  assert.doesNotMatch(stay, /hoursUntilCheckIn: 48/, 'the check-in card still passes a hardcoded 48 hours');
+  assert.match(stay, /hoursToCheckIn\(/, 'the check-in card does not compute real hours');
+  assert.match(stay, /nightBeforeFree: nightBeforeFree === true/, 'the early night is still hardcoded off');
+});
+
+test('hours to check-in is real arithmetic in Mountain Time', () => {
+  /*
+   * The value this replaces was the literal `48`, which meant the 24-hour window could never open from a real date. These pin
+   * the arithmetic on both sides of a daylight-saving change, because a fixed -7 would put a July check-in an hour late.
+   */
+  // 2026-07-15 4:00 PM MDT (UTC-6) is 22:00 UTC. From noon UTC that day: 10 hours.
+  assert.equal(
+    hoursToCheckIn({ now: new Date('2026-07-15T12:00:00Z'), checkIn: '2026-07-15', checkInTime: '4:00 PM' }),
+    10,
+  );
+  // 2026-11-15 4:00 PM MST (UTC-7) is 23:00 UTC.
+  assert.equal(
+    hoursToCheckIn({ now: new Date('2026-11-15T12:00:00Z'), checkIn: '2026-11-15', checkInTime: '4:00 PM' }),
+    11,
+  );
+  // A stay three days out is about 72 hours, so the window is closed.
+  const far = hoursToCheckIn({ now: new Date('2026-11-12T12:00:00Z'), checkIn: '2026-11-15', checkInTime: '4:00 PM' });
+  assert.ok(far !== null && far > 24, `three days out read as ${far} hours`);
+  // Check-in has passed, which is a negative number rather than an error.
+  const past = hoursToCheckIn({ now: new Date('2026-11-16T12:00:00Z'), checkIn: '2026-11-15', checkInTime: '4:00 PM' });
+  assert.ok(past !== null && past < 0, `a past check-in read as ${past}`);
+  // A malformed date is null, not a guess.
+  assert.equal(hoursToCheckIn({ now: new Date('2026-11-15T12:00:00Z'), checkIn: 'not-a-day', checkInTime: '4:00 PM' }), null);
+  assert.equal(hoursToCheckIn({ now: new Date('2026-11-15T12:00:00Z'), checkIn: '2026-02-30', checkInTime: '4:00 PM' }), null);
 });
 
 test('cleaner pay, photo flags, and drafts do not invent or send', () => {
@@ -896,16 +978,97 @@ test('the role matrix is enforced by the routes that carry the books', () => {
    * "Todd sees Ranch and River read-only" was a sentence in a catalog. This pins that the enforcement is in the routes.
    */
   const expenses = readFileSync(join(root, 'functions/api/expenses/index.ts'), 'utf8');
+  const expensesItem = readFileSync(join(root, 'functions/api/expenses/[id].ts'), 'utf8');
   const reservations = readFileSync(join(root, 'functions/api/reservations/index.ts'), 'utf8');
+  const reservationItem = readFileSync(join(root, 'functions/api/reservations/[id].ts'), 'utf8');
   for (const [name, source] of [['expenses', expenses], ['reservations', reservations]] as const) {
     assert.match(source, /stripHouses\(/, `${name} does not strip a house an owner may not see`);
     assert.match(source, /resolveCaller\(/, `${name} does not resolve the caller's role`);
   }
-  assert.match(expenses, /refuseReadOnly\(/, 'the expense write path does not refuse a read-only account');
+  /*
+   * Every write route that carries the books refuses a read-only account, not just expense create.
+   *
+   * The defect: `refuseReadOnly` existed and one route called it, so an owner session could still edit or delete an expense
+   * and add or change a booking. The middleware now refuses the method for every non-admin session too, but the routes state
+   * the rule themselves so a middleware change cannot quietly reopen the ledger.
+   */
+  for (const [name, source] of [
+    ['expense create', expenses],
+    ['expense update', expensesItem],
+    ['expense delete', expensesItem],
+    ['booking create', reservations],
+    ['booking update', reservationItem],
+  ] as const) {
+    assert.match(source, /refuseReadOnly\(/, `${name} does not refuse a read-only account`);
+  }
+  /*
+   * The same defect at the gate that runs first: the middleware only asked "are you signed in", so a role no route checked
+   * wrote anything it could reach. It now refuses a non-GET from a read-only session before any route sees it.
+   */
+  const middleware = readFileSync(join(root, 'functions/_middleware.ts'), 'utf8');
+  assert.match(middleware, /refuseReadOnly\(/, 'the first gate does not refuse a read-only write');
 
   // And the matrix itself still says what the plan says.
   const backOffice = readFileSync(join(root, 'src/lib/platform/back-office.ts'), 'utf8');
   assert.match(backOffice, /owner: \['read-owner'\]/, 'the owner role stopped being read-only');
+});
+
+test('a read-only session cannot write on any route, and an admin still can', async () => {
+  /*
+   * The defect this proves gone: `refuseReadOnly` was called by one route (expense create), so an owner session could PATCH
+   * or DELETE an expense and add or change a booking. The gate that runs first now refuses the method, so a route added next
+   * year is covered without having to know about roles at all.
+   */
+  const { signSession } = await import('./../../../functions/_lib/email-session.ts');
+  const secret = 'a-secret-long-enough-to-sign';
+  const ownerEmail = 'todd@example.com';
+  const env = {
+    SESSION_SECRET: secret,
+    ALLOWED_EMAILS: `pmutah@gmail.com,${ownerEmail}`,
+    ROLE_EMAILS: `owner=${ownerEmail}`,
+    DASHBOARD_PASSWORD: 'pw',
+  };
+  const ownerCookie = signSession(ownerEmail, secret);
+  const adminCookie = signSession('pmutah@gmail.com', secret);
+
+  const call = async (method: string, cookie: string, path = '/api/expenses/exp-1') => {
+    let reached = false;
+    const request = new Request(`https://x${path}`, { method, headers: { Cookie: `wpm_auth=${cookie}` } });
+    const response = (await middleware({
+      request,
+      env,
+      params: {},
+      // A route that would have written. If the gate lets the call through, this sets the flag.
+      next: async () => {
+        reached = true;
+        return new Response(JSON.stringify({ reachedRoute: true }), { status: 200 });
+      },
+      data: {},
+      waitUntil: () => {},
+      passThroughOnException: () => {},
+    } as never)) as Response;
+    return { status: response.status, reached, body: (await response.json().catch(() => ({}))) as Record<string, unknown> };
+  };
+
+  for (const method of ['POST', 'PATCH', 'DELETE', 'PUT']) {
+    const owner = await call(method, ownerCookie);
+    assert.equal(owner.status, 403, `an owner ${method} was not refused`);
+    assert.equal(owner.body.code, 'read-only', `an owner ${method} was refused without saying why`);
+    assert.equal(owner.reached, false, `an owner ${method} reached the route`);
+    // The same method from an admin still reaches the route. Nothing was narrowed for the person who owns the books.
+    const admin = await call(method, adminCookie);
+    assert.equal(admin.reached, true, `an admin ${method} was stopped by the read-only gate`);
+    assert.equal(admin.status, 200);
+  }
+
+  // Reads from an owner still pass, which is the whole point of a read-only role.
+  for (const method of ['GET', 'HEAD']) {
+    const owner = await call(method, ownerCookie);
+    assert.equal(owner.reached, true, `an owner ${method} was refused a read`);
+  }
+  // And a guest path is not reached by the gate at all.
+  const publicRoute = await call('POST', '', '/api/book');
+  assert.equal(publicRoute.status, 200, 'a public booking request was refused by the middleware');
 });
 
 test('the audit log actually records a change, and refuses a bulk delete', async () => {

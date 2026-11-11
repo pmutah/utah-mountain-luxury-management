@@ -92,33 +92,120 @@ export function stripeReadiness(env: { STRIPE_SECRET_KEY?: string }): {
 
 export type TripStep = 'details' | 'agreement' | 'id' | 'deposit';
 
+/**
+ * Hours from now to the published check-in moment, or `null` when that cannot be known.
+ *
+ * The stay phone used to pass a literal `48` into `tripGate`, so the countdown was the same on every stay and the "door opens
+ * within 24 hours" branch could never be reached from a real date. This does the arithmetic the card was pretending to do:
+ * the house's own check-in time (4:00 PM), America/Denver, and a real `now`.
+ *
+ * A negative number means check-in has passed. `null` is returned for a date that is not a real day, so a malformed stay shows
+ * no countdown rather than a plausible wrong one.
+ */
+export function hoursToCheckIn(input: { now: Date; checkIn: string; checkInTime: string }): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input.checkIn.trim());
+  if (!match) return null;
+  const [, year, month, day] = match;
+  const clock = /^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/.exec(input.checkInTime.trim());
+  let hour = 16;
+  let minute = 0;
+  if (clock) {
+    hour = Number(clock[1]) % 12;
+    if (clock[3]!.toLowerCase() === 'pm') hour += 12;
+    minute = Number(clock[2]);
+  }
+  const asDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (asDate.getUTCFullYear() !== Number(year) || asDate.getUTCMonth() !== Number(month) - 1) return null;
+  /*
+   * Mountain Time is UTC-6 in summer and UTC-7 in winter. The offset is read from the zone itself rather than assumed, so a
+   * November stay and a July stay both land at 4:00 PM local.
+   */
+  const target = mountainWallClock(Number(year), Number(month) - 1, Number(day), hour, minute);
+  if (target === null) return null;
+  return Math.round(((target.getTime() - input.now.getTime()) / 3_600_000) * 10) / 10;
+}
+
+/** The instant at which a Mountain Time wall clock reads this date and time. */
+function mountainWallClock(year: number, month: number, day: number, hour: number, minute: number): Date | null {
+  const naive = Date.UTC(year, month, day, hour, minute);
+  if (!Number.isFinite(naive)) return null;
+  // Two passes: guess with the offset in force at the naive instant, then re-read it at the corrected one.
+  let guess = naive - 7 * 3_600_000;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const offset = mountainOffsetMinutes(new Date(guess));
+    guess = naive - offset * 60_000;
+  }
+  const settled = mountainOffsetMinutes(new Date(guess));
+  return new Date(naive - settled * 60_000);
+}
+
+function mountainOffsetMinutes(at: Date): number {
+  const long = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Denver',
+    timeZoneName: 'longOffset',
+  }).format(at);
+  const match = /GMT([+-])(\d{2}):?(\d{2})?/.exec(long);
+  if (!match) return 420; // Mountain Standard, which is what Utah keeps most of the year.
+  const sign = match[1] === '-' ? -1 : 1;
+  return sign * (Number(match[2]) * 60 + Number(match[3] ?? 0));
+}
+
 export function tripGate(input: {
   details: boolean;
   agreement: boolean;
   idVerified: boolean;
   depositSettled: boolean;
-  hoursUntilCheckIn: number;
+  /** Hours to the published check-in, or null when the date could not be read. */
+  hoursUntilCheckIn: number | null;
   otpOk: boolean;
   nightBeforeFree: boolean;
+  /**
+   * The steps this site actually runs. Omitted means **not connected**, and an unconnected step is left out of the list.
+   *
+   * The card used to always draw four steps and told every guest that the ID check and the deposit were "Still open" — two
+   * things no route on this site can do. A guest reading that could only conclude they had not finished, when there was
+   * nothing to finish. Stripe Identity and a deposit processor are not connected; when they are, this turns them back on.
+   */
+  connected?: { id?: boolean; deposit?: boolean };
 }): {
   steps: { id: TripStep; done: boolean; note: string }[];
   doorRevealed: boolean;
   earlyCheckInOffer: boolean;
   unlock: false;
+  /** Steps that exist in the plan but are not set up here, so the card can say so plainly instead of implying the guest is late. */
+  notSetUp: TripStep[];
 } {
   const steps: { id: TripStep; done: boolean; note: string }[] = [
     { id: 'details', done: input.details, note: 'Party details' },
     { id: 'agreement', done: input.agreement, note: 'House rules and agreement topics' },
-    { id: 'id', done: input.idVerified, note: 'ID check is not set up. Stripe Identity is not connected, and no ID image is stored.' },
-    { id: 'deposit', done: input.depositSettled, note: 'Deposit is arranged directly. Nothing is charged on this page.' },
   ];
+  const notSetUp: TripStep[] = [];
+  if (input.connected?.id) {
+    steps.push({
+      id: 'id',
+      done: input.idVerified,
+      note: 'ID verification. Nothing is stored beyond the check.',
+    });
+  } else {
+    notSetUp.push('id');
+  }
+  if (input.connected?.deposit) {
+    steps.push({
+      id: 'deposit',
+      done: input.depositSettled,
+      note: 'Deposit, arranged through the payment page.',
+    });
+  } else {
+    notSetUp.push('deposit');
+  }
   const ready = steps.every((step) => step.done);
-  const inWindow = input.hoursUntilCheckIn <= 24 && input.hoursUntilCheckIn > -12;
+  const inWindow = input.hoursUntilCheckIn !== null && input.hoursUntilCheckIn <= 24 && input.hoursUntilCheckIn > -12;
   return {
     steps,
     doorRevealed: ready && inWindow && input.otpOk,
     earlyCheckInOffer: input.nightBeforeFree,
     unlock: false,
+    notSetUp,
   };
 }
 

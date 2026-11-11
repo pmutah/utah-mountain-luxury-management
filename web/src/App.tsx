@@ -8,6 +8,7 @@ import {
 } from './lib/bot-nav';
 import { installUmlBridge, syncDocumentView } from './lib/uml-bridge';
 import { seasonFor } from './lib/platform/back-office';
+import { setViewer } from './lib/platform/viewer';
 import { TabErrorBoundary } from './components/TabErrorBoundary';
 import { rescueLegacyLink, servedPath } from './lib/public-paths';
 import { LoginGate } from './components/LoginGate';
@@ -131,6 +132,25 @@ function Dashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  /*
+   * The role the server reported, once, so a control that would answer 403 is not drawn.
+   *
+   * A failure here leaves the dashboard treating the caller as an admin, which is the present behaviour and the safe one: the
+   * server still refuses the write, so a hidden control is a courtesy and never the gate.
+   */
+  useEffect(() => {
+    api
+      .getSession()
+      .then((session) => {
+        if (session.authenticated) {
+          setViewer({ role: session.role, readOnly: session.readOnly, houses: session.houses });
+        }
+      })
+      .catch(() => {
+        // Unknown is fine. The middleware is the real gate.
+      });
+  }, []);
 
   const go = useCallback(
     (tab: DashboardTab, view: ReportView = 'pnl', nextRiver: RiverView = 'rental') => {

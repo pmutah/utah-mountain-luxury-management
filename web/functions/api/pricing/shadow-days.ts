@@ -7,6 +7,7 @@ import {
   type SavedShadowDay,
 } from '../../../src/lib/market/shadow-log';
 import { denverToday } from '../../../src/lib/market/dates';
+import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 import type { SettingsEnv } from '../../_lib/kv';
 
 const KV_KEY = 'shadowDays';
@@ -93,9 +94,23 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }
     throw err;
   }
+  /*
+   * A saved shadow day is what unlocks the switch to live pricing, so the day is recorded. Only the date — the digest text is
+   * already in the shadow list and repeating it here would double the log for no one's benefit.
+   */
+  const logged = await audit(env, {
+    actor: auditActorFor(request, env),
+    action: 'pricing.shadow-day',
+    target: date,
+    note: 'An unsent shadow day was saved.',
+  });
   return corsJson(
     request,
-    { clock: shadowClockFromSaved(merged, denverToday()), days: merged.map((day) => ({ date: day.date })) },
+    {
+      clock: shadowClockFromSaved(merged, denverToday()),
+      days: merged.map((day) => ({ date: day.date })),
+      ...(logged.ok ? {} : { auditFailed: logged.reason }),
+    },
     200,
     { 'Cache-Control': 'no-store' },
   );

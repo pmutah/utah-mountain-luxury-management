@@ -16,6 +16,7 @@
 
 import { kvGet, kvPut, storageReadPaused } from '../kv-json';
 import type { SettingsEnv } from '../kv';
+import { resolveCaller } from '../roles';
 
 const KV_KEY = 'auditLog';
 
@@ -130,4 +131,19 @@ export function auditLine(entry: AuditEntry): string {
   const when = entry.at.slice(0, 16).replace('T', ' ');
   const note = entry.note ? ` ${entry.note}` : '';
   return `${when} — ${who}: ${entry.action} on ${entry.target}.${note}`;
+}
+
+/**
+ * Who to record for this request: a role, and the address only when it came from a verified email session.
+ *
+ * It lives here rather than in each route so that "who edited this" is answered the same way everywhere. A caller the
+ * middleware already admitted but this cannot resolve is recorded as `admin`, which is what the shared password and the bot
+ * bearer are — never a name, a phone, or a guess.
+ */
+export function auditActorFor(request: Request, env: unknown): AuditActor {
+  const caller = resolveCaller(request, env);
+  if (caller.kind !== 'host') return { role: 'admin' };
+  return caller.via === 'email' && caller.role !== 'admin'
+    ? { role: caller.role, email: caller.email }
+    : { role: caller.role };
 }

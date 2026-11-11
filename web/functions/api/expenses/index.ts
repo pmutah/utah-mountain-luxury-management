@@ -16,6 +16,7 @@ import { appendReceiptWarning, storeReceiptForExpense } from '../../_lib/receipt
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
 import type { SettingsEnv } from '../../_lib/kv';
 import { allowedHouses, refuseReadOnly, resolveCaller, stripHouses } from '../../_lib/roles';
+import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv & { DASHBOARD_PASSWORD?: string };
 
@@ -131,8 +132,23 @@ export const onRequestPost: PagesFunction<ExpenseEnv> = async ({ request, env })
   custom.push(item);
   await saveCustomExpenses(env, custom);
 
+  /*
+   * Record the new row. The entry names the row and the house — not the amount, the vendor, or the note, because those live in
+   * the expense itself. A failed log does not lose the expense: the row is already saved, and the response says the log missed it.
+   */
+  const logged = await audit(env, {
+    actor: auditActorFor(request, env),
+    action: 'expense.create',
+    target: id,
+    note: `${body.propertyId}, ${body.month}.`,
+  });
+
   const [enriched] = withReceiptUrls([item]);
-  return corsJson(request, { ...enriched, receiptWarning: warning ?? null }, 201);
+  return corsJson(
+    request,
+    { ...enriched, receiptWarning: warning ?? null, ...(logged.ok ? {} : { auditFailed: logged.reason }) },
+    201,
+  );
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

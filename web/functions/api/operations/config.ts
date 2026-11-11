@@ -3,6 +3,7 @@ import { corsJson } from '../../_lib/data';
 import { loadPropertyConfig, savePropertyConfig } from '../../_lib/operations-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import { storageReadPaused } from '../../_lib/kv-json';
+import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 import type { AgentEnv, PropertyId, PropertyOpsConfig } from '../../_lib/agent/types';
 import type { SettingsEnv } from '../../_lib/kv';
 
@@ -112,7 +113,22 @@ export const onRequestPost: PagesFunction<SettingsEnv & AgentEnv> = async ({ req
     const message = err instanceof Error ? err.message : 'The save failed';
     return corsJson(request, { error: message }, 500);
   }
-  return corsJson(request, { ok: true, house, config: next }, 200, { 'Cache-Control': 'no-store' });
+  /*
+   * A house rule is what a guest is told, so a change to it is recorded. The entry names the house and which fields moved — not
+   * the text, because a door-code template and a cleaner's phone number are exactly the detail an audit log should not repeat.
+   */
+  const logged = await audit(env, {
+    actor: auditActorFor(request, env),
+    action: 'operations.config',
+    target: house,
+    note: `Fields changed: ${Object.keys(patch).slice(0, 8).join(', ')}.`,
+  });
+  return corsJson(
+    request,
+    { ok: true, house, config: next, ...(logged.ok ? {} : { auditFailed: logged.reason }) },
+    200,
+    { 'Cache-Control': 'no-store' },
+  );
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);

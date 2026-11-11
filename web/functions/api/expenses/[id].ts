@@ -9,20 +9,19 @@ import { archiveExpense } from '../../_lib/expense-archive';
 import { readOrRefuse } from '../../_lib/read-guard';
 import { storageReadPaused } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
-import { audit } from '../../_lib/platform/audit-store';
-import { resolveCaller } from '../../_lib/roles';
+import { audit, auditActorFor } from '../../_lib/platform/audit-store';
+import { refuseReadOnly } from '../../_lib/roles';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
 
-/** Who to record. A role and, when the caller signed in by email, that address — never a guest or a phone. */
-function auditActor(request: Request, env: unknown): { role: 'admin' | 'owner' | 'cleaner' | 'vendor'; email?: string } {
-  const caller = resolveCaller(request, env);
-  if (caller.kind !== 'host') return { role: 'admin' };
-  return caller.via === 'email' && caller.role !== 'admin' ? { role: caller.role, email: caller.email } : { role: caller.role };
-}
-
 export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
+  /*
+   * An owner reads and does not write. The middleware already refuses every non-GET for a read-only session, and this repeats
+   * it here so the route states its own rule: a future change to the middleware must not quietly open the ledger.
+   */
+  const readOnlyPatch = refuseReadOnly(request, env, corsJson);
+  if (readOnlyPatch) return readOnlyPatch;
   const id = params.id as string;
   if (!id) return corsJson(request, { error: 'id required' }, 400);
   if (!env.SETTINGS) {
@@ -119,7 +118,7 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
    */
   const changed = Object.keys(body).filter((key) => body[key as keyof typeof body] !== undefined);
   const logged = await audit(env, {
-    actor: auditActor(request, env),
+    actor: auditActorFor(request, env),
     action: 'expense.update',
     target: id,
     note: changed.length > 0 ? `Fields changed: ${changed.slice(0, 8).join(', ')}.` : 'A patch with no changed field.',
@@ -130,6 +129,8 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
 
 export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
+  const readOnlyDelete = refuseReadOnly(request, env, corsJson);
+  if (readOnlyDelete) return readOnlyDelete;
   const id = params.id as string;
   if (!id) return corsJson(request, { error: 'id required' }, 400);
   // A reason is optional but useful later, and it is kept with the archived row.
@@ -178,7 +179,7 @@ export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env,
    * because the archive above is the restore path and losing that would be worse than a missing log line.
    */
   const logged = await audit(env, {
-    actor: auditActor(request, env),
+    actor: auditActorFor(request, env),
     action: 'expense.remove',
     target: id,
     note: reason ? `Reason given. Archived and restorable.` : 'Archived and restorable.',

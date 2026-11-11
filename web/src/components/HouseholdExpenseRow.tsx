@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Eye, ImagePlus, Loader2, Trash2, X } from 'lucide-react';
+import { useReadOnly } from '../lib/platform/viewer';
 import { api, formatCurrency, type Expense } from '../lib/api';
 import { formatPaidDate, paidDateFromExpense, stripPaidDatePrefix } from '../lib/paid-date';
 import { prepareReceiptFile } from '../lib/receipt-image';
@@ -25,6 +26,11 @@ export function HouseholdExpenseRow({
   onError: (msg: string) => void;
 }) {
   const photoRef = useRef<HTMLInputElement>(null);
+  /*
+   * A read-only account sees the row and does not get an inline editor, a photo upload, or a delete. The server refuses each of
+   * them; hiding them stops the owner from typing a change into a field that can only answer 403.
+   */
+  const readOnly = useReadOnly();
   const [what, setWhat] = useState(stripPaidDatePrefix(expense.note) || expense.vendor || '');
   const [amount, setAmount] = useState(String(expense.amount));
   const [saving, setSaving] = useState(false);
@@ -125,7 +131,7 @@ export function HouseholdExpenseRow({
         <input
           type="date"
           value={paidDate ?? ''}
-          disabled={saving}
+          disabled={saving || readOnly}
           onChange={(e) => {
             if (e.target.value) void persist({ paidDate: e.target.value });
           }}
@@ -137,7 +143,7 @@ export function HouseholdExpenseRow({
       <td className="py-2.5 pr-3 min-w-[16rem] max-w-[28rem]">
         <input
           value={what}
-          disabled={saving}
+          disabled={saving || readOnly}
           onChange={(e) => setWhat(e.target.value)}
           onBlur={() => void saveWhat()}
           onKeyDown={(e) => {
@@ -171,20 +177,23 @@ export function HouseholdExpenseRow({
                   onClick={() => void removePhoto(photo.id)}
                   className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-900 text-slate-300 border border-slate-600 flex items-center justify-center"
                   aria-label="Remove photo"
+                  hidden={readOnly}
                 >
                   <X className="w-3 h-3" />
                 </button>
               </div>
             ))}
-            <button
-              type="button"
-              disabled={attaching}
-              onClick={() => photoRef.current?.click()}
-              className="h-16 min-w-[4rem] px-2 rounded-lg border border-dashed border-rose-800/70 bg-rose-950/20 text-rose-200 text-[10px] font-black uppercase tracking-wider inline-flex flex-col items-center justify-center gap-1"
-            >
-              {attaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-              Photo
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                disabled={attaching}
+                onClick={() => photoRef.current?.click()}
+                className="h-16 min-w-[4rem] px-2 rounded-lg border border-dashed border-rose-800/70 bg-rose-950/20 text-rose-200 text-[10px] font-black uppercase tracking-wider inline-flex flex-col items-center justify-center gap-1"
+              >
+                {attaching ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                Photo
+              </button>
+            )}
           </div>
           <input
             ref={photoRef}
@@ -199,7 +208,7 @@ export function HouseholdExpenseRow({
       <td className="py-2.5 pr-3">
         <select
           value={expense.category}
-          disabled={saving}
+          disabled={saving || readOnly}
           onChange={(e) => void persist({ category: e.target.value })}
           className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200"
         >
@@ -220,7 +229,7 @@ export function HouseholdExpenseRow({
             step="0.01"
             min="0"
             value={amount}
-            disabled={saving}
+            disabled={saving || readOnly}
             onChange={(e) => setAmount(e.target.value)}
             onBlur={() => void saveAmount()}
             onKeyDown={(e) => {
@@ -256,6 +265,7 @@ export function HouseholdExpenseRow({
             onClick={() => void remove()}
             className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800"
             aria-label="Delete expense"
+            hidden={readOnly}
           >
             {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
           </button>
