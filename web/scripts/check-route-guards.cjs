@@ -107,6 +107,11 @@ const HOST_ROUTES = [
   'platform/status.ts',
   'platform/funnel.ts',
   'platform/audit.ts',
+  /*
+   * Live conditions. Host only: it names the forecast and the plow decision, and it is the same read the morning brief uses.
+   * A guest gets a forecast through the stay token instead.
+   */
+  'platform/conditions.ts',
   'mcp/index.ts',
 ];
 
@@ -209,6 +214,8 @@ const PUBLIC_ROUTES = [
   'stay-guide/[token]/message.ts',
   'stay-guide/[token]/thread.ts',
   'stay-guide/[token]/voice.ts',
+  // The forecast for the house this stay is at. The stay token is the credential; the answer is weather, never a code.
+  'stay-guide/[token]/conditions.ts',
 ];
 for (const rel of GUEST_ROUTES) {
   const file = path.join(root, ...rel.split('/'));

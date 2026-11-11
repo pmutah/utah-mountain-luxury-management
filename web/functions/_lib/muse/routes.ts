@@ -247,6 +247,24 @@ export const READ_ROUTES: BotRoute[] = [
     writes: false,
   },
   {
+    path: '/api/platform/conditions',
+    method: 'get',
+    operationId: 'getConditions',
+    summary:
+      'Live snow at Sundance, a three-day forecast per house, and any winter alert, from the National Weather Service. No key is needed. It decides whether to suggest the plow and sends nothing; a failed read says the forecast could not be read rather than reporting clear weather.',
+    writes: false,
+  },
+  {
+    path: '/api/stay-guide/{token}/conditions',
+    method: 'get',
+    operationId: 'getStayConditions',
+    summary:
+      'The three-day forecast and any winter advisory for the house behind a stay token. The token is the credential. Carries weather only — no name, no dates, no door code.',
+    writes: false,
+    public: true,
+    param: 'token',
+  },
+  {
     path: '/api/book/quote',
     method: 'get',
     operationId: 'getTaxQuote',

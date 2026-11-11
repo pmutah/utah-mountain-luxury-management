@@ -127,6 +127,88 @@ function isDirectVideo(url: string) {
   return /\.(mp4|webm|mov)(\?|$)/i.test(url);
 }
 
+type StayWeather = {
+  ok: boolean;
+  label: string;
+  days: Array<{ name: string; high: number | null; low: number | null; short: string; precip: number | null }>;
+  snow48: number | null;
+  alerts: Array<{ event: string; headline: string }>;
+  line: string;
+  advisory: string;
+};
+
+/**
+ * The forecast for the house this stay is at.
+ *
+ * Nothing renders until the read answers, and a failed read renders one plain sentence rather than a temperature. The advisory is
+ * the part that matters: a winter warning over Provo Canyon is worth knowing before a guest drives up in a rental car.
+ */
+function WeatherCard({ token }: { token: string }) {
+  const [weather, setWeather] = useState<StayWeather | null>(null);
+  const [off, setOff] = useState(false);
+  useEffect(() => {
+    let cancel = false;
+    fetch(`/api/stay-guide/${encodeURIComponent(token)}/conditions`)
+      .then((res) => (res.ok ? (res.json() as Promise<StayWeather>) : Promise.reject(new Error(String(res.status)))))
+      .then((body) => {
+        if (!cancel) setWeather(body);
+      })
+      .catch(() => {
+        if (!cancel) setOff(true);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [token]);
+
+  if (off) return null;
+  if (!weather) return null;
+  if (!weather.ok && weather.alerts.length === 0) {
+    return (
+      <Card>
+        <Kicker>Weather</Kicker>
+        <p className="mt-2 text-sm text-[#d7cfc3]" data-bot="stay-weather-off">
+          The forecast could not be read just now. That does not mean the weather is clear — check a forecast before you drive.
+        </p>
+      </Card>
+    );
+  }
+  const days = weather.days.slice(0, 3);
+  return (
+    <Card>
+      <Kicker>Weather</Kicker>
+      <ul className="mt-3 space-y-2 text-sm" data-bot="stay-weather">
+        {days.map((day) => (
+          <li key={day.name} className="flex items-baseline justify-between gap-3">
+            <span className="text-[#f6f1e8]">{day.name}</span>
+            <span className="text-white/60">
+              {day.short}
+              {day.high !== null ? ` · ${day.high}°` : ''}
+              {day.low !== null ? ` / ${day.low}°` : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {weather.snow48 !== null && weather.snow48 > 0 && (
+        <p className="mt-3 text-sm text-[#d7cfc3]" data-bot="stay-weather-snow">
+          {weather.snow48} in of snow is forecast in the mountains over the next 48 hours.
+        </p>
+      )}
+      {weather.advisory && (
+        <p className="mt-2 text-sm font-bold text-[#d4b56a]" data-bot="stay-weather-advisory">
+          {weather.advisory}
+        </p>
+      )}
+      {weather.line && days.length === 0 && (
+        <p className="mt-2 text-sm text-[#d7cfc3]">{weather.line}</p>
+      )}
+      <p className="mt-2 text-xs text-white/45">
+        From the National Weather Service. This is not a road report, and it does not say whether the canyon is open.
+      </p>
+    </Card>
+  );
+}
+
 export function StayApp({ token }: { token: string }) {
   const preview = new URLSearchParams(window.location.search).get('preview') === '1';
   const [data, setData] = useState<StayGuide | null>(null);
@@ -929,6 +1011,15 @@ export function StayApp({ token }: { token: string }) {
                 </div>
               )}
             </Card>
+
+            {/*
+              The weather for the drive up.
+
+              A separate, small card that asks the stay-token route for the forecast for this house, so a slow weather service
+              never delays the page a guest actually opened. Its absence is honest: before it answers, and if it fails, nothing
+              is shown — no invented temperature, and never a claim that the pass is clear.
+            */}
+            <WeatherCard token={token} />
 
             <Card>
               <div className="grid grid-cols-2 gap-4">

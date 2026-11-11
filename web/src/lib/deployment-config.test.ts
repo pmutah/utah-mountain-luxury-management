@@ -78,6 +78,10 @@ const NOT_CONFIGURED: Record<string, string> = {
     'the hosts siteverify may report. Empty means the hostname is not compared; set it to the deployment hosts before enforcing.',
   PHOTOS:
     'the R2 bucket for cleaner proof and galleries. It is commented in wrangler until a bucket exists. Receipts stay where they are.',
+  UDOT_API_KEY:
+    'the canyon road feed. The National Weather Service needs no key and covers snow, forecast, and winter alerts; a road feed needs this key **and** UDOT_ROAD_ENDPOINT before anything is called. With neither, the desk says the road is not connected rather than implying it is open.',
+  UDOT_ROAD_ENDPOINT:
+    "the URL that key belongs to. Not guessed: a wrong endpoint would answer a plausible failure that reads like a road report.",
 };
 
 /** Every `env.X` the runtime actually reads. */

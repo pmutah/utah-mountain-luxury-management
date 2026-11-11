@@ -35,6 +35,9 @@ const PUBLIC_BOOK = new Set([
 /** A guest's own request page. The token is the credential. */
 const BOOK_REQUEST_PAGE = /^\/api\/book\/request\/[^/]+\/?$/;
 
+/** A guest's forecast. The stay token is the credential, exactly as for the guide beside it. */
+const STAY_CONDITIONS = /^\/api\/stay-guide\/[^/]+\/conditions\/?$/;
+
 function withSecurity(response: Response): Response {
   const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
@@ -65,6 +68,11 @@ export const onRequest: PagesFunction<{
     PUBLIC_BOOK.has(url.pathname) ||
     url.pathname.startsWith('/api/hooks/') ||
     url.pathname === '/api/funnel' ||
+    /*
+     * A guest's forecast. The stay token in the path is the whole credential, the same as the guide beside it, and the answer is
+     * weather for a town — no name, no dates. Without this the guest page would need a host sign-in to show a snow forecast.
+     */
+    STAY_CONDITIONS.test(url.pathname) ||
     BOOK_REQUEST_PAGE.test(url.pathname) ||
     OWNER_PAGE.test(url.pathname) ||
     CLEAN_PAGE.test(url.pathname) ||

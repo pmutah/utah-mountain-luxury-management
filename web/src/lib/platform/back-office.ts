@@ -192,3 +192,11 @@ export function housePin(
 
 export const CANYON_STATUS = 'Provo Canyon road status is not connected. This map does not say whether the road is open.';
 export const SNOW_STATUS = 'Sundance snow is not connected. No depth is shown.';
+
+/**
+ * The line to show when a live read is not available at all.
+ *
+ * `CANYON_STATUS` and `SNOW_STATUS` were the only thing the desk had: one fixed sentence each, so a host could not tell a calm
+ * night from an integration that had been broken for a week. The map now reads `GET /api/platform/conditions` and prints the
+ * live figure. These stay as the fallback a caller uses when that read cannot be made, and they still never claim calm weather.
+ */
