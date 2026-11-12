@@ -118,6 +118,16 @@ const HOST_ROUTES = [
    */
   'platform/switches.ts',
   /*
+   * Refunds and guardrail overrides wait here. Host only. Marking a row sends no text and does not change a booking,
+   * an expense, a receipt, or a published rate.
+   */
+  'platform/approvals.ts',
+  /*
+   * Add-ons a guest filed from the stay app. Host only. Marking a row sends no text and does not move a booking.
+   * An owner does not receive Lindon.
+   */
+  'platform/stay-requests.ts',
+  /*
    * The morning run. Host only, plus a `CRON_SECRET` bearer the worker uses for this one path. It records a shadow day, builds the
    * morning list, and sends at most one text to the host per date.
    */
@@ -226,6 +236,8 @@ const PUBLIC_ROUTES = [
   'stay-guide/[token]/voice.ts',
   // The forecast for the house this stay is at. The stay token is the credential; the answer is weather, never a code.
   'stay-guide/[token]/conditions.ts',
+  // The stay token is the credential. Filing an add-on sends no text and does not move the booking.
+  'stay-guide/[token]/requests.ts',
 ];
 for (const rel of GUEST_ROUTES) {
   const file = path.join(root, ...rel.split('/'));

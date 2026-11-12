@@ -14,6 +14,7 @@ import { StayMessageSender } from './StayMessageSender';
 import { GuestLinkBackfill } from './GuestLinkBackfill';
 import { RequestInbox } from './RequestInbox';
 import { ArrivalReadiness } from './ArrivalReadiness';
+import { StayRequestDesk } from './StayRequestDesk';
 import { earlyStayOpen, hostAccessPhrase, hostEarlyPhrase } from '../lib/house-stay';
 import { hostArrivalPhrase } from '../lib/arrival';
 import { hostDeparturePhrase, hostLaterLeavePhrase } from '../lib/departure';
@@ -330,6 +331,7 @@ export function GuestsPanel({
       <GuestDossier reservations={reservations} surveys={surveys} />
       <GuestAppEditor onToast={onToast} locked={listUnreadable} />
       <RequestInbox />
+      <StayRequestDesk />
       <section className="bg-slate-900 border border-slate-800 rounded-3xl p-5" data-bot="guests-upsells">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#d4b56a]">Add-ons</p>
         <p className="mt-2 text-sm text-slate-400" data-bot="guests-upsell-note">

@@ -20,6 +20,7 @@ import { stayPhotoCaption } from '../lib/house-photos';
 import { tripSheet, type TripPlace } from '../lib/stay-sheet';
 import { houseStay, keptGuideLine, mergeHouseCheckout, nearbyGroups, stayAreaPlaces, stayHouseNotes, STAY_EMERGENCY } from '../lib/house-stay';
 import { guestOffers, loadGroceryList, loadUpsellRequests, saveGroceryList, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
+import { postStayRequest } from '../lib/stay-request-client';
 import { ArriveReady } from './ArriveReady';
 import { HouseDays } from './HouseDays';
 import { houseDayPaper } from '../lib/house-day';
@@ -230,6 +231,7 @@ export function StayApp({ token }: { token: string }) {
   const [nightsStatus, setNightsStatus] = useState<'loading' | 'ready' | 'unread'>('loading');
   const [requested, setRequested] = useState<UpsellId[]>(() => loadUpsellRequests(token));
   const [groceryList, setGroceryList] = useState(() => loadGroceryList(token));
+  const [deskLine, setDeskLine] = useState<string | null>(null);
   const [rulesRead, setRulesRead] = useState(() => loadRuleAck(token));
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
@@ -842,7 +844,7 @@ export function StayApp({ token }: { token: string }) {
               <Card>
                 <Kicker>Add-ons</Kicker>
                 <p className="mt-2 text-sm text-white/60">
-                  Request only. Nothing is charged from this page, and Brandon is not texted.
+                  Request only. Nothing is charged from this page, and Brandon is not texted. The booking is not moved.
                 </p>
                 <ul className="mt-4 space-y-3" data-bot="stay-upsells">
                   {offers.map((offer) => {
@@ -864,6 +866,8 @@ export function StayApp({ token }: { token: string }) {
                               const next = toggleUpsell(requested, offer.id);
                               setRequested(next);
                               saveUpsellRequests(token, next);
+                              const note = offer.id === 'groceries' ? groceryList : undefined;
+                              void postStayRequest(token, offer.id, next.includes(offer.id), note).then(setDeskLine);
                             }}
                           >
                             {on ? 'Requested' : 'Request'}
@@ -882,9 +886,13 @@ export function StayApp({ token }: { token: string }) {
                                 setGroceryList(next);
                                 saveGroceryList(token, next);
                               }}
+                              onBlur={(event) => {
+                                if (!requested.includes('groceries')) return;
+                                void postStayRequest(token, 'groceries', true, event.currentTarget.value).then(setDeskLine);
+                              }}
                             />
                             <span className="mt-2 block text-xs text-white/50" data-bot="stay-grocery-note">
-                              This list stays on this phone. Nothing is ordered or charged.
+                              This list stays on this phone until the desk accepts it. Nothing is ordered or charged.
                             </span>
                           </label>
                         )}
@@ -892,6 +900,11 @@ export function StayApp({ token }: { token: string }) {
                     );
                   })}
                 </ul>
+                {deskLine ? (
+                  <p className="mt-3 text-sm text-[#d7cfc3]" data-bot="stay-upsell-desk">
+                    {deskLine}
+                  </p>
+                ) : null}
               </Card>
             )}
             <Card>

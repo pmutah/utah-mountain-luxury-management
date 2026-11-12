@@ -263,6 +263,22 @@ export const READ_ROUTES: BotRoute[] = [
     writes: false,
   },
   {
+    path: '/api/platform/stay-requests',
+    method: 'get',
+    operationId: 'listHostStayRequests',
+    summary:
+      'Add-ons waiting on the host desk, plus recent marks. Host only. An owner does not receive Lindon. A list that cannot be read is not an empty list. Sends nothing and does not move a booking.',
+    writes: false,
+  },
+  {
+    path: '/api/platform/approvals',
+    method: 'get',
+    operationId: 'listApprovals',
+    summary:
+      'Refunds and guardrail overrides that are waiting, plus recent decisions. Host only. A queue that cannot be read is not an empty queue. Sends nothing.',
+    writes: false,
+  },
+  {
     path: '/api/platform/daily',
     method: 'post',
     operationId: 'runMorningDigest',
@@ -276,6 +292,16 @@ export const READ_ROUTES: BotRoute[] = [
     operationId: 'readMorningDigestSetup',
     summary: 'What the morning run would use: the three switches, whether Twilio is configured, and whether a recipient is set. Sends nothing.',
     writes: false,
+  },
+  {
+    path: '/api/stay-guide/{token}/requests',
+    method: 'get',
+    operationId: 'listStayRequests',
+    summary:
+      'Add-ons this stay has filed. The token is the credential. Sends nothing and does not move the booking. A list that cannot be read is not an empty list.',
+    writes: false,
+    public: true,
+    param: 'token',
   },
   {
     path: '/api/stay-guide/{token}/conditions',
@@ -336,6 +362,35 @@ export const READ_ROUTES: BotRoute[] = [
 
 /** Responses that change a record. Listed apart so a reader sees the difference at a glance. */
 export const WRITE_ROUTES: BotRoute[] = [
+  {
+    path: '/api/stay-guide/{token}/requests',
+    method: 'post',
+    operationId: 'fileStayRequest',
+    summary:
+      'File or withdraw an early arrival, a later checkout, the hot tub, or a grocery drop for this stay. The token is the credential. Sends no text and does not move the booking.',
+    writes: true,
+    public: true,
+    param: 'token',
+    note: 'Needs { kind, on }. A note may not carry an address or a phone number. Turning it off declines the waiting row. A row the host already marked is left as it is.',
+  },
+  {
+    path: '/api/platform/stay-requests',
+    method: 'post',
+    operationId: 'decideStayRequest',
+    summary:
+      'Mark a guest add-on noted or declined. Host only. An owner cannot mark a Lindon request. The mark sends no text, charges nothing, and does not move the booking.',
+    writes: true,
+    note: 'Needs { id, decision: "noted" | "declined" }.',
+  },
+  {
+    path: '/api/platform/approvals',
+    method: 'post',
+    operationId: 'fileOrDecideApproval',
+    summary:
+      'File a refund or a guardrail override, or mark one that is already waiting. Host only. The mark sends no text and does not change a booking, an expense, a receipt, or a published rate.',
+    writes: true,
+    note: 'The decision is a mark on this list. It does not refund a guest, publish a rate, or send a text.',
+  },
   {
     path: '/api/book/accept',
     method: 'post',

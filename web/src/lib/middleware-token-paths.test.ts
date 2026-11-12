@@ -68,6 +68,7 @@ test('the older public paths still work', async () => {
   // Nothing that already worked may have been broken by the change.
   for (const path of [
     '/api/stay-guide/abc',
+    '/api/stay-guide/abc/requests',
     '/api/stay-preferences/abc',
     '/api/esign/sign/abc',
     '/api/book',

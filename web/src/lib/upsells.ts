@@ -79,7 +79,7 @@ export function guestAddonIntro(unreadable: boolean): string {
   if (unreadable) {
     return `Saved bookings could not be read. This page does not say which stay can request an add-on, and it does not say a night is open. The menu is the published list. ${tail}`;
   }
-  return `Guests can request these from the stay app when the night is open. Each stay below says which of these that stay can request. A request stays on their phone. A grocery list stays on that phone too. ${tail}`;
+  return `Guests can request these from the stay app when the night is open. Each stay below says which of these that stay can request. A request is filed on the host desk. Nothing is ordered, charged, or texted, and the booking is not moved.`;
 }
 
 /** Names the add-ons without a price. Early and late wait until the calendar can be read. */

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ApprovalQueue } from './ApprovalQueue';
 
 type SwitchRow = { id: string; on: boolean; line: string };
 type LockedRow = { id: string; name: string; reason: string };
@@ -290,6 +291,8 @@ export function PlatformPanel() {
           Who changed what, and when. No amount, guest name, phone, or receipt body is recorded.
         </p>
       </div>
+
+      <ApprovalQueue />
 
       {/* Bindings. Names only, never a value. */}
       <div className="mt-6" data-bot="platform-health">
