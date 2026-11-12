@@ -41,13 +41,19 @@ test('a hand-written digest cannot satisfy the shadow gate', () => {
   // The raw predicate is fooled by a silent digest — this is why the route must not rely on it alone.
   assert.equal(daySawRealComps(silent), true, 'the predicate is stricter than expected; the route guard may be redundant');
 
-  // The route's own gate: fewer than five measured nights refuses.
+  // The route's own gate: a house needs five measured nights, and the day records only the houses that carry a market.
   const route = readFileSync(join(root, 'functions/api/platform/daily.ts'), 'utf8');
-  assert.match(route, /measured < 5/, 'the morning run records a shadow day from a thin market');
+  assert.match(route, /MIN_MEASURED_NIGHTS = 5/, 'the minimum measured nights changed without a decision');
+  assert.match(route, /nights >= MIN_MEASURED_NIGHTS/, 'the morning run records a shadow day from a thin market');
   assert.match(route, /readMarketBoard\(/, 'the morning run composes a digest instead of reading the board');
   assert.match(route, /after\.dates\.includes\(today\)/, 'the run does not check that the day it wrote actually counts');
-  // And it says so rather than silently doing nothing.
-  assert.match(route, /carries no measured comp asks|only \$\{measured\}/);
+  /*
+   * Per house, not one floor. A minimum across the three would let the thinnest house refuse a day for the two that are measured — production
+   * sits at River 23, Ranch 18, Lindon 5, so one fewer Lindon night would have silenced the whole digest.
+   */
+  assert.doesNotMatch(route, /Math\.min\(\.\.\.rows/, 'the market gate is a minimum across houses again');
+  assert.match(route, /measured\.length === 0/, 'the run does not refuse when no house is measured');
+  assert.match(route, /thin/, 'the digest does not name the houses too thin to set a band');
 });
 
 test('the cron secret is not a host bearer', () => {

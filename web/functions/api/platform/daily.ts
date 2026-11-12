@@ -141,10 +141,22 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         if (!board.ok) {
           shadowNote = `The shadow day was not recorded: ${board.reason}`;
         } else {
+          /*
+           * The digest names what was measured and what was not. A single median across three houses would hide Lindon's five nights behind
+           * River's twenty-three, which is the kind of blended figure that reads as a market when it is really one house.
+           */
+          const measuredLine = board.measured
+            .map((row) => `${row.house} ${row.nights} nights${row.median === null ? '' : ` at a $${row.median} median`}`)
+            .join(', ');
+          const thinLine =
+            board.thin.length > 0
+              ? `${board.thin.map((row) => `${row.house} ${row.nights}`).join(', ')} measured nights is too thin to set a band.`
+              : '';
           const digest = [
             `Morning run for ${today}.`,
             `${arrivals.length} arriving, ${departures.length} leaving, ${riskyNights} nights no stay can sell inside 14 days.`,
-            `Market: ${board.measuredNights} measured nights, median ${board.median === null ? 'not measured' : `$${board.median}`}.`,
+            `Market measured: ${measuredLine}.`,
+            thinLine,
             snowLine,
             'Nothing sent to Hospitable.',
           ]
@@ -247,24 +259,39 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 };
 
 /**
- * The market as it actually stands, for the shadow day to record.
+ * The market as it actually stands, per house, for the shadow day to record.
  *
  * This builds the board **in process**, from the same functions `/api/market/overview` uses, rather than fetching that route over HTTP. My
  * first version did fetch it, and the run answered "the river board answered 401": the overview route is host-gated, and a cron call carries no
  * session, so it could never have read its own market. A cron asking the app to authorise itself is the wrong shape.
  *
- * `measuredNights` counts nights whose band came from a **saved comp ask**, and `median` is the median of those measured nights only — the
- * same `liveMedianAsk` the market page shows. A house with no saved comps reports zero and the day is not recorded.
+ * **Per house, not a single floor.** My first version took the minimum across the three, so production's real state — River 23 measured nights,
+ * Ranch 18, Lindon 5 — reported 5 and would have refused the whole day if Lindon had one fewer. One thin house is not a reason to say nothing
+ * about the two that are measured. A day records the houses that carry a market and names the ones that do not, so the digest cannot imply a
+ * figure it did not measure.
+ *
+ * A house needs at least `MIN_MEASURED_NIGHTS` nights with a saved comp ask inside the next 30 to count, which is the same floor the market
+ * page uses before it will claim a median.
  */
-async function readMarketBoard(
-  env: Env,
-): Promise<{ ok: true; measuredNights: number; median: number | null } | { ok: false; reason: string }> {
+const MIN_MEASURED_NIGHTS = 5;
+
+type MarketRead =
+  | {
+      ok: true;
+      /** Houses with enough measured nights to set a band. */
+      measured: Array<{ house: HouseId; nights: number; median: number | null }>;
+      /** Houses that do not carry a market yet. */
+      thin: Array<{ house: HouseId; nights: number }>;
+    }
+  | { ok: false; reason: string };
+
+async function readMarketBoard(env: Env): Promise<MarketRead> {
   try {
     const from = denverToday();
     const days = 90;
     const approved = (await loadApprovedRates(env)).map((row) => ({ house: row.house, date: row.date, guest: row.guest }));
-    const stays = await getAllReservations(env);
-    const rows: Array<{ measured: number; median: number | null }> = [];
+    const measured: Array<{ house: HouseId; nights: number; median: number | null }> = [];
+    const thin: Array<{ house: HouseId; nights: number }> = [];
     for (const house of HOUSES) {
       const live = await loadLiveNights(env, house, from, days);
       const board = buildMarketBoard(
@@ -275,22 +302,20 @@ async function readMarketBoard(
         live ?? null,
         approved.filter((row) => row.house === house).map((row) => ({ date: row.date, guest: row.guest })),
       );
-      void stays;
-      rows.push({
-        measured: board.summary.measuredNights,
-        median: board.summary.liveMedianAsk,
-      });
+      const nights = board.summary.measuredNights;
+      if (nights >= MIN_MEASURED_NIGHTS) {
+        measured.push({ house, nights, median: board.summary.liveMedianAsk });
+      } else {
+        thin.push({ house, nights });
+      }
     }
-    const measured = Math.min(...rows.map((row) => row.measured));
-    const medians = rows.map((row) => row.median).filter((value): value is number => typeof value === 'number');
-    const median = medians.length > 0 ? Math.round(medians.reduce((sum, value) => sum + value, 0) / medians.length) : null;
-    if (measured < 5) {
+    if (measured.length === 0) {
       return {
         ok: false,
-        reason: `only ${measured} of the next 30 nights carry a saved comp ask, and a shadow day needs a measured market`,
+        reason: `no house has ${MIN_MEASURED_NIGHTS} of the next 30 nights with a saved comp ask, so no shadow day can be recorded`,
       };
     }
-    return { ok: true, measuredNights: measured, median };
+    return { ok: true, measured, thin };
   } catch (err) {
     return { ok: false, reason: err instanceof Error ? err.message : 'the market could not be read' };
   }
