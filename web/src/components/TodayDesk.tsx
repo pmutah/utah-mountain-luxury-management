@@ -16,6 +16,7 @@ import { grossPace, type GoalHouse } from '../lib/revenue-goals';
 import { buildTodayDesk, buildTurnovers, type StayMove } from '../lib/today';
 import { MissionMap } from './MissionMap';
 import { MorningList } from './MorningList';
+import { TapeChart } from './TapeChart';
 import { jobLeaveAt2, turnHours } from '../lib/turn-clock';
 import { turnLoad } from '../lib/turn-load';
 
@@ -107,6 +108,7 @@ export function TodayDesk({ reservations }: { reservations: Reservation[] }) {
       </p>
       <h2 className="font-display text-4xl leading-none mt-1">The next seven days</h2>
       <MissionMap reservations={reservations} asOf={asOf} />
+      <TapeChart reservations={reservations} days={14} start={asOf} compact />
       <MorningList />
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {HOUSES.map((house) => {

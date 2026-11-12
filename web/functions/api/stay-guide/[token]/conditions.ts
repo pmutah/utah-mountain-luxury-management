@@ -1,6 +1,7 @@
 import { corsJson } from '../../../_lib/data';
 import { findSurveyByToken } from '../../../_lib/survey-store';
 import { readConditions, HOUSE_POINTS } from '../../../_lib/platform/weather';
+import { readRiverFlow } from '../../../_lib/platform/river-flow';
 
 type HouseId = 'ranch' | 'lindon' | 'river';
 
@@ -23,7 +24,10 @@ export const onRequestGet: PagesFunction<{ SETTINGS?: unknown }> = async ({ requ
     return corsJson(request, { error: 'This link is not valid.' }, 404);
   }
   const house = survey.propertyId as HouseId;
-  const conditions = await readConditions(fetch);
+  const [conditions, river] = await Promise.all([
+    readConditions(fetch),
+    house === 'river' ? readRiverFlow(fetch) : Promise.resolve(null),
+  ]);
   const point = HOUSE_POINTS.find((row) => row.id === house);
   const days = conditions.houses.find((row) => row.id === house)?.days ?? [];
   /*
@@ -48,6 +52,7 @@ export const onRequestGet: PagesFunction<{ SETTINGS?: unknown }> = async ({ requ
       advisory: winter.length > 0
         ? `${winter[0]!.event} covers this area. Carry chains or drive a capable vehicle, and check the canyon before you go.`
         : '',
+      river,
       sends: false,
     },
     200,

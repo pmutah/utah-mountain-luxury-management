@@ -2,6 +2,7 @@ import { hostDenied, hostOnly } from '../../_lib/auth';
 import { failSoft, jsonResponse } from '../../_lib/platform/http';
 import { conditionsLine, readConditions } from '../../_lib/platform/weather';
 import { roadStatus } from '../../_lib/platform/roads';
+import { readRiverFlow } from '../../_lib/platform/river-flow';
 
 /**
  * Live conditions at the three houses and at Sundance.
@@ -18,16 +19,20 @@ export const onRequestGet: PagesFunction<{ DASHBOARD_PASSWORD?: string; UDOT_API
 }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   try {
-    const conditions = await readConditions(fetch);
-    const road = await roadStatus(fetch, env.UDOT_API_KEY, env.UDOT_ROAD_ENDPOINT);
+    const [conditions, road, river] = await Promise.all([
+      readConditions(fetch),
+      roadStatus(fetch, env.UDOT_API_KEY, env.UDOT_ROAD_ENDPOINT),
+      readRiverFlow(fetch),
+    ]);
     return jsonResponse(
       request,
       {
         ...conditions,
         line: conditionsLine(conditions),
         road,
+        river,
         sends: false,
-        note: 'This decides whether to suggest sending the plow. It sends no text and changes no booking.',
+        note: 'This decides whether to suggest sending the plow. It sends no text and changes no booking. River flow is the USGS gauge at Vivian Park; a failed gauge read is not calm water.',
       },
       200,
     );

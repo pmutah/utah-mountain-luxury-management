@@ -17,7 +17,7 @@ export function TrendCharts({ history }: { history: HistoryData }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-900 p-6 rounded-[40px] border border-slate-800">
+      <div className="uml-panel p-6 rounded-[40px]">
         <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">
           Revenue trend (12 months)
         </h4>
@@ -54,7 +54,7 @@ export function TrendCharts({ history }: { history: HistoryData }) {
         </div>
       </div>
 
-      <div className="bg-slate-900 p-6 rounded-[40px] border border-slate-800">
+      <div className="uml-panel p-6 rounded-[40px]">
         <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">
           Net profit & occupancy
         </h4>

@@ -7,9 +7,11 @@ import { BrandMark } from './BrandMark';
 export function Header({
   month,
   onMonthChange,
+  onQuickCapture,
 }: {
   month: string;
   onMonthChange: (m: string) => void;
+  onQuickCapture?: () => void;
 }) {
   const [choice, setChoice] = useState<ThemeChoice>('noir');
   const [resolved, setResolved] = useState<'noir' | 'snow'>('noir');
@@ -75,6 +77,14 @@ export function Header({
             className="uml-kicker px-3 py-2 rounded-full border border-[var(--uml-line)]"
           >
             {themeLabel(choice, resolved)}
+          </button>
+          <button
+            type="button"
+            data-bot="quick-capture"
+            className="uml-kicker px-3 py-2 rounded-full border border-[var(--uml-gold)] text-[var(--uml-gold)]"
+            onClick={onQuickCapture}
+          >
+            + Log
           </button>
           <button
             type="button"

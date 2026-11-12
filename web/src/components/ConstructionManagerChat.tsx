@@ -105,7 +105,7 @@ export function ConstructionManagerChat({
   return (
     <div
       data-bot="build-panel"
-      className="fixed inset-x-0 bottom-0 sm:inset-x-auto sm:right-4 sm:bottom-24 z-50 flex flex-col sm:w-[420px] sm:max-h-[min(640px,calc(100dvh-6rem))] bg-slate-900 border border-amber-700/50 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
+      className="fixed inset-y-0 right-0 z-50 flex w-full flex-col overflow-hidden border border-[var(--uml-line)] bg-[var(--uml-bg)] shadow-[var(--uml-shadow)] sm:w-[420px]"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/90">
         <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export function ConstructionManagerChat({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px] max-h-[50dvh] sm:max-h-[320px]">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {messages.length === 0 && disclaimerAccepted && (
           <p className="text-xs text-slate-500 leading-relaxed">
             Ask: &quot;What should we do this week for framing?&quot; · &quot;Compare electrician

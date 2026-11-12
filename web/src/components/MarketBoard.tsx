@@ -10,6 +10,7 @@ import { boardSourceLine } from '../lib/market/live';
 import { LiveComps } from './LiveComps';
 import { PushPlanPanel } from './PushPlanPanel';
 import { ChangeLogPanel } from './ChangeLogPanel';
+import { GapFillStudio } from './GapFillStudio';
 import { RiverSplitPanel } from './RiverSplitPanel';
 import { addDays, denverToday } from '../lib/market/dates';
 import type { YearPace } from '../lib/market/fill';
@@ -512,6 +513,7 @@ export function MarketBoard() {
 
   return (
     <section className="space-y-6" data-bot="market-board">
+      <GapFillStudio />
       <div className="uml-panel rounded-3xl p-5 sm:p-6" data-bot="market-daily">
         <p className="uml-kicker">Daily text</p>
         <p className="mt-2 max-w-xl text-sm text-[var(--uml-muted)]">

@@ -140,7 +140,7 @@ export function ConstructionPartnerLedger({
           : 'Contributions are even.';
 
   return (
-    <section data-bot="partner-spend" className="bg-slate-900 rounded-[40px] border border-amber-800/40 p-6">
+    <section data-bot="partner-spend" className="uml-panel rounded-[40px] p-6">
       <h3 className="text-sm font-black uppercase tracking-widest text-white mb-1">
         Partner spend
       </h3>
@@ -263,14 +263,14 @@ export function ConstructionPartnerLedger({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Framing lumber, sofa, plumber"
-              className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white placeholder:text-slate-600"
+              className="mt-1 w-full bg-[var(--uml-surface-input)] border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white placeholder:text-slate-600"
             />
           </label>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="text-[10px] font-bold text-slate-500 uppercase">
               Amount
-              <div className="mt-1 flex items-center bg-slate-900 rounded-xl px-3 py-2 border border-slate-700">
+              <div className="mt-1 flex items-center bg-[var(--uml-surface-input)] rounded-xl px-3 py-2 border border-slate-700">
                 <span className="text-slate-500 mr-2 font-bold">$</span>
                 <input
                   data-bot="expense-amount"
@@ -291,7 +291,7 @@ export function ConstructionPartnerLedger({
                 data-bot="expense-paid-date"
                 value={paidDate}
                 onChange={(e) => setPaidDate(e.target.value)}
-                className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white"
+                className="mt-1 w-full bg-[var(--uml-surface-input)] border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white"
               />
             </label>
             <label className="text-[10px] font-bold text-slate-500 uppercase">
@@ -299,7 +299,7 @@ export function ConstructionPartnerLedger({
               <select
                 value={stage}
                 onChange={(e) => setStage(e.target.value)}
-                className="mt-1 w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white"
+                className="mt-1 w-full bg-[var(--uml-surface-input)] border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white"
               >
                 {CONSTRUCTION_STAGES.map((name) => (
                   <option key={name} value={name}>
@@ -320,7 +320,7 @@ export function ConstructionPartnerLedger({
                   type="button"
                   onClick={() => setPaidBy(who)}
                   className={`px-3 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest min-h-[44px] ${
-                    paidBy === who ? 'bg-amber-600 text-white' : 'bg-slate-900 text-slate-500 border border-slate-800'
+                    paidBy === who ? 'bg-amber-600 text-white' : 'bg-[var(--uml-surface-input)] text-slate-500 border border-slate-800'
                   }`}
                 >
                   {PAID_BY_LABELS[who]}

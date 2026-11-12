@@ -19,6 +19,7 @@ export type Conditions = {
   alerts: Array<{ event: string; severity: string; headline: string; ends: string | null }>;
   plow: { dispatch: boolean; reason: string };
   road: { connected: boolean; line: string; winterAlert: boolean; reason?: string };
+  river?: { ok: boolean; line?: string; reason?: string; cfs?: number; tempF?: number | null };
   sends: false;
 };
 

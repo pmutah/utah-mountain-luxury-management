@@ -26,6 +26,7 @@ import { MoneyWaterfall } from './MoneyWaterfall';
 import { SeasonRing } from './SeasonRing';
 import { propertyHealth } from '../lib/luxury';
 import { useHealthSignals } from '../hooks/useHealthSignals';
+import { ExpenseAnomalyRadar } from './ExpenseAnomalyRadar';
 
 type TabId = RentalPropertyId;
 
@@ -178,6 +179,7 @@ export function PropertyDetail({
         </div>
       </div>
 
+      <ExpenseAnomalyRadar expenses={data.expenses} reservations={data.reservations} house={tab} />
       <PropertyExpensesByMonth
         propertyId={tab}
         month={data.month}

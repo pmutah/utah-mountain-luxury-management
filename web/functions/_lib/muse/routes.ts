@@ -251,7 +251,7 @@ export const READ_ROUTES: BotRoute[] = [
     method: 'get',
     operationId: 'getConditions',
     summary:
-      'Live snow at Sundance, a three-day forecast per house, and any winter alert, from the National Weather Service. No key is needed. It decides whether to suggest the plow and sends nothing; a failed read says the forecast could not be read rather than reporting clear weather.',
+      'Live snow at Sundance, a three-day forecast per house, Provo River discharge at Vivian Park from USGS, and any winter alert. No weather key is needed. A failed river read is not reported as calm water. It decides whether to suggest the plow and sends nothing.',
     writes: false,
   },
   {

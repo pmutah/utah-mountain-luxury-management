@@ -6,6 +6,7 @@ export const AGENT_SITE_MAP = {
   llms: '/llms.txt',
   hashRoutes: {
     overview: '#/overview',
+    calendar: '#/calendar',
     market: '#/market',
     report: '#/report',
     owner: '#/owner',

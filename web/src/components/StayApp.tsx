@@ -28,6 +28,8 @@ import { AppIcon } from './AppIcon';
 import { GuestConcierge } from './GuestConcierge';
 import { StayGuideSearch } from './StayGuideSearch';
 import { GuestPreferenceForm } from './GuestPreferenceForm';
+import { StayPass } from './StayPass';
+import { CanyonPocketMap } from './CanyonPocketMap';
 
 type Tab = 'stay' | 'house' | 'area' | 'help';
 
@@ -135,6 +137,7 @@ type StayWeather = {
   alerts: Array<{ event: string; headline: string }>;
   line: string;
   advisory: string;
+  river?: { ok: boolean; line?: string; reason?: string } | null;
 };
 
 /**
@@ -199,6 +202,11 @@ function WeatherCard({ token }: { token: string }) {
           {weather.advisory}
         </p>
       )}
+      {weather.river ? (
+        <p className="mt-2 text-sm text-[#d7cfc3]" data-bot="stay-river-flow">
+          {weather.river.ok ? weather.river.line : weather.river.reason}
+        </p>
+      ) : null}
       {weather.line && days.length === 0 && (
         <p className="mt-2 text-sm text-[#d7cfc3]">{weather.line}</p>
       )}
@@ -568,6 +576,17 @@ export function StayApp({ token }: { token: string }) {
 
         {tab === 'stay' && (
           <>
+            <StayPass
+              token={token}
+              house={data.propertyId}
+              address={guide.address}
+              checkIn={data.checkIn}
+              checkOut={data.checkOut}
+              checkInTime={guide.checkInTime}
+              checkOutTime={guide.checkOutTime}
+              parking={shownParking}
+              emergency={shownEmergency}
+            />
             {!data.preferencesDone && access.phase === 'before' && (
               <a href={`/stay/${encodeURIComponent(token)}/preferences`} className="block">
                 <Card className="border-[#d4b56a]/40">
@@ -1160,6 +1179,7 @@ export function StayApp({ token }: { token: string }) {
 
         {tab === 'area' && (
           <>
+            {houseId ? <CanyonPocketMap house={houseId} /> : null}
             <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
               {kinds.map((item) => (
                 <button

@@ -13,6 +13,7 @@ import { GuestTimeline } from './GuestTimeline';
 import { StayMessageSender } from './StayMessageSender';
 import { GuestLinkBackfill } from './GuestLinkBackfill';
 import { RequestInbox } from './RequestInbox';
+import { ArrivalReadiness } from './ArrivalReadiness';
 import { earlyStayOpen, hostAccessPhrase, hostEarlyPhrase } from '../lib/house-stay';
 import { hostArrivalPhrase } from '../lib/arrival';
 import { hostDeparturePhrase, hostLaterLeavePhrase } from '../lib/departure';
@@ -101,6 +102,15 @@ export function GuestsPanel({
   const [taken, setTaken] = useState<Record<HouseId, string[]> | null>(null);
   const [listUnreadable, setListUnreadable] = useState(false);
   const today = denverToday();
+
+  useEffect(() => {
+    const focus = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (id) setOpenId(id);
+    };
+    window.addEventListener('uml:focus-guest', focus);
+    return () => window.removeEventListener('uml:focus-guest', focus);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -316,6 +326,7 @@ export function GuestsPanel({
 
   return (
     <div className="space-y-6" data-bot="guests">
+      <ArrivalReadiness reservations={reservations} />
       <GuestDossier reservations={reservations} surveys={surveys} />
       <GuestAppEditor onToast={onToast} locked={listUnreadable} />
       <RequestInbox />

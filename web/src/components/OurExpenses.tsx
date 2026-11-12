@@ -439,7 +439,7 @@ export function OurExpenses({
       */}
       {readOnly && (
         <section
-          className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-800"
+          className="uml-panel p-4 sm:p-5 rounded-3xl"
           data-bot="ours-read-only"
         >
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Read only</p>
@@ -450,7 +450,7 @@ export function OurExpenses({
       )}
 
       {!readOnly && (
-      <section className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-rose-800/40">
+      <section className="uml-panel p-4 sm:p-5 rounded-3xl">
         <div className="flex items-center gap-2 mb-3">
           <Plus className="w-4 h-4 text-rose-400" />
           <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Add an expense</p>
@@ -614,7 +614,7 @@ export function OurExpenses({
             type="submit"
             data-bot="ours-expense-save"
             disabled={saving || scanning}
-            className="px-4 py-2 rounded-xl text-[10px] font-black uppercase min-h-[36px] bg-rose-600 text-white disabled:opacity-40"
+            className="px-4 py-2 rounded-xl text-[10px] font-black uppercase min-h-[36px] bg-[var(--uml-danger)] text-white disabled:opacity-40"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -685,7 +685,7 @@ export function OurExpenses({
       </section>
       )}
 
-      <section className="bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-800">
+      <section className="uml-panel p-4 sm:p-5 rounded-3xl">
         <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-3">
           <Sofa className="w-4 h-4" />
           What we have logged

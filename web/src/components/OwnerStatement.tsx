@@ -3,6 +3,7 @@ import { usePreferenceTimes } from '../hooks/useArrivalWindows';
 import { formatCurrency, type Expense, type Reservation } from '../lib/api';
 import { loadDateBlocks } from '../lib/booked-nights';
 import { denverToday } from '../lib/market/dates';
+import { addMonths } from '../lib/months';
 import { aheadChannelsLine, aheadLine, gapLine, ownerAhead, type ClosedSpan } from '../lib/owner-ahead';
 import { halfIsExact } from '../lib/owner-portal';
 import { MANAGEMENT_FEE_LABEL } from '../lib/owner-fee';
@@ -12,7 +13,9 @@ import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statemen
 import type { ReportPeriod } from '../lib/report';
 
 const PERIODS: Array<{ id: ReportPeriod; label: string }> = [
-  { id: 'month', label: 'This month' },
+  { id: 'month', label: 'Month' },
+  { id: 'quarter', label: 'Quarter' },
+  { id: 'ttm', label: 'Trailing 12' },
   { id: 'ytd', label: 'Year to date' },
 ];
 
@@ -36,12 +39,13 @@ export function OwnerStatement({
   extraCleaningFees: Record<string, number>;
 }) {
   const [period, setPeriod] = useState<ReportPeriod>('ytd');
+  const [anchor, setAnchor] = useState(month);
   const [closed, setClosed] = useState<ClosedSpan[]>([]);
   const [blocksReady, setBlocksReady] = useState<boolean | null>(null);
   const preferenceTimes = usePreferenceTimes();
   const statement = useMemo(
-    () => buildOwnerStatement(month, period, reservations, expenses, extraCleaningFees),
-    [month, period, reservations, expenses, extraCleaningFees],
+    () => buildOwnerStatement(anchor, period, reservations, expenses, extraCleaningFees),
+    [anchor, period, reservations, expenses, extraCleaningFees],
   );
   const ahead = useMemo(() => ownerAhead(reservations, denverToday(), closed), [reservations, closed]);
   const offers = useMemo(() => ownerOfferLines(reservations, denverToday(), closed), [reservations, closed]);
@@ -55,6 +59,9 @@ export function OwnerStatement({
     [reservations, preferenceTimes, closed],
   );
 
+  useEffect(() => {
+    setAnchor(month);
+  }, [month]);
   useEffect(() => {
     let cancel = false;
     loadDateBlocks()
@@ -85,6 +92,12 @@ export function OwnerStatement({
         </p>
       </div>
       <div className="flex flex-wrap gap-2" data-bot="owner-controls">
+        <button type="button" className="uml-nav" data-bot="owner-earlier" onClick={() => setAnchor((value) => addMonths(value, -1))}>
+          Earlier
+        </button>
+        <button type="button" className="uml-nav" data-bot="owner-later" onClick={() => setAnchor((value) => addMonths(value, 1))}>
+          Later
+        </button>
         {PERIODS.map((item) => (
           <button
             key={item.id}

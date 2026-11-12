@@ -993,6 +993,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+  createOpsTask: (body: {
+    propertyId: 'ranch' | 'lindon' | 'river';
+    dueDate: string;
+    type?: 'cleaning' | 'maintenance' | 'other';
+    notes?: string;
+  }) =>
+    request<{ id?: string }>('/api/operations/tasks', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   /** The host-approved guest rates. This is the only comp-driven price a guest can be charged. */
   getApprovedRates: (house?: string) =>
     request<{

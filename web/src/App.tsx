@@ -85,7 +85,11 @@ import { RiverLaunch } from './components/RiverLaunch';
 import { RiverUnitsPanel } from './components/RiverUnitsPanel';
 import { useToast } from './hooks/useToast';
 import { letterPausedLine, ownerStatementPausedLine } from './lib/report-paused';
-import { currentYearMonth } from './lib/months';
+import { currentYearMonth, currentDayIso } from './lib/months';
+import { useViewer } from './lib/platform/viewer';
+import { SidebarNav } from './components/SidebarNav';
+import { TapeChart } from './components/TapeChart';
+import { QuickCaptureDrawer } from './components/QuickCaptureDrawer';
 
 function BooksUnread() {
   return (
@@ -110,6 +114,10 @@ function Dashboard() {
   const [extraCleaningFees, setExtraCleaningFees] = useState<Record<string, number>>({});
   const booksPaused = data?.storageReads === 'paused' || history?.storageReads === 'paused';
   const { toasts, show: showToast } = useToast();
+  const viewer = useViewer();
+  const hideLindon = viewer.known && viewer.houses !== null && !viewer.houses.includes('lindon');
+  const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('uml-sidebar') === 'rail');
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -227,44 +235,31 @@ function Dashboard() {
   }
 
   return (
-    <div id="uml-app" className="min-h-screen font-sans p-4 pb-24">
+    <div id="uml-app" className="min-h-screen font-sans md:flex">
+      <SidebarNav
+        activeTab={activeTab}
+        riverView={riverView}
+        reportView={reportView}
+        collapsed={collapsed}
+        hideLindon={hideLindon}
+        guestBadge={(data?.reservations ?? []).filter((stay) => stay.status === 'pending' || stay.status === 'requested').length}
+        cleanBadge={(data?.reservations ?? []).filter((stay) => stay.status !== 'cancelled' && stay.checkOut === currentDayIso()).length}
+        onToggle={() =>
+          setCollapsed((value) => {
+            const next = !value;
+            window.localStorage.setItem('uml-sidebar', next ? 'rail' : 'open');
+            return next;
+          })
+        }
+        onGo={go}
+      />
+      <div className="min-w-0 flex-1 p-4 pb-24">
       <div className="max-w-6xl mx-auto">
-        <Header month={currentMonth} onMonthChange={setCurrentMonth} />
-
-        <nav aria-label="Dashboard screens" className="flex flex-wrap gap-2 pb-2 mb-6">
-          {(['portfolio', 'market', 'agents', 'report', 'owner', 'clean', 'guests', 'ranch', 'lindon', 'river', 'ours'] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              data-bot={`nav-${id}`}
-              aria-current={activeTab === id ? 'page' : undefined}
-              onClick={() => go(id, id === 'report' ? reportView : 'pnl')}
-              className="uml-nav"
-            >
-              {id === 'portfolio'
-                ? 'Overview'
-                : id === 'market'
-                  ? 'Market'
-                : id === 'agents'
-                  ? 'Agents'
-                : id === 'report'
-                  ? 'Report'
-                  : id === 'owner'
-                    ? 'Owner'
-                  : id === 'clean'
-                    ? 'Clean'
-                  : id === 'guests'
-                    ? 'Guests'
-                    : id === 'ours'
-                      ? 'Our expenses'
-                      : id === 'ranch'
-                        ? 'Ranch'
-                        : id === 'lindon'
-                          ? 'Lindon'
-                          : 'River'}
-            </button>
-          ))}
-        </nav>
+        <Header
+          month={currentMonth}
+          onMonthChange={setCurrentMonth}
+          onQuickCapture={() => window.dispatchEvent(new CustomEvent('uml:quick-capture'))}
+        />
 
         {activeTab === 'river' && (
           <div className="flex flex-wrap gap-2 mb-6">
@@ -347,6 +342,13 @@ function Dashboard() {
               </p>
             )}
             <DocumentsVault onToast={showToast} />
+          </main>
+        ) : activeTab === 'calendar' ? (
+          <main>
+            <TapeChart
+              reservations={booksPaused ? [] : history?.reservations?.length ? history.reservations : (data?.reservations ?? [])}
+              unreadable={booksPaused}
+            />
           </main>
         ) : activeTab === 'market' ? (
           <main>
@@ -468,14 +470,12 @@ function Dashboard() {
       </div>
       <nav
           aria-label="Primary"
-          className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t border-[var(--uml-line)] bg-[color-mix(in_srgb,var(--uml-bg)_92%,transparent)] px-2 py-2 backdrop-blur md:hidden"
+          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-[var(--uml-line)] bg-[color-mix(in_srgb,var(--uml-bg)_92%,transparent)] px-2 py-2 backdrop-blur md:hidden"
         >
           {(
             [
               ['portfolio', 'Overview'],
-              ['market', 'Market'],
-              ['guests', 'Guests'],
-              ['ours', 'Expenses'],
+              ['calendar', 'Calendar'],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -483,17 +483,82 @@ function Dashboard() {
               type="button"
               data-bot={`dock-${id}`}
               aria-current={activeTab === id ? 'page' : undefined}
-              onClick={() => go(id)}
+              onClick={() => {
+                setMoreOpen(false);
+                go(id);
+              }}
               className="uml-nav"
             >
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            data-bot="dock-log"
+            className="uml-nav"
+            onClick={() => window.dispatchEvent(new CustomEvent('uml:quick-capture'))}
+          >
+            + Log
+          </button>
+          <button
+            type="button"
+            data-bot="dock-guests"
+            aria-current={activeTab === 'guests' ? 'page' : undefined}
+            className="uml-nav"
+            onClick={() => {
+              setMoreOpen(false);
+              go('guests');
+            }}
+          >
+            Guests
+          </button>
+          <button
+            type="button"
+            data-bot="dock-more"
+            className="uml-nav"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((value) => !value)}
+          >
+            More
+          </button>
         </nav>
+        {moreOpen ? (
+          <div className="fixed inset-x-0 bottom-16 z-30 grid grid-cols-2 gap-2 border-t border-[var(--uml-line)] bg-[var(--uml-bg)] p-3 md:hidden" data-bot="dock-more-sheet">
+            {(
+              [
+                ['clean', 'Clean'],
+                ['market', 'Market'],
+                ['report', 'Report'],
+                ['owner', 'Owner'],
+                ['agents', 'Agents'],
+                ['river', 'River'],
+                ['ranch', 'Ranch'],
+                ...(hideLindon ? [] : [['lindon', 'Lindon'] as const]),
+                ['ours', 'Our expenses'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                data-bot={`dock-${id}`}
+                className="uml-nav"
+                onClick={() => {
+                  setMoreOpen(false);
+                  go(id);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       <ToastStack toasts={toasts} />
       <CommandPalette
         month={currentMonth}
         activeTab={activeTab}
+        reservations={booksPaused ? [] : history?.reservations?.length ? history.reservations : (data?.reservations ?? [])}
+        expenses={data?.expenses ?? []}
+        hideLindon={hideLindon}
         onNavigate={(dest) => go(dest.tab, dest.report ?? 'pnl', dest.river ?? 'rental')}
       />
       <AgentChat
@@ -511,6 +576,8 @@ function Dashboard() {
         onError={(msg) => showToast(msg, 'error')}
         onToast={showToast}
       />
+      <QuickCaptureDrawer />
+      </div>
     </div>
   );
 }

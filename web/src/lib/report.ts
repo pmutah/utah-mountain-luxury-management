@@ -13,7 +13,7 @@ import { managementFeeRaw } from './owner-fee';
 export const REPORT_PROPERTY_IDS: RentalPropertyId[] = ['ranch', 'lindon', 'river'];
 export const RIVER_OPEN_MONTH = '2026-11';
 
-export type ReportPeriod = 'month' | 'ytd' | 'ttm';
+export type ReportPeriod = 'month' | 'quarter' | 'ytd' | 'ttm';
 export type ReportPropertyFilter = 'all' | RentalPropertyId;
 export type ReportOwnerFilter = 'all' | 'brandon' | 'todd';
 export type ChannelName = 'Airbnb' | 'VRBO' | 'Other';
@@ -192,6 +192,7 @@ export function monthRangeInclusive(start: string, end: string): string[] {
 
 export function periodMonths(period: ReportPeriod, endMonth: string): string[] {
   if (period === 'month') return [endMonth];
+  if (period === 'quarter') return monthRangeInclusive(addMonths(endMonth, -2), endMonth);
   if (period === 'ytd') return monthRangeInclusive(`${endMonth.slice(0, 4)}-01`, endMonth);
   return monthRangeInclusive(addMonths(endMonth, -11), endMonth);
 }
@@ -699,6 +700,7 @@ export function buildPortfolioReport(
 
 export function reportPeriodLabel(period: ReportPeriod): string {
   if (period === 'month') return 'This month';
+  if (period === 'quarter') return 'Quarter';
   if (period === 'ytd') return 'Year to date';
   return 'Trailing 12 months';
 }

@@ -12,6 +12,8 @@ import { ArriveReady } from './ArriveReady';
 import { HouseManual } from './HouseManual';
 import { HouseGallery } from './HouseGallery';
 import { HouseFaq, HouseReviews } from './HouseSocialProof';
+import { RiverWingMap } from './RiverWingMap';
+import { CanyonPocketMap } from './CanyonPocketMap';
 import { bookingRules } from '../lib/booking-rules';
 import { houseOffers, housePageAside, type HouseAsideParty, type HouseListStay } from '../lib/house-offer';
 import { heldSearchLines, houseCardLines, houseMonthPace, houseNextStayLine, housePageRhythm, housePartyLine, houseQuoteCaption, houseQuotePending, houseRhythms, otherStayRules, partyFitList, quotedStayHref, quotedStayPaint, searchHouses, shortestFixLines, stayRuleLines } from '../lib/house-search';
@@ -640,6 +642,12 @@ function HousePage({ house }: { house: PublicHouse }) {
             <HouseGallery house={house.id} />
           </div>
         )}
+        {(house.id === 'ranch' || house.id === 'lindon' || house.id === 'river') && (
+          <div className="mt-6 space-y-4">
+            {house.id === 'river' ? <RiverWingMap checkIn={checkIn} checkOut={checkOut} /> : null}
+            <CanyonPocketMap house={house.id} />
+          </div>
+        )}
         <p className="uml-kicker mt-8">{house.id}</p>
         <h1 className="font-display text-5xl">{house.name}</h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">{house.title}</p>
@@ -677,14 +685,14 @@ function HousePage({ house }: { house: PublicHouse }) {
             </li>
           ))}
         </ul>
-        <ul className="mt-6 space-y-1 text-sm" data-bot="house-booking-rules">
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2 text-sm" data-bot="house-booking-rules">
           {bookingRules(house.id).map((rule) => (
-            <li key={rule}>{rule}</li>
+            <li key={rule} className="uml-panel rounded-2xl p-4">{rule}</li>
           ))}
         </ul>
-        <ul className="mt-6 space-y-1 text-sm" data-bot="house-facts">
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2 text-sm" data-bot="house-facts">
           {house.facts.map((fact) => (
-            <li key={fact}>{fact}</li>
+            <li key={fact} className="uml-panel rounded-2xl p-4">{fact}</li>
           ))}
         </ul>
         {house.notes.length > 0 && (
@@ -698,9 +706,9 @@ function HousePage({ house }: { house: PublicHouse }) {
         )}
         <HouseReviews house={house.id} />
         <HouseFaq house={house.id} />
-        <ul className="mt-6 space-y-2 text-sm" data-bot="house-rules">
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2 text-sm" data-bot="house-rules">
           {house.rules.map((rule) => (
-            <li key={rule}>{rule}</li>
+            <li key={rule} className="uml-panel rounded-2xl p-4">{rule}</li>
           ))}
         </ul>
         {houseSafetyLine() ? (

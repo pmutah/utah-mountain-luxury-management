@@ -3,6 +3,7 @@ import { ARRIVAL_SLOTS, arrivalNote } from '../lib/arrival';
 import { applyDepartureChoice, applyLateAddon, DEPARTURE_SLOTS, quoteLeave } from '../lib/departure';
 import { PROPERTIES } from '../lib/api';
 import { ArriveReady } from './ArriveReady';
+import { RiverWingMap } from './RiverWingMap';
 import { HouseManual } from './HouseManual';
 import { HouseDays } from './HouseDays';
 import { houseDayPaper } from '../lib/house-day';
@@ -816,6 +817,11 @@ export function DirectBook() {
           ))}
         </div>
 
+        {house === 'river' ? (
+          <div className="mb-6">
+            <RiverWingMap checkIn={checkIn} checkOut={checkOut} />
+          </div>
+        ) : null}
         <div className="grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="uml-panel overflow-hidden rounded-[32px]">
             {photo && (
@@ -836,13 +842,15 @@ export function DirectBook() {
               <p className="text-xs text-[var(--uml-muted)]" data-bot="stay-print-note">
                 {printPriceNote(printKind)}
               </p>
-              <p className="font-display text-3xl">Sleeps {stay.sleeps}</p>
-              <p className="text-sm text-[var(--uml-muted)]">
+              <div className="grid gap-3 sm:grid-cols-2">
+              <p className="font-display text-3xl uml-panel rounded-2xl p-4">Sleeps {stay.sleeps}</p>
+              <p className="text-sm text-[var(--uml-muted)] uml-panel rounded-2xl p-4">
                 Check-in {stay.checkIn} · Check-out {stay.checkOut}
               </p>
-              {stay.bedrooms && <p className="text-sm">{stay.bedrooms}</p>}
-              <p className="text-sm text-[var(--uml-muted)]">{stay.arrival}</p>
-              <p className="text-sm text-[var(--uml-muted)]">{stay.parking}</p>
+              {stay.bedrooms && <p className="text-sm uml-panel rounded-2xl p-4">{stay.bedrooms}</p>}
+              <p className="text-sm text-[var(--uml-muted)] uml-panel rounded-2xl p-4">{stay.arrival}</p>
+              <p className="text-sm text-[var(--uml-muted)] uml-panel rounded-2xl p-4">{stay.parking}</p>
+              </div>
               <p className="text-sm" data-bot="stay-quiet-now">
                 {quietNowLine(house, denverHour(), 'quote')}
               </p>

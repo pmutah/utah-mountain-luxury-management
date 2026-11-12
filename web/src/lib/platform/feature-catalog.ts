@@ -77,6 +77,17 @@ export const FEATURE_CATALOG: FeatureRow[] = [
   { id: 'pii-identity', area: 'Security', title: 'ID images stay at Stripe', status: 'planned', competitor: 'Enso', reason: 'Stripe Identity is not connected. This app stores no ID image.' },
   { id: 'radar', area: 'Loop', title: 'Competitive radar', status: 'match', competitor: 'Guesty', reason: 'A fixture changelog diffs against this catalog and files a backlog line with why it matters for three houses. It does not scrape on a timer.' },
   { id: 'one-system', area: 'Beat', title: 'Construction, taxes, and the bots in the same desk', status: 'beat', competitor: 'Guesty', reason: 'The rental desk, the River build, the filed-return locks, and Muse and Amanda are one system. A general PMS does not do that for three houses.' },
+  { id: 'sidebar-rail', area: 'Desk', title: 'Collapsible sidebar and phone dock', status: 'match', competitor: 'Hospitable', reason: 'Desktop uses a left rail. The phone dock is Overview, Calendar, Log, Guests, and More. Hash routes and data-bot selectors stay.' },
+  { id: 'tape-chart', area: 'Desk', title: 'Multi-property tape chart', status: 'match', competitor: 'Guesty', reason: 'Ranch, Lindon, and the River House whole and in three wings share one chart. A gap is a link, not a booking.' },
+  { id: 'river-wings', area: 'Guest', title: 'Riverhouse wing map', status: 'match', competitor: 'Hostaway', reason: 'The three wings can be combined on the house page and the quote. A missing live rate stays labeled as a draft ask.' },
+  { id: 'river-flow', area: 'Guest', title: 'Vivian Park river flow', status: 'match', competitor: 'Internal', reason: 'USGS gauge 10163000 is read with no key. A failed read says the gauge could not be read.' },
+  { id: 'arrival-board', area: 'Desk', title: '72-hour arrival readiness', status: 'match', competitor: 'Breezeway', reason: 'Clean, door, portal, survey, and direct balance are separate pills. A pill that could not be read is not marked ready.' },
+  { id: 'omnibar', area: 'Desk', title: 'Cmd+K search across stays and bills', status: 'match', competitor: 'Guesty', reason: 'Search uses the books already loaded. An owner session does not search Lindon.' },
+  { id: 'quick-log', area: 'Desk', title: 'Quick log for a bill, a note, or a task', status: 'match', competitor: 'Hospitable', reason: 'Partner fields appear only for construction. A read-only owner cannot save. A scan is not a posted expense until the host saves it.' },
+  { id: 'gap-fill', area: 'Revenue', title: 'Gap-fill studio', status: 'match', competitor: 'PriceLabs', reason: 'One-to-four night gaps become a quote link and a note to copy. Nothing is emailed.' },
+  { id: 'utility-radar', area: 'Finance', title: 'Utility spike radar', status: 'match', competitor: 'Guesty', reason: 'A bill at least 1.6 times its usual month, or a utility bill in a nearly empty month, is named with a receipt link when one exists.' },
+  { id: 'owner-scrub', area: 'Finance', title: 'Scrubbable owner statement and waterfall', status: 'match', competitor: 'OwnerRez', reason: 'Month, quarter, and trailing twelve step through Todd’s Ranch and River statement. A waterfall band lists the rows behind it. Lindon, household, and construction stay off that statement.' },
+  { id: 'canyon-pass', area: 'Guest', title: 'Canyon map and printable stay pass', status: 'match', competitor: 'Enso', reason: 'The map is a drawing with typical drive minutes. The pass QR opens the stay guide and does not print a door code.' },
 ];
 
 export function catalogIds(): string[] {

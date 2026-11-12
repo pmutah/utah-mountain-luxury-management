@@ -95,6 +95,11 @@ export function MissionMap({ reservations, asOf }: { reservations: Stay[]; asOf:
           {forecastLine(conditions.conditions.sundance.days)}
         </p>
       )}
+      {conditions.kind === 'live' && conditions.conditions.river && (
+        <p className="text-xs text-[var(--uml-muted)]" data-bot="mission-river">
+          {conditions.conditions.river.ok ? conditions.conditions.river.line : conditions.conditions.river.reason}
+        </p>
+      )}
     </div>
   );
 }

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api, type ToolStep } from '../lib/api';
+import { api, type Expense, type Reservation, type ToolStep } from '../lib/api';
 import type { DashboardTab, ReportView, RiverView } from '../lib/bot-nav';
+import { omnibarHits, type SearchHit } from '../lib/omnibar-search';
 import { AgentToolSteps } from './AgentToolSteps';
 
 type Destination = { tab: DashboardTab; report?: ReportView; river?: RiverView };
 
 const COMMANDS: Array<{ label: string; test: RegExp; dest: Destination }> = [
   { label: 'Overview', test: /^(overview|home|portfolio)$/i, dest: { tab: 'portfolio' } },
+  { label: 'Calendar', test: /^(calendar|tape)$/i, dest: { tab: 'calendar' } },
   { label: 'Market', test: /^(market|comps|pricing)$/i, dest: { tab: 'market' } },
   { label: 'Agents', test: /^(agents|ai|hub)$/i, dest: { tab: 'agents' } },
   { label: 'Report', test: /^(report|p&l|pnl)$/i, dest: { tab: 'report', report: 'pnl' } },
@@ -30,10 +32,16 @@ export function CommandPalette({
   month,
   activeTab,
   onNavigate,
+  reservations = [],
+  expenses = [],
+  hideLindon = false,
 }: {
   month: string;
   activeTab: string;
   onNavigate: (dest: Destination) => void;
+  reservations?: Reservation[];
+  expenses?: Expense[];
+  hideLindon?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -42,6 +50,7 @@ export function CommandPalette({
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>();
   const [buildSession, setBuildSession] = useState<string>();
+  const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -70,10 +79,27 @@ export function CommandPalette({
     if (open) inputRef.current?.focus();
   }, [open, query]);
 
+  const hits = useMemo(
+    () => omnibarHits({ query, reservations, expenses, hideLindon }),
+    [query, reservations, expenses, hideLindon],
+  );
   const suggestions = useMemo(
-    () => COMMANDS.filter((c) => !query || c.label.toLowerCase().includes(query.toLowerCase())).slice(0, 6),
+    () => COMMANDS.filter((c) => !query || c.label.toLowerCase().includes(query.toLowerCase()) || c.test.test(query)).slice(0, 6),
     [query],
   );
+
+  function openHit(hit: SearchHit) {
+    if (hit.stayId) window.dispatchEvent(new CustomEvent('uml:focus-guest', { detail: { id: hit.stayId } }));
+    if (hit.tab) {
+      onNavigate({
+        tab: hit.tab as DashboardTab,
+        report: hit.report,
+        river: hit.river,
+      });
+    }
+    setOpen(false);
+    setQuery('');
+  }
 
   async function submit(text: string) {
     const trimmed = text.trim();
@@ -136,8 +162,26 @@ export function CommandPalette({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === 'ArrowDown') {
                 e.preventDefault();
+                setCursor((value) => Math.min(hits.length - 1, value + 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setCursor((value) => Math.max(0, value - 1));
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const command = COMMANDS.find((item) => item.test.test(query.trim()));
+                if (command) {
+                  onNavigate(command.dest);
+                  setOpen(false);
+                  setQuery('');
+                  return;
+                }
+                const hit = hits[cursor];
+                if (hit && query.trim()) {
+                  openHit(hit);
+                  return;
+                }
                 void submit(query);
               }
             }}
@@ -145,6 +189,19 @@ export function CommandPalette({
             className="w-full bg-transparent outline-none font-display text-2xl placeholder:text-[var(--uml-muted)]"
           />
         </form>
+        <div className="mt-3 space-y-1">
+          {hits.map((hit, index) => (
+            <button
+              key={hit.id}
+              type="button"
+              className={`block w-full rounded-xl px-3 py-2 text-left text-sm ${index === cursor ? 'bg-[var(--uml-surface-2)]' : ''}`}
+              onClick={() => openHit(hit)}
+            >
+              <span>{hit.label}</span>
+              <span className="ml-2 text-[var(--uml-muted)]">{hit.detail}</span>
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-2 mt-3">
           {suggestions.map((item) => (
             <button

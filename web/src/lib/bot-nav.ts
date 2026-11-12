@@ -2,6 +2,7 @@
 
 export const DASHBOARD_TABS = [
   'portfolio',
+  'calendar',
   'market',
   'report',
   'guests',
@@ -63,6 +64,7 @@ export function dashboardHash(loc: DashboardLocation): string {
   }
   if (loc.tab === 'river' && loc.riverView === 'launch') return '#/river/launch';
   if (loc.tab === 'portfolio') return '#/overview';
+  if (loc.tab === 'calendar') return '#/calendar';
   return `#/${loc.tab}`;
 }
 

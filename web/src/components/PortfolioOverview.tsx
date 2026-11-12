@@ -27,6 +27,8 @@ import { AutomationPanel } from './AutomationPanel';
 import { RevenueGoals } from './RevenueGoals';
 import { YieldMoves } from './YieldMoves';
 import { TodayDeskWithSettings } from './TodayDesk';
+import { ArrivalReadiness } from './ArrivalReadiness';
+import { ExpenseAnomalyRadar } from './ExpenseAnomalyRadar';
 import { useHealthSignals } from '../hooks/useHealthSignals';
 
 export function PortfolioOverview({
@@ -116,6 +118,7 @@ export function PortfolioOverview({
         </section>
       )}
       <TodayDeskWithSettings reservations={reservations} />
+      <ArrivalReadiness reservations={reservations} />
       <section className="uml-panel rounded-3xl px-6 py-8 sm:px-10">
         <p className="uml-kicker">This morning</p>
         <MorningLine data={data} />
@@ -196,6 +199,7 @@ export function PortfolioOverview({
               onToast={onToast}
               onError={onError}
             />
+            <ExpenseAnomalyRadar expenses={data.expenses} reservations={reservations} />
             <UtilitiesByMonth
               expenses={data.expenses}
               endMonth={data.month}
