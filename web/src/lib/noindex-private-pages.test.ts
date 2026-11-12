@@ -62,7 +62,7 @@ test('the header itself is sent, and the non-API branch is where it is applied',
   assert.match(MIDDLEWARE, /noarchive/, 'a cached copy of a guest stay could outlive the token');
   assert.match(
     MIDDLEWARE,
-    /if \(!url\.pathname\.startsWith\('\/api\/'\)\) return withSecurity\(await context\.next\(\), isPrivatePage\(url\.pathname\)\)/,
+    /if \(!url\.pathname\.startsWith\('\/api\/'\)\) \{\s*const response = withSecurity\(await context\.next\(\), isPrivatePage\(url\.pathname\)\)/,
     'the private flag is not passed on the page branch, so the header is never set',
   );
 });

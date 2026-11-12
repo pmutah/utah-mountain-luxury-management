@@ -2,6 +2,7 @@ import { isAuthConfigured, isAuthenticated, unauthorized } from './_lib/auth';
 import { cronAuthorized, emailSessionValid, refuseReadOnly } from './_lib/roles';
 import { isMuseAuthorized, isPublicMusePath } from './_lib/muse/auth';
 import { SECURITY_HEADERS } from '../src/lib/platform/back-office';
+import { staticCacheControl } from './_lib/static-cache';
 
 /**
  * An owner portal page. `owner/links` is the host route that mints these, so it must not match: the
@@ -81,7 +82,12 @@ export const onRequest: PagesFunction<{
   MUSE_BOT_SECRET?: string;
 }> = async (context) => {
   const url = new URL(context.request.url);
-  if (!url.pathname.startsWith('/api/')) return withSecurity(await context.next(), isPrivatePage(url.pathname));
+  if (!url.pathname.startsWith('/api/')) {
+    const response = withSecurity(await context.next(), isPrivatePage(url.pathname));
+    const cache = response.status === 200 ? staticCacheControl(url.pathname) : null;
+    if (cache) response.headers.set('Cache-Control', cache);
+    return response;
+  }
   if (
     url.pathname.startsWith('/api/auth/') ||
     url.pathname.startsWith('/api/stay-preferences/') ||

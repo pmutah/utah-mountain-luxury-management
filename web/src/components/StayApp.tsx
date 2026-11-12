@@ -17,7 +17,7 @@ import { guestRuleLines } from '../lib/house-rules';
 import { codesReady, loadRuleAck, saveRuleAck } from '../lib/stay-rules';
 import { stayMessageNote, stayMessageSchedule } from '../lib/guest-timeline';
 import { phoneStayIcs } from '../lib/stay-ics';
-import { stayPhotoCaption } from '../lib/house-photos';
+import { photoSrcSet, stayPhotoCaption } from '../lib/house-photos';
 import { tripSheet, type TripPlace } from '../lib/stay-sheet';
 import { houseStay, keptGuideLine, mergeHouseCheckout, nearbyGroups, stayAreaPlaces, stayHouseNotes, STAY_EMERGENCY } from '../lib/house-stay';
 import { guestOffers, loadGroceryList, loadUpsellRequests, saveGroceryList, saveUpsellRequests, toggleUpsell, type UpsellId } from '../lib/upsells';
@@ -541,7 +541,7 @@ export function StayApp({ token }: { token: string }) {
   return (
     <div className="guest-survey min-h-screen pb-24 text-[#f6f1e8]" data-bot="stay-app">
       <header className="relative h-64 overflow-hidden">
-        <img src={`/houses/${data.propertyId}.jpg`} alt={photoCaption || house} className="absolute inset-0 h-full w-full object-cover" />
+        <img src={`/houses/${data.propertyId}.jpg`} {...photoSrcSet(`/houses/${data.propertyId}.jpg`, '(min-width: 448px) 448px, 100vw')} alt={photoCaption || house} className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-[#07110f]" />
         <div className="relative mx-auto flex h-full max-w-md flex-col justify-end px-5 pb-5">
           <Kicker>Utah Mountain Luxury</Kicker>

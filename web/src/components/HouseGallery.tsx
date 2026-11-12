@@ -8,6 +8,7 @@ import {
   photoRoomLabel,
   photoRooms,
   photosInRoom,
+  photoSrcSet,
   type GalleryPhoto,
   type PhotoRoom,
 } from '../lib/house-photos';
@@ -90,6 +91,15 @@ export function HouseGallery({ house, dense = false }: { house: HouseId; dense?:
     return () => window.clearTimeout(timer);
   }, [open, reel, plan, gridView, videoOpen, index, shown.length]);
 
+  // The neighbours load while this photo is on screen, so the next arrow press does not wait on the network.
+  useEffect(() => {
+    if (!open || shown.length <= 1) return;
+    for (const step of [1, -1]) {
+      const next = shown[(index + step + shown.length) % shown.length];
+      if (next) new Image().src = next.src;
+    }
+  }, [open, index, shown]);
+
   // The body must not scroll behind a full-screen gallery.
   useEffect(() => {
     if (!open) return;
@@ -127,9 +137,12 @@ export function HouseGallery({ house, dense = false }: { house: HouseId; dense?:
         >
           <img
             src={lead.src}
+            {...photoSrcSet(lead.src, '(min-width: 640px) 50vw, 100vw')}
             alt={lead.caption || 'The house'}
             className={`w-full object-cover transition duration-500 group-hover:scale-[1.02] ${dense ? 'h-64' : 'h-72 sm:h-full'}`}
             loading="eager"
+            fetchPriority="high"
+            decoding="async"
           />
           <PhotoLabel caption={lead.caption} />
         </button>
@@ -143,9 +156,11 @@ export function HouseGallery({ house, dense = false }: { house: HouseId; dense?:
           >
             <img
               src={photo.src}
+              {...photoSrcSet(photo.src, '25vw')}
               alt={photo.caption || 'The house'}
               className="h-[9.5rem] w-full object-cover transition duration-500 group-hover:scale-[1.03]"
               loading="lazy"
+              decoding="async"
             />
             <PhotoLabel caption={photo.caption} />
           </button>
@@ -371,9 +386,11 @@ export function HouseGallery({ house, dense = false }: { house: HouseId; dense?:
                   >
                     <img
                       src={photo.src}
+                      {...photoSrcSet(photo.src, '(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw')}
                       alt={photo.caption || 'The house'}
                       className="h-52 w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       loading="lazy"
+                      decoding="async"
                     />
                     <PhotoLabel caption={photo.caption} />
                   </button>
@@ -418,7 +435,7 @@ export function HouseGallery({ house, dense = false }: { house: HouseId; dense?:
                     data-bot="house-photo-thumb"
                     className="block overflow-hidden rounded-lg border border-white/20 aria-[current=true]:border-[var(--uml-gold)]"
                   >
-                    <img src={photo.src} alt="" className="h-14 w-20 object-cover" loading="lazy" />
+                    <img src={photo.src} {...photoSrcSet(photo.src, '80px')} alt="" className="h-14 w-20 object-cover" loading="lazy" decoding="async" />
                   </button>
                 </li>
               ))}

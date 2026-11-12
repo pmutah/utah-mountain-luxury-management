@@ -14,7 +14,8 @@
     "test": "tsx --test \"src/lib/**/*.test.ts\" \"functions/**/*.test.ts\"",
     "preview": "vite preview",
     "deploy": "node scripts/deploy.mjs",
-    "deploy:skip-checks": "node scripts/deploy.mjs --skip-checks"
+    "deploy:skip-checks": "node scripts/deploy.mjs --skip-checks",
+    "photos:variants": "node scripts/build-photo-variants.mjs"
   },
   "dependencies": {
     "jose": "^6.2.15",

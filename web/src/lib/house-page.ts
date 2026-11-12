@@ -1,6 +1,7 @@
 import { PROPERTIES } from './api';
 import { compoundOffer } from './compound';
-import { HOUSE_PHOTOS } from './house-photos';
+import { houseFaq } from './guest-content';
+import { HOUSE_PHOTOS, houseGallery } from './house-photos';
 import { houseStay, nearbyGroups, partyFits, SLEEPS, STAY_EMERGENCY } from './house-stay';
 import { houseRules } from './house-rules';
 import { LISTING_TITLE } from './listing';
@@ -464,9 +465,15 @@ function vacationRental(house: HouseId, address: string, image: string): Record<
     '@context': 'https://schema.org',
     '@type': 'VacationRental',
     name: PROPERTIES[house]?.name ?? house,
+    identifier: `uml-${house}`,
     description: LISTING_TITLE[house],
-    url: `${ORIGIN}/houses/${house}`,
-    image: image ? `${ORIGIN}${image}` : undefined,
+    url: `${ORIGIN}/houses/${house}/`,
+    /*
+     * Google's vacation-rental result wants at least eight photos. The cover leads because it is the image every share already
+     * previews; the rest of the gallery follows in the order the page shows it.
+     */
+    image: [...new Set([image, ...houseGallery(house).map((photo) => photo.src)].filter(Boolean))].map((src) => `${ORIGIN}${src}`),
+    brand: { '@type': 'Brand', name: 'Utah Mountain Luxury' },
     address: { '@type': 'PostalAddress', ...postal },
     containsPlace: {
       '@type': 'Accommodation',
@@ -479,6 +486,63 @@ function vacationRental(house: HouseId, address: string, image: string): Record<
     checkoutTime: stay.checkOut === '11:00 AM' ? '11:00' : stay.checkOut,
     amenityFeature: publishedAmenities(house),
   };
+}
+
+/**
+ * The extra JSON-LD a house page carries beside its `VacationRental`: the FAQ the page already shows, and the
+ * breadcrumb from the houses list. Both are built from what is on the page, so search never reads a claim the
+ * guest cannot.
+ */
+export function houseExtraSchema(house: HouseId): Record<string, unknown>[] {
+  const name = PROPERTIES[house]?.name ?? house;
+  const out: Record<string, unknown>[] = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Houses', item: `${ORIGIN}/houses/` },
+        { '@type': 'ListItem', position: 2, name, item: `${ORIGIN}/houses/${house}/` },
+      ],
+    },
+  ];
+  const faq = houseFaq(house).filter((row) => !row.answer.includes('$') && !SECRET.test(`${row.question} ${row.answer}`));
+  if (faq.length > 0) {
+    out.push({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faq.map((row) => ({
+        '@type': 'Question',
+        name: row.question,
+        acceptedAnswer: { '@type': 'Answer', text: row.answer },
+      })),
+    });
+  }
+  return out;
+}
+
+/** The houses list as an `ItemList` of the three listings, plus who runs them. */
+export function houseIndexSchema(): Record<string, unknown>[] {
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: 'Utah Mountain Luxury houses',
+      itemListElement: HOUSES.map((house, at) => ({
+        '@type': 'ListItem',
+        position: at + 1,
+        url: `${ORIGIN}/houses/${house}/`,
+        name: PROPERTIES[house]?.name ?? house,
+      })),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Utah Mountain Luxury',
+      url: `${ORIGIN}/houses/`,
+      logo: `${ORIGIN}/favicon.svg`,
+      areaServed: ['Provo Canyon', 'Utah Valley'],
+    },
+  ];
 }
 
 function partyAmenity(house: HouseId): string | null {

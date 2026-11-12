@@ -6,9 +6,9 @@ import { CanyonConditionsBar } from './CanyonConditionsBar';
 import { DirectBookingPromises } from './DirectBookingPromises';
 import { HouseCompareMatrix } from './HouseCompareMatrix';
 import { loadQuoteCalendar } from '../lib/booked-nights';
-import { applyPublicShare, GROUP_TRIP, groupQuoteLink, groupQuotePending, groupQuoteUnread, housePageHref, housePageSearch, parseHousePath, publicHouse, publicHouses, publicShare } from '../lib/house-page';
+import { applyPublicShare, GROUP_TRIP, groupQuoteLink, groupQuotePending, groupQuoteUnread, houseIndexSchema, housePageHref, housePageSearch, parseHousePath, publicHouse, publicHouses, publicShare } from '../lib/house-page';
 import { cardAmenities, houseFacts, houseProfile } from '../lib/house-catalog';
-import { houseGallery } from '../lib/house-photos';
+import { houseGallery, photoSrcSet } from '../lib/house-photos';
 import { heldSearchLines, houseCardLines, houseRhythms, partyFitList, searchHouses, shortestFixLines, stayRuleLines } from '../lib/house-search';
 import { eventPlanCompare } from '../lib/event-plan';
 import { openingStay } from '../lib/booking-open';
@@ -91,6 +91,14 @@ function HouseIndex() {
   return (
     <div className="min-h-screen" data-bot="houses-index">
       <p className="sr-only" data-bot="page-share">{share.title}</p>
+      {houseIndexSchema().map((schema) => (
+        <script
+          key={String(schema['@type'])}
+          type="application/ld+json"
+          data-bot={`houses-schema-${String(schema['@type']).toLowerCase()}`}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
 
       <header className="border-b border-white/10">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
@@ -138,9 +146,11 @@ function HouseIndex() {
                 <div className="relative overflow-hidden">
                   <img
                     src={photos[0]?.src ?? house.photo.src}
+                    {...photoSrcSet(photos[0]?.src ?? house.photo.src, '(min-width: 1024px) 33vw, 100vw')}
                     alt={house.name}
                     className="h-56 w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                     loading={house.id === 'river' ? 'eager' : 'lazy'}
+                    decoding="async"
                   />
                   {photos[0]?.caption ? (
                     <figcaption

@@ -11,13 +11,14 @@ import { CanyonPocketMap } from './CanyonPocketMap';
 import { CanyonConditionsBar } from './CanyonConditionsBar';
 import { UtahItineraryStudio } from './UtahItineraryStudio';
 import { RiverWingMap } from './RiverWingMap';
+import { OpenDatesFinder } from './OpenDatesFinder';
 import { loadQuoteCalendar, type PublicUnit } from '../lib/booked-nights';
 import { applyPublicShare, GROUP_TRIP, housePageSearch, publicShare, readHouseDates, readHouseParty, type PublicHouse } from '../lib/house-page';
 import { readStayLink } from '../lib/stay-link';
 import { houseProfile, houseFacts } from '../lib/house-catalog';
 import { houseGallery } from '../lib/house-photos';
 import { bookingRules } from '../lib/booking-rules';
-import { houseSafetyLine, houseLicenseLine } from '../lib/house-page';
+import { houseExtraSchema, houseSafetyLine, houseLicenseLine } from '../lib/house-page';
 import { houseRules } from '../lib/house-rules';
 import { partyFits } from '../lib/house-stay';
 import { bothHouseMonthNote, housePageCalendar } from '../lib/compound';
@@ -29,6 +30,7 @@ import type { YearPace } from '../lib/market/fill';
 import type { HouseId } from '../lib/market/types';
 
 const EMPTY_NIGHTS: Record<HouseId, string[]> = { ranch: [], lindon: [], river: [] };
+const EMPTY_LIST: string[] = [];
 const EMPTY_APPROVED: Record<HouseId, Array<{ date: string; guest: number }>> = { ranch: [], lindon: [], river: [] };
 /** The switcher's labels. Short enough to sit three-wide on a phone beside the Reserve button. */
 const HOUSES: HouseId[] = ['river', 'ranch', 'lindon'];
@@ -130,6 +132,10 @@ export function HousePage({ house }: { house: PublicHouse }) {
   const photoCount = houseGallery(house.id).length;
   const guestCount = /^\d+$/.test(guests) ? Number(guests) : null;
   const childCount = /^\d+$/.test(children) ? Number(children) : null;
+  const finderBlocked = useMemo(
+    () => [...(closed[house.id] ?? []), ...(held[house.id] ?? [])],
+    [closed, held, house.id],
+  );
 
   useEffect(() => applyPublicShare(pageSearch ? { ...share, url: `${share.url}${pageSearch}` } : share), [share.title, share.description, share.url, pageSearch]);
   useEffect(() => {
@@ -182,6 +188,14 @@ export function HousePage({ house }: { house: PublicHouse }) {
     <div className="min-h-screen" data-bot="house-page" data-house={house.id}>
       <p className="sr-only" data-bot="page-share">{share.title}</p>
       <script type="application/ld+json" data-bot="house-schema" dangerouslySetInnerHTML={{ __html: JSON.stringify(house.schema) }} />
+      {houseExtraSchema(house.id).map((schema) => (
+        <script
+          key={String(schema['@type'])}
+          type="application/ld+json"
+          data-bot={`house-schema-${String(schema['@type']).toLowerCase()}`}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
 
       {/* A slim header, not a hero: the photo mosaic is the hero. */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[var(--uml-bg)]/90 backdrop-blur">
@@ -445,6 +459,23 @@ export function HousePage({ house }: { house: PublicHouse }) {
               chosenParts={chosenParts}
               onChosenParts={(next) => setChosenParts(next as RiverUnitId[])}
             />
+            {/* The finder quotes the whole house, so it steps aside while a River guest is booking single parts. */}
+            {calendar === 'live' && chosenParts.length === 0 && (
+              <OpenDatesFinder
+                house={house.id}
+                asOf={today}
+                pace={paceMap[house.id] ?? 'unknown'}
+                taken={taken[house.id] ?? EMPTY_LIST}
+                blocked={finderBlocked}
+                guests={guestCount ?? undefined}
+                children={childCount ?? undefined}
+                checkIn={checkIn}
+                onPick={(stay) => {
+                  setCheckIn(stay.checkIn);
+                  setCheckOut(stay.checkOut);
+                }}
+              />
+            )}
             <div className="uml-panel mt-4 rounded-3xl p-5" data-bot="house-pick-dates">
               <p className="uml-kicker">Pick from the calendar</p>
               <p className="mt-1 text-xs text-[var(--uml-muted)]">

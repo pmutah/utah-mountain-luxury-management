@@ -38,6 +38,24 @@ export const HOUSE_PHOTOS: Partial<Record<HouseId, { src: string; caption: strin
   },
 };
 
+/** Widths `scripts/build-photo-variants.mjs` writes next to every house JPEG. */
+export const PHOTO_VARIANT_WIDTHS = [640, 1280] as const;
+
+/**
+ * The `srcSet`/`sizes` pair for a house photo, so a phone downloads the 640-wide WebP instead of the full JPEG.
+ *
+ * Only `/houses/**.jpg` has variants on disk; anything else (an uploaded receipt, a remote URL) gets no
+ * attributes and the plain `src` is used. `sizes` describes how wide the image is drawn, not the file.
+ */
+export function photoSrcSet(src: string, sizes = '100vw'): { srcSet?: string; sizes?: string } {
+  if (!/^\/houses\/.+\.jpe?g$/i.test(src)) return {};
+  const base = src.replace(/\.jpe?g$/i, '');
+  return {
+    srcSet: PHOTO_VARIANT_WIDTHS.map((width) => `${base}-${width}.webp ${width}w`).join(', '),
+    sizes,
+  };
+}
+
 /** Which room a photo shows, so the gallery can offer filters instead of one long scroll. */
 export type PhotoRoom = 'exterior' | 'living' | 'kitchen' | 'bedrooms' | 'baths' | 'amenities' | 'outdoors';
 
