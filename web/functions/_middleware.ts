@@ -112,6 +112,8 @@ export const onRequest: PagesFunction<{
     url.pathname === '/api/public/conditions' ||
     // One road-camera frame. The key resolves to a fixed UDOT id in canyon-cams.ts and nothing else.
     url.pathname === '/api/public/cam' ||
+    // Modelled snow for every Utah resort, one cached read. No guest data.
+    url.pathname === '/api/public/snow' ||
     BOOK_REQUEST_PAGE.test(url.pathname) ||
     OWNER_PAGE.test(url.pathname) ||
     CLEAN_PAGE.test(url.pathname) ||

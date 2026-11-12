@@ -11,6 +11,7 @@ import {
 } from '../lib/canyon-map';
 
 import { CanyonCameras } from './CanyonCameras';
+import { SnowReport } from './SnowReport';
 
 type ViewMode = 'map' | 'directions' | 'cams';
 
@@ -334,6 +335,9 @@ export function CanyonPocketMap({ house }: { house: 'ranch' | 'lindon' | 'river'
       {mode === 'cams' && (
         <div className="mt-4">
           <CanyonCameras house={house} />
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <SnowReport />
+          </div>
           <p className="uml-kicker mt-5">Reports & condition pages</p>
           <div className="mt-2 grid gap-3 sm:grid-cols-2" data-bot="canyon-cams-panel">
             {CANYON_LIVE_PORTALS.map((portal) => (

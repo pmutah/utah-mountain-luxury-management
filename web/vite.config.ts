@@ -17,6 +17,7 @@ import { devPushPlan } from './dev/push-plan';
 import { devCleanPhotos, devCleanPhotoTurns, devDeleteCleanPhoto, devUploadCleanPhoto } from './dev/clean-photos';
 import { devPublicConditions } from './dev/public-conditions';
 import { devCanyonCam } from './dev/canyon-cams';
+import { devPublicSnow } from './dev/public-snow';
 
 /** Local stay phone only. This token is not a booking, and the route is not deployed. */
 function localStayPreview(): Plugin {
@@ -628,12 +629,48 @@ function canyonCamsDev(): Plugin {
   };
 }
 
+/** Every Utah resort's snow on a house page, without a Functions runtime. */
+function publicSnowDev(): Plugin {
+  let cached: { expiresAt: number; body: string } | null = null;
+  return {
+    name: 'public-snow-dev',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const parsed = new URL(req.url ?? '', 'http://localhost');
+        if (parsed.pathname !== '/api/public/snow') return next();
+        const now = Date.now();
+        if (cached && cached.expiresAt > now) {
+          res.statusCode = 200;
+          res.setHeader('content-type', 'application/json; charset=utf-8');
+          res.setHeader('cache-control', 'no-store');
+          res.end(cached.body);
+          return;
+        }
+        void devPublicSnow()
+          .then((payload) => {
+            const body = JSON.stringify(payload);
+            if (payload.ok) cached = { expiresAt: now + 900_000, body };
+            res.statusCode = 200;
+            res.setHeader('content-type', 'application/json; charset=utf-8');
+            res.setHeader('cache-control', 'no-store');
+            res.end(body);
+          })
+          .catch(() => {
+            res.statusCode = 502;
+            res.setHeader('content-type', 'application/json');
+            res.end(JSON.stringify({ ok: false, rows: [] }));
+          });
+      });
+    },
+  };
+}
+
 /** Hosted Cloudflare Pages app — same APIs and data as production. */
 const PAGES_ORIGIN = 'https://wilhite-portfolio.pages.dev';
 
 export default defineConfig({
   appType: 'spa',
-  plugins: [localStayPreview(), marketOverviewDev(), quoteCalendarDev(), requestInboxDev(), ownerPortalDev(), savedCompsDev(), approvedRatesDev(), requestStatusDev(), expenseArchiveDev(), stayMessageDev(), shadowDaysDev(), cleanLinkDev(), pushPlanDev(), publicConditionsDev(), canyonCamsDev(), react(), tailwindcss()],
+  plugins: [localStayPreview(), marketOverviewDev(), quoteCalendarDev(), requestInboxDev(), ownerPortalDev(), savedCompsDev(), approvedRatesDev(), requestStatusDev(), expenseArchiveDev(), stayMessageDev(), shadowDaysDev(), cleanLinkDev(), pushPlanDev(), publicConditionsDev(), canyonCamsDev(), publicSnowDev(), react(), tailwindcss()],
   server: {
     port: 5173,
     watch: {

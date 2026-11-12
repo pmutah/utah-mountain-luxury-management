@@ -245,6 +245,8 @@ const PUBLIC_ROUTES = [
   'public/conditions.ts',
   // One UDOT road-camera frame by key. Only keys in canyon-cams.ts resolve, so it is not an open proxy.
   'public/cam.ts',
+  // Modelled snow for every Utah resort, one cached read. No guest data, no price.
+  'public/snow.ts',
   // The stay token is the credential. Filing an add-on sends no text and does not move the booking.
   'stay-guide/[token]/requests.ts',
 ];

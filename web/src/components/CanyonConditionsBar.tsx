@@ -1,7 +1,9 @@
-import { AlertTriangle, Camera, CloudSnow, Compass, ExternalLink, MoonStar, Sun, Thermometer, Waves } from 'lucide-react';
+import { AlertTriangle, Camera, CloudSnow, ChevronDown, Compass, ExternalLink, MoonStar, Sun, Thermometer, Waves } from 'lucide-react';
+import { useState } from 'react';
 import { denverToday } from '../lib/market/dates';
 import type { HouseId } from '../lib/market/types';
 import { computeMountainLight } from '../lib/mountain-alpenglow';
+import { SnowReport } from './SnowReport';
 import {
   formatDayPill,
   formatRiverBadge,
@@ -17,6 +19,7 @@ import {
  */
 export function CanyonConditionsBar({ house, targetDate }: { house?: HouseId; targetDate?: string }) {
   const state = usePublicConditions();
+  const [snowOpen, setSnowOpen] = useState(false);
   const focusHouse: HouseId = house ?? 'river';
   const lightDate = targetDate && /^\d{4}-\d{2}-\d{2}$/.test(targetDate) ? targetDate : denverToday();
   const light = computeMountainLight(lightDate, focusHouse);
@@ -160,8 +163,14 @@ export function CanyonConditionsBar({ house, targetDate }: { house?: HouseId; ta
           ) : null}
         </div>
 
-        {/* Card 2: Sundance Snow & Alpine */}
-        <div className="rounded-2xl border border-[var(--uml-line)] bg-[var(--uml-surface-2)]/60 px-3.5 py-2.5">
+        {/* Card 2: Sundance Snow & Alpine — the way into the all-resort snow report. */}
+        <button
+          type="button"
+          onClick={() => setSnowOpen(true)}
+          aria-expanded={snowOpen}
+          data-bot="snow-report-open"
+          className="rounded-2xl border border-[var(--uml-line)] bg-[var(--uml-surface-2)]/60 px-3.5 py-2.5 text-left transition hover:border-[var(--uml-gold)]"
+        >
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-[var(--uml-muted)]">
             <CloudSnow className="h-3.5 w-3.5 text-[var(--uml-glacier)]" aria-hidden="true" />
             <span>Sundance Mountain (8,250&prime;)</span>
@@ -172,7 +181,11 @@ export function CanyonConditionsBar({ house, targetDate }: { house?: HouseId; ta
           <p className="mt-1 text-[11px] text-[var(--uml-muted)]">
             10 min above Vivian Park · NWS 48-hour grid snowfall
           </p>
-        </div>
+          <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-[var(--uml-gold)] underline">
+            All Utah resort snow
+            <ChevronDown className={`h-3 w-3 transition-transform ${snowOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </span>
+        </button>
 
         {/* Card 3: Provo River Flow */}
         <div className="rounded-2xl border border-[var(--uml-line)] bg-[var(--uml-surface-2)]/60 px-3.5 py-2.5">
@@ -209,8 +222,16 @@ export function CanyonConditionsBar({ house, targetDate }: { house?: HouseId; ta
         ) : null}
       </div>
 
+      {snowOpen ? (
+        <div className="mt-3 border-t border-white/10 pt-3" data-bot="snow-report-panel">
+          <SnowReport />
+        </div>
+      ) : null}
+
       <p className="mt-2.5 text-[11px] text-[var(--uml-muted)]">
-        From the National Weather Service and USGS. Weather forecasts are not road reports and never state whether US-189 or SR-92 is open.
+        Canyon weather and the Provo River come from the National Weather Service and USGS. The resort snow above is
+        Open-Meteo&apos;s modelled upper-mountain snowfall. Weather forecasts are not road reports and never state whether
+        US-189 or SR-92 is open.
       </p>
     </section>
   );
