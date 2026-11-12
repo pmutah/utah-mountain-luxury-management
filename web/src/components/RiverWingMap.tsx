@@ -9,32 +9,49 @@ const ORDER: RiverUnitId[] = ['main-lodge', 'recreation-wing', 'garage-suite'];
 export function RiverWingMap({
   checkIn = '',
   checkOut = '',
+  selected: controlledSelected,
+  units: providedUnits,
   onChange,
 }: {
   checkIn?: string;
   checkOut?: string;
+  selected?: RiverUnitId[];
+  units?: PublicUnit[] | null;
   onChange?: (units: RiverUnitId[]) => void;
 }) {
-  const [selected, setSelected] = useState<RiverUnitId[]>([]);
-  const [wings, setWings] = useState<WingQuoteInput[] | null>(null);
+  const [localSelected, setLocalSelected] = useState<RiverUnitId[]>([]);
+  const selected = controlledSelected ?? localSelected;
+  const [fetchedWings, setFetchedWings] = useState<WingQuoteInput[] | null>(null);
   useEffect(() => {
+    if (providedUnits !== undefined) return;
     let cancel = false;
     loadQuoteCalendar()
       .then((calendar) => {
         if (cancel) return;
-        setWings(toWings(calendar?.units ?? null));
+        setFetchedWings(toWings(calendar?.units ?? null));
       })
       .catch(() => {
-        if (!cancel) setWings(null);
+        if (!cancel) setFetchedWings(null);
       });
     return () => {
       cancel = true;
     };
-  }, []);
-  const quote = quoteWings(selected, wings ?? ORDER.map((id) => ({ id, nightly: null, cleaning: null, taken: [] })), checkIn, checkOut);
+  }, [providedUnits]);
+  const wings = providedUnits !== undefined ? toWings(providedUnits) : fetchedWings;
+  /*
+   * Availability is computed for every part, not only the selected ones.
+   *
+   * `quoteWings` answers about the parts it is given, and it was being given only the selection — so with nothing
+   * selected every card read "Open on these dates", including a part that was sold out. A guest had to pick a wing
+   * to find out it was taken. The full list is quoted here so each card tells the truth before anyone clicks, and
+   * the selection's own quote still decides the total.
+   */
+  const inputs = wings ?? ORDER.map((id) => ({ id, nightly: null, cleaning: null, taken: [] }));
+  const quote = quoteWings(selected, inputs, checkIn, checkOut);
+  const everyPart = quoteWings(ORDER, inputs, checkIn, checkOut);
   const toggle = (id: RiverUnitId) => {
     const next = selected.includes(id) ? selected.filter((unit) => unit !== id) : [...selected, id];
-    setSelected(next);
+    if (controlledSelected === undefined) setLocalSelected(next);
     onChange?.(next);
   };
 
@@ -59,7 +76,7 @@ export function RiverWingMap({
           const detail = RIVER_UNIT_DETAIL.find((unit) => unit.id === id)!;
           const live = wings?.find((wing) => wing.id === id);
           const nightly = live?.nightly ?? null;
-          const off = quote.unavailable.includes(id);
+          const off = everyPart.unavailable.includes(id);
           return (
             <li key={id}>
               <button
@@ -93,11 +110,29 @@ export function RiverWingMap({
   );
 }
 
-function toWings(units: PublicUnit[] | null): WingQuoteInput[] | null {
+/**
+ * The API's part list as the wing map's inputs.
+ *
+ * `PublicUnit.nights` is the nights a part is **free**; `WingQuoteInput.taken` is the nights it is **not**.
+ * These were passed straight through, which inverted the answer: a part sold out on the chosen dates read
+ * "Open on these dates", and one that was free read "Taken". The complement is taken over the union of the
+ * parts' own free lists, so a night outside the calendar window is not mistaken for a booked one.
+ *
+ * Exported so the mapping itself can be tested; the inversion was invisible to every test of `quoteWings`,
+ * because that function was always correct and its caller was not.
+ */
+export function toWings(units: PublicUnit[] | null): WingQuoteInput[] | null {
   if (!units) return null;
+  const window = [...new Set(units.flatMap((row) => row.nights))].sort();
   return ORDER.map((id) => {
     const row = units.find((unit) => unit.id === id);
-    return { id, nightly: row?.nightly ?? null, cleaning: row?.cleaning ?? null, taken: row?.nights ?? [] };
+    const free = new Set(row?.nights ?? []);
+    return {
+      id,
+      nightly: row?.nightly ?? null,
+      cleaning: row?.cleaning ?? null,
+      taken: window.filter((night) => !free.has(night)),
+    };
   });
 }
 

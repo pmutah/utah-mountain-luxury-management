@@ -197,6 +197,21 @@ body {
     color: #1c2b27;
     border: 1px solid #1c2b27;
   }
+  [data-bot="tax-desk"],
+  [data-bot="tax-desk"] * {
+    visibility: visible;
+  }
+  [data-bot="tax-desk"] {
+    position: absolute;
+    inset: 0;
+    color: #1c2b27;
+    background: white;
+  }
+  [data-bot="tax-desk"] .uml-panel {
+    background: white;
+    color: #1c2b27;
+    border: 1px solid #1c2b27;
+  }
   [data-bot="clean-desk"],
   [data-bot="clean-desk"] * {
     visibility: visible;
@@ -269,8 +284,38 @@ html[data-season="ski"] {
   50% { opacity: 0.72; }
 }
 
+@keyframes uml-ken-burns {
+  0% {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.065) translate3d(-1.2%, -0.8%, 0);
+  }
+}
+
+@keyframes uml-reel-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.uml-ken-burns {
+  animation: uml-ken-burns 5.2s ease-out forwards;
+  will-change: transform;
+}
+
+.uml-reel-bar {
+  transform-origin: left center;
+  animation: uml-reel-progress 5s linear forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .uml-live-pulse {
+  .uml-live-pulse,
+  .uml-ken-burns,
+  .uml-reel-bar {
     animation: none;
   }
 }

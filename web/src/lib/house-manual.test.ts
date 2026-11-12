@@ -443,8 +443,15 @@ test('a bedroom count, the airport, and the quiet-hours schedule stay on the pub
   assert.equal(riverBeds.kind, 'hits');
   assert.match(riverBeds.hits.map((hit) => hit.text).join(' '), /eight king suites/);
   const ranchBeds = stayGuideLookup('How many bedrooms?', 'ranch');
-  assert.match(ranchBeds.hits.map((hit) => hit.text).join(' '), /does not list a bedroom count for The Ranch House/);
+  /*
+   * The Ranch House used to have no bedroom line at all, and this guard pinned the apology. The layout is published now
+   * — eight bedrooms and four baths, from the listing — so the guide states it. The rule the old assertion protected is
+   * unchanged: a house that has not published a count says so rather than inventing one.
+   */
+  assert.match(ranchBeds.hits.map((hit) => hit.text).join(' '), /eight bedrooms/i);
   assert.equal(ranchBeds.hits.map((hit) => hit.text).join(' ').includes('$'), false);
+  const lindonBeds = stayGuideLookup('How many bedrooms?', 'lindon');
+  assert.match(lindonBeds.hits.map((hit) => hit.text).join(' '), /four bedrooms/i);
   const king = stayGuideLookup('Is there a king bed?', 'river');
   assert.equal(king.kind, 'hits');
   /*

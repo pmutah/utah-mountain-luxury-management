@@ -4,7 +4,7 @@ import { unexpectedResponse } from '../../_lib/read-guard';
 import { buildMarketBoard } from '../../../src/lib/market/board';
 import { runShadow, portfolioDigest } from '../../../src/lib/market/shadow';
 import { planClimb, planLines, planProvenance, pushPayload, pushPlanAll, pushSendState, pushSummaryLine, type PushGate } from '../../../src/lib/market/push';
-import { shadowClockFromSaved, mergeSavedShadowDay, type SavedShadowDay } from '../../../src/lib/market/shadow-log';
+import { daySawRealComps, shadowClockFromSaved, mergeSavedShadowDay, type SavedShadowDay } from '../../../src/lib/market/shadow-log';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { loadLiveNights, loadApprovedRates } from '../../_lib/pricing-store';
@@ -187,13 +187,15 @@ async function buildPlanResponse(request: Request, env: Env): Promise<Response> 
       stays,
     });
     /*
-     * Only a day built from all three **live** boards may count. `portfolioDigest` names its own source, so the
-     * two refusals are readable from the text: the unsent marker proves it is a shadow digest, and the absence of
-     * "sample comps" proves no house fell back to the fixtures.
+     * Only a day built from all three **live** boards may count. `portfolioDigest` names its own source.
+     * `daySawRealComps` requires the digest to say "saved comps" and refuses one that says "sample comps"
+     * or that never mentions comps. The inline sample check stays beside it so this call site still shows
+     * the refusal in the route itself.
      */
     const usable =
       digest.includes('Nothing sent to Hospitable.') &&
       !digest.includes('sample comps') &&
+      daySawRealComps(digest) &&
       runs.every((row) => row.board.summary.liveComps > 0);
     if (usable) {
       const merged = mergeSavedShadowDay(saved, { date: today, digest, savedAt: new Date().toISOString() });

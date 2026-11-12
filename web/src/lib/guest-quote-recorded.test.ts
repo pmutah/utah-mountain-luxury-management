@@ -39,10 +39,10 @@ test('the pace really does change what a guest is quoted', () => {
 });
 
 test('the guest page sends the figure it is showing', () => {
-  const PAGE = fs.readFileSync('src/components/DirectBook.tsx', 'utf8');
+  const PAGE = fs.readFileSync('src/components/DirectReserveCard.tsx', 'utf8');
   assert.match(PAGE, /quotedTotal: splitTotal/, 'the page does not send the total it displays');
   // `splitTotal` is the same variable the page renders, so the two cannot drift.
-  assert.match(PAGE, /const splitTotal = bookingParts \? partTotal : quote\.stayTotal/, 'splitTotal changed shape');
+  assert.match(PAGE, /const splitTotal = bookingParts \? partTotal : compoundTotal \?\? quote\.stayTotal/, 'splitTotal changed shape');
 });
 
 test('the request keeps the quote, and only when it is a real figure', () => {

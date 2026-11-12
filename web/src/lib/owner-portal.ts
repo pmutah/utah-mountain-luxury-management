@@ -89,11 +89,13 @@ export function halfIsExact(leftover: number, todd: number): boolean {
   return Math.abs(leftover / 2 - todd) <= 0.005;
 }
 
+export type OwnerPortalPeriod = 'month' | 'quarter' | 'ttm' | 'ytd';
+
 /**
  * Todd's statement for the portal. Ranch and River only, and every figure is a number.
  * A statement that would carry a guest name or a note is not returned.
  */
-export function ownerPortalView(statement: OwnerStatement, period: 'month' | 'ytd'): OwnerPortalView {
+export function ownerPortalView(statement: OwnerStatement, period: OwnerPortalPeriod): OwnerPortalView {
   const houses = statement.houses
     .filter((house) => house.id === 'ranch' || house.id === 'river')
     .map((house) => ({
@@ -125,6 +127,21 @@ export function ownerPortalView(statement: OwnerStatement, period: 'month' | 'yt
     months: period === 'month' ? months.slice(-1) : months,
     notes: OWNER_PORTAL_NOTES,
   };
+}
+
+/** Informational comparison between this window's settled share and net recorded transfers. Never edits the books. */
+export function ownerTransferBalanceLine(toddDollars: number, recordedCents: number): string {
+  const fmt = (cents: number) =>
+    (Math.abs(cents) / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const toddCents = Math.round(toddDollars * 100);
+  const diffCents = toddCents - recordedCents;
+  if (diffCents === 0) {
+    return 'Net recorded transfers match this window’s settled share to the cent. Informational comparison only — does not edit the books.';
+  }
+  if (diffCents > 0) {
+    return `${fmt(diffCents)} of this window’s settled share is above net recorded transfers. Informational comparison only — does not edit the books.`;
+  }
+  return `Net recorded transfers exceed this window’s settled share by ${fmt(diffCents)} (for example, transfers from an earlier period or a loss month). Informational comparison only — does not edit the books.`;
 }
 
 /** A statement with no months is not a statement. The page says so instead of showing a zero. */

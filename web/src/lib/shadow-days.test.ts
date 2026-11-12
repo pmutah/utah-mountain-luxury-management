@@ -26,7 +26,7 @@ type RouteHandler = (context: { request: Request; env: unknown; params: Record<s
 const PASSWORD = 'test-password';
 const cookie = `wpm_auth=${btoa(`wpm:${PASSWORD}`).replace(/=+$/, '')}`;
 
-const DIGEST = 'UML shadow 2026-11-07\nRiver: 0 raises\nNothing sent to Hospitable.';
+const DIGEST = 'UML shadow 2026-11-07\nRiver: 3 saved comps\nNothing sent to Hospitable.';
 
 async function route() {
   return (await import('../../functions/api/pricing/shadow-days.ts')) as unknown as Record<string, RouteHandler>;
@@ -101,6 +101,25 @@ test('seven saved days make the server clock ready and never leak the token', as
   assert.equal(body.clock.ready, true);
   assert.equal(body.hasWriteToken, true);
   assert.equal(body.storageReads, 'ok');
+});
+
+test('a digest that never names saved comps is refused and does not erase a counted day', async () => {
+  const store: Store = new Map();
+  const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD };
+  const days = await route();
+  const saved = await days.onRequestPost!({ request: post({ date: '2026-11-06', digest: DIGEST }), env, params: {} });
+  assert.equal(saved.status, 200);
+  const silent = await days.onRequestPost!({
+    request: post({ date: '2026-11-06', digest: 'Morning run. Nothing sent to Hospitable.' }),
+    env,
+    params: {},
+  });
+  assert.equal(silent.status, 400);
+  const body = (await silent.json()) as { error?: string };
+  assert.match(body.error ?? '', /saved comps/);
+  const kept = JSON.parse(store.get('shadowDays') ?? '[]') as Array<{ digest: string }>;
+  assert.equal(kept.length, 1);
+  assert.match(kept[0]!.digest, /saved comps/);
 });
 
 test('an unread day removes its date so a replay cannot invent the week', async () => {

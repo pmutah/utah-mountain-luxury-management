@@ -1,5 +1,6 @@
 import type { HouseId } from './market/types';
 import { SLEEPS } from './house-stay';
+import { houseGallery } from './house-photos';
 import { RIVER_UNIT_DETAIL } from './river-units';
 import { addonMenuLine } from './upsells';
 
@@ -46,6 +47,8 @@ export function listingOpenLine(): string {
 
 /** What is still open on our own site. Nothing here posts to Airbnb, VRBO, or Hospitable. */
 export function listingOpportunities(house: HouseId): Opportunity[] {
+  const count = houseGallery(house).length;
+  const usesRendering = house === 'river';
   return [
     {
       id: 'title',
@@ -55,11 +58,16 @@ export function listingOpportunities(house: HouseId): Opportunity[] {
     },
     {
       id: 'photos',
-      status: 'open',
-      title: 'One photo on our booking page',
-      detail:
-        house === 'river'
-          ? 'The direct page still uses a rendering. Finish photos come after the house is done.'
+      status: usesRendering || count <= 1 ? 'open' : 'ready',
+      title: usesRendering
+        ? 'Architectural renderings on our booking page'
+        : count > 1
+          ? `${count} self-hosted photos on our booking page`
+          : 'One photo on our booking page',
+      detail: usesRendering
+        ? 'The direct page still uses a rendering. Finish photos come after the house is done.'
+        : count > 1
+          ? `${count} self-hosted photos are live on our direct page. The channel listings still live in Hospitable.`
           : 'The direct page has one photo. The channel listings still live in Hospitable.',
     },
     {

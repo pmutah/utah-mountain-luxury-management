@@ -523,7 +523,7 @@ export function MarketBoard() {
           {daily}
         </pre>
         <p className="mt-3 text-sm" data-bot="market-shadow-clock">
-          {settled ? shadowClockLine(shownClock) : 'This Denver day is counted once the calendar check finishes.'}
+          {settled ? shadowClockLine(shownClock, serverClock ? 'server' : 'browser') : 'This Denver day is counted once the calendar check finishes.'}
         </p>
         <p className="mt-1 text-sm text-[var(--uml-muted)]" data-bot="market-shadow-dates">
           {/*

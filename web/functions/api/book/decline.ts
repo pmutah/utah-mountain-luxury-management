@@ -3,6 +3,7 @@ import { hostDenied, hostOnly } from '../../_lib/auth';
 import { kvGet, kvPut, storageReadPaused } from '../../_lib/kv-json';
 import { getAllReservations } from '../../_lib/reservations-store';
 import { releaseHoldsForRequest } from '../../_lib/hold-store';
+import { forgetCalendar } from '../../_lib/public-calendar-cache';
 import { gmailSend } from '../../_lib/gmail-store';
 import { canDecline, declineHouses, declineLine, declineRecord, guestDeclineMail, isDeclineReason } from '../../../src/lib/booking-decline';
 import type { HouseId } from '../../../src/lib/market/types';
@@ -77,6 +78,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
   // The hold has no reason to keep blocking once the host has said no.
   await releaseHoldsForRequest(env, id).catch(() => 0);
+  /*
+   * A decline frees the nights it was holding, so the cached public calendar is now wrong in the other direction: those
+   * dates should read free again. Cleared here for the same reason it is cleared on accept.
+   */
+  forgetCalendar();
 
   // Tell the guest, unless the host asked to keep it quiet. A failed send leaves the decline saved.
   const houses = declineHouses(saved!);

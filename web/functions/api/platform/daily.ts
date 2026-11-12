@@ -130,10 +130,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         /*
          * The shadow day must be built from a **real** market, or it does not count.
          *
-         * The first version of this run composed its own sentence and saved it. That would have been a worse bug than the one it replaced:
-         * `daySawRealComps` only rejects a digest that *says* "sample comps", and a hand-written line says nothing about comps at all — so it
-         * passed the check while having read no comp. Seven mornings of that would have unlocked the rate switch on a market nobody measured,
-         * which is exactly what the gate exists to prevent.
+         * The first version of this run composed its own sentence and saved it. A line that never mentions comps does not count:
+         * `daySawRealComps` requires the words "saved comps" and refuses "sample comps". This digest says "saved comps" only after
+         * the board was read and at least one house had measured nights. Seven mornings that never read a comp cannot open the gate.
          *
          * So the board is read for real, and a board with no measured nights refuses to record rather than counting as a day.
          */
@@ -155,7 +154,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           const digest = [
             `Morning run for ${today}.`,
             `${arrivals.length} arriving, ${departures.length} leaving, ${riskyNights} nights no stay can sell inside 14 days.`,
-            `Market measured: ${measuredLine}.`,
+            `Market measured from saved comps: ${measuredLine}.`,
             thinLine,
             snowLine,
             'Nothing sent to Hospitable.',

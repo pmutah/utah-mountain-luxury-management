@@ -30,22 +30,23 @@ function context(env: Record<string, unknown>, request: Request) {
 
 test('a hand-written digest cannot satisfy the shadow gate', () => {
   /*
-   * The hole this closes, and it was mine. `daySawRealComps` rejects a digest that *says* "sample comps" — so a digest that says nothing
-   * about comps at all passes it. The morning run's first version composed exactly such a line, which means seven mornings of a run that
-   * never read a comp would have unlocked the rate switch on a market nobody measured. That is the failure the gate exists to prevent.
+   * The hole this closes: a digest that never mentions comps used to pass `daySawRealComps`, because the check only
+   * looked for the words "sample comps". The morning run's first version composed exactly such a line, so seven mornings
+   * that never read a comp would have unlocked the rate switch. A day now counts only when the digest says "saved comps".
    *
-   * The run now reads the board and refuses to record a day whose measured nights are too thin, so the test asserts both halves: the
-   * predicate is not fooled by silence, and the route refuses on a thin market.
+   * The run now reads the board and refuses to record a day whose measured nights are too thin. The predicate also refuses a
+   * digest that never names saved comps, so a hand-written line cannot count even if it reaches the clock.
    */
   const silent = `Morning run for 2026-11-12. 0 arriving, 0 leaving, 0 nights no stay can sell inside 14 days. Nothing sent to Hospitable.`;
-  // The raw predicate is fooled by a silent digest — this is why the route must not rely on it alone.
-  assert.equal(daySawRealComps(silent), true, 'the predicate is stricter than expected; the route guard may be redundant');
+  assert.equal(daySawRealComps(silent), false, 'a digest that never names saved comps still counts');
+  assert.equal(daySawRealComps(`${silent} Market measured from saved comps: ranch 18 nights.`), true);
 
   // The route's own gate: a house needs five measured nights, and the day records only the houses that carry a market.
   const route = readFileSync(join(root, 'functions/api/platform/daily.ts'), 'utf8');
   assert.match(route, /MIN_MEASURED_NIGHTS = 5/, 'the minimum measured nights changed without a decision');
   assert.match(route, /nights >= MIN_MEASURED_NIGHTS/, 'the morning run records a shadow day from a thin market');
   assert.match(route, /readMarketBoard\(/, 'the morning run composes a digest instead of reading the board');
+  assert.match(route, /Market measured from saved comps/, 'the morning digest no longer names saved comps, so a measured day cannot count');
   assert.match(route, /after\.dates\.includes\(today\)/, 'the run does not check that the day it wrote actually counts');
   /*
    * Per house, not one floor. A minimum across the three would let the thinnest house refuse a day for the two that are measured — production

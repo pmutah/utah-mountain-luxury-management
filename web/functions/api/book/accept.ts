@@ -5,6 +5,7 @@ import { storageReadPaused } from '../../_lib/kv-json';
 import { createReservation, getAllReservations } from '../../_lib/reservations-store';
 import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { releaseHoldsForRequest, loadHolds } from '../../_lib/hold-store';
+import { forgetCalendar } from '../../_lib/public-calendar-cache';
 import { occupiedNights, type StaySpan } from '../../../src/lib/availability';
 import { unitBookingConflict, otherPartsOccupied } from '../../../src/lib/river-units';
 import { partStayQuote } from '../../../src/lib/part-stay-quote';
@@ -318,6 +319,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .catch(() => []);
   // The hold has done its job, so it lets go now instead of timing out.
   await releaseHoldsForRequest(env, id).catch(() => 0);
+
+  /*
+   * The public calendar cache holds a built payload for a minute. A booking just changed the answer, so the cache is
+   * dropped here — otherwise a guest could be shown the night this booking just took as free until the window rolled.
+   * Only this isolate's copy is cleared; another isolate serves at most one stale minute, which is the trade the cache
+   * makes. `POST /api/book` re-reads the calendar before holding anything, so a stale minute can never double-book.
+   */
+  forgetCalendar();
 
   // A direct guest gets the same portal an OTA guest gets, so the house guide and the code work.
   // A two-house party stays in both houses, so each one gets its own link and its own guide.

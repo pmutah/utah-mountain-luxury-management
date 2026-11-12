@@ -11,6 +11,7 @@ import { currentYearMonth } from '../lib/months';
 import { PAID_BY_LABELS, summarizePartnerContributions } from '../lib/paid-by';
 import { paidDateFromExpense, todayInUtah } from '../lib/paid-date';
 import { partnerSpendUnreadLine } from '../lib/construction-read';
+import { ConstructionPhaseSummary } from './ConstructionPhaseSummary';
 import { ExpenseRow } from './ExpenseRow';
 
 async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
@@ -239,6 +240,13 @@ export function ConstructionPartnerLedger({
           </button>
         ))}
       </div>
+
+      <ConstructionPhaseSummary
+        expenses={constructionExpenses}
+        activePhase={phaseFilter}
+        onSelectPhase={setPhaseFilter}
+        onToast={onToast}
+      />
 
       <div className="p-6 rounded-[24px] border border-amber-800/50 bg-amber-950/20 flex flex-col gap-4 mb-8">
         <div className="flex items-center gap-2">

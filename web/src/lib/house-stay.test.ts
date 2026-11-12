@@ -17,7 +17,12 @@ test('the booking page uses the published house and refuses a party that does no
     ['Septic', 'The river'],
   );
   const ranch = houseStay('ranch');
-  assert.equal(ranch.bedrooms, null);
+  /*
+   * This was `null` — the Ranch House published no bedroom count anywhere on our own site while the listing carried one.
+   * It reads the layout now, so the assertion checks the published rooms rather than the absence of them.
+   */
+  assert.match(ranch.bedrooms ?? '', /eight bedrooms/i);
+  assert.match(ranch.bedrooms ?? '', /casita/i);
   assert.match(ranch.parking, /driveway/);
   assert.match(ranch.notes[0]?.title ?? '', /Hot tub/);
   assert.match(ranch.checkout.at(-1) ?? '', /hot tub cover/);

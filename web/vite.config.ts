@@ -15,6 +15,7 @@ import { devSaveShadowDay, devShadowDays } from './dev/shadow-days';
 import { devCleanJobs, devCleanLinks, devCleanProgressHost, devMintCleanLink, devSaveCleanProgress } from './dev/clean-link';
 import { devPushPlan } from './dev/push-plan';
 import { devCleanPhotos, devCleanPhotoTurns, devDeleteCleanPhoto, devUploadCleanPhoto } from './dev/clean-photos';
+import { devPublicConditions } from './dev/public-conditions';
 
 /** Local stay phone only. This token is not a booking, and the route is not deployed. */
 function localStayPreview(): Plugin {
@@ -565,12 +566,48 @@ function pushPlanDev(): Plugin {
   };
 }
 
+/** Local preview of live NWS & USGS conditions before /api/public/conditions is deployed. */
+function publicConditionsDev(): Plugin {
+  let cached: { expiresAt: number; body: string } | null = null;
+  return {
+    name: 'public-conditions-dev',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const parsed = new URL(req.url ?? '', 'http://localhost');
+        if (parsed.pathname !== '/api/public/conditions') return next();
+        const now = Date.now();
+        if (cached && cached.expiresAt > now) {
+          res.statusCode = 200;
+          res.setHeader('content-type', 'application/json; charset=utf-8');
+          res.end(cached.body);
+          return;
+        }
+        void devPublicConditions()
+          .then((payload) => {
+            const body = JSON.stringify(payload);
+            if (payload.ok || payload.river.ok) {
+              cached = { expiresAt: now + 300_000, body };
+            }
+            res.statusCode = 200;
+            res.setHeader('content-type', 'application/json; charset=utf-8');
+            res.end(body);
+          })
+          .catch(() => {
+            res.statusCode = 502;
+            res.setHeader('content-type', 'application/json; charset=utf-8');
+            res.end(JSON.stringify({ ok: false, sends: false }));
+          });
+      });
+    },
+  };
+}
+
 /** Hosted Cloudflare Pages app — same APIs and data as production. */
 const PAGES_ORIGIN = 'https://wilhite-portfolio.pages.dev';
 
 export default defineConfig({
   appType: 'spa',
-  plugins: [localStayPreview(), marketOverviewDev(), quoteCalendarDev(), requestInboxDev(), ownerPortalDev(), savedCompsDev(), approvedRatesDev(), requestStatusDev(), expenseArchiveDev(), stayMessageDev(), shadowDaysDev(), cleanLinkDev(), pushPlanDev(), react(), tailwindcss()],
+  plugins: [localStayPreview(), marketOverviewDev(), quoteCalendarDev(), requestInboxDev(), ownerPortalDev(), savedCompsDev(), approvedRatesDev(), requestStatusDev(), expenseArchiveDev(), stayMessageDev(), shadowDaysDev(), cleanLinkDev(), pushPlanDev(), publicConditionsDev(), react(), tailwindcss()],
   server: {
     port: 5173,
     watch: {

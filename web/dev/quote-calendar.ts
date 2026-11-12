@@ -15,6 +15,13 @@ async function readJson(path: string): Promise<unknown | null> {
 
 /** Nights only. The guest browser never receives the reservation list. */
 export async function devPublicCalendar(): Promise<PublicCalendar> {
+  /*
+   * Production is throttled often enough that the priced path becomes unverifiable exactly when it matters.
+   * `VITE_STUB_CALENDAR=1` answers from a fixed calendar instead of spending production's KV reads, which is the
+   * only way to see a real quote on a machine that cannot read the books. It is a dev-only affordance: the
+   * deployed route never reads this file.
+   */
+  if (process.env.VITE_STUB_CALENDAR === '1') return devStubCalendar();
   const today = denverToday();
   const staysBody = await readJson('/api/reservations');
   const blocksBody = await readJson('/api/calendar/blocks');
@@ -48,6 +55,34 @@ export async function devPublicCalendar(): Promise<PublicCalendar> {
     ...devApprovedNights(today, reservations, blocks),
     ...devApprovedForCalendar(),
   ]);
+}
+
+/**
+ * A fixed calendar for local verification, used only when `VITE_STUB_CALENDAR=1`.
+ *
+ * The nights are chosen relative to today so they are always in the future. Prices are never set here — the page
+ * prices from its own rate card and this only says which nights are taken, which is exactly what the real route
+ * does.
+ */
+function devStubCalendar(): PublicCalendar {
+  const today = denverToday();
+  const at = (offset: number) => addDays(today, offset);
+  return {
+    storageReads: 'ok',
+    from: today,
+    until: addDays(today, 120),
+    nights: { ranch: [at(30), at(31)], lindon: [], river: [at(45)] },
+    closed: { ranch: [at(37)], lindon: [], river: [] },
+    held: { ranch: [at(40)], lindon: [], river: [] },
+    approved: { ranch: [{ date: at(34), guest: 1180 }], lindon: [], river: [] },
+    pace: { ranch: 'short', lindon: 'met', river: 'short' },
+    turns: [],
+    units: [
+      { id: 'main-lodge', name: 'River Main Lodge', sleeps: 10, bedrooms: 4, beds: 6, baths: 3, nightly: 745, cleaning: 300, minNights: 2, rateState: 'ready', nights: [] },
+      { id: 'recreation-wing', name: 'River Recreation Wing', sleeps: 8, bedrooms: 4, beds: 5, baths: 3, nightly: 535, cleaning: 250, minNights: 2, rateState: 'ready', nights: Array.from({ length: 80 }, (_, i) => addDays(today, 3 + i)) },
+      { id: 'garage-suite', name: 'River Garage Suite', sleeps: 4, bedrooms: 1, beds: 2, baths: 1, nightly: 265, cleaning: 150, minNights: 2, rateState: 'ready', nights: Array.from({ length: 80 }, (_, i) => addDays(today, 3 + i)) },
+    ],
+  } as PublicCalendar;
 }
 
 /** One preview approval per house, on the first open night about a month out. */

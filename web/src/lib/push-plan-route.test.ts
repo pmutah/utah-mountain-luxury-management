@@ -71,7 +71,7 @@ function sevenDays() {
   for (let back = 6; back >= 0; back -= 1) {
     const day = new Date(today);
     day.setUTCDate(day.getUTCDate() - back);
-    days.push({ date: day.toISOString().slice(0, 10), digest: 'Shadow day. Nothing sent to Hospitable.' });
+    days.push({ date: day.toISOString().slice(0, 10), digest: 'Shadow day. 3 saved comps. Nothing sent to Hospitable.' });
   }
   return days;
 }

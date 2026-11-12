@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { onRequestPost } from '../../../functions/api/book/index.ts';
@@ -12,10 +12,10 @@ import { onRequestPost } from '../../../functions/api/book/index.ts';
  * Measured on production: `guestEmailed: false`, `guestEmailError: "Failed to refresh Gmail token (401):
  * invalid_client"`. That is every request on this deployment, because the OAuth client secret is invalid.
  *
- * The status link is the part that still works — it is why the fix points at it rather than apologising.
+ * The status link is the part that still works â€” it is why the fix points at it rather than apologising.
  */
 
-const desk = readFileSync(new URL('../../components/DirectBook.tsx', import.meta.url), 'utf8');
+const desk = readFileSync(new URL('../../components/DirectReserveCard.tsx', import.meta.url), 'utf8');
 
 test('the page reads the receipt outcome the route reports', () => {
   assert.match(desk, /guestEmailed\?: boolean/, 'the response type still omits the receipt outcome');
@@ -69,3 +69,4 @@ test('a request is still saved when the email fails, and the route says which ha
   assert.equal(body.guestEmailed, false, 'the route did not report the email failure');
   assert.ok(body.statusPath, 'no status link was returned, so the guest has nothing to hold');
 });
+

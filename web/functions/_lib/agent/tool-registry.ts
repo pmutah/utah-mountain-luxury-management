@@ -4,18 +4,35 @@ export const AGENT_TOOLS: GeminiFunctionDeclaration[] = [
   {
     name: 'manage_finances',
     description:
-      'Log expenses, list expenses, or get a profit/revenue summary for a date range. **This is the tool for any money question about a house** — revenue, costs, profit, the 20% management fee, or an owner share for the Ranch or the River. get_profit_summary is the one that answers those; get_partner_contributions is construction only and will look empty for a rental question.',
+      'Log expenses, list expenses, get a profit/revenue summary, prepare a Schedule E / §469 / 1099-NEC tax summary, simulate engineering cost-segregation & bonus depreciation, or reconcile pasted bank/card statement lines against logged bills. **This is the tool for any money, accounting, or tax question about a house** — revenue, costs, profit, the 20% management fee, owner share, Schedule E lines, the §469 7-day stay test, 1099-NEC vendor candidates, cost-segregation, or statement reconciliation. get_profit_summary answers P&L and partner shares; get_partner_contributions is construction only.',
     parameters: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['log_expense', 'list_expenses', 'get_profit_summary', 'get_partner_contributions'],
+          enum: [
+            'log_expense',
+            'list_expenses',
+            'get_profit_summary',
+            'get_partner_contributions',
+            'get_tax_packet',
+            'simulate_cost_seg',
+            'reconcile_statement',
+          ],
         },
         propertyId: { type: 'string', enum: ['ranch', 'lindon', 'river', 'construction', 'household'] },
         month: { type: 'string', description: 'YYYY-MM for log/list' },
         startMonth: { type: 'string', description: 'YYYY-MM range start for profit summary' },
         endMonth: { type: 'string', description: 'YYYY-MM range end for profit summary' },
+        year: { type: 'number', description: 'Tax year for get_tax_packet (default 2026; <=2025 is locked to filed Ben Campbell return)' },
+        grossBasisUsd: { type: 'number', description: 'Total build/property basis in USD for simulate_cost_seg (defaults to logged River build spend when omitted)' },
+        landValuePct: { type: 'number', description: 'Non-depreciable land fraction 0..0.5 for simulate_cost_seg (default 0.18)' },
+        costSegProfile: { type: 'string', enum: ['conservative', 'luxury-lodge', 'high-amenity'], description: 'Engineering cost-segregation profile' },
+        bonusRate: { type: 'number', description: 'IRC §168(k) bonus depreciation fraction: 1, 0.8, 0.6, 0.4, or 0 (default 1)' },
+        placedInServiceMonth: { type: 'number', description: 'Month placed in service 1..12 (default 11 for Nov River opening)' },
+        marginalFedRate: { type: 'number', description: 'Federal marginal bracket e.g. 0.32 or 0.37 (default 0.32)' },
+        ownershipShare: { type: 'number', description: '1 for sole ownership or 0.5 for 50/50 partner share (default 0.5)' },
+        statementText: { type: 'string', description: 'Pasted CSV or tab-separated bank/card statement lines for reconcile_statement' },
         amount: { type: 'number' },
         category: { type: 'string' },
         vendor: { type: 'string' },

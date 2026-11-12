@@ -122,7 +122,13 @@ test('the house guide desk answers from the published guide', () => {
   assert.doesNotMatch(first, /\bopen\b/);
 
   const beds = guideDeskAnswer('How many king suites at the Ranch House?');
-  assert.match(beds, /does not list a bedroom count for The Ranch House/);
+  /*
+   * The Ranch House publishes its layout now — six king suites, two twin-bunk rooms, and the casita, across four baths —
+   * so the desk answers with it instead of apologising that the guide lists no count. The rule the old assertion held
+   * is unchanged: a house that has not published a count says so rather than inventing one.
+   */
+  assert.match(beds, /six king suites/i);
+  assert.doesNotMatch(beds, /\$/);
   const riverBeds = guideDeskAnswer('king suites at the river');
   assert.match(riverBeds, /eight king suites/);
   const hours = guideDeskAnswer('How long is a same-day turn?');

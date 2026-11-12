@@ -128,6 +128,11 @@ const HOST_ROUTES = [
    */
   'platform/stay-requests.ts',
   /*
+   * Transfers recorded against Todd's Ranch and River share. Host only. An owner can read them on the statement
+   * link and cannot record or void one. A row does not change the share, a booking, or an expense.
+   */
+  'platform/owner-transfers.ts',
+  /*
    * The morning run. Host only, plus a `CRON_SECRET` bearer the worker uses for this one path. It records a shadow day, builds the
    * morning list, and sends at most one text to the host per date.
    */
@@ -236,6 +241,8 @@ const PUBLIC_ROUTES = [
   'stay-guide/[token]/voice.ts',
   // The forecast for the house this stay is at. The stay token is the credential; the answer is weather, never a code.
   'stay-guide/[token]/conditions.ts',
+  // Public NWS weather and USGS Vivian Park river gauge for the house pages. No ledger, no guest, no code.
+  'public/conditions.ts',
   // The stay token is the credential. Filing an add-on sends no text and does not move the booking.
   'stay-guide/[token]/requests.ts',
 ];

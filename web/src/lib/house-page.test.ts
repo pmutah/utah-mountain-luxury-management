@@ -38,13 +38,24 @@ test('each public house page uses the published guide and leaves prices and door
   assert.equal(/\bis open\b/.test(companionStayNote()), false);
   const river = publicHouse('river');
   assert.match(JSON.stringify(river.schema.containsPlace), /eight king suites/);
-  assert.equal(JSON.stringify(publicHouse('lindon').schema.containsPlace).includes('Bedrooms'), false);
+  /*
+   * These two used to assert the *absence* of a bedroom count in the structured data, because `house-stay.ts` held
+   * `null` for both houses — the layout was published on the listings but nowhere on our own page. It is filled in now,
+   * so the right assertion is that the schema carries it: a vacation-rental listing with no bedroom count is worse for
+   * a guest searching and for a search engine indexing the page.
+   */
+  for (const house of ['lindon', 'ranch'] as const) {
+    const place = JSON.stringify(publicHouse(house).schema.containsPlace);
+    assert.match(place, /Bedrooms/, `${house} structured data does not carry a bedroom count`);
+    assert.equal(place.includes('$'), false, `${house} structured data quotes a price`);
+  }
   assert.match(river.photo.caption, /rendering/);
   assert.match(river.opening ?? '', /November 1, 2026/);
   assert.match(river.address, /Vivian Park/);
   assert.equal((river.schema.address as { postalCode: string }).postalCode, '84604');
   const ranch = publicHouse('ranch');
-  assert.equal(JSON.stringify(ranch.schema.containsPlace).includes('Bedrooms'), false);
+  // The Ranch's layout is published now, so its schema carries the bedroom count like the other two.
+  assert.match(JSON.stringify(ranch.schema.containsPlace), /Bedrooms/);
   const names = (house: ReturnType<typeof publicHouse>) =>
     (house.schema.amenityFeature as { name: string }[]).map((item) => item.name);
   const shared = ['No lifeguard on duty', 'No fireworks', 'Short stay, not a residential lease'];
@@ -143,7 +154,12 @@ test('the public tab uses the house name and does not quote a price', () => {
   const river = publicShare('river');
   assert.match(river.title, /River House/);
   assert.match(river.description, /Sleeps 22/);
-  assert.match(river.url, /\/houses\/river$/);
+  /*
+   * The slashed house URL. It used to be unslashed, which meant every social preview advertised an address that
+   * redirects — and scrapers do not all follow a redirect for `og:url`.
+   */
+  assert.match(river.url, /\/houses\/river\/$/);
+  assert.equal(river.canonical, river.url, 'the canonical a house page declares differs from the link it shares');
   assert.equal(river.description.includes('$'), false);
   assert.equal(/door\s*code|wi-?fi|password|\b801\b/i.test(`${river.title} ${river.description}`), false);
   const quote = bookShare('lindon');

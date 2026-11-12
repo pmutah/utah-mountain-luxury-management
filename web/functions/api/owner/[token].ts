@@ -1,15 +1,24 @@
 import { corsJson } from '../../_lib/data';
-import { isOwnerToken, ownerPortalEmpty, ownerPortalView } from '../../../src/lib/owner-portal';
+import { isOwnerToken, ownerPortalEmpty, ownerPortalView, type OwnerPortalPeriod } from '../../../src/lib/owner-portal';
 import { buildOwnerStatement } from '../../../src/lib/owner-statement';
+import { ownerAhead } from '../../../src/lib/owner-ahead';
+import { denverToday } from '../../../src/lib/market/dates';
 import { findOwnerLink, stampOwnerView } from '../../_lib/owner-store';
 import { mergeAllExpenses } from '../../_lib/expenses';
+import { loadCalendarBlocks } from '../../_lib/calendar-store';
 import { loadExtraCleaningFees, type SettingsEnv } from '../../_lib/kv';
 import { storageReadPaused } from '../../_lib/kv-json';
 import { currentYearMonth } from '../../_lib/months';
 import { getAllReservations } from '../../_lib/reservations-store';
+import { listOwnerTransfers, recordedCents, transferLine } from '../../_lib/platform/owner-transfer-store';
 import type { Expense, Reservation } from '../../../src/lib/api';
 
 type Env = SettingsEnv & { DASHBOARD_PASSWORD?: string };
+
+function parsePeriod(raw: string | null): OwnerPortalPeriod {
+  if (raw === 'month' || raw === 'quarter' || raw === 'ttm' || raw === 'ytd') return raw;
+  return 'ytd';
+}
 
 /**
  * Todd's read-only statement, opened with a minted link. Ranch and River only.
@@ -30,7 +39,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
   if (!link) return corsJson(request, { error: 'This owner link is not valid.' }, 404);
 
   const url = new URL(request.url);
-  const period = url.searchParams.get('period') === 'month' ? 'month' : 'ytd';
+  const period = parsePeriod(url.searchParams.get('period'));
   const month = /^\d{4}-\d{2}$/.test(url.searchParams.get('month') ?? '')
     ? (url.searchParams.get('month') as string)
     : currentYearMonth();
@@ -57,8 +66,21 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
     return corsJson(request, { error: message }, 500);
   }
 
+  let blocksReady = true;
+  let blocks: Array<{ propertyId: string; start: string; end: string }> = [];
+  try {
+    blocks = await loadCalendarBlocks(env);
+  } catch {
+    blocksReady = false;
+  }
+
   const statement = buildOwnerStatement(month, period, reservations, expenses, fees);
   const view = ownerPortalView(statement, period);
+  const ahead = ownerAhead(reservations, denverToday(), blocksReady ? blocks : []);
+  const transfers = await listOwnerTransfers(env).catch(() => ({
+    ok: false as const,
+    reason: 'Recorded transfers could not be read.',
+  }));
   void stampOwnerView(env, token).catch(() => undefined);
   return corsJson(
     request,
@@ -68,6 +90,24 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, params })
       month,
       empty: ownerPortalEmpty(view),
       storageReads: 'ok',
+      ahead: {
+        ...ahead,
+        blocksReady,
+      },
+      transfers: transfers.ok
+        ? {
+            stored: true,
+            items: transfers.items.map((item) => ({ ...item, line: transferLine(item) })),
+            recordedCents: recordedCents(transfers.items),
+            changesBooks: false,
+          }
+        : {
+            stored: false,
+            items: [],
+            recordedCents: null,
+            reason: 'Recorded transfers could not be read.',
+            changesBooks: false,
+          },
     },
     200,
     { 'Cache-Control': 'no-store' },

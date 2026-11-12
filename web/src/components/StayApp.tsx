@@ -8,6 +8,7 @@ import { loadQuoteCalendar } from '../lib/booked-nights';
 import { arrivalJourney, checkoutNightIsFree, nightBeforeIsFree, rightNow, stayCalendarHold, stayCountdown } from '../lib/journey';
 import { tripGate, hoursToCheckIn } from '../lib/platform/guest-ops';
 import { addDays, denverToday } from '../lib/market/dates';
+import { computeMountainLight } from '../lib/mountain-alpenglow';
 import { nightAsk } from '../lib/market/rates';
 import type { HouseId } from '../lib/market/types';
 import { checkoutDoneCount, checkoutSteps, loadCheckoutChecks, saveCheckoutChecks } from '../lib/stay-checkout';
@@ -31,6 +32,14 @@ import { StayGuideSearch } from './StayGuideSearch';
 import { GuestPreferenceForm } from './GuestPreferenceForm';
 import { StayPass } from './StayPass';
 import { CanyonPocketMap } from './CanyonPocketMap';
+import { HouseGallery } from './HouseGallery';
+import { HouseFloorLayout } from './HouseFloorLayout';
+import {
+  formatRoomPlanShare,
+  loadRoomAssignments,
+  saveRoomAssignments,
+  stayAssignableRooms,
+} from '../lib/stay-room-plan';
 
 type Tab = 'stay' | 'house' | 'area' | 'help';
 
@@ -147,9 +156,18 @@ type StayWeather = {
  * Nothing renders until the read answers, and a failed read renders one plain sentence rather than a temperature. The advisory is
  * the part that matters: a winter warning over Provo Canyon is worth knowing before a guest drives up in a rental car.
  */
-function WeatherCard({ token }: { token: string }) {
+function WeatherCard({
+  token,
+  houseId,
+  checkIn,
+}: {
+  token: string;
+  houseId: HouseId | null;
+  checkIn: string;
+}) {
   const [weather, setWeather] = useState<StayWeather | null>(null);
   const [off, setOff] = useState(false);
+  const light = houseId ? computeMountainLight(checkIn, houseId) : null;
   useEffect(() => {
     let cancel = false;
     fetch(`/api/stay-guide/${encodeURIComponent(token)}/conditions`)
@@ -208,6 +226,11 @@ function WeatherCard({ token }: { token: string }) {
           {weather.river.ok ? weather.river.line : weather.river.reason}
         </p>
       ) : null}
+      {light ? (
+        <p className="mt-2 text-xs text-[#d7cfc3]" data-bot="stay-alpenglow">
+          {light.alpenglowLine} · {light.moon.name} ({light.moon.illuminationPct}%). {light.moon.stargazingNote}.
+        </p>
+      ) : null}
       {weather.line && days.length === 0 && (
         <p className="mt-2 text-sm text-[#d7cfc3]">{weather.line}</p>
       )}
@@ -237,6 +260,8 @@ export function StayApp({ token }: { token: string }) {
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [agreementRead, setAgreementRead] = useState<string[]>(() => loadAgreementRead(token));
   const [checkoutOn, setCheckoutOn] = useState<boolean[]>(() => loadCheckoutChecks(token));
+  const [roomPlan, setRoomPlan] = useState<Record<string, string>>(() => loadRoomAssignments(token));
+  const [copiedRooms, setCopiedRooms] = useState(false);
   const [arrivalWindow, setArrivalWindow] = useState('');
   const [departureWindow, setDepartureWindow] = useState('');
   const [preferenceLines, setPreferenceLines] = useState<string[] | null>(null);
@@ -276,6 +301,7 @@ export function StayApp({ token }: { token: string }) {
   useEffect(() => {
     setRulesRead(loadRuleAck(token));
     setAgreementRead(loadAgreementRead(token));
+    setRoomPlan(loadRoomAssignments(token));
   }, [token]);
 
   useEffect(() => {
@@ -1051,7 +1077,7 @@ export function StayApp({ token }: { token: string }) {
               never delays the page a guest actually opened. Its absence is honest: before it answers, and if it fails, nothing
               is shown — no invented temperature, and never a claim that the pass is clear.
             */}
-            <WeatherCard token={token} />
+            <WeatherCard token={token} houseId={houseId} checkIn={data.checkIn} />
 
             <Card>
               <div className="grid grid-cols-2 gap-4">
@@ -1149,6 +1175,84 @@ export function StayApp({ token }: { token: string }) {
               <Kicker>{house}</Kicker>
               <p className="guest-display mt-2 text-3xl">{guide.headline}</p>
             </Card>
+            {houseId && partStay.wholeHouse ? (
+              <Card>
+                <Kicker>Photos &amp; floor tour</Kicker>
+                <div className="mt-3">
+                  <HouseGallery house={houseId} dense />
+                </div>
+              </Card>
+            ) : null}
+            {houseId ? (
+              <Card>
+                <Kicker>Who sleeps where</Kicker>
+                <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]">
+                  Assign bedrooms across your group and copy the plan to your family chat. Notes stay on this phone and
+                  do not change the reservation.
+                </p>
+                {(() => {
+                  const assignable = stayAssignableRooms(houseId, data.units);
+                  return (
+                    <div className="mt-4 space-y-3" data-bot="stay-room-planner">
+                      {assignable.map((room) => (
+                        <div
+                          key={room.name}
+                          className="rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+                          data-bot="stay-room-card"
+                        >
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="text-sm font-semibold text-[#f6f1e8]">{room.name}</p>
+                            <span className="text-[11px] uppercase tracking-wider text-white/50">{room.where}</span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-white/65">
+                            {room.beds}
+                            {room.note ? ` · ${room.note}` : ''}
+                          </p>
+                          <input
+                            type="text"
+                            aria-label={`Assign ${room.name}`}
+                            data-bot="stay-room-input"
+                            value={roomPlan[room.name] ?? ''}
+                            placeholder="e.g. Grandparents, Mark & Sarah, Kids"
+                            onChange={(event) => {
+                              const next = { ...roomPlan, [room.name]: event.target.value };
+                              setRoomPlan(next);
+                              saveRoomAssignments(token, next);
+                            }}
+                            className="mt-2 w-full rounded-xl border border-white/15 bg-black/25 px-3 py-1.5 text-xs text-[#f6f1e8] placeholder:text-white/35"
+                          />
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        data-bot="stay-room-copy"
+                        onClick={() => {
+                          const text = formatRoomPlanShare({
+                            houseName: data.propertyName,
+                            checkIn: data.checkIn,
+                            checkOut: data.checkOut,
+                            rooms: assignable,
+                            assignments: roomPlan,
+                          });
+                          void navigator.clipboard?.writeText(text).then(() => {
+                            setCopiedRooms(true);
+                            window.setTimeout(() => setCopiedRooms(false), 1800);
+                          });
+                        }}
+                        className="w-full rounded-full border border-[#d4b56a]/60 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
+                      >
+                        {copiedRooms ? 'Copied bedroom plan' : 'Copy bedroom plan for group chat'}
+                      </button>
+                    </div>
+                  );
+                })()}
+                {partStay.wholeHouse ? (
+                  <div className="mt-4">
+                    <HouseFloorLayout house={houseId} />
+                  </div>
+                ) : null}
+              </Card>
+            ) : null}
             <StayGuideSearch house={data.propertyId} checkIn={data.checkIn} checkOut={data.checkOut} />
             {guide.videos.length > 0 && (
               <Card>

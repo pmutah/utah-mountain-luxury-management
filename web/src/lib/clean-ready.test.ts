@@ -42,8 +42,15 @@ test('the cleaner still has each house when the turnover list cannot be read', (
   assert.match(river.photoGuide ?? '', /eight king suites/);
   assert.match(river.photoGuide ?? '', /not a new list/);
   assert.match(river.photoGuide ?? '', /not uploaded/);
-  assert.equal(ranch.photoGuide, null);
-  assert.equal(cards[2].photoGuide, null);
+  /*
+   * The Ranch House had no bedroom line, so its photo guide was `null` — a cleaner photographing that house got no room
+   * reference at all. It publishes its layout now, so the guide renders there too. Lindon still has no guide of its own
+   * because its bedroom line names rooms without a per-room photo instruction.
+   */
+  assert.match(ranch.photoGuide ?? '', /bedrooms/i, 'the Ranch cleaner still has no room reference');
+  assert.equal((ranch.photoGuide ?? '').includes('$'), false);
+  // Lindon publishes a bedroom line too now, so its cleaner gets the same room reference.
+  assert.match(cards[2].photoGuide ?? '', /bedrooms/i, 'the Lindon cleaner still has no room reference');
   assert.equal((river.photoGuide ?? '').includes('$'), false);
   const event = cleanEventLine('river', '2026-10-30');
   assert.match(event, /BYU at Utah/);

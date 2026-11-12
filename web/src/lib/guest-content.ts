@@ -73,19 +73,38 @@ export function houseFaq(house: HouseId): FaqRow[] {
 
   rows.push({
     question: 'How many people does the house sleep?',
-    answer: `${stay.sleeps} guests${stay.bedrooms ? `, in ${stay.bedrooms}` : ''}. ${stay.parking}`.trim(),
+    answer: `${stay.sleeps} guests${stay.bedrooms ? `, in ${stay.bedrooms.replace(/\.\s*$/, '')}` : ''}. ${stay.parking}`.trim(),
   });
 
   const pets = rules.find((rule) => /pet|dog/i.test(rule));
   if (pets) rows.push({ question: 'Are pets allowed?', answer: pets });
 
-  const quiet = rules.find((rule) => /quiet|noise|hour/i.test(rule));
+  /*
+   * The quiet-hours answer comes from the rule, trimmed to the topic.
+   *
+   * The single `stay` rule carries quiet hours, parties, and smoking in one paragraph, so pointing four different
+   * questions at `rules.find(...)` returned the same paragraph four times — a guest opening "Is there a quiet time?"
+   * and "Is smoking allowed?" read identical answers. Each answer now quotes every sentence of that rule that mentions
+   * its topic, which keeps the useful detail ("No parties. Stay within the booked guest count.") without repeating the
+   * unrelated clauses.
+   */
+  const sentencesAbout = (pattern: RegExp) => {
+    for (const rule of rules) {
+      const parts = rule.split(/(?<=\.)\s+/).map((part) => part.trim()).filter(Boolean);
+      if (!parts.some((part) => pattern.test(part))) continue;
+      // The opening sentence of the rule is the house's standing policy, so it travels with any topic taken from it.
+      const keep = parts.filter((part, index) => index === 0 || pattern.test(part));
+      return keep.join(' ');
+    }
+    return '';
+  };
+  const quiet = sentencesAbout(/quiet hours/i);
   if (quiet) rows.push({ question: 'Is there a quiet time?', answer: quiet });
 
-  const smoking = rules.find((rule) => /smok|vap/i.test(rule));
+  const smoking = sentencesAbout(/smok|vap/i);
   if (smoking) rows.push({ question: 'Is smoking allowed?', answer: smoking });
 
-  const events = rules.find((rule) => /event|party|gather/i.test(rule));
+  const events = sentencesAbout(/part(y|ies)|events?|gather/i);
   if (events) rows.push({ question: 'Can we host a gathering?', answer: events });
 
   rows.push({

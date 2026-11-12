@@ -24,6 +24,14 @@ test('the market page reads the durable shadow clock rather than only writing it
   assert.match(source, /\.saveShadowDay\(/, 'the page no longer records a day');
 });
 
+test('a finished week on the server is not described as this browser', () => {
+  assert.match(
+    source,
+    /shadowClockLine\(shownClock,\s*serverClock \? 'server' : 'browser'\)/,
+    'the headline still calls the server clock a browser clock',
+  );
+});
+
 test('the date list under the clock describes the same clock as the headline', () => {
   /*
    * The bug in one line: the headline used `shownClock` (server when available) while the dates beneath it

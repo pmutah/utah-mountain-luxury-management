@@ -1,0 +1,60 @@
+{
+  "house": "river",
+  "listing": "https://utahmountainluxury.com/property/provo-riverhouse-6-king-beds-sleeps-24",
+  "capturedAt": "2026-11-12T15:12:22.954Z",
+  "curatedAt": "2026-11-12T15:18:46.213Z",
+  "photos": [
+    {
+      "file": "exterior-01.jpg",
+      "source": "https://assets.hospitable.com/property_images/2344377/0ecXdv57mdXVMyNVOUbuoyJFgEmeQxrLwgwL96mW.jpg",
+      "caption": "Architectural rendering of the front of the house"
+    },
+    {
+      "file": "exterior-02.jpg",
+      "source": "https://assets.hospitable.com/property_images/2344377/Q99TXPbGPu7SoCdVOMgAmjVjUQALHzN1RDYKuGfR.jpg",
+      "caption": "Architectural rendering of the drive and garage"
+    },
+    {
+      "file": "kitchen-01.jpg",
+      "source": "https://assets.hospitable.com/property_images/2344377/CBBxfJ9QZ8uvl127yFjaR3fTDkBJamw9D3opV9ia.jpg",
+      "caption": "Architectural rendering of the kitchen and island"
+    },
+    {
+      "file": "amenities-01.jpg",
+      "source": "https://assets.hospitable.com/property_images/2344377/uUBQwNj4soIaawtEjnF1D1pyhMjHQZt7mrzr75q4.jpg",
+      "caption": "Architectural rendering of the heated game garage"
+    },
+    {
+      "file": "outdoors-01.jpg",
+      "source": "https://assets.hospitable.com/property_images/2344377/Uuu1A0EiXrwm2s0q1Y2XpdUDTZiItGnrG7PmE2yt.jpg",
+      "caption": "Barrel sauna and hot tub"
+    },
+    {
+      "file": "exterior-03.jpg",
+      "source": "https://assets.hospitable.com/property_images/2344377/WJds21jH8eyywcrblAZE9LcPsLXJwxhmlnpeYuve.jpg",
+      "caption": "The house from across the Provo River"
+    },
+    {
+      "file": "outdoors-02.jpg",
+      "source": "https://assets.hospitable.com/property_images/2344377/7NDVDUGVJBCvuTvXE8j9vnA3HB0amIbNFz2VMuWA.jpg",
+      "caption": "The footbridge over the Provo River"
+    },
+    {
+      "file": "outdoors-03.jpg",
+      "source": "https://assets.hospitable.com/property_images/2344377/ceXm1fAD6c1HnTZChjaqvSy2QhagjBfLdH0WVPL0.jpg",
+      "caption": "Fall color along the river"
+    }
+  ],
+  "floorplans": [
+    {
+      "file": "floorplan-main.jpg",
+      "source": "",
+      "title": "Main level"
+    },
+    {
+      "file": "floorplan-upper.jpg",
+      "source": "",
+      "title": "Upper level"
+    }
+  ]
+}

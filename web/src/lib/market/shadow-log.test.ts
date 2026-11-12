@@ -7,11 +7,13 @@ import {
   loadShadowLog,
   recordShadowDay,
   saveShadowLog,
+  daySawRealComps,
   shadowClock,
+  shadowClockFromSaved,
   shadowClockLine,
 } from './shadow-log.ts';
 
-const DIGEST = 'UML shadow 2026-10-29\nRiver: 0 raises\nNothing sent to Hospitable.';
+const DIGEST = 'UML shadow 2026-10-29\nRiver: 3 saved comps\nNothing sent to Hospitable.';
 
 test('the same Denver day is saved once', () => {
   const once = recordShadowDay([], '2026-10-29', DIGEST);
@@ -37,6 +39,20 @@ test('seven recorded days still leave the write closed without a token', () => {
   assert.equal(hospitablePushAllowed(clock.ready, false), false);
   assert.equal(hospitablePushAllowed(clock.ready, true), true);
   assert.match(shadowClockLine(clock), /write token/);
+  assert.match(shadowClockLine(clock), /on this browser/);
+  assert.match(shadowClockLine(clock, 'server'), /on the server/);
+  assert.doesNotMatch(shadowClockLine(clock, 'server'), /this browser/);
+});
+
+test('a digest that never names saved comps does not count, and a mixed one does not either', () => {
+  const silent = 'Morning run for 2026-10-29. Nothing sent to Hospitable.';
+  assert.equal(daySawRealComps(silent), false);
+  assert.equal(recordShadowDay([], '2026-10-29', silent).length, 0);
+  assert.equal(shadowClockFromSaved([{ date: '2026-10-29', digest: silent }], '2026-10-29').days, 0);
+  const mixed = 'River: 3 saved comps. Ranch: 5 of 10 sample comps. Nothing sent to Hospitable.';
+  assert.equal(daySawRealComps(mixed), false);
+  assert.equal(recordShadowDay([], '2026-10-29', mixed).length, 0);
+  assert.equal(daySawRealComps('Lindon: 1 saved comp. Nothing sent to Hospitable.'), true);
 });
 
 test('a future day does not count and a sendable digest is dropped', () => {

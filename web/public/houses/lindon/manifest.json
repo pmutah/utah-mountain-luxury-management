@@ -1,0 +1,64 @@
+{
+  "house": "lindon",
+  "listing": "https://www.vrbo.com/4609228ha",
+  "capturedAt": "2026-11-12T15:12:54.458Z",
+  "curatedAt": "2026-11-12T15:18:46.202Z",
+  "photos": [
+    {
+      "file": "living-01.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/c9542ff4.jpg",
+      "caption": "Living room with a floor-to-ceiling stone fireplace"
+    },
+    {
+      "file": "living-02.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/689306a4.jpg",
+      "caption": "Sectional seating for the whole family"
+    },
+    {
+      "file": "living-03.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/ca3f2142.jpg",
+      "caption": "The living room opens to the kitchen"
+    },
+    {
+      "file": "kitchen-01.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/2103092d.jpg",
+      "caption": "Kitchen with white counters and gray cabinets"
+    },
+    {
+      "file": "kitchen-02.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/270-fd73b128.jpg",
+      "caption": "Dining table for six"
+    },
+    {
+      "file": "bedrooms-01.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/febf2d27.jpg",
+      "caption": "Bedroom with a wall-mounted air conditioner"
+    },
+    {
+      "file": "baths-01.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/9111a91e.jpg",
+      "caption": "Bath with a double vanity"
+    },
+    {
+      "file": "exterior-01.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/9debf20c.jpg",
+      "caption": "Brick entry and covered front porch"
+    },
+    {
+      "file": "outdoors-01.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/1c7f84af.jpg",
+      "caption": "Private balcony with bistro seating"
+    },
+    {
+      "file": "outdoors-02.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/630cd976.jpg",
+      "caption": "The Lindon Aquatics Center across the street"
+    },
+    {
+      "file": "outdoors-03.jpg",
+      "source": "https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/6eb9d278.jpg",
+      "caption": "Utah Lake is minutes away"
+    }
+  ],
+  "floorplans": []
+}

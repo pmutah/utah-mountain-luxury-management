@@ -199,7 +199,14 @@ export function groupQuotePending(): { label: string } {
   return { label };
 }
 
-export type PublicShare = { title: string; description: string; url: string; image?: string };
+/**
+ * Tab and share tags for a public page.
+ *
+ * `canonical` is the address a search engine should index. `/houses/river/` and `/book/?house=river` render the same
+ * listing, so without it they are two pages competing with identical content — and the sitemap lists only the first.
+ * When it is absent the page's own `url` is used, which is right for the houses index and the policy pages.
+ */
+export type PublicShare = { title: string; description: string; url: string; image?: string; canonical?: string };
 
 // A quote charges no card. A request does hold the dates for 30 minutes, so this line does not claim
 // the page holds nothing.
@@ -223,12 +230,15 @@ function shareText(title: string, description: string, url: string, image?: stri
 /** Tab and share text for a public house page. No price, and it does not say a house is open. */
 export function publicShare(page: HouseId | 'index'): PublicShare {
   if (page === 'index') {
-    return shareText(
-      'The houses · Utah Mountain Luxury',
-      `River, Ranch, and Lindon. ${SHARE_HOLD}`,
-      `${ORIGIN}/houses/`,
-      `${ORIGIN}/houses/river.jpg`,
-    );
+    return {
+      ...shareText(
+        'The houses · Utah Mountain Luxury',
+        `River, Ranch, and Lindon. ${SHARE_HOLD}`,
+        `${ORIGIN}/houses/`,
+        `${ORIGIN}/houses/river.jpg`,
+      ),
+      canonical: `${ORIGIN}/houses/`,
+    };
   }
   const house = publicHouse(page);
   /*
@@ -236,7 +246,15 @@ export function publicShare(page: HouseId | 'index'): PublicShare {
    * is why a shared link used to preview as a bare title.
    */
   const image = house.photo.src ? `${ORIGIN}${house.photo.src}` : undefined;
-  return shareText(`${house.name} · Utah Mountain Luxury`, `${house.title}. ${SHARE_HOLD}`, `${ORIGIN}${house.pageHref}`, image);
+  return {
+    /*
+     * The share URL is the slashed form, because that is the address the app serves. The unslashed `pageHref` is kept
+     * only for links already in the wild; advertising it here told every social scraper to fetch a URL that redirects,
+     * and some of them do not follow redirects for `og:url` at all.
+     */
+    ...shareText(`${house.name} · Utah Mountain Luxury`, `${house.title}. ${SHARE_HOLD}`, `${ORIGIN}/houses/${page}/`, image),
+    canonical: `${ORIGIN}/houses/${page}/`,
+  };
 }
 
 function partyBits(guests = '', children = ''): string {
@@ -347,9 +365,45 @@ export function bookShare(
   return shareText(page.title, page.description, url);
 }
 
+/**
+ * Set a meta tag's content, creating it when the document does not carry one.
+ *
+ * It used to only update a tag that already existed: `querySelector` returned null and the call did nothing. That is
+ * silent — the page looks like it set a canonical or an image and simply did not. Creating the tag on demand means a
+ * page that needs a tag `index.html` does not carry still gets one.
+ */
 function setMeta(selector: string, content: string) {
-  const node = document.querySelector(selector);
-  if (node) node.setAttribute('content', content);
+  if (typeof document === 'undefined') return;
+  const existing = document.querySelector(selector);
+  if (existing) {
+    existing.setAttribute('content', content);
+    return;
+  }
+  // `meta[name="x"]` or `meta[property="x"]` — the two forms in use here.
+  const match = /^meta\[(name|property)="([^"]+)"\]$/.exec(selector);
+  if (!match) return;
+  const tag = document.createElement('meta');
+  tag.setAttribute(match[1]!, match[2]!);
+  tag.setAttribute('content', content);
+  document.head.appendChild(tag);
+}
+
+/**
+ * Declare the address a search engine should treat as this page's real one.
+ *
+ * `/houses/river/` and `/book/?house=river` render the same listing, and the sitemap lists only the house page. Without
+ * a canonical they compete as two pages with the same content, which is how a listing ends up ranked below its own
+ * duplicate. The link is set here because the address is only known once the browser has it.
+ */
+function setCanonical(href: string) {
+  if (typeof document === 'undefined') return;
+  let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'canonical';
+    document.head.appendChild(link);
+  }
+  link.href = href;
 }
 
 /** Sets the tab and share tags, then restores the dashboard title when the page closes. */
@@ -360,6 +414,11 @@ export function applyPublicShare(share: PublicShare): () => void {
   setMeta('meta[property="og:title"]', share.title);
   setMeta('meta[property="og:description"]', share.description);
   setMeta('meta[property="og:url"]', share.url);
+  /*
+   * The canonical address, stripped of any query. A quote link carries dates and a party, and those are not a page —
+   * each one would otherwise be indexed as its own copy of the listing.
+   */
+  setCanonical(share.canonical ?? share.url.split('?')[0] ?? share.url);
   /*
    * The share image.
    *
@@ -380,6 +439,8 @@ export function applyPublicShare(share: PublicShare): () => void {
     setMeta('meta[property="og:description"]', DASHBOARD_SHARE.ogDescription);
     setMeta('meta[property="og:url"]', DASHBOARD_SHARE.url);
     setMeta('meta[property="og:image"]', '');
+    // The canonical belongs to the public page, so leaving the dashboard must not point a crawler at a house.
+    setCanonical(DASHBOARD_SHARE.url);
   };
 }
 

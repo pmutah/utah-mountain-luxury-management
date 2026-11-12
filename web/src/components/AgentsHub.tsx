@@ -5,6 +5,7 @@ import { agentBrief } from '../lib/agent-brief';
 import { AGENT_ROSTER } from '../lib/agents';
 import { PLATFORM_AGENTS } from '../lib/platform/back-office';
 import { PlatformPanel } from './PlatformPanel';
+import { AgentPlaybooks } from './AgentPlaybooks';
 import { GuideDesk } from './GuideDesk';
 import { loadDateBlocks, loadQuoteCalendar } from '../lib/booked-nights';
 import { loadCleanFixes, loadHouseFixes } from '../lib/clean-notes';
@@ -251,6 +252,12 @@ export function AgentsHub({
         wired here, and each card says whether it could not be read rather than showing a zero.
       */}
       <PlatformPanel />
+      <AgentPlaybooks
+        reservations={reservations}
+        closed={closed}
+        blocksReady={blocksReady}
+        booksPaused={booksPaused}
+      />
       <div className="uml-panel rounded-3xl p-6" data-bot="agent-brief" data-blocks={closed.length}>
         <p className="uml-kicker">Tonight</p>
         <ul className="mt-4 space-y-3 text-sm">

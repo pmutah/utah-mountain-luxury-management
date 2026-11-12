@@ -9,6 +9,7 @@ import { halfIsExact } from '../lib/owner-portal';
 import { MANAGEMENT_FEE_LABEL } from '../lib/owner-fee';
 import { ownerArrivalLines, ownerOfferLines, ownerStartLines, ownerTurnLines } from '../lib/owner-offers';
 import { buildOwnerStatement } from '../lib/owner-statement';
+import { OwnerTransfers } from './OwnerTransfers';
 import { ownerStatementCsv, ownerStatementFilename } from '../lib/owner-statement-file';
 import type { ReportPeriod } from '../lib/report';
 
@@ -88,7 +89,7 @@ export function OwnerStatement({
         <p className="uml-kicker">Owner statement</p>
         <h2 className="font-display text-5xl">Todd Wilhite</h2>
         <p className="mt-2 max-w-2xl text-sm text-[var(--uml-muted)]">
-          Ranch and River, after the {MANAGEMENT_FEE_LABEL} management fee, then half. The fee is {MANAGEMENT_FEE_LABEL} of rent after cleaning — not {MANAGEMENT_FEE_LABEL} of the guest payout — so it reads lower than a fifth of the revenue line. Lindon, household purchases, and construction bills are not on this page. Nothing here can be edited.
+          Ranch and River, after the {MANAGEMENT_FEE_LABEL} management fee, then half. The fee is {MANAGEMENT_FEE_LABEL} of rent after cleaning — not {MANAGEMENT_FEE_LABEL} of the guest payout — so it reads lower than a fifth of the revenue line. Lindon, household purchases, and construction bills are not on this page. The share itself cannot be edited.
         </p>
       </div>
       <div className="flex flex-wrap gap-2" data-bot="owner-controls">
@@ -135,6 +136,7 @@ export function OwnerStatement({
         <p className="mt-2 font-display text-6xl uml-num">{formatCurrency(statement.todd)}</p>
         <p className="mt-2 text-sm text-[var(--uml-muted)]">Todd’s share · management fee {formatCurrency(statement.fee)}</p>
       </div>
+      <OwnerTransfers months={statement.months.map((row) => row.month)} />
       <div className="grid gap-4 sm:grid-cols-2">
         {statement.houses.map((house) => (
           <article key={house.id} className="uml-panel rounded-3xl p-6" data-bot={`owner-house-${house.id}`}>

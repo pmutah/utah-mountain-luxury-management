@@ -124,8 +124,12 @@ test('a minted link returns Todd’s Ranch and River statement and stamps the vi
     notes: string[];
     storageReads: string;
     rangeLabel: string;
+    transfers: { stored: boolean; changesBooks: boolean; recordedCents: number | null };
   };
   assert.equal(body.storageReads, 'ok');
+  assert.equal(body.transfers.stored, false);
+  assert.equal(body.transfers.changesBooks, false);
+  assert.equal(body.transfers.recordedCents, null);
   assert.deepEqual(
     body.houses.map((house) => house.id),
     ['ranch', 'river'],
@@ -141,4 +145,73 @@ test('a minted link returns Todd’s Ranch and River statement and stamps the vi
   const saved = JSON.parse(store.get('ownerAccess') ?? '[]') as Array<{ views?: number; lastViewedAt?: string }>;
   assert.equal(saved[0]!.views, 1);
   assert.equal(typeof saved[0]!.lastViewedAt, 'string');
+});
+
+test('the owner portal supports quarter and trailing-12 periods, includes On-the-Books ahead without guest names or Lindon, and reconciles transfer math', async () => {
+  const { createOwnerLink } = await import('../../functions/_lib/owner-store.ts');
+  const { ownerTransferBalanceLine } = await import('./owner-portal.ts');
+  const store: Store = new Map();
+  store.set(
+    'reservations',
+    JSON.stringify([
+      {
+        id: 'riv-dec',
+        guestName: 'Confidential Family',
+        propertyId: 'river',
+        checkIn: '2026-12-20',
+        checkOut: '2026-12-26',
+        payout: 15717,
+        source: 'Airbnb',
+        status: 'confirmed',
+      },
+      {
+        id: 'lin-dec',
+        guestName: 'Lindon Family',
+        propertyId: 'lindon',
+        checkIn: '2026-12-20',
+        checkOut: '2026-12-24',
+        payout: 1200,
+        source: 'VRBO',
+        status: 'confirmed',
+      },
+    ]),
+  );
+  const kv = fakeKv(store);
+  const env = { SETTINGS: kv, DASHBOARD_PASSWORD: PASSWORD };
+  const link = await createOwnerLink(env as never);
+  const { token } = await loadRoutes();
+
+  const quarterRes = await token.onRequestGet!({
+    request: req(`https://x/api/owner/${link.token}?period=quarter&month=2026-09`),
+    env,
+    params: { token: link.token },
+  });
+  assert.equal(quarterRes.status, 200);
+  const quarterBody = (await quarterRes.json()) as {
+    period: string;
+    months: unknown[];
+    ahead: {
+      blocksReady: boolean;
+      houses: Array<{ id: string; coming: number; nights: number }>;
+    };
+  };
+  assert.equal(quarterBody.period, 'quarter');
+  assert.equal(quarterBody.months.length, 3);
+  assert.equal(quarterBody.ahead.blocksReady, true);
+  assert.deepEqual(
+    quarterBody.ahead.houses.map((h) => h.id),
+    ['ranch', 'river'],
+  );
+  const riverAhead = quarterBody.ahead.houses.find((h) => h.id === 'river')!;
+  // Seed reservations already carry the 2 confirmed December River stays, plus our 1 custom stay = 3.
+  assert.ok(riverAhead.coming >= 3, `expected at least 3 upcoming River stays, got ${riverAhead.coming}`);
+  assert.ok(riverAhead.nights >= 14, `expected at least 14 upcoming River nights, got ${riverAhead.nights}`);
+
+  const rawText = JSON.stringify(quarterBody);
+  assert.equal(rawText.includes('lindon'), false);
+  assert.equal(/Confidential Family|Lindon Family/i.test(rawText), false);
+
+  assert.match(ownerTransferBalanceLine(1500, 150000), /match this window’s settled share to the cent/);
+  assert.match(ownerTransferBalanceLine(2000, 150000), /\$500\.00 of this window’s settled share is above net recorded transfers/);
+  assert.match(ownerTransferBalanceLine(1000, 150000), /exceed this window’s settled share by \$500\.00/);
 });

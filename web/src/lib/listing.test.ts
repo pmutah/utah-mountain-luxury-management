@@ -19,6 +19,8 @@ test('photos and card payment stay open, and the title is already on our page', 
   assert.equal(river.find((item) => item.id === 'title')?.status, 'ready');
   assert.equal(river.find((item) => item.id === 'photos')?.status, 'open');
   assert.match(river.find((item) => item.id === 'photos')?.detail ?? '', /rendering/);
+  assert.equal(listingOpportunities('ranch').find((item) => item.id === 'photos')?.status, 'ready');
+  assert.equal(listingOpportunities('lindon').find((item) => item.id === 'photos')?.status, 'ready');
   assert.equal(river.find((item) => item.id === 'payment')?.status, 'open');
   assert.equal(river.find((item) => item.id === 'weekend')?.status, 'ready');
   assert.equal(river.find((item) => item.id === 'addons')?.status, 'ready');
@@ -32,8 +34,8 @@ test('photos and card payment stay open, and the title is already on our page', 
   assert.equal(listingOpportunities('ranch').find((item) => item.id === 'photos')?.detail.includes('rendering'), false);
   const open = listingOpenLine();
   assert.match(open, /River still uses a rendering/);
-  assert.match(open, /Ranch has one photo/);
-  assert.match(open, /Lindon has one photo/);
+  assert.equal(open.includes('Ranch has one photo'), false);
+  assert.equal(open.includes('Lindon has one photo'), false);
   assert.match(open, /Direct booking still emails a request/);
   assert.match(open, /Nothing is posted to Airbnb or VRBO/);
   assert.equal(open.includes('$'), false);

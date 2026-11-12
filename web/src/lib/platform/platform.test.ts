@@ -423,7 +423,7 @@ test('health hides secrets, the quote foots, a bad webhook is refused, and a del
 
 test('the desk, the booking page, and the middleware show the new surfaces', () => {
   const today = readFileSync(join(root, 'src/components/TodayDesk.tsx'), 'utf8');
-  const book = readFileSync(join(root, 'src/components/DirectBook.tsx'), 'utf8');
+  const book = readFileSync(join(root, 'src/components/DirectReserveCard.tsx'), 'utf8');
   const stay = readFileSync(join(root, 'src/components/StayApp.tsx'), 'utf8');
   const agents = readFileSync(join(root, 'src/components/AgentsHub.tsx'), 'utf8');
   const app = readFileSync(join(root, 'src/App.tsx'), 'utf8');
@@ -884,7 +884,7 @@ test('the policies are reachable from both public entry points', () => {
    * extensionless address: Cloudflare Pages answers `/terms.html` with a 308 to `/terms`, so linking the `.html` form makes
    * every click a redirect.
    */
-  const book = readFileSync(join(root, 'src/components/DirectBook.tsx'), 'utf8');
+  const book = readFileSync(join(root, 'src/components/DirectReserveCard.tsx'), 'utf8');
   const houses = readFileSync(join(root, 'src/components/HouseSite.tsx'), 'utf8');
   for (const [name, page] of [['booking page', book], ['house list', houses]] as const) {
     for (const policy of ['/terms', '/privacy', '/accessibility']) {

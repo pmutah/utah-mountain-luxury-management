@@ -52,6 +52,15 @@ import { denverToday } from '../../../src/lib/market/dates';
 import { buildTurnovers } from '../../../src/lib/today';
 import { isCompHouse } from '../../../src/lib/market/comp-house';
 import type { StaySpan } from '../../../src/lib/availability';
+import type { Expense as ClientExpense, Reservation as ClientReservation } from '../../../src/lib/api';
+import { buildTaxYearPacket } from '../../../src/lib/tax-prep';
+import {
+  simulateCostSegregation,
+  sumLoggedConstructionSpend,
+  type BonusRateOption,
+  type CostSegProfileId,
+} from '../../../src/lib/cost-seg';
+import { reconcileStatementAgainstExpenses } from '../../../src/lib/statement-reconciler';
 import { onRequestPost as acceptRoute } from '../../api/book/accept';
 import { onRequestPost as declineRoute } from '../../api/book/decline';
 
@@ -94,6 +103,9 @@ function step(tool: string, action: string): ToolStep {
     list_expenses: 'Listing expenses',
     get_profit_summary: 'Calculating profit',
     get_partner_contributions: 'Checking partner contributions',
+    get_tax_packet: 'Building Schedule E & §469 tax worksheet',
+    simulate_cost_seg: 'Simulating cost-segregation & bonus depreciation',
+    reconcile_statement: 'Reconciling bank statement against ledger',
     list: 'Checking reservations',
     get: 'Fetching reservation',
     create: 'Creating reservation',
@@ -285,6 +297,143 @@ async function handleFinances(
         'totalProfit is the house profit: revenue minus mortgage, cleaning, and operating costs. It is not a partner share. ownerShare carries the real partner split — 20% management fee off revenue less cleaning, then the mortgage and operating costs come out, then what remains is halved.',
       ownerSplitNote:
         'Ranch and River: 20% management fee to Brandon, then 50/50 Todd vs Brandon & Stephanie. Lindon is Brandon only, so its ownerShare is null. Quote ownerShare for a partner question; never multiply totalProfit by 0.8 and halve it, which is a different and smaller number.',
+    };
+  }
+
+  if (action === 'get_tax_packet') {
+    const year = typeof args.year === 'number' && Number.isInteger(args.year) ? args.year : 2026;
+    const packet = buildTaxYearPacket({
+      year,
+      reservations: reservations as unknown as ClientReservation[],
+      expenses: allExpenses as unknown as ClientExpense[],
+      extraCleaningFees: fees,
+    });
+    if (packet.locked2025) {
+      return {
+        year,
+        locked2025: true,
+        lockReason: packet.lockReason,
+        note: '2025 taxes were filed by Ben Campbell on Sept 15, 2026 (Fed refund $4,588 + Utah $2,105 = $6,693; Ranch +$35,675 Sch E; Lindon 100% Brandon with Clive $27,969.07 repair; River vacant pre-opening). Live worksheets run strictly for 2026+.',
+        touchedBooks: false,
+      };
+    }
+    return {
+      year,
+      locked2025: false,
+      totalRents: packet.totalRents,
+      totalDeductibleBefore1098: packet.totalDeductibleBefore1098,
+      netBefore1098AndDepreciation: packet.netBefore1098AndDepreciation,
+      totalCashDebtServiceMemo: packet.totalCashDebtServiceMemo,
+      portfolioScheduleELines: packet.portfolioLines,
+      properties: packet.properties.map((p) => ({
+        propertyId: p.propertyId,
+        name: p.name,
+        rentsLine3: p.lines.line3_rents,
+        deductibleBefore1098: p.deductibleOperatingTotal,
+        netBefore1098AndDepreciation: p.netBefore1098AndDepreciation,
+        missingReceiptsCount: p.missingReceiptsCount,
+        enteredExpenseCount: p.enteredExpenseCount,
+        assumedCleaningMemo: p.assumedCleaningMemo,
+        lines: p.lines,
+      })),
+      strRules: packet.strRules,
+      vendors1099: packet.vendors1099.filter((v) => v.amount >= 400),
+      lodgingTax: {
+        confirmed: packet.lodgingTax.confirmed,
+        directEstimate: packet.lodgingTax.directEstimate,
+        channelCollectedByOta: packet.lodgingTax.channelCollectedByOta,
+      },
+      cleanerEstimatedHours: packet.cleanerEstimatedHours,
+      totalCleanerEstimatedHours: packet.totalCleanerEstimatedHours,
+      note: 'CPA worksheet preview before Form 1098 mortgage interest and Form 4562 depreciation. Does not alter ledger rows.',
+      touchedBooks: false,
+    };
+  }
+
+  if (action === 'simulate_cost_seg') {
+    const buildSpend = sumLoggedConstructionSpend(allExpenses as unknown as ClientExpense[]);
+    const rawBasis = typeof args.grossBasisUsd === 'number' && Number.isFinite(args.grossBasisUsd) && args.grossBasisUsd > 0
+      ? args.grossBasisUsd
+      : buildSpend.total > 0
+        ? buildSpend.total
+        : 1_850_000;
+    const landPct = typeof args.landValuePct === 'number' && Number.isFinite(args.landValuePct)
+      ? Math.max(0, Math.min(0.5, args.landValuePct))
+      : 0.18;
+    const profileRaw = String(args.costSegProfile ?? 'luxury-lodge');
+    const profileId: CostSegProfileId =
+      profileRaw === 'conservative' || profileRaw === 'luxury-lodge' || profileRaw === 'high-amenity'
+        ? profileRaw
+        : 'luxury-lodge';
+    const allowedBonus: BonusRateOption[] = [1, 0.8, 0.6, 0.4, 0];
+    const bonusRate: BonusRateOption = allowedBonus.includes(args.bonusRate as BonusRateOption)
+      ? (args.bonusRate as BonusRateOption)
+      : 1;
+    const placedMonth =
+      typeof args.placedInServiceMonth === 'number' && Number.isInteger(args.placedInServiceMonth)
+        ? args.placedInServiceMonth
+        : 11;
+    const marginalFedRate =
+      typeof args.marginalFedRate === 'number' && args.marginalFedRate > 0 && args.marginalFedRate <= 0.45
+        ? args.marginalFedRate
+        : 0.32;
+    const ownershipShare: 1 | 0.5 = args.ownershipShare === 1 ? 1 : 0.5;
+
+    const simulation = simulateCostSegregation({
+      grossBasisUsd: rawBasis,
+      landValuePct: landPct,
+      profileId,
+      bonusRate,
+      placedInServiceMonth: placedMonth,
+      marginalFedRate,
+      includeUtahTax: true,
+      ownershipShare,
+    });
+    return {
+      basisSource: typeof args.grossBasisUsd === 'number' ? 'caller-supplied' : buildSpend.total > 0 ? 'logged-river-build' : 'default-estimate',
+      loggedBuildSpend: buildSpend,
+      simulation,
+      note: 'Planning estimate only for review with Ben Campbell. Requires an engineering cost-segregation study and §469 active STR qualification; touches no books.',
+      touchedBooks: false,
+    };
+  }
+
+  if (action === 'reconcile_statement') {
+    const text = typeof args.statementText === 'string' ? args.statementText.trim() : '';
+    if (!text) {
+      return { error: 'statementText (pasted CSV or tab-separated lines) is required for reconcile_statement' };
+    }
+    const summary = reconcileStatementAgainstExpenses(text, allExpenses as unknown as ClientExpense[]);
+    return {
+      parsedCount: summary.parsedCount,
+      skippedCount: summary.skippedCount,
+      matchedCount: summary.matchedCount,
+      missingCount: summary.missingCount,
+      matchedTotalUsd: summary.matchedTotalUsd,
+      missingTotalUsd: summary.missingTotalUsd,
+      missingRows: summary.rows
+        .filter((r) => r.status === 'missing')
+        .slice(0, 40)
+        .map((r) => ({
+          date: r.line.dateIso,
+          description: r.line.description,
+          amount: r.line.amount,
+          suggestedCategory: r.suggestedCategory,
+          suggestedScheduleELine: r.suggestedScheduleELine,
+        })),
+      matchedRows: summary.rows
+        .filter((r) => r.status === 'matched')
+        .slice(0, 40)
+        .map((r) => ({
+          date: r.line.dateIso,
+          description: r.line.description,
+          amount: r.line.amount,
+          expenseId: r.matchedExpense?.id,
+          propertyId: r.matchedExpense?.propertyId,
+          hasReceipt: r.matchedExpense?.hasReceipt,
+        })),
+      note: 'Read-only statement comparison against logged expenses. Nothing was added or modified on the books.',
+      touchedBooks: false,
     };
   }
 

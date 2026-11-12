@@ -1,8 +1,9 @@
 /**
  * The role sweep, proven to fail when a route stops filtering.
  *
- * A guard that passes is only evidence if it can fail. This test breaks one route on a temporary copy, runs the real check script, and
- * asserts it names that route — then restores the file. The check itself is the one `npm run check:guards` runs.
+ * A guard that passes is only evidence if it can fail. This test copies `functions/` into an isolated temp directory,
+ * breaks one route on that copy, runs the real check script against it, and asserts it names that route — so the live
+ * working tree (and OneDrive) is never touched or left half-written if a process dies mid-test.
  *
  * The defect it guards: the owner role was filtered on `/api/expenses` and `/api/reservations` and nowhere else, so the Overview tab, the
  * booking inbox, and the guest list each returned Lindon with the guest's name. Fixing those one at a time is how the same hole kept
@@ -11,16 +12,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const root = join(process.cwd());
 const script = join(root, 'scripts/check-route-guards.cjs');
 const target = join(root, 'functions/api/surveys/index.ts');
 
-function runCheck(): { ok: boolean; output: string } {
+function runCheck(cwd = root): { ok: boolean; output: string } {
   try {
-    const output = execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    const output = execFileSync(process.execPath, [script], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     return { ok: true, output };
   } catch (err) {
     const e = err as { stdout?: string; stderr?: string };
@@ -35,14 +37,12 @@ test('the check passes on the real tree', () => {
 });
 
 test('the check fails when a guest-data route stops filtering by role', () => {
-  /*
-   * `surveys/index.ts` returns the guest list. Removing its `stripHouses` call is exactly the regression, so the check must name it.
-   * The file is restored in a `finally`, and the assertion on the restore is part of the test — leaving a mutated route behind would be
-   * worse than the bug.
-   */
   const original = readFileSync(target, 'utf8');
   assert.match(original, /stripHouses\(/, 'the fixture route does not filter by role to begin with, so this test proves nothing');
+  const tempRoot = mkdtempSync(join(tmpdir(), 'uml-role-sweep-'));
   try {
+    cpSync(join(root, 'functions'), join(tempRoot, 'functions'), { recursive: true });
+    const tempTarget = join(tempRoot, 'functions/api/surveys/index.ts');
     /*
      * Remove **every** role helper the route uses, not just one. After the guard learned to accept `allowedHouses(`, a sabotage that only
      * renamed `stripHouses(` left a role reference behind and the check passed — a sabotage that does not sabotage.
@@ -53,18 +53,16 @@ test('the check fails when a guest-data route stops filtering by role', () => {
       .replace(/allowedHouses\(/g, 'passthrough(')
       .replace(/mayReadHouse\(/g, 'passthrough(')
       .replace(/resolveCaller\(/g, 'passthrough(');
-    writeFileSync(target, sabotaged, 'utf8');
-    const broken = runCheck();
+    writeFileSync(tempTarget, sabotaged, 'utf8');
+    const broken = runCheck(tempRoot);
     assert.equal(broken.ok, false, 'the check passed with an unfiltered guest list');
     assert.match(broken.output, /surveys\/index\.ts/, 'the check did not name the route that lost its filter');
     assert.match(broken.output, /does not filter by role/);
   } finally {
-    writeFileSync(target, original, 'utf8');
+    rmSync(tempRoot, { recursive: true, force: true });
   }
-  // And the tree is clean again.
-  const restored = readFileSync(target, 'utf8');
-  assert.equal(restored, original, 'the fixture route was not restored');
-  assert.equal(runCheck().ok, true, 'the check still fails after the restore');
+  assert.equal(readFileSync(target, 'utf8'), original, 'the live route was modified');
+  assert.equal(runCheck().ok, true, 'the check fails on the real tree');
 });
 
 test('every exemption in the guard carries a reason', () => {

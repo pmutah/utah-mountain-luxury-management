@@ -20,7 +20,7 @@ import { declaredDogs, MAX_DOGS, petFeeFor, PET_FEE } from './house-rules.ts';
  */
 
 const QUOTE = readFileSync(join(process.cwd(), 'src', 'lib', 'quote.ts'), 'utf8');
-const PAGE = readFileSync(join(process.cwd(), 'src', 'components', 'DirectBook.tsx'), 'utf8');
+const PAGE = readFileSync(join(process.cwd(), 'src', 'components', 'DirectReserveCard.tsx'), 'utf8');
 const ROUTE = readFileSync(join(process.cwd(), 'functions', 'api', 'book', 'index.ts'), 'utf8');
 
 const ASOF = { asOf: '2026-11-10' } as const;

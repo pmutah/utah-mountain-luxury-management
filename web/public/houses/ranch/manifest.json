@@ -1,0 +1,109 @@
+{
+  "house": "ranch",
+  "listing": "https://www.airbnb.com/rooms/43263696",
+  "capturedAt": "2026-11-12T15:12:31.525Z",
+  "curatedAt": "2026-11-12T15:18:46.176Z",
+  "photos": [
+    {
+      "file": "outdoors-01.jpg",
+      "source": "https://a0.muscache.com/im/pictures/6f863a82-3d22-4c3c-ba1a-798c8712e991.jpg",
+      "caption": "Hot tub under the pergola at night"
+    },
+    {
+      "file": "outdoors-02.jpg",
+      "source": "https://a0.muscache.com/im/pictures/ba20f626-9a01-4c79-a8fa-8f8a100d7e24.jpg",
+      "caption": "The lit hot tub and fire pit after dark"
+    },
+    {
+      "file": "living-01.jpg",
+      "source": "https://a0.muscache.com/im/pictures/37dd65a5-3d1d-4115-939a-35e80624e453.jpg",
+      "caption": "Living room with a brick fireplace and leather seating"
+    },
+    {
+      "file": "living-02.jpg",
+      "source": "https://a0.muscache.com/im/pictures/145b8082-60f6-49f1-972c-56250eba1d2a.jpg",
+      "caption": "Leather sectional against the reclaimed-wood wall"
+    },
+    {
+      "file": "kitchen-01.jpg",
+      "source": "https://a0.muscache.com/im/pictures/bc8e7e30-be26-475c-969a-9a866412ef16.jpg",
+      "caption": "The kitchen, open to the dining room"
+    },
+    {
+      "file": "kitchen-02.jpg",
+      "source": "https://a0.muscache.com/im/pictures/8bb98ef3-0e06-41fd-bbbb-802295e5a96a.jpg",
+      "caption": "Kitchen with stainless appliances and a wide island"
+    },
+    {
+      "file": "kitchen-03.jpg",
+      "source": "https://a0.muscache.com/im/pictures/abbd051a-fdf7-401a-ae3f-6f9dedac6f49.jpg",
+      "caption": "Dining for a full house under the round chandelier"
+    },
+    {
+      "file": "bedrooms-01.jpg",
+      "source": "https://a0.muscache.com/im/pictures/cae40257-352b-42a5-9319-05e7272bc931.jpg",
+      "caption": "Bright bedroom with a king bed"
+    },
+    {
+      "file": "bedrooms-02.jpg",
+      "source": "https://a0.muscache.com/im/pictures/2ea4954f-974d-4222-86be-126b4950ee34.jpg",
+      "caption": "King bedroom with three bird prints"
+    },
+    {
+      "file": "bedrooms-03.jpg",
+      "source": "https://a0.muscache.com/im/pictures/ff74c755-9c73-4451-bdfd-cee7e20fc2a9.jpg",
+      "caption": "King bedroom with blue walls and white wainscoting"
+    },
+    {
+      "file": "bedrooms-04.jpg",
+      "source": "https://a0.muscache.com/im/pictures/af61fd3c-34eb-4319-adaf-18bee3c3c3a7.jpg",
+      "caption": "King bedroom with a mountain mural"
+    },
+    {
+      "file": "bedrooms-05.jpg",
+      "source": "https://a0.muscache.com/im/pictures/523605d2-cfae-47dc-9ef5-30e3cfd61df5.jpg",
+      "caption": "Bunk room with two twin bunks"
+    },
+    {
+      "file": "bedrooms-06.jpg",
+      "source": "https://a0.muscache.com/im/pictures/014dd223-7ad7-4c09-803b-a682aac2a499.jpg",
+      "caption": "Bedroom with two twin beds"
+    },
+    {
+      "file": "bedrooms-07.jpg",
+      "source": "https://a0.muscache.com/im/pictures/cea9fcd3-1997-42f5-82bb-1d337cdd612f.jpg",
+      "caption": "Bunk beds and twins in the second bunk room"
+    },
+    {
+      "file": "amenities-01.jpg",
+      "source": "https://a0.muscache.com/im/pictures/cfe72e09-cb5a-46ff-8300-9170d7bb6dcd.jpg",
+      "caption": "Pool table in the game room"
+    },
+    {
+      "file": "amenities-02.jpg",
+      "source": "https://a0.muscache.com/im/pictures/ef9287f6-7474-42ec-b8c9-3654289df939.jpg",
+      "caption": "Theater seating and a bar"
+    },
+    {
+      "file": "amenities-03.jpg",
+      "source": "https://a0.muscache.com/im/pictures/473e1fbd-67c9-4833-be65-307293e2bbb5.jpg",
+      "caption": "Stand-up arcade"
+    },
+    {
+      "file": "amenities-04.jpg",
+      "source": "https://a0.muscache.com/im/pictures/8e0abe0e-88bc-474e-8118-31794c039f91.jpg",
+      "caption": "The arcade and the bar"
+    },
+    {
+      "file": "outdoors-03.jpg",
+      "source": "https://a0.muscache.com/im/pictures/e7bbdefe-4e15-4b62-9353-f1a0f3b97784.jpg",
+      "caption": "The fenced yard, garden beds, and pergola"
+    },
+    {
+      "file": "outdoors-04.jpg",
+      "source": "https://a0.muscache.com/im/pictures/b13151b3-49ea-48e8-9d25-7de8e0de74ff.jpg",
+      "caption": "Fire pit seating on the patio"
+    }
+  ],
+  "floorplans": []
+}

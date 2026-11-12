@@ -266,7 +266,12 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>
   ranch: {
     checkIn: '4:00 PM',
     checkOut: '11:00 AM',
-    bedrooms: null,
+    /*
+     * The room count the listing publishes: six king suites, two twin-bunk rooms that sleep four each, and the
+     * detached casita with its own bath and kitchenette. It was `null` before, so the Ranch House stated its layout
+     * nowhere a guest could read it.
+     */
+    bedrooms: 'Eight bedrooms — six king suites, two twin-bunk rooms, and a detached backyard casita — and four full baths.',
     arrival: 'The house is in Lindon, about 45 minutes south of the Salt Lake airport.',
     parking: 'Park in the driveway. Please do not block neighbors.',
     notes: [
@@ -277,7 +282,11 @@ const STAY: Record<HouseId, Omit<HouseStay, 'sleeps' | 'emergency' | 'checkout'>
   lindon: {
     checkIn: '4:00 PM',
     checkOut: '11:00 AM',
-    bedrooms: null,
+    /*
+     * From the listing: three main-level bedrooms, a downstairs suite with a king and a queen sofa bed, and a queen
+     * futon in the living room, across two full baths. `null` here meant the house never said how it slept.
+     */
+    bedrooms: 'Four bedrooms, a downstairs suite, and a living-room futon — two full baths, one on each level.',
     arrival: 'The house is in Lindon, about 15 minutes from BYU and 45 minutes from the Salt Lake airport.',
     parking: 'Park in the driveway.',
     notes: [],

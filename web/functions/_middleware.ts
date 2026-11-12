@@ -38,11 +38,41 @@ const BOOK_REQUEST_PAGE = /^\/api\/book\/request\/[^/]+\/?$/;
 /** A guest's forecast. The stay token is the credential, exactly as for the guide beside it. */
 const STAY_CONDITIONS = /^\/api\/stay-guide\/[^/]+\/conditions\/?$/;
 
-function withSecurity(response: Response): Response {
+/**
+ * Pages whose address is a credential, and which must never be indexed.
+ *
+ * A stay link, a cleaner's link, an owner's statement, a request status page, and an e-sign ceremony all carry a token in
+ * the path. That token **is** the login — anyone holding the URL can open the page. A search engine that indexes one
+ * publishes it, and the page carries a guest's name and dates, a door code, or an owner's share.
+ *
+ * `robots.txt` cannot do this job on its own. It is advisory, some crawlers ignore it, and it has no effect on a URL that
+ * is already linked from somewhere else. The response header is the part that holds: `X-Robots-Tag: noindex, nofollow`
+ * travels with the page itself.
+ */
+const PRIVATE_PAGES = [
+  /^\/stay\//,
+  /^\/clean\/(?!links?\/?$)/,
+  /^\/owner\//,
+  /^\/request\//,
+  /^\/esign\//,
+];
+
+/** True when a path is one of the token-addressed pages. */
+function isPrivatePage(pathname: string): boolean {
+  return PRIVATE_PAGES.some((pattern) => pattern.test(pathname));
+}
+
+function withSecurity(response: Response, privatePage = false): Response {
   const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     if (!headers.has(key)) headers.set(key, value);
   }
+  /*
+   * No index, no follow, and no archive. `noindex` keeps the page out of search results; `nofollow` keeps a crawler from
+   * walking the other links on it; `noarchive` keeps a cached copy of a guest's stay from being served to a stranger
+   * after the token is revoked.
+   */
+  if (privatePage) headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -51,7 +81,7 @@ export const onRequest: PagesFunction<{
   MUSE_BOT_SECRET?: string;
 }> = async (context) => {
   const url = new URL(context.request.url);
-  if (!url.pathname.startsWith('/api/')) return withSecurity(await context.next());
+  if (!url.pathname.startsWith('/api/')) return withSecurity(await context.next(), isPrivatePage(url.pathname));
   if (
     url.pathname.startsWith('/api/auth/') ||
     url.pathname.startsWith('/api/stay-preferences/') ||
@@ -73,6 +103,7 @@ export const onRequest: PagesFunction<{
      * weather for a town — no name, no dates. Without this the guest page would need a host sign-in to show a snow forecast.
      */
     STAY_CONDITIONS.test(url.pathname) ||
+    url.pathname === '/api/public/conditions' ||
     BOOK_REQUEST_PAGE.test(url.pathname) ||
     OWNER_PAGE.test(url.pathname) ||
     CLEAN_PAGE.test(url.pathname) ||

@@ -2,7 +2,7 @@
  * The market database.
  *
  * Only new tables live here: comps, comp nights, rate changes, the feature registry, funnel events, A/B
- * assignments, the approval queue, and stay add-on requests. Expenses, bookings, receipts, construction, e-sign, guides, and calendar state stay in KV exactly
+ * assignments, the approval queue, stay add-on requests, and recorded owner transfers. Expenses, bookings, receipts, construction, e-sign, guides, and calendar state stay in KV exactly
  * where they are. Nothing in this module reads or writes a book.
  *
  * Every function tolerates a missing binding and a failing query: a desk that cannot reach D1 must say so, not throw.

@@ -11,6 +11,7 @@ export const DASHBOARD_TABS = [
   'river',
   'ours',
   'owner',
+  'tax',
   'clean',
   'agents',
   'construction',
@@ -37,9 +38,11 @@ export function parseDashboardHash(hash: string): DashboardLocation {
   const aliased =
     tabPart === 'household' || tabPart === 'furnishings' || tabPart === 'our-expenses'
       ? 'ours'
-      : tabPart === 'construction'
-        ? 'river'
-        : tabPart;
+      : tabPart === 'cpa' || tabPart === 'taxes' || tabPart === 'schedule-e'
+        ? 'tax'
+        : tabPart === 'construction'
+          ? 'river'
+          : tabPart;
   const tab: DashboardTab = isDashboardTab(aliased)
     ? aliased
     : aliased === 'overview'

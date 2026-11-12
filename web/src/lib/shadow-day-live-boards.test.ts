@@ -6,10 +6,10 @@ import type { MarketBoard } from './market/types.ts';
 /*
  * A shadow day was being **recorded from the sample fixtures**.
  *
- * The seven-day clock gates the whole rate push, and `shadowClockFromSaved` accepts any day whose digest
- * contains "Nothing sent to Hospitable." — it never asks whether the numbers in that digest came from real
- * comps. `shadowDayDigest` passed only `comps` (the fixtures) and no live boards, so every day saved by
- * opening the brief described an invented market and still counted toward the seven.
+ * The seven-day clock gates the whole rate push. A day counts only when its digest says it saw saved comps.
+ * `shadowDayDigest` used to pass only `comps` (the fixtures) and no live boards, so every day saved by
+ * opening the brief described an invented market. The digest has to say "saved comps" when boards are
+ * real, and "sample comps" when they are not, so the clock can tell the two apart.
  *
  * That is the worst version of this bug: not a wrong figure on a screen, but the gate that decides whether
  * auto-pricing may act at all, satisfied by data that does not exist.

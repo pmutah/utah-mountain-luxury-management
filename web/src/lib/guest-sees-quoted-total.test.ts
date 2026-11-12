@@ -7,7 +7,7 @@ import { moneyLine, requestView, type RequestStatusInput } from './request-statu
 /*
  * The guest was quoted a total and then never shown it again.
  *
- * The booking page prints a total and sends it with the request as `quotedTotal` (`DirectBook.tsx`). Nothing on the guest
+ * The booking page prints a total and sends it with the request as `quotedTotal` (`DirectReserveCard.tsx`). Nothing on the guest
  * side ever read it: `grep quotedTotal src/` found only the send, plus two host-side helpers in `booking-accept.ts` and
  * `booking-inbox.ts`. Worse, the status page stated the opposite in as many words — "This page shows the house, the dates,
  * and the party. It does not carry a price, a door code, or a way in."

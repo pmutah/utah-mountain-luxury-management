@@ -1,0 +1,21 @@
+# Lindon listing photos.
+#
+# Captured from https://www.vrbo.com/4609228ha (Remodeled Lindon Home · Sleeps 12 · Near BYU & UVU).
+# That page refuses a plain fetch with a captcha stub, so these URLs were read from the rendered page in a
+# browser session and recorded here. Re-capture the same way if the listing's photo set changes.
+#
+# One URL per line. The harvest script appends ?impolicy=resizecrop&rw=1600&ra=fit to each.
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/c9542ff4.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/689306a4.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/ca3f2142.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/2103092d.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/270-fd73b128.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/9debf20c.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/febf2d27.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/9111a91e.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/1c7f84af.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/630cd976.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/270-0580e9db.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/6eb9d278.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/270-b8c1243c.jpg
+https://media.vrbo.com/lodging/20000000/19170000/19163300/19163205/270-3f515473.jpg

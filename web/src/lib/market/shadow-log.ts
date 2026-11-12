@@ -37,10 +37,11 @@ function browserStore(): ShadowStore | null {
 /**
  * A saved day is a day whose digest could be sent **and** was built from real comps.
  *
- * The fit line names its own source, so a digest computed from the sample fixtures says "sample comps". Such
- * a day is not an observation of the market and must not count toward the seven that decide whether
- * auto-pricing may act. Applying this here covers both the local log and the saved one, since both read a day
- * through this guard.
+ * The fit line names its own source. A digest from the sample fixtures says "sample comps". A digest that
+ * never mentions comps at all used to pass, because the check only looked for the sample phrase — seven of
+ * those would have opened the rate gate on a market nobody measured. A day counts only when it says it saw
+ * saved comps and does not say it saw samples. Applying this here covers both the local log and the saved
+ * one, since both read a day through this guard.
  */
 function isDay(value: unknown): value is ShadowDay {
   if (!value || typeof value !== 'object') return false;
@@ -49,7 +50,7 @@ function isDay(value: unknown): value is ShadowDay {
     DATE.test(day.date) &&
     typeof day.digest === 'string' &&
     day.digest.includes('Nothing sent to Hospitable.') &&
-    !/sample comps?/i.test(day.digest)
+    daySawRealComps(day.digest)
   );
 }
 
@@ -94,13 +95,15 @@ export type SavedShadowDay = { date: string; digest: string; savedAt?: string };
  * A saved day counts only when its digest was built from **real comps**.
  *
  * The recorded digest names its own source in the fit line: a day computed from the sample fixtures says
- * "sample comps", and one built from the saved comps says "saved comps". A sample day is not an observation
- * of the market, so it cannot count toward the seven that decide whether auto-pricing may act — otherwise the
- * gate could be satisfied by a market that does not exist. Any day carrying "sample comps" is skipped rather
- * than deleted, so the record is kept and only its eligibility is denied.
+ * "sample comps", and one built from the saved comps says "saved comps". Silence is not a third kind of
+ * proof. A morning line that never mentions comps used to pass this check, and seven of those would have
+ * opened the rate gate. A day counts only when it names saved comps and does not name samples. A mixed
+ * digest — one house saved, another still on the fixtures — does not count. The row can stay in the log;
+ * only its eligibility is denied.
  */
 export function daySawRealComps(digest: string): boolean {
-  return !/sample comps?/i.test(digest);
+  if (/sample comps?/i.test(digest)) return false;
+  return /saved comps?/i.test(digest);
 }
 
 export function shadowClockFromSaved(days: readonly SavedShadowDay[], today: string): ShadowClock {
@@ -139,13 +142,14 @@ export function mergeSavedShadowDay(days: readonly SavedShadowDay[], next: Saved
   return [...kept, row].sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
 }
 
-export function shadowClockLine(clock: ShadowClock): string {
+export function shadowClockLine(clock: ShadowClock, where: 'server' | 'browser' = 'browser'): string {
+  const place = where === 'server' ? 'on the server' : 'on this browser';
   if (clock.ready) {
-    return `Shadow days ${clock.days} of ${clock.required} are on this browser. A Hospitable write stays closed until a write token exists.`;
+    return `Shadow days ${clock.days} of ${clock.required} are ${place}. A Hospitable write stays closed until a write token exists.`;
   }
   const left = clock.required - clock.days;
   const noun = left === 1 ? 'day' : 'days';
-  return `Shadow day ${clock.days} of ${clock.required}. ${left} more Denver ${noun} before a rate can be sent. Nothing is sent to Hospitable.`;
+  return `Shadow day ${clock.days} of ${clock.required} ${place}. ${left} more Denver ${noun} before a rate can be sent. Nothing is sent to Hospitable.`;
 }
 
 export function loadShadowLog(store: ShadowStore | null = browserStore()): ShadowDay[] {

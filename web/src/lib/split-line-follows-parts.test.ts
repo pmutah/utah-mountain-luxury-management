@@ -14,11 +14,11 @@ import { splitStayLine } from './stay-split.ts';
  * sums to $790.
  */
 
-const PAGE = readFileSync(new URL('../components/DirectBook.tsx', import.meta.url), 'utf8');
+const PAGE = readFileSync(new URL('../components/DirectReserveCard.tsx', import.meta.url), 'utf8');
 
 test('the per-guest line splits the total of what is being booked', () => {
   // It read `quote.stayTotal` unconditionally, which is the house even when a part is chosen.
-  assert.match(PAGE, /const splitTotal = bookingParts \? partTotal : quote\.stayTotal/, 'the share no longer follows the chosen parts');
+  assert.match(PAGE, /const splitTotal = bookingParts \? partTotal : compoundTotal \?\? quote\.stayTotal/, 'the share no longer follows the chosen parts');
   assert.match(PAGE, /splitStayLine\(splitTotal, guestCount\)/, 'the share does not use the resolved total');
 });
 

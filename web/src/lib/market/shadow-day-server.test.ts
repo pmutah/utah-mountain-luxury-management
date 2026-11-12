@@ -91,6 +91,7 @@ test('a plan read saves the day when no house falls back to the sample set', asy
   assert.equal(stored.length, 1, 'no day reached the store');
   assert.match(stored[0]!.digest, /Nothing sent to Hospitable\./, 'the stored digest is not a shadow digest');
   assert.equal(/sample comps/.test(stored[0]!.digest), false, 'a sample-based day was stored');
+  assert.match(stored[0]!.digest, /saved comps?/, 'a counted day never said it saw saved comps');
   assert.equal(body.shadowDays.days, 1, 'the clock did not count the day this call just saved');
 });
 

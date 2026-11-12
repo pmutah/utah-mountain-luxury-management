@@ -271,6 +271,14 @@ export const READ_ROUTES: BotRoute[] = [
     writes: false,
   },
   {
+    path: '/api/platform/owner-transfers',
+    method: 'get',
+    operationId: 'listOwnerTransfers',
+    summary:
+      'Transfers a host recorded as sent to Todd, or returned by him, for Ranch, River, or both. Host only. A list that cannot be read is not nothing sent. Does not change his share, a booking, or an expense.',
+    writes: false,
+  },
+  {
     path: '/api/platform/approvals',
     method: 'get',
     operationId: 'listApprovals',
@@ -381,6 +389,15 @@ export const WRITE_ROUTES: BotRoute[] = [
       'Mark a guest add-on noted or declined. Host only. An owner cannot mark a Lindon request. The mark sends no text, charges nothing, and does not move the booking.',
     writes: true,
     note: 'Needs { id, decision: "noted" | "declined" }.',
+  },
+  {
+    path: '/api/platform/owner-transfers',
+    method: 'post',
+    operationId: 'recordOrVoidOwnerTransfer',
+    summary:
+      'Record a transfer against Todd’s Ranch and River share, or void one already recorded. Host only. An owner is refused. Lindon is refused. The row does not change his share, a booking, or an expense.',
+    writes: true,
+    note: 'Needs { house, amountCents, paidOn } or { id, void: true }. A note may not carry an address or a phone number. Voiding keeps the row.',
   },
   {
     path: '/api/platform/approvals',

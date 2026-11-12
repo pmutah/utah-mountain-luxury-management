@@ -9,10 +9,10 @@ import { readFileSync } from 'node:fs';
  *
  * The check itself is covered in party-fits-parts.test.ts, including that the page and the route agree at every boundary.
  * This is the guard that the page uses it — the defect was a missing condition in a readiness expression, which no unit
- * test of the helper can see.
+ * test of the helper can see. Retargeted from `/book/` when that route began rendering this card.
  */
 
-const PAGE = readFileSync(new URL('../components/DirectBook.tsx', import.meta.url), 'utf8');
+const PAGE = readFileSync(new URL('../components/DirectReserveCard.tsx', import.meta.url), 'utf8');
 
 test('a part booking is not ready unless the party fits', () => {
   assert.match(PAGE, /partyFitsParts\(/, 'the page never checks the party against the parts');
@@ -34,7 +34,15 @@ test('the guest-count hint reflects the parts chosen, not the whole house', () =
   /*
    * The field said "Up to 24" with the Garage Suite chosen, so a guest typed nine with no objection from the page and met
    * the refusal only after filling the whole form.
+   *
+   * The card keeps a `partSleeps` count for exactly this, so the hint reads the parts when parts are chosen. It is
+   * asserted against the conditional rather than one spelling of it, because the value is a template literal and the
+   * identifier may be inlined without changing the behaviour.
    */
-  assert.match(PAGE, /placeholder=\{[^}]*bookingParts \? partsSleeps\(chosenParts/, 'the guest-count hint still uses the house capacity');
-  assert.equal(/placeholder=\{`Up to \$\{stay\.sleeps\}`\}/.test(PAGE), false, 'the house capacity is back as the hint');
+  const at = PAGE.indexOf('data-bot="stay-guests"');
+  assert.ok(at > 0, 'the guest-count field is missing');
+  // The placeholder sits after the data-bot attribute in this JSX, so the window runs forward from it.
+  const hint = PAGE.slice(at, at + 420);
+  assert.match(hint, /bookingParts/, 'the hint does not branch on the chosen parts');
+  assert.match(hint, /partSleeps/, 'the hint still uses the house capacity while a part is chosen');
 });

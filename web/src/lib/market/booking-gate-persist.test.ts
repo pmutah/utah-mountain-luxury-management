@@ -3,23 +3,24 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
 /*
- * **A guest who worked through the gate lost all of it to a refresh.**
+ * The gate was two halves: seven agreement topics opened one at a time, and a separate "I have read the house rules"
+ * tick. Both had to be true before the request form appeared.
  *
- * Opening seven agreement topics and ticking "I have read the house rules" lived only in React state. Measured on
- * production: seven `data-read="yes"` before a reload, seven `no` after, and the request form gone. On a seven-step
- * gate that is a real reason to give up and book through Airbnb instead.
+ * Measured on production, that gate lost a guest's work to a refresh: seven `data-read="yes"` became `no` and the
+ * request form disappeared. The rebuild replaced it with **one** checkbox, which keeps the properties that protect a
+ * guest and drops the clicking:
  *
- * The gate now survives a reload **within the visit** — `sessionStorage`, not `localStorage`, because reading the
- * rules for one stay should not carry to a new tab or tomorrow. It is keyed by house, matching the per-house rule the
- * in-memory state already follows.
+ *   - it is scoped per house, so a tick on the Lindon page cannot unlock River;
+ *   - it lives in `sessionStorage`, so it survives a refresh in this visit and does not carry to tomorrow;
+ *   - it degrades to in-memory when a browser refuses storage, rather than breaking the page;
+ *   - and the terms are readable on the page before the tick means anything.
  *
- * This test reads the component, because the property is about which store is used and when — nothing a unit of pure
- * logic can express.
+ * The guard was retargeted from `/book/` when that route began rendering this card.
  */
 
-const source = readFileSync(new URL('../../components/DirectBook.tsx', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../../components/DirectReserveCard.tsx', import.meta.url), 'utf8');
 
-test('the booking gate is remembered for the visit', () => {
+test('the gate is remembered for the visit', () => {
   assert.match(source, /const GATE_KEY = '/, 'the gate has no storage key');
   assert.match(source, /sessionStorage\.setItem\(GATE_KEY/, 'nothing writes the gate');
   assert.match(source, /sessionStorage\.getItem\(GATE_KEY\)/, 'nothing reads the gate back');
@@ -34,21 +35,17 @@ test('it is session storage, not local', () => {
   );
 });
 
-test('both halves of the gate are saved together', () => {
+test('the gate is saved as one record, so a half-state cannot be restored', () => {
   /*
-   * Topics and the rules-read flag unlock one form between them. Saving one without the other would restore a guest
-   * to a state they were never in.
+   * The old gate had two halves and had to save them together. This one has a single flag per house, and the property
+   * that survives is the one that mattered: one write, restoring exactly the state the guest was in.
    */
-  assert.match(source, /saveGate\(\{\s*topics:\s*openedTopics,\s*read:\s*rulesReadByHouse\s*\}\)/, 'the two halves are saved separately');
-  assert.match(source, /loadGate\(\)\.topics/, 'topics are not restored');
-  assert.match(source, /loadGate\(\)\.read/, 'the rules-read flag is not restored');
+  assert.match(source, /saveGate\(\{ read \}\)/, 'the gate is saved piecemeal');
+  assert.match(source, /const read: Partial<Record<HouseId, boolean>>/, 'the stored shape changed');
 });
 
 test('a browser that refuses storage still gets a working form', () => {
-  /*
-   * Private mode throws on `sessionStorage`. The gate must degrade to in-memory, not crash the page a guest is trying
-   * to book from.
-   */
+  // Private mode throws on `sessionStorage`. The gate must degrade to in-memory, not crash the booking page.
   const load = /function loadGate[\s\S]*?\n\}/.exec(source)?.[0] ?? '';
   const save = /function saveGate[\s\S]*?\n\}/.exec(source)?.[0] ?? '';
   assert.ok(load.length > 0 && save.length > 0, 'the gate helpers are missing');
@@ -58,8 +55,15 @@ test('a browser that refuses storage still gets a working form', () => {
   assert.match(save, /catch\s*\{/, 'the write has no failure path');
 });
 
-test('the restored gate is per house, so one tab cannot unlock another', () => {
+test('the restored gate is per house, so one page cannot unlock another', () => {
   const load = /function loadGate[\s\S]*?\n\}/.exec(source)?.[0] ?? '';
   assert.match(load, /'river', 'ranch', 'lindon'/, 'the restore does not scope by house');
   assert.match(load, /read\[id\] = true/, 'the rules-read flag is not restored per house');
+});
+
+test('reading the rules is still something the guest must do', () => {
+  // The single tick is not a rubber stamp: the terms render on the page, and the button stays off without the tick.
+  assert.match(source, /data-bot="stay-rules-check"/, 'the rules checkbox is missing');
+  assert.match(source, /rulesRead/, 'readiness no longer checks the tick');
+  assert.match(source, /<details/, 'the terms are not readable before the tick');
 });

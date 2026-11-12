@@ -29,6 +29,7 @@ import {
   type ReportPeriod,
   type ReportPropertyFilter,
 } from '../lib/report';
+import { ReportWhatIfSimulator } from './ReportWhatIfSimulator';
 
 const PERIODS: Array<{ id: ReportPeriod; label: string }> = [
   { id: 'month', label: 'This month' },
@@ -779,6 +780,8 @@ export function PortfolioReport({
           </p>
         </div>
       </section>
+
+      <ReportWhatIfSimulator report={report} />
     </div>
   );
 }

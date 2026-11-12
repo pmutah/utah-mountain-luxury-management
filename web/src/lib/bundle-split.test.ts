@@ -54,6 +54,12 @@ test('every lazy route sits inside a Suspense boundary', () => {
   assert.match(esign, /<Suspense/, 'the esign route has no Suspense boundary');
 });
 
-test('the booking page is still lazy, so a guest does not download the dashboard', () => {
-  assert.match(APP, /const DirectBook = lazy\(/, 'DirectBook is statically imported');
+test('the booking and house pages are still lazy, so a guest does not download the dashboard', () => {
+  /*
+   * `/book/` used to load its own component. It now renders the same listing as `/houses/:house/`, so the thing that
+   * must stay lazy is the listing itself — a guest arriving on a quote link should never download the host dashboard.
+   */
+  assert.match(APP, /const HouseListing = lazy\(/, 'the listing page is statically imported');
+  assert.match(APP, /const HouseSite = lazy\(/, 'the house site is statically imported');
+  assert.equal(/const DirectBook = lazy\(/.test(APP), false, 'a retired page is still being loaded');
 });

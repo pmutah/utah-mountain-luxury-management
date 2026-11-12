@@ -2,7 +2,9 @@ import { corsJson } from '../../_lib/data';
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { kvGet, kvPut, storageReadPaused } from '../../_lib/kv-json';
 import {
+  daySawRealComps,
   mergeSavedShadowDay,
+  SHADOW_UNREAD,
   shadowClockFromSaved,
   type SavedShadowDay,
 } from '../../../src/lib/market/shadow-log';
@@ -75,6 +77,13 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!DATE.test(date)) return corsJson(request, { error: 'A Denver date is required.' }, 400);
   if (!digest.includes('Nothing sent to Hospitable.')) {
     return corsJson(request, { error: 'This digest is not an unsent shadow day.' }, 400);
+  }
+  /*
+   * A digest that never names saved comps used to be stored and then counted. Seven of those would open the
+   * rate gate. An unread day is the one exception: it is how a bad day is removed, and it does not count.
+   */
+  if (!digest.includes(SHADOW_UNREAD) && !daySawRealComps(digest)) {
+    return corsJson(request, { error: 'This digest did not see saved comps, so the day was not saved.' }, 400);
   }
   let saved: SavedShadowDay[];
   try {

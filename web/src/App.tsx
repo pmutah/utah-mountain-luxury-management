@@ -11,9 +11,12 @@ import { seasonFor } from './lib/platform/back-office';
 import { setViewer } from './lib/platform/viewer';
 import { TabErrorBoundary } from './components/TabErrorBoundary';
 import { rescueLegacyLink, servedPath } from './lib/public-paths';
+import { publicHouse } from './lib/house-page';
 import { LoginGate } from './components/LoginGate';
 import { Header } from './components/Header';
-import { PortfolioOverview } from './components/PortfolioOverview';
+const PortfolioOverview = lazy(() =>
+  import('./components/PortfolioOverview').then((m) => ({ default: m.PortfolioOverview })),
+);
 const GuestsPanel = lazy(() =>
   import('./components/GuestsPanel').then((m) => ({ default: m.GuestsPanel })),
 );
@@ -29,14 +32,17 @@ const OurExpenses = lazy(() =>
 const ConstructionProjectView = lazy(() =>
   import('./components/ConstructionProject').then((m) => ({ default: m.ConstructionProjectView })),
 );
-const DirectBook = lazy(() =>
-  import('./components/DirectBook').then((m) => ({ default: m.DirectBook })),
-);
 const HouseSite = lazy(() =>
   import('./components/HouseSite').then((m) => ({ default: m.HouseSite })),
 );
+const HouseListing = lazy(() =>
+  import('./components/HouseListing').then((m) => ({ default: m.HousePage })),
+);
 const OwnerStatement = lazy(() =>
   import('./components/OwnerStatement').then((m) => ({ default: m.OwnerStatement })),
+);
+const TaxPrepDesk = lazy(() =>
+  import('./components/TaxPrepDesk').then((m) => ({ default: m.TaxPrepDesk })),
 );
 const OwnerPortal = lazy(() =>
   import('./components/OwnerPortal').then((m) => ({ default: m.OwnerPortal })),
@@ -71,8 +77,12 @@ const EsignCeremony = lazy(() => import('./components/EsignCeremony').then((m) =
 const PropertyDetail = lazy(() => import('./components/PropertyDetail').then((m) => ({ default: m.PropertyDetail })));
 import { LoadingSkeleton } from './components/LoadingSkeleton';
 import { ToastStack } from './components/Toast';
-import { AgentChat } from './components/AgentChat';
-import { ConstructionManagerChat } from './components/ConstructionManagerChat';
+const AgentChat = lazy(() =>
+  import('./components/AgentChat').then((m) => ({ default: m.AgentChat })),
+);
+const ConstructionManagerChat = lazy(() =>
+  import('./components/ConstructionManagerChat').then((m) => ({ default: m.ConstructionManagerChat })),
+);
 import { StayHostThread } from './components/StayHostThread';
 import { CommandPalette } from './components/CommandPalette';
 import { OwnerLetterButton } from './components/OwnerLetterButton';
@@ -89,7 +99,9 @@ import { currentYearMonth, currentDayIso } from './lib/months';
 import { useViewer } from './lib/platform/viewer';
 import { SidebarNav } from './components/SidebarNav';
 import { TapeChart } from './components/TapeChart';
-import { QuickCaptureDrawer } from './components/QuickCaptureDrawer';
+const QuickCaptureDrawer = lazy(() =>
+  import('./components/QuickCaptureDrawer').then((m) => ({ default: m.QuickCaptureDrawer })),
+);
 
 function BooksUnread() {
   return (
@@ -257,6 +269,9 @@ function Dashboard() {
       <div className="max-w-6xl mx-auto">
         <Header
           month={currentMonth}
+          activeTab={activeTab}
+          reportView={reportView}
+          riverView={riverView}
           onMonthChange={setCurrentMonth}
           onQuickCapture={() => window.dispatchEvent(new CustomEvent('uml:quick-capture'))}
         />
@@ -373,6 +388,7 @@ function Dashboard() {
               (activeTab === 'portfolio' ||
                 activeTab === 'report' ||
                 activeTab === 'owner' ||
+                activeTab === 'tax' ||
                 activeTab === 'clean' ||
                 activeTab === 'ranch' ||
                 activeTab === 'lindon' ||
@@ -427,6 +443,17 @@ function Dashboard() {
                 reservations={data.reservations}
                 expenses={data.expenses}
                 extraCleaningFees={extraCleaningFees}
+              />
+            )}
+            {activeTab === 'tax' && !booksPaused && (
+              <TaxPrepDesk
+                month={currentMonth}
+                reservations={history?.reservations?.length ? history.reservations : data.reservations}
+                expenses={data.expenses}
+                extraCleaningFees={extraCleaningFees}
+                hideLindon={hideLindon}
+                onOpenBuild={() => go('river', 'pnl', 'build')}
+                onToast={showToast}
               />
             )}
             {activeTab === 'clean' && booksPaused && <CleanHouseCards />}
@@ -530,6 +557,7 @@ function Dashboard() {
                 ['market', 'Market'],
                 ['report', 'Report'],
                 ['owner', 'Owner'],
+                ...(hideLindon ? [] : [['tax', 'Tax & CPA'] as const]),
                 ['agents', 'Agents'],
                 ['river', 'River'],
                 ['ranch', 'Ranch'],
@@ -561,22 +589,24 @@ function Dashboard() {
         hideLindon={hideLindon}
         onNavigate={(dest) => go(dest.tab, dest.report ?? 'pnl', dest.river ?? 'rental')}
       />
-      <AgentChat
-        hideLauncher
-        month={currentMonth}
-        activeTab={
-          activeTab === 'guests' || activeTab === 'ours'
-            ? 'portfolio'
-            : activeTab
-        }
-        onError={(msg) => showToast(msg, 'error')}
-      />
-      <ConstructionManagerChat
-        hideLauncher
-        onError={(msg) => showToast(msg, 'error')}
-        onToast={showToast}
-      />
-      <QuickCaptureDrawer />
+      <Suspense fallback={null}>
+        <AgentChat
+          hideLauncher
+          month={currentMonth}
+          activeTab={
+            activeTab === 'guests' || activeTab === 'ours'
+              ? 'portfolio'
+              : activeTab
+          }
+          onError={(msg) => showToast(msg, 'error')}
+        />
+        <ConstructionManagerChat
+          hideLauncher
+          onError={(msg) => showToast(msg, 'error')}
+          onToast={showToast}
+        />
+        <QuickCaptureDrawer />
+      </Suspense>
       </div>
     </div>
   );
@@ -593,9 +623,11 @@ export default function App() {
    */
   if (rescueLegacyLink(window.location.pathname, window.location.search)) {
     window.history.replaceState(null, '', servedPath('/book', window.location.search));
+    const rescued = new URLSearchParams(window.location.search).get('house') ?? '';
+    const which = rescued === 'ranch' || rescued === 'lindon' || rescued === 'river' ? rescued : 'river';
     return (
       <Suspense fallback={<LoadingSkeleton />}>
-        <DirectBook />
+        <HouseListing house={publicHouse(which)} />
       </Suspense>
     );
   }
@@ -656,10 +688,21 @@ export default function App() {
       </Suspense>
     );
   }
+  /*
+   * `/book/?house=…` is the address every shared quote, gap-fill link, and group link already uses, so it renders the
+   * same listing as `/houses/:house/` rather than a second, older booking screen. That was the last place a guest could
+   * land on the cluttered page the redesign replaced, and it is the address most of them actually arrive at.
+   *
+   * The house comes from the query and defaults to the River House, which is what the old page did. The house path is
+   * kept in the address (not rewritten to `/houses/…`) so a link somebody already has keeps working and can be
+   * reloaded.
+   */
   if (window.location.pathname === '/book' || window.location.pathname.startsWith('/book/')) {
+    const wanted = new URLSearchParams(window.location.search).get('house') ?? '';
+    const which = wanted === 'ranch' || wanted === 'lindon' || wanted === 'river' ? wanted : 'river';
     return (
       <Suspense fallback={<LoadingSkeleton />}>
-        <DirectBook />
+        <HouseListing house={publicHouse(which)} />
       </Suspense>
     );
   }

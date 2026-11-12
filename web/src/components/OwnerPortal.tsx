@@ -1,8 +1,39 @@
 import { useEffect, useState } from 'react';
-import type { OwnerPortalView } from '../lib/owner-portal';
-import { halfIsExact } from '../lib/owner-portal';
+import type { OwnerPortalPeriod, OwnerPortalView } from '../lib/owner-portal';
+import { halfIsExact, ownerTransferBalanceLine } from '../lib/owner-portal';
+import { aheadChannelsLine, aheadLine, gapLine, type OwnerAhead } from '../lib/owner-ahead';
+import { addMonths, currentYearMonth } from '../lib/months';
 
-type Loaded = OwnerPortalView & { period: 'month' | 'ytd'; month: string; empty: boolean };
+type TransferBlock = {
+  stored: boolean;
+  items: Array<{ id: string; line: string; status: string }>;
+  recordedCents: number | null;
+  reason?: string;
+  changesBooks?: false;
+};
+
+type AheadBlock = OwnerAhead & {
+  blocksReady: boolean;
+};
+
+type Loaded = OwnerPortalView & {
+  period: OwnerPortalPeriod;
+  month: string;
+  empty: boolean;
+  ahead?: AheadBlock;
+  transfers?: TransferBlock;
+};
+
+const PERIOD_LABELS: Array<{ id: OwnerPortalPeriod; label: string }> = [
+  { id: 'ytd', label: 'Year to date' },
+  { id: 'ttm', label: 'Trailing 12' },
+  { id: 'quarter', label: 'Quarter' },
+  { id: 'month', label: 'This month' },
+];
+
+function transferMoney(cents: number): string {
+  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
 
 function money(value: number): string {
   return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -14,12 +45,13 @@ function money(value: number): string {
  */
 export function OwnerPortal({ token }: { token: string }) {
   const [data, setData] = useState<Loaded | null>(null);
-  const [period, setPeriod] = useState<'month' | 'ytd'>('ytd');
+  const [period, setPeriod] = useState<OwnerPortalPeriod>('ytd');
+  const [anchorMonth, setAnchorMonth] = useState<string>(currentYearMonth);
   const [state, setState] = useState<'loading' | 'ready' | 'invalid' | 'paused' | 'error'>('loading');
 
   useEffect(() => {
     let cancel = false;
-    void fetch(`/api/owner/${encodeURIComponent(token)}?period=${period}`)
+    void fetch(`/api/owner/${encodeURIComponent(token)}?period=${period}&month=${encodeURIComponent(anchorMonth)}`)
       .then(async (res) => {
         const type = res.headers.get('content-type') ?? '';
         if (!type.includes('application/json')) throw new Error('not json');
@@ -58,7 +90,7 @@ export function OwnerPortal({ token }: { token: string }) {
     return () => {
       cancel = true;
     };
-  }, [token, period]);
+  }, [token, period, anchorMonth]);
 
   return (
     <div className="mx-auto max-w-3xl px-5 py-10" data-bot="owner-portal" data-state={state}>
@@ -95,21 +127,37 @@ export function OwnerPortal({ token }: { token: string }) {
 
       {state === 'ready' && data && (
         <>
-          <div className="mt-6 flex gap-2">
-            {(['ytd', 'month'] as const).map((id) => (
+          <div className="mt-6 flex flex-wrap items-center gap-2" data-bot="owner-portal-controls">
+            {PERIOD_LABELS.map((item) => (
               <button
-                key={id}
+                key={item.id}
                 type="button"
-                onClick={() => setPeriod(id)}
-                data-bot={`owner-portal-period-${id}`}
-                aria-pressed={period === id}
+                onClick={() => setPeriod(item.id)}
+                data-bot={`owner-portal-period-${item.id}`}
+                aria-pressed={period === item.id}
                 className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.16em] ${
-                  period === id ? 'border-[#8a6f2f] bg-[#8a6f2f] text-white' : 'border-[#cfc6b6] text-[#5d564b]'
+                  period === item.id ? 'border-[#8a6f2f] bg-[#8a6f2f] text-white' : 'border-[#cfc6b6] text-[#5d564b]'
                 }`}
               >
-                {id === 'ytd' ? 'Year to date' : 'This month'}
+                {item.label}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setAnchorMonth((value) => addMonths(value, -1))}
+              data-bot="owner-portal-earlier"
+              className="rounded-full border border-[#cfc6b6] px-3 py-2 text-xs uppercase tracking-[0.14em] text-[#5d564b]"
+            >
+              Earlier
+            </button>
+            <button
+              type="button"
+              onClick={() => setAnchorMonth((value) => addMonths(value, 1))}
+              data-bot="owner-portal-later"
+              className="rounded-full border border-[#cfc6b6] px-3 py-2 text-xs uppercase tracking-[0.14em] text-[#5d564b]"
+            >
+              Later
+            </button>
           </div>
 
           <section className="mt-6 rounded-3xl border border-[#e2dbcd] bg-white p-6" data-bot="owner-portal-total">
@@ -214,14 +262,88 @@ export function OwnerPortal({ token }: { token: string }) {
               <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6f2f]">By month</p>
               <ul className="mt-3 space-y-1 text-sm">
                 {data.months.map((row) => (
-                  <li key={row.month} data-bot="owner-portal-month" className="flex justify-between border-t border-[#efe9dd] py-2">
+                  <li key={row.month} data-bot="owner-portal-month" className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-[#efe9dd] py-2">
                     <span>{row.label}</span>
-                    <span>{money(row.todd)}</span>
+                    <span className="text-xs text-[#7a7264]">
+                      Ranch {money(row.ranch)} · River {money(row.river)}
+                    </span>
+                    <span className="font-medium text-[#1d1a15]">{money(row.todd)}</span>
                   </li>
                 ))}
               </ul>
             </section>
           )}
+
+          {data.ahead && (
+            <section className="mt-6 rounded-3xl border border-[#e2dbcd] bg-white p-6" data-bot="owner-portal-ahead">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6f2f]">On the books ahead</p>
+              <p className="mt-2 text-sm text-[#5d564b]">
+                Upcoming Ranch and River stays that still have nights ahead. Guest names stay off this page, and future
+                stays are separate from the settled share above until their month closes.
+              </p>
+              <ul className="mt-3 space-y-1.5 text-sm text-[#1d1a15]">
+                {data.ahead.houses.map((house) => (
+                  <li key={house.id} data-bot={`owner-portal-ahead-${house.id}`}>
+                    {aheadLine(house)}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-sm text-[#5d564b]" data-bot="owner-portal-ahead-channels">
+                {aheadChannelsLine(data.ahead)}
+              </p>
+              {!data.ahead.blocksReady ? (
+                <p className="mt-3 text-xs text-[#7a7264]" data-bot="owner-portal-blocks-unread">
+                  Calendar blocks could not be read, so open stretches are not listed.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-1 text-xs text-[#5d564b]" data-bot="owner-portal-gaps">
+                  {data.ahead.houses.flatMap((house) =>
+                    house.gaps.map((gap) => (
+                      <li key={`${house.id}-${gap.start}`} data-bot={`owner-portal-gap-${house.id}`}>
+                        {gapLine(house.name, gap)}
+                      </li>
+                    )),
+                  )}
+                </ul>
+              )}
+            </section>
+          )}
+
+          <section className="mt-6 rounded-3xl border border-[#e2dbcd] bg-white p-6" data-bot="owner-portal-transfers">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8a6f2f]">Recorded transfers</p>
+            <p className="mt-2 text-sm text-[#5d564b]">
+              Money recorded as sent or returned. It does not change the share above, and this page cannot add or void one.
+            </p>
+            {!data.transfers ? (
+              <p className="mt-3 text-sm text-[#5d564b]" data-bot="owner-portal-transfers-off">
+                Recorded transfers could not be read. That does not mean none were sent.
+              </p>
+            ) : data.transfers.stored ? (
+              <>
+                <p className="mt-3 text-sm" data-bot="owner-portal-transfers-total">
+                  {transferMoney(data.transfers.recordedCents ?? 0)} recorded. The share above is unchanged.
+                </p>
+                <p className="mt-1 text-xs text-[#7a7264]" data-bot="owner-portal-transfer-reconcile">
+                  {ownerTransferBalanceLine(data.todd, data.transfers.recordedCents ?? 0)}
+                </p>
+                <ul className="mt-3 space-y-2 text-sm">
+                  {data.transfers.items.length === 0 ? (
+                    <li>Nothing is recorded as sent. That is not the same as nothing being owed.</li>
+                  ) : (
+                    data.transfers.items.map((item) => (
+                      <li key={item.id} data-bot="owner-portal-transfer" data-status={item.status}>
+                        {item.line}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </>
+            ) : (
+              <p className="mt-3 text-sm text-[#5d564b]" data-bot="owner-portal-transfers-off">
+                {data.transfers.reason ?? 'Recorded transfers could not be read.'} That does not mean none were sent.
+              </p>
+            )}
+          </section>
 
           <section className="mt-6 rounded-3xl border border-[#e2dbcd] bg-[#faf7f1] p-6" data-bot="owner-portal-notes">
             <ul className="space-y-2 text-sm text-[#5d564b]">

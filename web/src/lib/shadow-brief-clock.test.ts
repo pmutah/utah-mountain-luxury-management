@@ -20,7 +20,7 @@ import { recordShadowDay, shadowClock } from './market/shadow-log.ts';
  *      the page they were already on had done.
  */
 
-const DIGEST = 'Shadow run. Nothing sent to Hospitable. All three houses read.';
+const DIGEST = 'Shadow run. 3 saved comps. Nothing sent to Hospitable. All three houses read.';
 
 const BASE = {
   asOf: '2026-11-08',

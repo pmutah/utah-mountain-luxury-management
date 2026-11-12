@@ -78,13 +78,14 @@ test('the cancellation terms are the owner rule, not an invented window', () => 
   assert.doesNotMatch(CANCELLATION_ANSWER, /non-?refundable/i, 'a refund policy nobody set');
   assert.match(CANCELLATION_LINE, /^Cancellation: /);
 
-  const book = readFileSync(join(root, 'src/components/DirectBook.tsx'), 'utf8');
-  assert.match(book, /stay-cancellation/, 'the booking page does not show the cancellation line');
+  const book = readFileSync(join(root, 'src/components/DirectReserveCard.tsx'), 'utf8');
+  assert.match(book, /CANCELLATION_LINE/, 'the booking page does not show the cancellation line');
 });
 
 test('the booking page and the house page both carry the FAQ', () => {
-  const book = readFileSync(join(root, 'src/components/DirectBook.tsx'), 'utf8');
-  const house = readFileSync(join(root, 'src/components/HouseSite.tsx'), 'utf8');
+  const book = readFileSync(join(root, 'src/components/DirectReserveCard.tsx'), 'utf8');
+  // The listing page moved into its own component when the house page became a visual listing.
+  const house = readFileSync(join(root, 'src/components/HouseListing.tsx'), 'utf8');
   assert.match(book, /stay-faq/, 'the booking page has no FAQ');
   assert.match(house, /HouseReviews/, 'the house page has no reviews block');
   assert.match(house, /HouseFaq/, 'the house page has no FAQ');
@@ -94,22 +95,38 @@ test('the booking page and the house page both carry the FAQ', () => {
   assert.match(block, /<summary/);
 });
 
-test('the gallery renders one photo as one photo and more as a gallery', () => {
+test('a house now shows its real photo set, with the rendering label intact', () => {
   /*
-   * A control that leads nowhere is the defect this avoids. With one cover image the component draws exactly what it drew before;
-   * the moment a second photo is added to the list, the arrows and the strip appear with no component change.
+   * The page shipped one photo per house while the live listings carried dozens, so a direct booking page read as
+   * thinner than the same house on Airbnb. The gallery now holds the harvested listing set; what must not change is
+   * that the River House's pictures are labeled as renderings, because the house is not photographed yet.
    */
-  const one = houseGallery('river');
-  assert.equal(one.length, 1, 'the cover is not the only photo yet');
-  assert.equal(hasGallery('river'), false);
-  assert.equal(one[0]!.src, '/houses/river.jpg');
-  // The rendering label travels with it.
-  assert.match(one[0]!.caption, /rendering/i);
+  for (const house of ['ranch', 'lindon', 'river'] as const) {
+    const photos = houseGallery(house);
+    assert.ok(photos.length > 1, `${house} still has only the cover photo`);
+    assert.equal(hasGallery(house), true, `${house} is not treated as a gallery`);
+    /*
+     * The share image is still in the set, but it no longer leads: opening on a file captioned "Listing photo" wasted
+     * the most valuable slot on the page. The cover is kept for the shared link and for a house with no photographs.
+     */
+    assert.ok(
+      photos.some((photo) => photo.src === `/houses/${house}.jpg`),
+      `${house} dropped its share image from the gallery`,
+    );
+    assert.notEqual(photos[0]!.caption, 'Listing photo', `${house} opens on the generic share image`);
+    for (const photo of photos) {
+      assert.ok(photo.caption.trim().length > 0, `${house} has an uncaptioned photo`);
+      assert.equal(photo.caption.includes('$'), false, `${house} photo caption quotes a price: ${photo.caption}`);
+      assert.equal(/door\s*code|wi-?fi|password/i.test(photo.caption), false, `${house} photo caption leaks access`);
+    }
+  }
+  // River has no photographs of the finished house, so its lead picture is a labeled rendering.
+  assert.match(houseGallery('river')[0]!.caption, /rendering/i);
 
   const gallery = readFileSync(join(root, 'src/components/HouseGallery.tsx'), 'utf8');
   assert.match(gallery, /photos\.length > 1/, 'the gallery has no single-photo branch');
-  assert.match(gallery, /if \(photos\.length === 0\) return null/);
-  // No duplicate: the cover is not repeated from the extras list.
+  assert.match(gallery, /if \(!lead\) return null/, 'an empty gallery renders a broken frame');
+  // No duplicate: the cover is not repeated from the listed set.
   const photos = readFileSync(join(root, 'src/lib/house-photos.ts'), 'utf8');
   assert.match(photos, /seen\.has/, 'the gallery can repeat the cover image');
 });
@@ -155,7 +172,12 @@ test('the manifest opens the guest site and the sitemap lists the policies', () 
 
 test('the share tag follows the host the page is served from', () => {
   // It was hardcoded to pages.dev, so a link shared from a custom domain pointed a scraper at the wrong host.
-  const book = readFileSync(join(root, 'src/components/DirectBook.tsx'), 'utf8');
-  assert.match(book, /window\.location\.origin/, 'the share URL is still pinned to one host');
-  assert.doesNotMatch(book, /og:url'\);\s*\n\s*if \(node\) node\.setAttribute\('content', `https:\/\/wilhite-portfolio/);
+  /*
+   * The share tags are built in `house-page.ts` now, not in a page component: the listing, the house list, and the
+   * `/book/` route all read the same `applyPublicShare`. Retargeted here so the property is still guarded — a share URL
+   * pinned to one host would preview the wrong address from a custom domain.
+   */
+  const share = readFileSync(join(root, 'src/lib/house-page.ts'), 'utf8');
+  assert.match(share, /ORIGIN|location\.origin/, 'the share URL is not built from a host at all');
+  assert.doesNotMatch(share, /og:url'\);\s*\n\s*if \(node\) node\.setAttribute\('content', `https:\/\/wilhite-portfolio/);
 });

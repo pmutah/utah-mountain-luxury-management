@@ -96,8 +96,8 @@ test('the night brief names the work and leaves the guest off it', () => {
   assert.match(text, /The Ranch House: Put the hot tub cover back on/);
   assert.equal(text.includes('River checkout'), false);
   assert.match(text, /River still uses a rendering/);
-  assert.match(text, /Ranch has one photo/);
-  assert.match(text, /Lindon has one photo/);
+  assert.equal(text.includes('Ranch has one photo'), false);
+  assert.equal(text.includes('Lindon has one photo'), false);
   assert.match(text, /Direct booking still emails a request/);
   assert.match(text, /Nothing is posted to Airbnb or VRBO/);
   assert.match(text, /No door code opens on the guest phone tomorrow/);

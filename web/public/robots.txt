@@ -5,6 +5,16 @@ Allow: /book/
 Allow: /api/agent/map
 Disallow: /api/
 
+# Token-addressed pages. Each of these URLs carries a credential in its path — a guest's stay, a cleaner's turn, an
+# owner's statement, a request's status, or an e-sign ceremony — so indexing one would publish a guest's name and
+# dates, a door code, or an owner's share. The response also sends `X-Robots-Tag: noindex, nofollow, noarchive`; this
+# file is the courtesy, that header is the enforcement.
+Disallow: /stay/
+Disallow: /clean/
+Disallow: /owner/
+Disallow: /request/
+Disallow: /esign/
+
 # The sitemap lists canonical URLs only. /houses and /book both 301 to their
 # slashed form, so pointing here saves a redirect hop for every crawler visit.
 Sitemap: https://wilhite-portfolio.pages.dev/sitemap.xml

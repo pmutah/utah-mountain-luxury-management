@@ -65,6 +65,8 @@ test('the saved-day clock requires the marker the recorder writes', () => {
    */
   const log = read('src/lib/market/shadow-log.ts');
   assert.match(log, /Nothing sent to Hospitable\./, 'the clock no longer checks the unsent marker');
+  assert.match(log, /saved comps\?/, 'the clock counts a digest that never names saved comps');
   const route = read('functions/api/pricing/shadow-days.ts');
   assert.match(route, /Nothing sent to Hospitable\./, 'the route accepts a digest it should refuse');
+  assert.match(route, /daySawRealComps/, 'the route stores a digest that did not see saved comps');
 });

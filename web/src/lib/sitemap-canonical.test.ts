@@ -50,6 +50,19 @@ test('the public paths in the sitemap carry the slash the app serves', () => {
   const paths = LOCS.map((loc) => new URL(loc).pathname);
   assert.ok(paths.includes('/book/'), 'the booking page is missing or unslashed');
   assert.ok(paths.includes('/houses/'), 'the houses index is missing or unslashed');
+  /*
+   * The three house pages were listed without the slash while the app links them with one, so the sitemap advertised an
+   * address no internal link uses. This checks every `/houses/<id>` entry, not just the index — the earlier version of
+   * this test looked only at `/houses/` and `/book/`, which is why the three unslashed entries survived.
+   */
+  for (const house of ['river', 'ranch', 'lindon']) {
+    assert.ok(paths.includes(`/houses/${house}/`), `${house} is missing from the sitemap, or listed without the slash`);
+    assert.equal(
+      paths.includes(`/houses/${house}`),
+      false,
+      `${house} is listed unslashed, an address the app does not link`,
+    );
+  }
 });
 
 test('robots points crawlers at the sitemap', () => {

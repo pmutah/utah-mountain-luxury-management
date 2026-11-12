@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import {
   Bot,
   CalendarDays,
+  FileSpreadsheet,
   Hammer,
   Home,
   LayoutDashboard,
@@ -159,6 +160,15 @@ export function SidebarNav({
       bot: 'nav-owner',
       current: activeTab === 'owner',
       onClick: () => onGo('owner'),
+    },
+    {
+      id: 'tax',
+      label: 'Tax & CPA',
+      icon: FileSpreadsheet,
+      bot: 'nav-tax',
+      current: activeTab === 'tax',
+      hidden: hideLindon,
+      onClick: () => onGo('tax'),
     },
     {
       id: 'ours',

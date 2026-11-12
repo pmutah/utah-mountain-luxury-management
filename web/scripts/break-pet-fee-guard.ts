@@ -1,10 +1,10 @@
-// Proves every pet-fee guard FAILS when the code it protects is broken.
+﻿// Proves every pet-fee guard FAILS when the code it protects is broken.
 import { copyFileSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
 const RULES = 'src/lib/house-rules.ts';
 const QUOTE = 'src/lib/quote.ts';
-const PAGE = 'src/components/DirectBook.tsx';
+const PAGE = 'src/components/DirectReserveCard.tsx';
 const ROUTE = 'functions/api/book/index.ts';
 const files = [RULES, QUOTE, PAGE, ROUTE];
 
@@ -106,8 +106,8 @@ function runTests(): { pass: number; fail: number; output: string } {
     output = `${e.stdout ?? ''}${e.stderr ?? ''}`;
   }
   return {
-    pass: Number(/ℹ pass (\d+)/.exec(output)?.[1] ?? -1),
-    fail: Number(/ℹ fail (\d+)/.exec(output)?.[1] ?? -1),
+    pass: Number(/â„¹ pass (\d+)/.exec(output)?.[1] ?? -1),
+    fail: Number(/â„¹ fail (\d+)/.exec(output)?.[1] ?? -1),
     output,
   };
 }
@@ -125,7 +125,7 @@ let broken = 0;
 for (const m of mutations) {
   const original = originals.get(m.file)!;
   if (!original.includes(m.from)) {
-    console.log(`MISS  ${m.name} — text not found in ${m.file}`);
+    console.log(`MISS  ${m.name} â€” text not found in ${m.file}`);
     broken++;
     continue;
   }
@@ -150,3 +150,4 @@ if (restored.fail !== 0 || restored.pass !== baseline.pass) {
   process.exit(1);
 }
 process.exit(broken === 0 ? 0 : 1);
+
