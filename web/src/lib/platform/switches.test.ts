@@ -115,9 +115,20 @@ test('the panel renders the switches as controls and names the locked ones', () 
   assert.match(panel, /platform-switch-toggle-/, 'the panel draws no control');
   assert.match(panel, /platform-switches-locked/, 'the panel does not name the locked switches');
   // Every route the panel calls has to exist.
-  for (const route of ['/api/platform/switches', '/api/platform/funnel?window=7', '/api/platform/funnel?window=30', '/api/platform/audit', '/api/platform/health']) {
+  for (const route of ['/api/platform/switches', '/api/platform/funnel?window=7', '/api/platform/funnel?window=30', '/api/platform/audit', '/api/platform/health', '/api/pricing/shadow-days']) {
     assert.match(panel, new RegExp(route.replace(/[?&=]/g, (ch) => `\\${ch}`)), `the panel does not call ${route}`);
   }
+  // The clock that gates auto-pricing is shown, and an unreadable clock is never drawn as zero days.
+  assert.match(panel, /platform-shadow-line/, 'the panel does not show the shadow clock');
+  assert.match(panel, /platform-shadow-off/, 'an unreadable clock has no state of its own');
+  assert.match(panel, /This is not zero days/, 'an unreadable clock reads as zero days');
+  assert.match(panel, /hasWriteToken/, 'the panel does not say whether a write token exists');
+  /*
+   * Zero days and an unreadable store are different states. A brand-new store with nothing recorded is honest, not stuck — the panel says the
+   * week starts with the first morning run rather than leaving "0 of 7" to read as a clock that will not move.
+   */
+  assert.match(panel, /function shadowLine/, 'the clock has no wording of its own');
+  assert.match(panel, /No shadow day is recorded on this server yet/, 'a fresh store reads as a stuck clock');
   // A failed read is a failure, not a zero.
   assert.match(panel, /This is not a zero/, 'the funnel renders an unreadable state as a zero');
   assert.match(panel, /does not mean nothing changed/, 'the audit panel renders an unreadable log as an empty one');

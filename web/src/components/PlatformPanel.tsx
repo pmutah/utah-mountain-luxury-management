@@ -31,6 +31,37 @@ type AuditPayload = {
 
 type HealthPayload = Record<string, unknown> & { ok?: boolean };
 
+/**
+ * The seven-day shadow clock, as the server holds it.
+ *
+ * This is the gate on auto-pricing, and until now the only places it appeared were the market page and the Agents brief — neither of which says
+ * what is left to do. A host reading "4 of 7" has no way to know that the remaining days arrive on their own from the morning run, or that a day
+ * only counts when the market behind it is measured.
+ */
+type ShadowPayload = {
+  clock?: { days: number; required: number; ready: boolean; dates: string[] } | null;
+  days?: Array<{ date: string }>;
+  hasWriteToken?: boolean;
+  storageReads?: string;
+};
+
+/** The clock in words. An empty store and an unreadable one are different states, and only one of them is "no progress". */
+function shadowLine(clock: { days: number; required: number; ready: boolean; dates: string[] }, hasToken: boolean): string {
+  if (clock.ready) {
+    return `Shadow day ${clock.days} of ${clock.required}: the week is finished, so auto-pricing may act once a write token exists.${
+      hasToken ? '' : ' No write token is set, so nothing can be sent yet.'
+    }`;
+  }
+  if (clock.days === 0) {
+    /*
+     * Zero days on this server. The market and Agents pages record a day when they are opened, and the morning run records one from the cron —
+     * so on a store nothing has opened, zero is the honest reading and it is not a failure. Saying "0 of 7" alone reads like a stuck clock.
+     */
+    return `No shadow day is recorded on this server yet. The week starts with the first morning run, or the first time the Market or Agents page is opened with the books readable.`;
+  }
+  return `${clock.days} of ${clock.required} days recorded. The remaining days arrive on their own from the morning run, and a day only counts when the market behind it carries saved comp asks.`;
+}
+
 type Read<T> = { kind: 'loading' } | { kind: 'live'; data: T } | { kind: 'off'; reason: string };
 
 async function readJson<T>(url: string): Promise<Read<T>> {
@@ -60,6 +91,7 @@ export function PlatformPanel() {
   const [funnel30, setFunnel30] = useState<Read<FunnelPayload>>({ kind: 'loading' });
   const [audit, setAudit] = useState<Read<AuditPayload>>({ kind: 'loading' });
   const [health, setHealth] = useState<Read<HealthPayload>>({ kind: 'loading' });
+  const [shadow, setShadow] = useState<Read<ShadowPayload>>({ kind: 'loading' });
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -79,6 +111,9 @@ export function PlatformPanel() {
     });
     void readJson<HealthPayload>('/api/platform/health').then((result) => {
       if (!cancel) setHealth(result);
+    });
+    void readJson<ShadowPayload>('/api/pricing/shadow-days').then((result) => {
+      if (!cancel) setShadow(result);
     });
     return () => {
       cancel = true;
@@ -198,6 +233,34 @@ export function PlatformPanel() {
         <p className="mt-1 text-xs text-[var(--uml-muted)]">
           Counted by visit, not by row, so a reload is not a second guest. No address, name, phone, or device is stored.
         </p>
+      </div>
+
+      {/* The seven-day clock that gates auto-pricing. */}
+      <div className="mt-6" data-bot="platform-shadow">
+        <p className="text-xs uppercase tracking-widest text-[var(--uml-muted)]">Shadow week before a rate can move</p>
+        {shadow.kind === 'loading' && <p className="mt-2 text-sm text-[var(--uml-muted)]">Reading the clock…</p>}
+        {shadow.kind === 'off' && (
+          <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="platform-shadow-off">
+            The clock could not be read from this server. This is not zero days.
+          </p>
+        )}
+        {shadow.kind === 'live' && !shadow.data.clock && (
+          <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="platform-shadow-unreadable">
+            The clock could not be read. This is not zero days.
+          </p>
+        )}
+        {shadow.kind === 'live' && shadow.data.clock && (
+          <>
+            <p className="mt-1 text-sm" data-bot="platform-shadow-line" data-days={shadow.data.clock.days}>
+              {shadowLine(shadow.data.clock, Boolean(shadow.data.hasWriteToken))}
+            </p>
+            {!shadow.data.hasWriteToken && shadow.data.clock.days > 0 && !shadow.data.clock.ready && (
+              <p className="mt-1 text-xs text-[var(--uml-muted)]" data-bot="platform-shadow-token">
+                No Hospitable write token is set, so nothing can be sent even after the week finishes.
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       {/* The audit log. Admin only, so an owner account is told why it is empty rather than shown a blank list. */}
