@@ -10,6 +10,8 @@ import {
   type MapPinKind,
 } from '../lib/canyon-map';
 
+import { CanyonCameras } from './CanyonCameras';
+
 type ViewMode = 'map' | 'directions' | 'cams';
 
 export function CanyonPocketMap({ house }: { house: 'ranch' | 'lindon' | 'river' }) {
@@ -330,8 +332,11 @@ export function CanyonPocketMap({ house }: { house: 'ranch' | 'lindon' | 'river'
       )}
 
       {mode === 'cams' && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2" data-bot="canyon-cams-panel">
-          {CANYON_LIVE_PORTALS.map((portal) => (
+        <div className="mt-4">
+          <CanyonCameras house={house} />
+          <p className="uml-kicker mt-5">Reports & condition pages</p>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2" data-bot="canyon-cams-panel">
+            {CANYON_LIVE_PORTALS.map((portal) => (
             <a
               key={portal.id}
               href={portal.href}
@@ -353,6 +358,7 @@ export function CanyonPocketMap({ house }: { house: 'ranch' | 'lindon' | 'river'
               </span>
             </a>
           ))}
+          </div>
         </div>
       )}
     </section>

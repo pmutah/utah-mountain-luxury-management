@@ -16,6 +16,7 @@ import { devCleanJobs, devCleanLinks, devCleanProgressHost, devMintCleanLink, de
 import { devPushPlan } from './dev/push-plan';
 import { devCleanPhotos, devCleanPhotoTurns, devDeleteCleanPhoto, devUploadCleanPhoto } from './dev/clean-photos';
 import { devPublicConditions } from './dev/public-conditions';
+import { devCanyonCam } from './dev/canyon-cams';
 
 /** Local stay phone only. This token is not a booking, and the route is not deployed. */
 function localStayPreview(): Plugin {
@@ -602,12 +603,37 @@ function publicConditionsDev(): Plugin {
   };
 }
 
+/** Live UDOT road-camera frames on a house page, without a Functions runtime. */
+function canyonCamsDev(): Plugin {
+  return {
+    name: 'canyon-cams-dev',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const parsed = new URL(req.url ?? '', 'http://localhost');
+        if (parsed.pathname !== '/api/public/cam') return next();
+        void devCanyonCam(parsed.searchParams.get('key') ?? '')
+          .then((frame) => {
+            res.statusCode = frame?.status ?? 404;
+            res.setHeader('content-type', frame?.type ?? 'application/json');
+            res.setHeader('cache-control', 'no-store');
+            res.end(frame?.body ?? JSON.stringify({ ok: false, reason: 'unknown camera' }));
+          })
+          .catch(() => {
+            res.statusCode = 502;
+            res.setHeader('content-type', 'application/json');
+            res.end(JSON.stringify({ ok: false }));
+          });
+      });
+    },
+  };
+}
+
 /** Hosted Cloudflare Pages app — same APIs and data as production. */
 const PAGES_ORIGIN = 'https://wilhite-portfolio.pages.dev';
 
 export default defineConfig({
   appType: 'spa',
-  plugins: [localStayPreview(), marketOverviewDev(), quoteCalendarDev(), requestInboxDev(), ownerPortalDev(), savedCompsDev(), approvedRatesDev(), requestStatusDev(), expenseArchiveDev(), stayMessageDev(), shadowDaysDev(), cleanLinkDev(), pushPlanDev(), publicConditionsDev(), react(), tailwindcss()],
+  plugins: [localStayPreview(), marketOverviewDev(), quoteCalendarDev(), requestInboxDev(), ownerPortalDev(), savedCompsDev(), approvedRatesDev(), requestStatusDev(), expenseArchiveDev(), stayMessageDev(), shadowDaysDev(), cleanLinkDev(), pushPlanDev(), publicConditionsDev(), canyonCamsDev(), react(), tailwindcss()],
   server: {
     port: 5173,
     watch: {

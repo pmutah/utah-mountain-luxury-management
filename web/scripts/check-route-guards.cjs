@@ -243,6 +243,8 @@ const PUBLIC_ROUTES = [
   'stay-guide/[token]/conditions.ts',
   // Public NWS weather and USGS Vivian Park river gauge for the house pages. No ledger, no guest, no code.
   'public/conditions.ts',
+  // One UDOT road-camera frame by key. Only keys in canyon-cams.ts resolve, so it is not an open proxy.
+  'public/cam.ts',
   // The stay token is the credential. Filing an add-on sends no text and does not move the booking.
   'stay-guide/[token]/requests.ts',
 ];

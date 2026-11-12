@@ -110,6 +110,8 @@ export const onRequest: PagesFunction<{
      */
     STAY_CONDITIONS.test(url.pathname) ||
     url.pathname === '/api/public/conditions' ||
+    // One road-camera frame. The key resolves to a fixed UDOT id in canyon-cams.ts and nothing else.
+    url.pathname === '/api/public/cam' ||
     BOOK_REQUEST_PAGE.test(url.pathname) ||
     OWNER_PAGE.test(url.pathname) ||
     CLEAN_PAGE.test(url.pathname) ||
