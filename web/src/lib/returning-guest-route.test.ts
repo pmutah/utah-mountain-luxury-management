@@ -23,7 +23,7 @@ type RouteHandler = (context: { request: Request; env: unknown; params: Record<s
 function futureStay() {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(new Date());
   const day = new Date(`${today}T00:00:00Z`);
-  day.setUTCDate(day.getUTCDate() + 40);
+  day.setUTCDate(day.getUTCDate() + 80);
   // The River House asks for at least 5 nights, so this stays clear of its published rule.
   const out = new Date(day);
   out.setUTCDate(out.getUTCDate() + 6);

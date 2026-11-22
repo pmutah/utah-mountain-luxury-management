@@ -18,6 +18,14 @@ import { suggestRateAdjustment } from '../../../functions/_lib/pricing-doctrine.
  * host priced would discount a number the host chose.
  */
 
+/** A night still inside the engine's forward window. A fixed November date falls out once that day has passed. */
+function ahead(days: number): string {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(new Date());
+  const day = new Date(`${today}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + days);
+  return day.toISOString().slice(0, 10);
+}
+
 function envWith(approved: Array<{ house: string; date: string; guest: number }>) {
   const store = new Map<string, string>();
   store.set(
@@ -35,8 +43,8 @@ function envWith(approved: Array<{ house: string; date: string; guest: number }>
 }
 
 test('an approved night comes back at the approved price, held, with no promotion', async () => {
-  const result = await suggestRateAdjustment(envWith([{ house: 'lindon', date: '2026-11-20', guest: 193 }]), 'lindon', '2026-11-15', '2026-11-25');
-  const night = (result.nights as Array<Record<string, unknown>>).find((row) => row.date === '2026-11-20')!;
+  const result = await suggestRateAdjustment(envWith([{ house: 'lindon', date: ahead(12), guest: 193 }]), 'lindon', ahead(10), ahead(20));
+  const night = (result.nights as Array<Record<string, unknown>>).find((row) => row.date === ahead(12))!;
   assert.equal(night.approved, true, 'the engine did not see the approval');
   assert.equal(night.listingHostNightly, 193, 'the engine reported a price other than the approved one');
   assert.equal(night.stance, 'hold', 'an approved night should be held, not proposed as a move');
@@ -48,22 +56,22 @@ test('the goal premium does not overwrite an approved price', async () => {
    * `applyGoalPremium` raises any night under its sell-out target. That is right for an unpriced night and wrong
    * for one the host set, so it must skip approvals.
    */
-  const result = await suggestRateAdjustment(envWith([{ house: 'lindon', date: '2026-11-20', guest: 100 }]), 'lindon', '2026-11-15', '2026-11-25');
-  const night = (result.nights as Array<Record<string, unknown>>).find((row) => row.date === '2026-11-20')!;
+  const result = await suggestRateAdjustment(envWith([{ house: 'lindon', date: ahead(12), guest: 100 }]), 'lindon', ahead(10), ahead(20));
+  const night = (result.nights as Array<Record<string, unknown>>).find((row) => row.date === ahead(12))!;
   assert.equal(night.listingHostNightly, 100, 'the goal premium replaced the approved price');
 });
 
 test('an unapproved night in the same window still gets the engine recommendation', async () => {
   // The guard must key on the approval, not switch the whole engine off.
-  const result = await suggestRateAdjustment(envWith([{ house: 'lindon', date: '2026-11-20', guest: 193 }]), 'lindon', '2026-11-15', '2026-11-25');
-  const other = (result.nights as Array<Record<string, unknown>>).find((row) => row.date === '2026-11-21')!;
+  const result = await suggestRateAdjustment(envWith([{ house: 'lindon', date: ahead(12), guest: 193 }]), 'lindon', ahead(10), ahead(20));
+  const other = (result.nights as Array<Record<string, unknown>>).find((row) => row.date === ahead(13))!;
   assert.equal(other.approved, undefined, 'a night with no approval was marked approved');
   assert.ok(other.listingHostNightly !== 193 || other.stance !== 'hold', 'the engine stopped recommending for other nights');
 });
 
 test("another house's approval does not reach this house", async () => {
-  const result = await suggestRateAdjustment(envWith([{ house: 'ranch', date: '2026-11-20', guest: 999 }]), 'lindon', '2026-11-15', '2026-11-25');
-  const night = (result.nights as Array<Record<string, unknown>>).find((row) => row.date === '2026-11-20')!;
+  const result = await suggestRateAdjustment(envWith([{ house: 'ranch', date: ahead(12), guest: 999 }]), 'lindon', ahead(10), ahead(20));
+  const night = (result.nights as Array<Record<string, unknown>>).find((row) => row.date === ahead(12))!;
   assert.notEqual(night.listingHostNightly, 999, "the Ranch approval priced a Lindon night");
   assert.notEqual(night.approved, true);
 });

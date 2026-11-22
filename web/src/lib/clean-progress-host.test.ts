@@ -119,7 +119,7 @@ test('a turn list that cannot be read still returns the ticks', async () => {
   const store: Store = new Map();
   store.set(
     'cleanProgress',
-    JSON.stringify([{ house: 'river', checkout: '2026-11-14', done: ['beds'], updatedAt: new Date().toISOString() }]),
+    JSON.stringify([{ house: 'river', checkout: futureCheckout(4), done: ['beds'], updatedAt: new Date().toISOString() }]),
   );
   const env = { SETTINGS: fakeKv(store, { failKey: 'reservations' }), DASHBOARD_PASSWORD: PASSWORD };
   const mod = await route();

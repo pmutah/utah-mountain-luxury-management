@@ -66,7 +66,15 @@ async function baseline(): Promise<number> {
 
 test('a stay that arrived without a portal gets one', async () => {
   const before = await baseline();
-  const { env, store } = seed([stay({ id: 'res-ical', icalUid: 'x@reservations.hospitable.com' })]);
+  const { env, store } = seed([
+    stay({
+      id: 'res-ical',
+      icalUid: 'x@reservations.hospitable.com',
+      // Clear of every seeded ranch stay. later(30) now lands on Russell Jackson, Dec 23–26.
+      checkIn: '2027-02-10',
+      checkOut: '2027-02-13',
+    }),
+  ]);
   const result = await backfillStayPortals(env);
   assert.equal(result.error, null, `the backfill failed: ${result.error}`);
   assert.equal(result.minted, before + 1, 'the iCal stay was left without a portal');
