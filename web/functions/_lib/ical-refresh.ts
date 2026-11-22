@@ -7,7 +7,10 @@
  * it is already booked, which is a double-booking waiting to happen. `syncIcalIfStale` already existed
  * for exactly this and simply had no caller.
  *
- * Three rules make it safe to run from a read path:
+ * Do not call this from GET /api/reservations. That read used to start a sync, and the sync wrote the
+ * whole reservation blob back to KV. Import belongs on POST /api/calendar/sync.
+ *
+ * Three rules make a background sync safe if a scheduled caller uses it:
  *
  * 1. **Never block the read.** The response goes out first and the sync runs through
  *    `executionCtx.waitUntil`, so a slow or unreachable feed cannot hang a dashboard.

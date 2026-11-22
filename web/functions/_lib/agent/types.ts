@@ -67,6 +67,9 @@ export interface ReservationRecord {
   surveySentAt?: string;
   surveyChannel?: 'email' | 'sms' | 'none';
   surveyCompletedAt?: string | null;
+  /** Optimistic concurrency token. 0 until the row is stored in D1. */
+  version?: number;
+  updatedAt?: string;
 }
 
 export interface CalendarBlock {

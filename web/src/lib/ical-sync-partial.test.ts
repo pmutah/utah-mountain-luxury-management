@@ -88,6 +88,40 @@ test('a sync is idempotent, so the refresh cannot double-write', async () => {
   assert.equal(first.created, 1);
 });
 
+test('a $0 Hospitable event does not create a second stay for the same dates', async () => {
+  const { env, store } = envWherePutFailsOn('__never__');
+  store.reservations = JSON.stringify([
+    {
+      id: 'res-real',
+      guestName: 'Ada Lovelace',
+      propertyId: 'river',
+      checkIn: '2027-12-01',
+      checkOut: '2027-12-04',
+      payout: 1200,
+      source: 'Airbnb',
+      status: 'confirmed',
+    },
+  ]);
+  const result = await syncReservationsFromIcal(env, [
+    {
+      uid: 'uid-duplicate',
+      propertyId: 'river',
+      start: '2027-12-01',
+      end: '2027-12-04',
+      summary: 'Reserved',
+      description: '',
+      source: 'ical',
+    } as never,
+  ]);
+  assert.equal(result.created, 0, 'a second $0 row was created for dates that were already booked');
+  const rows = JSON.parse(store.reservations ?? '[]') as Array<{ id: string; payout: number; source: string; icalUid?: string }>;
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]!.id, 'res-real');
+  assert.equal(rows[0]!.payout, 1200);
+  assert.equal(rows[0]!.source, 'Airbnb');
+  assert.equal(rows[0]!.icalUid, 'uid-duplicate');
+});
+
 test('a disappeared event is cancelled, not deleted', async () => {
   /*
    * The calendar drops a stay when its iCal event goes away. It must cancel rather than remove:

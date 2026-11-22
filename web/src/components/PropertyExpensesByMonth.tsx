@@ -56,8 +56,8 @@ export function PropertyExpensesByMonth({
     }))
     .filter((group) => group.items.length > 0 || group.month === month);
 
-  const deleteExpense = async (id: string) => {
-    await api.deleteExpense(id);
+  const deleteExpense = async (id: string, version?: number) => {
+    await api.deleteExpense(id, undefined, version);
     onRefresh();
   };
 

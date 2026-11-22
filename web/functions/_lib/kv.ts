@@ -1,11 +1,17 @@
 import { DEFAULT_EXTRA_CLEANING } from './data';
 import { StorageReadError, storageReadPaused } from './kv-json';
+import type { LedgerDb } from './ledger-db';
 import { cachedGet } from './request-cache';
 
 const KEY = 'extraCleaningFees';
 
 export interface SettingsEnv {
   SETTINGS?: KVNamespace;
+  /**
+   * Row store for reservations and expenses. Absent, or present before the KV import flag, and
+   * those lists stay in KV. Receipts and the rest of SETTINGS are not this database.
+   */
+  LEDGER_DB?: LedgerDb;
   GOOGLE_OAUTH_CLIENT_ID?: string;
   GOOGLE_OAUTH_CLIENT_SECRET?: string;
   TWILIO_ACCOUNT_SID?: string;

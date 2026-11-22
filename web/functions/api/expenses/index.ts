@@ -5,7 +5,6 @@ import {
   loadCustomExpenses,
   mergeAllExpenses,
   newExpenseId,
-  persistMissingPaidDates,
   saveCustomExpenses,
   withReceiptUrls,
   type ExpenseRecord,
@@ -26,7 +25,6 @@ const PAUSED =
 export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   try {
-    await persistMissingPaidDates(env);
     const all = withReceiptUrls(await mergeAllExpenses(env));
     const custom = withReceiptUrls(await loadCustomExpenses(env));
     /*

@@ -6,6 +6,15 @@ import type { PaidBy } from './paid-by';
 import { parsePaidDateFromNote } from './expense-month';
 import { ledgerSafeToSave } from './ledger-guard';
 import { cachedGet } from './request-cache';
+import {
+  VersionConflictError,
+  canonicalJson,
+  forgetLedgerLists,
+  ledgerReady,
+  many,
+  one,
+  run,
+} from './ledger-db';
 
 export interface ExpenseRecord {
   id: string;
@@ -27,6 +36,9 @@ export interface ExpenseRecord {
   receiptUploadedAt?: string | null;
   /** Product / item photos (separate from the store receipt). */
   itemPhotos?: ItemPhoto[];
+  /** Present once the row lives in D1. The board sends it back as If-Match. */
+  version?: number;
+  updatedAt?: string;
 }
 
 export interface ItemPhoto {
@@ -42,7 +54,49 @@ export type ExpenseWithReceipt = ExpenseRecord & { receiptUrl?: string | null };
 
 const KV_KEY = 'customExpenses';
 
+type VersionedExpense = ExpenseRecord & { version?: number; updatedAt?: string };
+
+function expenseBody(row: VersionedExpense): ExpenseRecord {
+  const next = { ...row };
+  delete next.version;
+  delete next.updatedAt;
+  delete (next as ExpenseWithReceipt).receiptUrl;
+  return next;
+}
+
+function parseExpense(body: string, version: number, updatedAt: string): VersionedExpense {
+  return { ...(JSON.parse(body) as ExpenseRecord), version, updatedAt };
+}
+
+async function d1Expenses(env: SettingsEnv): Promise<VersionedExpense[]> {
+  return cachedGet(
+    env,
+    async () => {
+      const rows = await many<{ body: string; version: number; updated_at: string }>(
+        env,
+        'SELECT body, version, updated_at FROM expenses',
+      );
+      return rows.map((row) => parseExpense(row.body, Number(row.version), row.updated_at));
+    },
+    'ledger:expenses',
+  );
+}
+
+export async function getExpenseById(env: SettingsEnv, id: string): Promise<VersionedExpense | null> {
+  if (!(await ledgerReady(env))) {
+    const custom = await loadCustomExpenses(env);
+    return custom.find((row) => row.id === id) ?? null;
+  }
+  const row = await one<{ body: string; version: number; updated_at: string }>(
+    env,
+    'SELECT body, version, updated_at FROM expenses WHERE id = ?',
+    id,
+  );
+  return row ? parseExpense(row.body, Number(row.version), row.updated_at) : null;
+}
+
 export async function loadCustomExpenses(env: SettingsEnv): Promise<ExpenseRecord[]> {
+  if (await ledgerReady(env)) return d1Expenses(env);
   if (!env.SETTINGS) return [];
   /*
    * Read through the request cache. `/api/expenses` calls `mergeAllExpenses` and `loadCustomExpenses`,
@@ -74,10 +128,137 @@ export async function saveCustomExpenses(
    */
   options: { allowShrinkReason?: string } = {},
 ): Promise<ExpenseRecord[]> {
+  if (await ledgerReady(env)) return syncExpenseRows(env, items, options);
   // Delegate to `kvPut`, which owns the "do not shrink the ledger" guard. This function used to
   // write to KV directly, so the guard never covered the expense ledger at all — the registry said
   // expenses were protected and only bookings actually were.
   return kvPut(env, KV_KEY, items, options);
+}
+
+/**
+ * One UPDATE per changed expense. A row whose version moved since this list was loaded is left
+ * alone, so a turnover-cleaning save cannot put a stale copy over a bill someone just edited.
+ */
+async function syncExpenseRows(
+  env: SettingsEnv,
+  items: ExpenseRecord[],
+  options: { allowShrinkReason?: string },
+): Promise<ExpenseRecord[]> {
+  const existing = await many<{ id: string; body: string; version: number; updated_at: string }>(
+    env,
+    'SELECT id, body, version, updated_at FROM expenses',
+  );
+  const byId = new Map(existing.map((row) => [row.id, parseExpense(row.body, Number(row.version), row.updated_at)]));
+  const incomingIds = new Set(items.map((row) => row.id));
+  const removed = existing.filter((row) => !incomingIds.has(row.id));
+  const removedKept = removed.filter((row) => !row.id.startsWith('clean-'));
+  if (removedKept.length > 0 && !(options.allowShrinkReason ?? '').trim()) {
+    throw new Error(
+      `Refusing to write ${items.filter((row) => !row.id.startsWith('clean-')).length} saved rows over ${existing.filter((row) => !row.id.startsWith('clean-')).length}: this would lose records. Nothing was written.`,
+    );
+  }
+  for (const row of items) {
+    const prev = byId.get(row.id);
+    const body = expenseBody(row);
+    if (!prev) {
+      await insertExpenseRow(env, body);
+      continue;
+    }
+    if (canonicalJson(expenseBody(prev)) === canonicalJson(body)) continue;
+    const held = (row as VersionedExpense).version;
+    if (held !== undefined && held !== prev.version) continue;
+    await updateExpenseRow(env, { ...body, id: row.id }, prev.version);
+  }
+  for (const row of removed) {
+    await deleteExpenseRow(env, row.id, Number(row.version));
+  }
+  return items;
+}
+
+export async function insertExpenseRow(env: SettingsEnv, item: ExpenseRecord): Promise<ExpenseRecord> {
+  const now = item.createdAt ?? new Date().toISOString();
+  await run(env, `DELETE FROM ledger_tombstones WHERE entity = 'expenses' AND id = ?`, item.id);
+  const changes = await run(
+    env,
+    `INSERT INTO expenses (id, version, updated_at, property_id, month, category, amount, body)
+     VALUES (?, 1, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO NOTHING`,
+    item.id,
+    now,
+    item.propertyId,
+    item.month,
+    item.category,
+    Number(item.amount),
+    JSON.stringify(expenseBody(item)),
+  );
+  forgetLedgerLists(env);
+  if (changes !== 1) throw new VersionConflictError({ ...item, version: 1 });
+  return { ...expenseBody(item), version: 1, updatedAt: now };
+}
+
+export async function updateExpenseRow(
+  env: SettingsEnv,
+  row: ExpenseRecord,
+  expectedVersion?: number,
+): Promise<VersionedExpense> {
+  const current = await getExpenseById(env, row.id);
+  if (!current) throw new VersionConflictError(null);
+  const currentVersion = current.version ?? 0;
+  const claimed = expectedVersion ?? currentVersion;
+  if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+    throw new VersionConflictError(current);
+  }
+  const now = new Date().toISOString();
+  const nextVersion = currentVersion + 1;
+  const body = expenseBody(row);
+  const changes = await run(
+    env,
+    `UPDATE expenses
+        SET version = ?, updated_at = ?, property_id = ?, month = ?, category = ?, amount = ?, body = ?
+      WHERE id = ? AND version = ?`,
+    nextVersion,
+    now,
+    body.propertyId,
+    body.month,
+    body.category,
+    Number(body.amount),
+    JSON.stringify(body),
+    row.id,
+    claimed,
+  );
+  forgetLedgerLists(env);
+  if (changes !== 1) {
+    const fresh = await getExpenseById(env, row.id);
+    throw new VersionConflictError(fresh);
+  }
+  return { ...body, version: nextVersion, updatedAt: now };
+}
+
+export async function deleteExpenseRow(
+  env: SettingsEnv,
+  id: string,
+  expectedVersion?: number,
+): Promise<VersionedExpense | null> {
+  const current = await getExpenseById(env, id);
+  if (!current) return null;
+  const currentVersion = current.version ?? 0;
+  const claimed = expectedVersion ?? currentVersion;
+  if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+    throw new VersionConflictError(current);
+  }
+  const changes = await run(env, `DELETE FROM expenses WHERE id = ? AND version = ?`, id, claimed);
+  if (changes !== 1) {
+    const fresh = await getExpenseById(env, id);
+    if (!fresh) return null;
+    throw new VersionConflictError(fresh);
+  }
+  await run(
+    env,
+    `INSERT INTO ledger_tombstones (entity, id) VALUES ('expenses', ?) ON CONFLICT(entity, id) DO NOTHING`,
+    id,
+  );
+  forgetLedgerLists(env);
+  return current;
 }
 
 export async function mergeAllExpenses(env: SettingsEnv): Promise<ExpenseRecord[]> {
@@ -100,6 +281,7 @@ export function withReceiptUrls(expenses: ExpenseRecord[]): ExpenseWithReceipt[]
     const hydrated = hydratePaidDate(e);
     return {
       ...hydrated,
+      version: hydrated.version ?? 0,
       receiptUrl: hydrated.receiptStoragePath
         ? `/api/expenses/${encodeURIComponent(hydrated.id)}/receipt`
         : null,

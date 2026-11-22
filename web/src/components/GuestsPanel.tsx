@@ -185,15 +185,37 @@ export function GuestsPanel({
     });
   }, [reservations, houseFilter, houseQuery]);
 
+  async function removeStay(stay: Reservation) {
+    const property = PROPERTIES[stay.propertyId]?.name ?? stay.propertyId;
+    const label = `${stay.guestName} · ${stay.source} · ${property} · ${stay.checkIn}–${stay.checkOut} (${formatCurrency(stay.payout)})`;
+    if (!window.confirm(`Delete this stay?\n\n${label}\n\nThis removes it from the board.`)) return;
+    setBusyId(stay.id);
+    try {
+      await api.deleteReservation(stay.id, stay.version);
+      setReservations((rows) => rows.filter((row) => row.id !== stay.id));
+      if (openId === stay.id) setOpenId(null);
+      onToast('Stay removed', 'success');
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : 'Could not delete stay', 'error');
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function saveContacts(stay: Reservation) {
     const draft = drafts[stay.id] ?? { email: '', phone: '', code: '' };
     setBusyId(stay.id);
     try {
-      await api.updateReservationContacts(stay.id, {
-        guestEmail: draft.email,
-        guestPhone: draft.phone,
-        confirmationCode: draft.code,
-      });
+      await api.updateReservationContacts(
+        stay.id,
+        {
+          guestEmail: draft.email,
+          guestPhone: draft.phone,
+          confirmationCode: draft.code,
+        },
+        stay.version,
+      );
       onToast('Contacts saved', 'success');
       await load();
     } catch (e) {
@@ -777,6 +799,15 @@ export function GuestsPanel({
                 className="px-4 py-2 rounded-xl border border-slate-700 text-xs font-black uppercase"
               >
                 {open ? 'Hide answers' : 'Answers'}
+              </button>
+              <button
+                type="button"
+                data-bot="reservation-delete"
+                disabled={busyId === stay.id}
+                onClick={() => void removeStay(stay)}
+                className="px-4 py-2 rounded-xl border border-red-900 text-red-300 text-xs font-black uppercase disabled:opacity-40"
+              >
+                Delete stay
               </button>
             </div>
 

@@ -32,7 +32,7 @@ export function ExpenseRow({
   variant = 'stack',
 }: {
   expense: Expense;
-  onDelete?: (id: string) => Promise<void>;
+  onDelete?: (id: string, version?: number) => Promise<void>;
   onRefresh?: () => void;
   onError: (msg: string) => void;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
@@ -140,7 +140,7 @@ export function ExpenseRow({
     if (!onRefresh || expense.paidBy === paidBy) return;
     setSavingPaidBy(true);
     try {
-      await api.updateExpense(expense.id, { paidBy });
+      await api.updateExpense(expense.id, { paidBy }, expense.version);
       onToast(`Marked as ${PAID_BY_LABELS[paidBy]}`, 'success');
       onRefresh();
     } catch (e) {
@@ -154,7 +154,7 @@ export function ExpenseRow({
     if (!onRefresh || !next || next === paidDate) return;
     setSavingPaidDate(true);
     try {
-      await api.updateExpense(expense.id, { paidDate: next });
+      await api.updateExpense(expense.id, { paidDate: next }, expense.version);
       onToast(`Paid date set to ${formatPaidDate(next)}`, 'success');
       onRefresh();
     } catch (e) {
@@ -168,7 +168,7 @@ export function ExpenseRow({
     if (!onDelete || !window.confirm(`Delete this expense (${formatCurrency(expense.amount)})?`)) return;
     setDeleting(true);
     try {
-      await onDelete(expense.id);
+      await onDelete(expense.id, expense.version);
       onToast('Expense removed', 'success');
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not delete expense');

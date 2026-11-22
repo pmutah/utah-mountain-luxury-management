@@ -346,7 +346,7 @@ export function corsJson(
     'Content-Type': 'application/json',
     'Access-Control-Allow-Methods': 'GET, PUT, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers':
-      'Authorization, Content-Type, x-muse-bot-secret, x-dashboard-password',
+      'Authorization, Content-Type, If-Match, x-muse-bot-secret, x-dashboard-password',
     ...corsHeaders(request),
     ...extraHeaders,
   };

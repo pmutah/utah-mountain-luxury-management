@@ -21,7 +21,7 @@ export function HouseholdExpenseRow({
 }: {
   expense: Expense;
   onRefresh: () => void;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string, version?: number) => Promise<void>;
   onToast: (msg: string, kind?: 'success' | 'error' | 'info') => void;
   onError: (msg: string) => void;
 }) {
@@ -51,7 +51,7 @@ export function HouseholdExpenseRow({
   const persist = async (patch: { note?: string; amount?: number; paidDate?: string; category?: string }) => {
     setSaving(true);
     try {
-      await api.updateExpense(expense.id, patch);
+      await api.updateExpense(expense.id, patch, expense.version);
       onRefresh();
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not update expense');
@@ -116,7 +116,7 @@ export function HouseholdExpenseRow({
     if (!window.confirm(`Delete this expense (${formatCurrency(expense.amount)})?`)) return;
     setDeleting(true);
     try {
-      await onDelete(expense.id);
+      await onDelete(expense.id, expense.version);
       onToast('Expense removed', 'success');
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Could not delete expense');

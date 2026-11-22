@@ -363,9 +363,9 @@ export function OurExpenses({
     }
   };
 
-  const deleteExpense = async (id: string) => {
+  const deleteExpense = async (id: string, version?: number) => {
     // A delete is archived on the server, so this can be undone from the panel below.
-    const result = await api.deleteExpense(id);
+    const result = await api.deleteExpense(id, undefined, version);
     if (result.archived) setArchiveNotice(`Removed. It can be restored from “Removed expenses” below.`);
     await load();
   };

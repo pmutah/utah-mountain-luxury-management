@@ -118,8 +118,8 @@ export function BatchBillImporter({
     .filter((e) => e.id.startsWith('exp-'))
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
 
-  const deleteImport = async (id: string) => {
-    await api.deleteExpense(id);
+  const deleteImport = async (id: string, version?: number) => {
+    await api.deleteExpense(id, undefined, version);
     onRefresh();
   };
 
