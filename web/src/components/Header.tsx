@@ -154,7 +154,7 @@ export function Header({
             target="_blank"
             rel="noreferrer"
             data-bot="header-guest-site"
-            className="uml-kicker hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-full border border-[var(--uml-line)] hover:border-[var(--uml-gold)] hover:text-[var(--uml-gold)] transition-colors"
+            className="uml-kicker inline-flex items-center gap-1 px-3 py-2 rounded-full border border-[var(--uml-line)] hover:border-[var(--uml-gold)] hover:text-[var(--uml-gold)] transition-colors"
             title="Open live direct-booking website"
           >
             Guest site <ExternalLink className="h-3 w-3" aria-hidden="true" />

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import {
   Bot,
   CalendarDays,
+  ExternalLink,
   FileSpreadsheet,
   Hammer,
   Home,
@@ -197,6 +198,15 @@ export function SidebarNav({
       </div>
       <div className="flex-1 space-y-5 overflow-y-auto px-2 pb-6">
         <Section label="Operations" collapsed={collapsed}>
+          <a
+            href="/houses/"
+            data-bot="nav-guest-site"
+            title="Guest site"
+            className="uml-side"
+          >
+            <ExternalLink className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className={collapsed ? 'sr-only' : 'truncate'}>Guest site</span>
+          </a>
           {operations.map((item) => (
             <ItemButton key={item.id} item={item} collapsed={collapsed} />
           ))}
