@@ -1,4 +1,4 @@
-import { RESERVATIONS } from './data';
+import { RESERVATIONS, isRentalProperty } from './data';
 import { kvGet, kvPut, newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
@@ -162,7 +162,8 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
      */
     .filter((r) => {
       if (!DAY.test(String(r.checkIn)) || !DAY.test(String(r.checkOut))) return false;
-      if (!(r.propertyId === 'ranch' || r.propertyId === 'lindon' || r.propertyId === 'river')) return false;
+      // Same house check the KV import uses before it writes `reservations.property_id`.
+      if (typeof r.propertyId !== 'string' || !isRentalProperty(r.propertyId)) return false;
       return r.checkOut > r.checkIn;
     })
     .map((r) => ({ ...r, version: (r as VersionedReservation).version ?? 0 }))

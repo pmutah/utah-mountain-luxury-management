@@ -9,10 +9,12 @@
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { migrateKvLedger } from './ledger-migrate.ts';
+import { one } from './ledger-db.ts';
+import { onRequestPost as onMigratePost } from '../api/ledger/migrate.ts';
 import { deleteReservation, getAllReservations, updateReservation } from './reservations-store.ts';
 import { loadCustomExpenses, updateExpenseRow } from './expenses.ts';
 import { onRequestPatch } from '../api/reservations/[id].ts';
@@ -21,7 +23,12 @@ import { onRequestGet as onExpensesGet } from '../api/expenses/index.ts';
 import type { SettingsEnv } from './kv.ts';
 import type { LedgerDb, D1Statement } from './ledger-db.ts';
 
-const SCHEMA = readFileSync(join(process.cwd(), 'migrations/ledger/0001_ledger.sql'), 'utf8');
+const LEDGER_DIR = join(process.cwd(), 'migrations/ledger');
+const SCHEMA = readdirSync(LEDGER_DIR)
+  .filter((name) => name.endsWith('.sql'))
+  .sort()
+  .map((name) => readFileSync(join(LEDGER_DIR, name), 'utf8'))
+  .join('\n');
 const PASSWORD = 'test-password';
 const COOKIE = `wpm_auth=${btoa(`wpm:${PASSWORD}`).replace(/=+$/, '')}`;
 
@@ -302,4 +309,265 @@ test('a stored payout beats the seed amount after import', async () => {
   const row = (await getAllReservations(env)).find((stay) => stay.id === 'res-kim');
   assert.equal(row?.payout, 927.46);
   assert.equal(row?.source, 'VRBO');
+});
+
+test('a missing house resolves from another field or the seed, and a row that cannot is kept', async () => {
+  const bad = {
+    id: 'res-bad',
+    guestName: 'No House',
+    listingId: 'not-a-house',
+    checkIn: '2027-05-01',
+    checkOut: '2027-05-04',
+    payout: 10,
+    source: 'Direct',
+  };
+  const { env, puts, data } = openDb({
+    reservations: JSON.stringify([
+      stay('res-ok', 100, '2027-03-01', '2027-03-04'),
+      {
+        id: 'res-prop',
+        guestName: 'Ada',
+        property: 'river',
+        checkIn: '2027-04-01',
+        checkOut: '2027-04-04',
+        payout: 50,
+        source: 'Direct',
+      },
+      {
+        id: 'res-named',
+        guestName: 'Bea',
+        propertyName: 'The Lindon House',
+        checkIn: '2027-04-10',
+        checkOut: '2027-04-12',
+        payout: 40,
+        source: 'Airbnb',
+      },
+      {
+        id: 'r-shelly',
+        guestName: 'Shelly Terry',
+        checkIn: '2026-10-08',
+        checkOut: '2026-10-11',
+        payout: 1939.27,
+        source: 'Airbnb',
+      },
+      {
+        id: 'res-ical',
+        guestName: 'Cal',
+        propertyId: 'ranch',
+        start: '2027-10-01',
+        end: '2027-10-04',
+        payout: 1,
+        source: 'Calendar',
+      },
+      {
+        id: 'res-nodate',
+        guestName: 'No Date',
+        propertyId: 'ranch',
+        payout: 3,
+        source: 'Direct',
+      },
+      bad,
+    ]),
+    reservationOverrides: JSON.stringify({
+      r1: { note: 'left a note', source: 'Airbnb' },
+      'only-ov': { guestName: 'Pat Only', checkIn: '2027-06-01', checkOut: '2027-06-04' },
+    }),
+    customExpenses: '[]',
+  });
+
+  const imported = await migrateKvLedger(env);
+  assert.equal(imported.kvWrites, false);
+  assert.equal(imported.dryRun, false);
+  assert.equal(imported.reservationsInserted, 5);
+  assert.equal(imported.overridesInserted, 2);
+  assert.deepEqual(puts.filter((key) => key === 'reservations' || key === 'reservationOverrides'), []);
+
+  const byId = async (id: string) =>
+    one<{ property_id: string; check_in: string; check_out: string }>(
+      env,
+      'SELECT property_id, check_in, check_out FROM reservations WHERE id = ?',
+      id,
+    );
+  assert.equal((await byId('res-prop'))?.property_id, 'river');
+  assert.equal((await byId('res-named'))?.property_id, 'lindon');
+  assert.equal((await byId('r-shelly'))?.property_id, 'ranch');
+  assert.equal((await byId('res-ical'))?.check_in, '2027-10-01');
+  assert.equal((await byId('res-ical'))?.check_out, '2027-10-04');
+  assert.equal(await byId('res-bad'), null);
+  assert.equal(await byId('res-nodate'), null);
+  assert.equal(await byId('only-ov'), null);
+
+  const shown = await getAllReservations(env);
+  assert.equal(shown.find((row) => row.id === 'res-prop')?.propertyId, 'river');
+  assert.equal(shown.find((row) => row.id === 'res-bad'), undefined);
+
+  const badReport = imported.unresolved.find((row) => row.id === 'res-bad');
+  assert.equal(badReport?.sourceKey, 'reservations');
+  assert.equal(badReport?.guest, 'No House');
+  assert.equal(badReport?.dates, '2027-05-01 to 2027-05-04');
+  assert.deepEqual(badReport?.missing, ['property_id']);
+  assert.equal(badReport?.rawFields.listingId, 'not-a-house');
+  assert.equal(badReport?.rawFields.propertyId, null);
+  assert.equal(badReport?.rawFields.property, null);
+  assert.equal(badReport?.rawFields.propertyName, null);
+
+  const nodate = imported.unresolved.find((row) => row.id === 'res-nodate');
+  assert.ok(nodate?.missing.includes('check_in') && nodate.missing.includes('check_out'));
+
+  const orphan = imported.unresolved.find((row) => row.id === 'only-ov');
+  assert.equal(orphan?.sourceKey, 'reservationOverrides');
+  assert.equal(orphan?.guest, 'Pat Only');
+  assert.deepEqual(orphan?.missing, ['property_id']);
+  assert.equal(imported.unresolved.some((row) => row.id === 'r1'), false);
+
+  const storedOverride = await one<{ body: string }>(
+    env,
+    'SELECT body FROM reservation_overrides WHERE id = ?',
+    'only-ov',
+  );
+  assert.equal(JSON.parse(storedOverride?.body ?? '{}').guestName, 'Pat Only');
+  const kept = await one<{ body: string }>(env, 'SELECT body FROM ledger_unresolved WHERE source_key = ? AND id = ?', 'reservations', 'res-bad');
+  assert.equal(JSON.parse(kept?.body ?? '{}').listingId, 'not-a-house');
+
+  const again = await migrateKvLedger({
+    LEDGER_DB: env.LEDGER_DB,
+    SETTINGS: env.SETTINGS,
+    DASHBOARD_PASSWORD: PASSWORD,
+  } as typeof env);
+  assert.equal(again.alreadyMigrated, true);
+  assert.equal(again.reservationsInserted, 0);
+  assert.equal(again.unresolved.filter((row) => row.id === 'res-bad').length, 1);
+  const stillOne = await one<{ n: number }>(
+    env,
+    "SELECT COUNT(*) AS n FROM ledger_unresolved WHERE source_key = 'reservations' AND id = 'res-bad'",
+  );
+  assert.equal(Number(stillOne?.n), 1);
+
+  const fixed = { ...bad, propertyId: 'ranch' };
+  data.set(
+    'reservations',
+    JSON.stringify([
+      stay('res-ok', 100, '2027-03-01', '2027-03-04'),
+      fixed,
+    ]),
+  );
+  const third = await migrateKvLedger({
+    LEDGER_DB: env.LEDGER_DB,
+    SETTINGS: env.SETTINGS,
+    DASHBOARD_PASSWORD: PASSWORD,
+  } as typeof env);
+  assert.equal(third.reservationsInserted, 1);
+  assert.equal(third.unresolved.some((row) => row.id === 'res-bad'), false);
+  assert.equal((await byId('res-bad'))?.property_id, 'ranch');
+  const cleared = await one<{ n: number }>(
+    env,
+    "SELECT COUNT(*) AS n FROM ledger_unresolved WHERE source_key = 'reservations' AND id = 'res-bad'",
+  );
+  assert.equal(Number(cleared?.n), 0);
+});
+
+test('an expense missing a required column is reported and the others are saved', async () => {
+  const { env, puts } = openDb({
+    reservations: JSON.stringify([
+      {
+        id: 'res-now',
+        guestName: 'No Stamp',
+        propertyId: 'river',
+        checkIn: '2027-07-01',
+        checkOut: '2027-07-03',
+        payout: 1,
+        source: 'Direct',
+      },
+    ]),
+    customExpenses: JSON.stringify([
+      { id: 'exp-ok', month: '2026-11', propertyId: 'ranch', category: 'Repair', amount: 40 },
+      { id: 'exp-named', propertyName: 'The Ranch House', month: '2026-8', category: 'Supplies', amount: '12.5' },
+      { id: 'exp-house', property: 'household', month: '2026-10', category: 'Furnishings', amount: 9 },
+      { id: 'exp-zero', month: '2026-11', propertyId: 'ranch', category: 'Other', amount: 0 },
+      { id: 'exp-rmp', propertyId: 'ranch', month: '2026-09', amount: 30, vendor: 'Rocky Mountain Power' },
+      { id: 'exp-note', propertyId: 'lindon', category: 'Utilities', amount: 20, note: 'Paid 2026-08-05' },
+      { id: 'exp-gap', vendor: 'Mystery Shop', note: 'no month or amount' },
+    ]),
+  });
+
+  const imported = await migrateKvLedger(env);
+  assert.equal(imported.expensesInserted, 6);
+  assert.equal(imported.reservationsInserted, 1);
+  assert.deepEqual(puts.filter((key) => key === 'customExpenses'), []);
+
+  const gap = imported.unresolved.find((row) => row.id === 'exp-gap');
+  assert.equal(gap?.sourceKey, 'customExpenses');
+  assert.equal(gap?.guest, 'Mystery Shop');
+  assert.ok(gap?.missing.includes('property_id'));
+  assert.ok(gap?.missing.includes('month'));
+  assert.ok(gap?.missing.includes('category'));
+  assert.ok(gap?.missing.includes('amount'));
+  assert.equal(await one(env, 'SELECT id FROM expenses WHERE id = ?', 'exp-gap'), null);
+
+  const rows = await loadCustomExpenses(env);
+  assert.equal(rows.find((row) => row.id === 'exp-named')?.propertyId, 'ranch');
+  assert.equal(rows.find((row) => row.id === 'exp-named')?.month, '2026-08');
+  assert.equal(rows.find((row) => row.id === 'exp-named')?.amount, 12.5);
+  assert.equal(rows.find((row) => row.id === 'exp-house')?.propertyId, 'household');
+  assert.equal(rows.find((row) => row.id === 'exp-zero')?.amount, 0);
+  assert.equal(rows.find((row) => row.id === 'exp-rmp')?.category, 'Utilities');
+  assert.equal(rows.find((row) => row.id === 'exp-note')?.month, '2026-08');
+  assert.equal(rows.find((row) => row.id === 'exp-ok')?.amount, 40);
+
+  const stamp = await one<{ updated_at: string }>(env, 'SELECT updated_at FROM reservations WHERE id = ?', 'res-now');
+  assert.match(stamp?.updated_at ?? '', /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('dryRun=1 returns counts and unresolved rows and writes nothing', async () => {
+  const seed = {
+    reservations: JSON.stringify([
+      stay('res-ok', 80, '2027-03-01', '2027-03-04'),
+      { id: 'res-bad', guestName: 'No House', checkIn: '2027-05-01', checkOut: '2027-05-03', payout: 1, source: 'Direct' },
+    ]),
+    reservationOverrides: JSON.stringify({
+      'only-ov': { guestName: 'Pat Only', checkIn: '2027-06-01', checkOut: '2027-06-04' },
+    }),
+    customExpenses: JSON.stringify([
+      { id: 'exp-ok', month: '2026-11', propertyId: 'ranch', category: 'Repair', amount: 40 },
+      { id: 'exp-gap', note: 'nothing else' },
+    ]),
+  };
+  const { env, puts, db } = openDb(seed);
+  const preview = await onMigratePost({
+    request: new Request('https://x/api/ledger/migrate?dryRun=1', {
+      method: 'POST',
+      headers: { Cookie: COOKIE },
+    }),
+    env,
+  } as unknown as Parameters<typeof onMigratePost>[0]);
+  assert.equal(preview.status, 200, await preview.clone().text());
+  const body = (await preview.json()) as {
+    dryRun?: boolean;
+    kvWrites?: boolean;
+    reservationsInserted?: number;
+    overridesInserted?: number;
+    expensesInserted?: number;
+    unresolved?: Array<{ id: string }>;
+  };
+  assert.equal(body.dryRun, true);
+  assert.equal(body.kvWrites, false);
+  assert.equal(body.reservationsInserted, 1);
+  assert.equal(body.overridesInserted, 1);
+  assert.equal(body.expensesInserted, 1);
+  assert.deepEqual(
+    body.unresolved?.map((row) => row.id).sort(),
+    ['exp-gap', 'only-ov', 'res-bad'],
+  );
+  assert.equal(Number((db.prepare('SELECT COUNT(*) AS n FROM reservations').get() as { n: number }).n), 0);
+  assert.equal(Number((db.prepare('SELECT COUNT(*) AS n FROM expenses').get() as { n: number }).n), 0);
+  assert.equal(Number((db.prepare('SELECT COUNT(*) AS n FROM ledger_unresolved').get() as { n: number }).n), 0);
+  assert.equal(db.prepare('SELECT value FROM ledger_meta WHERE key = ?').get('kv_imported_at'), undefined);
+  assert.deepEqual(puts, []);
+
+  const written = await migrateKvLedger(env);
+  assert.equal(written.dryRun, false);
+  assert.equal(written.reservationsInserted, 1);
+  assert.equal(written.expensesInserted, 1);
+  assert.equal(Number((db.prepare('SELECT COUNT(*) AS n FROM reservations').get() as { n: number }).n), 1);
+  assert.equal(puts.filter((key) => key === 'reservations' || key === 'customExpenses').length, 0);
 });
