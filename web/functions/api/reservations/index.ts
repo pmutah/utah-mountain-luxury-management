@@ -13,6 +13,9 @@ import { readOrRefuse } from '../../_lib/read-guard';
 import { allowedHouses, refuseReadOnly, resolveCaller, stripHouses } from '../../_lib/roles';
 import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 
+/** A booking list is a live read. A cached copy is how version 1 and version 2 take turns. */
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   /*
@@ -28,14 +31,19 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
     list = await getAllReservations(env);
   } catch (err) {
     if (storageReadPaused(err)) {
-      return corsJson(request, {
-        reservations: [],
-        storageReads: 'paused',
-        error: 'Saved bookings could not be read. Nothing was written over them.',
-      });
+      return corsJson(
+        request,
+        {
+          reservations: [],
+          storageReads: 'paused',
+          error: 'Saved bookings could not be read. Nothing was written over them.',
+        },
+        200,
+        NO_STORE,
+      );
     }
     const message = err instanceof Error ? err.message : 'Bookings failed';
-    return corsJson(request, { error: message }, 500);
+    return corsJson(request, { error: message }, 500, NO_STORE);
   }
   if (propertyId || when) {
     list = filterReservations(list, {
@@ -50,11 +58,16 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) =>
    */
   const caller = resolveCaller(request, env);
   if (caller.kind === 'denied') return hostDenied(request, env);
-  return corsJson(request, {
-    reservations: stripHouses(list, caller.role),
-    storageReads: 'ok',
-    ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role), readOnly: true } : {}),
-  });
+  return corsJson(
+    request,
+    {
+      reservations: stripHouses(list, caller.role),
+      storageReads: 'ok',
+      ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role), readOnly: true } : {}),
+    },
+    200,
+    NO_STORE,
+  );
 };
 
 export const onRequestPost: PagesFunction<AgentEnv> = async ({ request, env }) => {

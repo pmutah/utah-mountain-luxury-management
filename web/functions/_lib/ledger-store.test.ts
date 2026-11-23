@@ -17,7 +17,7 @@ import { one } from './ledger-db.ts';
 import { onRequestPost as onMigratePost } from '../api/ledger/migrate.ts';
 import { deleteReservation, getAllReservations, updateReservation } from './reservations-store.ts';
 import { loadCustomExpenses, updateExpenseRow } from './expenses.ts';
-import { onRequestPatch } from '../api/reservations/[id].ts';
+import { onRequestGet as onReservationGet, onRequestPatch } from '../api/reservations/[id].ts';
 import { onRequestGet as onReservationsGet } from '../api/reservations/index.ts';
 import { onRequestGet as onExpensesGet } from '../api/expenses/index.ts';
 import type { SettingsEnv } from './kv.ts';
@@ -570,4 +570,132 @@ test('dryRun=1 returns counts and unresolved rows and writes nothing', async () 
   assert.equal(written.expensesInserted, 1);
   assert.equal(Number((db.prepare('SELECT COUNT(*) AS n FROM reservations').get() as { n: number }).n), 1);
   assert.equal(puts.filter((key) => key === 'reservations' || key === 'customExpenses').length, 0);
+});
+
+test('GET stays on D1 v2 after PATCH even when an earlier read cached KV and the blob is still old', async () => {
+  /*
+   * Production: PATCH /api/reservations/res-1795381019128-6uwzya wrote D1 version 2, and the next
+   * GETs alternated version 1 and version 2. The version 1 copy was the KV blob, which is not
+   * updated after import. These two handler calls share the module (one import) and the first
+   * call's env, which is where a memoized "not migrated" or a memoized list would live.
+   */
+  const id = 'res-1795381019128-6uwzya';
+  const george = {
+    id,
+    guestName: 'George',
+    propertyId: 'ranch' as const,
+    checkIn: '2026-01-15',
+    checkOut: '2026-01-19',
+    payout: 111,
+    source: 'Direct',
+    status: 'confirmed' as const,
+    note: 'imported',
+    createdAt: '2026-11-22T00:00:00.000Z',
+  };
+  const { env, data, db } = openDb({
+    reservations: JSON.stringify([george]),
+    reservationOverrides: '{}',
+    customExpenses: JSON.stringify([
+      { id: 'exp-1', month: '2026-11', propertyId: 'ranch', category: 'Repair', amount: 40 },
+    ]),
+  });
+
+  const early = await onReservationsGet({
+    request: new Request('https://x/api/reservations', { headers: { Cookie: COOKIE } }),
+    env,
+    waitUntil() {},
+  } as unknown as Parameters<typeof onReservationsGet>[0]);
+  assert.equal(early.status, 200, await early.clone().text());
+
+  const other = {
+    LEDGER_DB: env.LEDGER_DB,
+    SETTINGS: env.SETTINGS,
+    DASHBOARD_PASSWORD: PASSWORD,
+  } as typeof env;
+  await migrateKvLedger(other);
+  data.set(
+    'reservations',
+    JSON.stringify([{ ...george, guestName: 'Stale George', note: 'kv-v1', payout: 1, version: 1 }]),
+  );
+  data.set(
+    'customExpenses',
+    JSON.stringify([{ id: 'exp-1', month: '2026-11', propertyId: 'ranch', category: 'Repair', amount: 1 }]),
+  );
+
+  const patched = await onRequestPatch({
+    request: new Request(`https://x/api/reservations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Cookie: COOKIE, 'If-Match': '"1"' },
+      body: JSON.stringify({ note: 'v2' }),
+    }),
+    env: other,
+    params: { id },
+  } as unknown as Parameters<typeof onRequestPatch>[0]);
+  assert.equal(patched.status, 200, await patched.clone().text());
+  assert.equal(((await patched.json()) as { version?: number }).version, 2);
+
+  const readList = async (target: typeof env) => {
+    const res = await onReservationsGet({
+      request: new Request('https://x/api/reservations', { headers: { Cookie: COOKIE } }),
+      env: target,
+      waitUntil() {},
+    } as unknown as Parameters<typeof onReservationsGet>[0]);
+    assert.equal(res.status, 200, await res.clone().text());
+    assert.equal(res.headers.get('Cache-Control'), 'no-store');
+    const body = (await res.json()) as {
+      reservations: Array<{
+        id: string;
+        version?: number;
+        note?: string;
+        guestName?: string;
+        payout?: number;
+        source?: string;
+      }>;
+    };
+    return body.reservations.find((row) => row.id === id);
+  };
+
+  const again = await readList(env);
+  const freshEnv = {
+    LEDGER_DB: env.LEDGER_DB,
+    SETTINGS: env.SETTINGS,
+    DASHBOARD_PASSWORD: PASSWORD,
+  } as typeof env;
+  const fresh = await readList(freshEnv);
+  const third = await readList(freshEnv);
+  for (const row of [again, fresh, third]) {
+    assert.ok(row, 'George was missing from the list');
+    assert.equal(row!.version, 2);
+    assert.equal(row!.note, 'v2');
+    assert.equal(row!.guestName, 'George');
+    assert.equal(row!.payout, 111, 'the seed payout replaced the stored one');
+    assert.equal(row!.source, 'Direct', 'the seed channel replaced the stored one');
+  }
+
+  const oneStay = await onReservationGet({
+    request: new Request(`https://x/api/reservations/${id}`, { headers: { Cookie: COOKIE } }),
+    env,
+    params: { id },
+  } as unknown as Parameters<typeof onReservationGet>[0]);
+  assert.equal(oneStay.status, 200, await oneStay.clone().text());
+  assert.equal(oneStay.headers.get('Cache-Control'), 'no-store');
+  const oneBody = (await oneStay.json()) as { version?: number; note?: string; source?: string };
+  assert.equal(oneBody.version, 2);
+  assert.equal(oneBody.note, 'v2');
+  assert.equal(oneBody.source, 'Direct');
+
+  const bills = await onExpensesGet({
+    request: new Request('https://x/api/expenses', { headers: { Cookie: COOKIE } }),
+    env,
+  } as unknown as Parameters<typeof onExpensesGet>[0]);
+  assert.equal(bills.status, 200, await bills.clone().text());
+  assert.equal(bills.headers.get('Cache-Control'), 'no-store');
+  const expenseBody = (await bills.json()) as { custom: Array<{ id: string; amount: number; version?: number }> };
+  const exp = expenseBody.custom.find((row) => row.id === 'exp-1');
+  assert.equal(exp?.amount, 40);
+  assert.equal(exp?.version, 1);
+
+  const stored = db.prepare('SELECT version FROM reservations WHERE id = ?').get(id) as { version: number };
+  assert.equal(Number(stored.version), 2);
+  assert.match(data.get('reservations') ?? '', /Stale George/);
 });

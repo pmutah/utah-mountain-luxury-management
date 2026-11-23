@@ -4,7 +4,6 @@ import type { SettingsEnv } from './kv';
 import type { PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
 import { applyHostNetFromSeed, datesOverlap } from './reservation-match';
 import { earnsOnCancellation } from '../../src/lib/cancellation-income';
-import { cachedGet } from './request-cache';
 import {
   VersionConflictError,
   canonicalJson,
@@ -51,8 +50,9 @@ async function readReservationRows(env: SettingsEnv): Promise<VersionedReservati
   return rows.map((row) => parseReservation(row.body, Number(row.version), row.updated_at));
 }
 
+/** Every call reads D1. The list is not memoized on the isolate or on `env`. */
 async function d1ReservationRows(env: SettingsEnv): Promise<VersionedReservation[]> {
-  return cachedGet(env, () => readReservationRows(env), 'ledger:reservations');
+  return readReservationRows(env);
 }
 
 async function readOverrideRows(
@@ -69,10 +69,11 @@ async function readOverrideRows(
   return out;
 }
 
+/** Every call reads D1. Overrides are not memoized on the isolate or on `env`. */
 async function d1OverrideRows(
   env: SettingsEnv,
 ): Promise<Record<string, Partial<ReservationRecord> & { version?: number; updatedAt?: string }>> {
-  return cachedGet(env, () => readOverrideRows(env), 'ledger:overrides');
+  return readOverrideRows(env);
 }
 
 async function reservationById(env: SettingsEnv, id: string): Promise<VersionedReservation | null> {
@@ -108,15 +109,23 @@ export function seedReservations(): ReservationRecord[] {
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function getAllReservations(env: SettingsEnv): Promise<ReservationRecord[]> {
+  const fromD1 = await ledgerReady(env);
   const seed = seedReservations();
   const custom = withoutKnownDirectDuplicate(await loadCustomReservations(env));
   const overrides = await loadReservationOverrides(env);
+  /*
+   * A stay that has its own D1 row is that row. The seed entry with the same id is a second copy,
+   * and showing the seed one drops the stored version and the stored fields.
+   */
+  const storedIds = fromD1 ? new Set(custom.map((r) => r.id)) : null;
 
-  const merged = seed.map((r) => ({
-    ...r,
-    ...overrides[r.id],
-    status: (overrides[r.id]?.status ?? r.status ?? 'confirmed') as ReservationStatus,
-  }));
+  const merged = seed
+    .filter((r) => !storedIds?.has(r.id))
+    .map((r) => ({
+      ...r,
+      ...overrides[r.id],
+      status: (overrides[r.id]?.status ?? r.status ?? 'confirmed') as ReservationStatus,
+    }));
 
   const cancelledIds = new Set(
     Object.entries(overrides)
@@ -147,8 +156,12 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
   const seedIds = new Set(activeSeed.map((r) => r.id));
   const extraCustom = custom.filter((r) => !seedIds.has(r.id) && (r.status !== 'cancelled' || earnsOnCancellation(r)));
 
-  return [...activeSeed, ...extraCustom]
-    .map((r) => applyHostNetFromSeed(r))
+  /*
+   * Before the import, a $0 iCal row still borrows the seed payout. After it, the stored row is
+   * the row: a seed stay on the same dates must not replace a D1 payout, channel, or version.
+   */
+  const rows = [...activeSeed, ...extraCustom];
+  return (fromD1 ? rows : rows.map((r) => applyHostNetFromSeed(r)))
     /*
      * A stay needs a real daytime date and a real house. The old test was `typeof === 'string'`, and the
      * literal string `"undefined"` passes that: production held `res-1790218847843-tei46q` with
@@ -186,12 +199,24 @@ export async function findReservationAnyStatus(
 
   if (await ledgerReady(env)) {
     const stored = await reservationById(env, id);
-    if (stored) return applyHostNetFromSeed({ ...stored, version: stored.version ?? 0 });
-  } else {
-    const custom = await loadCustomReservations(env);
-    const stored = custom.find((r) => r.id === id);
-    if (stored) return applyHostNetFromSeed(stored);
+    if (stored) return { ...stored, version: stored.version ?? 0 };
+    const d1Overrides = await loadReservationOverrides(env);
+    const d1Seed = RESERVATIONS.find((r) => r.id === id);
+    if (!d1Seed) return null;
+    const overlay = d1Overrides[id] as (Partial<ReservationRecord> & { version?: number; updatedAt?: string }) | undefined;
+    return {
+      ...d1Seed,
+      propertyId: d1Seed.propertyId as PropertyId,
+      ...overlay,
+      status: (overlay?.status ?? 'confirmed') as ReservationStatus,
+      version: overlay?.version ?? 0,
+      updatedAt: overlay?.updatedAt,
+    };
   }
+
+  const custom = await loadCustomReservations(env);
+  const stored = custom.find((r) => r.id === id);
+  if (stored) return applyHostNetFromSeed(stored);
 
   const overrides = await loadReservationOverrides(env);
   const seedMatch = RESERVATIONS.find((r) => r.id === id);

@@ -22,6 +22,9 @@ type ExpenseEnv = SettingsEnv & FirebaseStorageEnv & { DASHBOARD_PASSWORD?: stri
 const PAUSED =
   'Saved expenses could not be read. Storage reads are paused for the rest of the day. Nothing was written over them.';
 
+/** The ledger is a live read. A cached copy is how an old amount and a new one take turns. */
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
 export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   try {
@@ -35,17 +38,22 @@ export const onRequestGet: PagesFunction<ExpenseEnv> = async ({ request, env }) 
      */
     const caller = resolveCaller(request, env);
     if (caller.kind === 'denied') return hostDenied(request, env);
-    return corsJson(request, {
-      expenses: stripHouses(all, caller.role),
-      custom: stripHouses(custom, caller.role),
-      ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role), readOnly: true } : {}),
-    });
+    return corsJson(
+      request,
+      {
+        expenses: stripHouses(all, caller.role),
+        custom: stripHouses(custom, caller.role),
+        ...(caller.role === 'owner' ? { houses: allowedHouses(caller.role), readOnly: true } : {}),
+      },
+      200,
+      NO_STORE,
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (/limit exceeded|paused for the rest of the day|could not be read/i.test(message)) {
-      return corsJson(request, { error: PAUSED }, 503);
+      return corsJson(request, { error: PAUSED }, 503, NO_STORE);
     }
-    return corsJson(request, { error: message }, 500);
+    return corsJson(request, { error: message }, 500, NO_STORE);
   }
 };
 

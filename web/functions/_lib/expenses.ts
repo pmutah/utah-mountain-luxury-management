@@ -68,18 +68,13 @@ function parseExpense(body: string, version: number, updatedAt: string): Version
   return { ...(JSON.parse(body) as ExpenseRecord), version, updatedAt };
 }
 
+/** Every call reads D1. The list is not memoized on the isolate or on `env`. */
 async function d1Expenses(env: SettingsEnv): Promise<VersionedExpense[]> {
-  return cachedGet(
+  const rows = await many<{ body: string; version: number; updated_at: string }>(
     env,
-    async () => {
-      const rows = await many<{ body: string; version: number; updated_at: string }>(
-        env,
-        'SELECT body, version, updated_at FROM expenses',
-      );
-      return rows.map((row) => parseExpense(row.body, Number(row.version), row.updated_at));
-    },
-    'ledger:expenses',
+    'SELECT body, version, updated_at FROM expenses',
   );
+  return rows.map((row) => parseExpense(row.body, Number(row.version), row.updated_at));
 }
 
 export async function getExpenseById(env: SettingsEnv, id: string): Promise<VersionedExpense | null> {
