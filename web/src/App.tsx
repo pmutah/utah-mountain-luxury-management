@@ -598,6 +598,9 @@ function Dashboard() {
             <button type="button" className="uml-nav" data-bot="dock-documents" onClick={() => { setMoreOpen(false); go('report', 'documents'); }}>
               Documents
             </button>
+            <a href="/houses/" className="uml-nav" data-bot="dock-guest-site">
+              Guest site
+            </a>
             <div className="col-span-2 flex justify-end">
               <GuestThemeToggle />
             </div>
