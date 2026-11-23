@@ -24,3 +24,15 @@ Do **not** fight the top nav chips if clicks are intercepted. Use:
 ## Auth
 
 Cookie session via `POST /api/auth/login`. Local `wrangler pages dev` often has no password. Do not commit secrets or Cloudflare token scripts.
+
+## Phone (Remote Machine)
+
+The Cursor phone app lists this repo when a personal My Machines worker is running for this checkout on the same Windows PC that already serves Performance Motors DMS (`dms-pc` on `DESKTOP-1EAS993`).
+
+On that PC, from this clone:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-remote-machine.ps1
+```
+
+The worker name is `uml-pc`. On the phone: Cursor → Remote Machine → `uml-pc`. If that PC's Cursor CLI is not signed in yet, run `agent login` there with the same Cursor account, then run the script again. The script uses its own data directory and leaves the DMS workers running.
