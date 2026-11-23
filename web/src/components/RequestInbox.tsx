@@ -33,6 +33,7 @@ export function RequestInbox() {
   /** A second party in the house after an accept. Its own line, because it must not be skimmed past. */
   const [sharedHouse, setSharedHouse] = useState<string | null>(null);
   const [tallyLine, setTallyLine] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ kind: 'accept' | 'decline' | 'discard'; id: string; summary: string; detail: string } | null>(null);
 
   /** Decline a request. The reason is required; the guest is told unless the host unticks it. */
   /**
@@ -42,14 +43,16 @@ export function RequestInbox() {
    * the guest — the confirmation says plainly that nobody is contacted, because that is the whole reason
    * this exists.
    */
-  async function discard(id: string, summary: string) {
-    if (
-      !window.confirm(
-        `Remove this request from the inbox?\n\n${summary}\n\nNobody is emailed. Use Decline instead if the guest should be told.`,
-      )
-    ) {
-      return;
-    }
+  function discard(id: string, summary: string) {
+    setPending({
+      kind: 'discard',
+      id,
+      summary,
+      detail: `Remove this request from the inbox?\n\n${summary}\n\nNobody is emailed. Use Decline instead if the guest should be told.`,
+    });
+  }
+
+  async function runDiscard(id: string) {
     setBusy(id);
     setError(null);
     try {
@@ -62,7 +65,7 @@ export function RequestInbox() {
     }
   }
 
-  async function decline(id: string, summary: string) {
+  function decline(id: string, summary: string) {
     const reason = declineReasons[id] ?? '';
     if (!reason) {
       setError('Choose a reason before declining. Nothing is declined without one.');
@@ -73,11 +76,18 @@ export function RequestInbox() {
      * before this is noticed. Same gate as accepting: say who hears about it, and what happens to the
      * nights, before anything is sent.
      */
-    if (
-      !window.confirm(
-        `Decline it and email the guest?\n\n${summary}\nReason: ${reason}\n\nThe guest is told the dates are not available, and the hold lets go at once so another guest can ask for those nights.`,
-      )
-    ) {
+    setPending({
+      kind: 'decline',
+      id,
+      summary,
+      detail: `Decline it and email the guest?\n\n${summary}\nReason: ${reason}\n\nThe guest is told the dates are not available, and the hold lets go at once so another guest can ask for those nights.`,
+    });
+  }
+
+  async function runDecline(id: string) {
+    const reason = declineReasons[id] ?? '';
+    if (!reason) {
+      setError('Choose a reason before declining. Nothing is declined without one.');
       return;
     }
     setBusy(id);
@@ -98,7 +108,7 @@ export function RequestInbox() {
     }
   }
 
-  async function accept(id: string, summary: string) {
+  function accept(id: string, summary: string) {
     const raw = payouts[id] ?? '';
     const payout = Number(raw);
     if (raw.trim() === '' || !Number.isFinite(payout) || payout < 0) {
@@ -111,7 +121,19 @@ export function RequestInbox() {
      * happen and who will hear about it first.
      */
     const money = `$${payout.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (!window.confirm(`Book it and email the guest?\n\n${summary}\nPayout ${money}\n\nThe stay is saved and the guest is emailed a confirmation. Neither can be undone from here.`)) {
+    setPending({
+      kind: 'accept',
+      id,
+      summary,
+      detail: `Book it and email the guest?\n\n${summary}\nPayout ${money}\n\nThe stay is saved and the guest is emailed a confirmation. Neither can be undone from here.`,
+    });
+  }
+
+  async function runAccept(id: string) {
+    const raw = payouts[id] ?? '';
+    const payout = Number(raw);
+    if (raw.trim() === '' || !Number.isFinite(payout) || payout < 0) {
+      setError('Add a host payout of zero or more before accepting. Nothing is booked without it.');
       return;
     }
     setBusy(id);
@@ -155,6 +177,15 @@ export function RequestInbox() {
     } finally {
       setBusy(null);
     }
+  }
+
+  async function confirmPending() {
+    if (!pending) return;
+    const action = pending;
+    setPending(null);
+    if (action.kind === 'accept') await runAccept(action.id);
+    else if (action.kind === 'decline') await runDecline(action.id);
+    else await runDiscard(action.id);
   }
 
   const apply = useCallback((result: InboxResult | null) => {
@@ -389,6 +420,33 @@ export function RequestInbox() {
         <p className="mt-4 text-sm text-slate-400" data-bot="request-inbox-empty">
           No direct requests are waiting. Nothing is booked.
         </p>
+      )}
+      {pending && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="request-confirm-title"
+            data-bot="request-inbox-dialog"
+            className="w-full max-w-md rounded-3xl border border-[var(--uml-line)] bg-[var(--uml-bg)] p-5 text-[var(--uml-ink)]"
+          >
+            <p id="request-confirm-title" className="font-display text-2xl">Confirm</p>
+            <p className="mt-3 whitespace-pre-wrap text-sm">{pending.detail}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" className="uml-nav" onClick={() => setPending(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-bot="request-inbox-dialog-confirm"
+                className="uml-gold-btn rounded-full px-4 py-2 text-xs uppercase tracking-[0.14em]"
+                onClick={() => void confirmPending()}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

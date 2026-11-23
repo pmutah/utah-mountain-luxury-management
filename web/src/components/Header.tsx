@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { APP_NAME } from '../lib/brand';
 import type { DashboardTab, ReportView, RiverView } from '../lib/bot-nav';
 import { formatMonthLabel, addMonths } from '../lib/months';
-import { applyTheme, cycleTheme, readThemeChoice, themeLabel, type ThemeChoice } from '../lib/theme';
 import { BrandMark } from './BrandMark';
 
 const SCREEN_LABELS: Record<DashboardTab, string> = {
@@ -38,15 +37,28 @@ export function Header({
   onMonthChange: (m: string) => void;
   onQuickCapture?: () => void;
 }) {
-  const [choice, setChoice] = useState<ThemeChoice>('noir');
-  const [resolved, setResolved] = useState<'noir' | 'snow'>('noir');
-
+  const [askOpen, setAskOpen] = useState(false);
+  const askRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const initial = readThemeChoice();
-    setChoice(initial);
-    setResolved(applyTheme(initial));
-  }, []);
-
+    if (!askOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAskOpen(false);
+    };
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Node && askRef.current?.contains(target)) return;
+      setAskOpen(false);
+    };
+    const onAway = () => setAskOpen(false);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('hashchange', onAway);
+    document.addEventListener('mousedown', onPointer);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('hashchange', onAway);
+      document.removeEventListener('mousedown', onPointer);
+    };
+  }, [askOpen]);
   // Keyboard `[` and `]` step months when no form field has focus.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -70,12 +82,6 @@ export function Header({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [month, onMonthChange]);
-
-  const toggleTheme = () => {
-    const next = cycleTheme(choice);
-    setChoice(next);
-    setResolved(applyTheme(next));
-  };
 
   const screenTitle =
     activeTab === 'report' && reportView === 'documents'
@@ -155,43 +161,66 @@ export function Header({
           </a>
           <button
             type="button"
-            onClick={toggleTheme}
-            className="uml-kicker px-3 py-2 rounded-full border border-[var(--uml-line)]"
-          >
-            {themeLabel(choice, resolved)}
-          </button>
-          <button
-            type="button"
             data-bot="quick-capture"
             className="uml-kicker px-3 py-2 rounded-full border border-[var(--uml-gold)] text-[var(--uml-gold)]"
             onClick={onQuickCapture}
           >
             + Log
           </button>
-          <button
-            type="button"
-            data-bot="command"
-            className="uml-kicker px-3 py-2 rounded-full border border-[var(--uml-gold)] text-[var(--uml-gold)]"
-            onClick={() => window.dispatchEvent(new CustomEvent('uml:command'))}
-          >
-            Ask ⌘K
-          </button>
-          <button
-            type="button"
-            data-bot="open-cohost"
-            className="uml-kicker px-3 py-2 rounded-full border border-[var(--uml-line)]"
-            onClick={() => window.dispatchEvent(new CustomEvent('uml:open-cohost'))}
-          >
-            Co-host
-          </button>
-          <button
-            type="button"
-            data-bot="open-build"
-            className="uml-kicker px-3 py-2 rounded-full border border-[var(--uml-line)]"
-            onClick={() => window.dispatchEvent(new CustomEvent('uml:open-build'))}
-          >
-            Build
-          </button>
+          <div className="relative" ref={askRef}>
+            <button
+              type="button"
+              className="uml-kicker rounded-full border border-[var(--uml-gold)] px-3 py-2 text-[var(--uml-gold)]"
+              aria-expanded={askOpen}
+              aria-haspopup="menu"
+              onClick={() => setAskOpen((open) => !open)}
+            >
+              Ask
+            </button>
+            {askOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 z-20 mt-2 flex w-40 flex-col gap-1 rounded-2xl border border-[var(--uml-line)] bg-[var(--uml-bg)] p-2 shadow-xl"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-bot="command"
+                  className="uml-side"
+                  onClick={() => {
+                    setAskOpen(false);
+                    window.dispatchEvent(new CustomEvent('uml:command'));
+                  }}
+                >
+                  Search ⌘K
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-bot="open-cohost"
+                  className="uml-side"
+                  onClick={() => {
+                    setAskOpen(false);
+                    window.dispatchEvent(new CustomEvent('uml:open-cohost'));
+                  }}
+                >
+                  Co-host
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-bot="open-build"
+                  className="uml-side"
+                  onClick={() => {
+                    setAskOpen(false);
+                    window.dispatchEvent(new CustomEvent('uml:open-build'));
+                  }}
+                >
+                  Build
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </header>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { GuestThemeToggle } from './GuestThemeToggle';
 import type { HouseId } from '../lib/market/types';
 import { moneyLine } from '../lib/request-status';
 
@@ -21,6 +22,64 @@ type View = {
   line: string;
   hold: string | null;
 };
+
+const TRACK: Array<{ id: string; label: string }> = [
+  { id: 'received', label: 'Request received' },
+  { id: 'confirmed', label: 'Host confirmed' },
+  { id: 'payment', label: 'Payment arranged' },
+  { id: 'stay', label: 'Stay app' },
+];
+
+function trackerIndex(status: View['status']): number {
+  if (status === 'waiting') return 0;
+  if (status === 'accepted') return 1;
+  return -1;
+}
+
+function RequestTracker({ status, heldUntil }: { status: View['status']; heldUntil?: string }) {
+  const index = trackerIndex(status);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (status !== 'waiting' || !heldUntil) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [status, heldUntil]);
+  const end = heldUntil ? new Date(heldUntil).getTime() : Number.NaN;
+  const left = Number.isFinite(end) ? Math.max(0, end - now) : null;
+  return (
+    <div className="mt-4" data-bot="request-tracker">
+      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {TRACK.map((step, stepIndex) => (
+          <li
+            key={step.id}
+            data-current={index === stepIndex ? 'yes' : 'no'}
+            className={`rounded-2xl border px-2 py-2 text-[10px] uppercase tracking-[0.12em] ${
+              index === stepIndex
+                ? 'border-[var(--uml-gold)] text-[var(--uml-gold)]'
+                : index > stepIndex
+                  ? 'border-[var(--uml-line)] text-[var(--uml-ink)]'
+                  : 'border-[var(--uml-line)] text-[var(--uml-muted)]'
+            }`}
+          >
+            {step.label}
+          </li>
+        ))}
+      </ol>
+      {status === 'waiting' && left !== null && (
+        <p className="mt-3 text-sm" data-bot="request-hold-clock">
+          {left === 0
+            ? 'The 30-minute hold has ended. Nothing was charged.'
+            : `Hold: ${Math.floor(left / 60000)}m ${Math.floor((left % 60000) / 1000)}s left. Nothing is charged.`}
+        </p>
+      )}
+      {status === 'accepted' && (
+        <p className="mt-3 text-sm text-[var(--uml-muted)]" data-bot="request-payment-note">
+          Payment is arranged with you directly. This page does not charge a card.
+        </p>
+      )}
+    </div>
+  );
+}
 
 const KICKER: Record<View['status'], string> = {
   waiting: 'Request received',
@@ -94,7 +153,10 @@ export function RequestStatus({ token }: { token: string }) {
   return (
     <div className="min-h-screen bg-[var(--uml-bg)] px-5 py-12 text-[var(--uml-ink)]" data-bot="request-status">
       <div className="mx-auto max-w-2xl">
-        <p className="uml-kicker">Utah Mountain Luxury</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="uml-kicker">Utah Mountain Luxury</p>
+          <GuestThemeToggle />
+        </div>
         <h1 className="mt-2 font-display text-4xl sm:text-5xl">Your request</h1>
 
         {loading && (
@@ -122,6 +184,7 @@ export function RequestStatus({ token }: { token: string }) {
             <p className="uml-kicker" data-bot="request-kicker">
               {KICKER[view.status]}
             </p>
+            <RequestTracker status={view.status} heldUntil={view.heldUntil} />
             <h2 className="mt-2 font-display text-2xl">{view.houseLine}</h2>
             {/*
               What the guest actually asked for. The page showed only the house and the dates, so a guest who had just

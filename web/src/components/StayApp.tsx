@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { BedDouble, Compass, Home, MessageCircle, CalendarPlus, MapPin, MessageSquare } from 'lucide-react';
 import { api, type GuidePlace, type StayGuide, type StayThreadMessage } from '../lib/api';
 import { guestArrivalLine } from '../lib/arrival';
 import { preferenceCardLines, preferenceCardNote, preferencePartyCount } from '../lib/preference-choices';
@@ -43,11 +44,11 @@ import {
 
 type Tab = 'stay' | 'house' | 'area' | 'help';
 
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'stay', label: 'Your stay' },
-  { id: 'house', label: 'The house' },
-  { id: 'area', label: 'The area' },
-  { id: 'help', label: 'Nora' },
+const TABS: Array<{ id: Tab; label: string; icon: typeof Home }> = [
+  { id: 'stay', label: 'Your stay', icon: Home },
+  { id: 'house', label: 'The house', icon: BedDouble },
+  { id: 'area', label: 'The area', icon: Compass },
+  { id: 'help', label: 'Nora', icon: MessageCircle },
 ];
 
 const PLACE_KINDS: Array<{ id: GuidePlace['kind'] | 'all'; label: string }> = [
@@ -262,6 +263,7 @@ export function StayApp({ token }: { token: string }) {
   const [checkoutOn, setCheckoutOn] = useState<boolean[]>(() => loadCheckoutChecks(token));
   const [roomPlan, setRoomPlan] = useState<Record<string, string>>(() => loadRoomAssignments(token));
   const [copiedRooms, setCopiedRooms] = useState(false);
+  const [seenHost, setSeenHost] = useState(0);
   const [arrivalWindow, setArrivalWindow] = useState('');
   const [departureWindow, setDepartureWindow] = useState('');
   const [preferenceLines, setPreferenceLines] = useState<string[] | null>(null);
@@ -396,6 +398,11 @@ export function StayApp({ token }: { token: string }) {
   }, [data]);
 
   const hostReply = [...thread].reverse().find((message) => message.from === 'host') ?? null;
+  const hostCount = thread.filter((message) => message.from === 'host').length;
+
+  useEffect(() => {
+    if (tab === 'stay') setSeenHost(hostCount);
+  }, [tab, hostCount]);
 
   const kinds = useMemo(() => {
     const list =
@@ -604,17 +611,70 @@ export function StayApp({ token }: { token: string }) {
 
         {tab === 'stay' && (
           <>
-            <StayPass
-              token={token}
-              house={data.propertyId}
-              address={guide.address}
-              checkIn={data.checkIn}
-              checkOut={data.checkOut}
-              checkInTime={guide.checkInTime}
-              checkOutTime={guide.checkOutTime}
-              parking={shownParking}
-              emergency={shownEmergency}
-            />
+            <Card>
+              <Kicker>On arrival</Kicker>
+              <div className="mt-3 grid grid-cols-2 gap-2" data-bot="stay-quick-actions">
+                <a
+                  href={mapsLink(guide.address)}
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-[#d4b56a] px-3 py-3 text-sm font-semibold text-black"
+                >
+                  <MapPin className="h-4 w-4" aria-hidden="true" />
+                  Directions
+                </a>
+                <a
+                  href={`sms:${phone}`}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-white/15 px-3 py-3 text-sm"
+                >
+                  <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                  Text us
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setTab('help')}
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-white/15 px-3 py-3 text-sm"
+                >
+                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                  Ask Nora
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-white/15 px-3 py-3 text-sm"
+                  data-bot="stay-quick-calendar"
+                  onClick={() => {
+                    const file = phoneStayIcs(data.propertyId, data.checkIn, data.checkOut);
+                    if (!file) return;
+                    const blob = new Blob([file.text], { type: 'text/calendar' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = file.filename;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  <CalendarPlus className="h-4 w-4" aria-hidden="true" />
+                  Calendar
+                </button>
+              </div>
+            </Card>
+            <details className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+              <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.28em] text-[#d4b56a]">
+                Offline pass / print
+              </summary>
+              <div className="mt-3">
+                <StayPass
+                  token={token}
+                  house={data.propertyId}
+                  address={guide.address}
+                  checkIn={data.checkIn}
+                  checkOut={data.checkOut}
+                  checkInTime={guide.checkInTime}
+                  checkOutTime={guide.checkOutTime}
+                  parking={shownParking}
+                  emergency={shownEmergency}
+                />
+              </div>
+            </details>
             {!data.preferencesDone && access.phase === 'before' && (
               <a href={`/stay/${encodeURIComponent(token)}/preferences`} className="block">
                 <Card className="border-[#d4b56a]/40">
@@ -683,27 +743,15 @@ export function StayApp({ token }: { token: string }) {
                     <p className="mt-1 text-lg">{step.title}</p>
                     <p className="text-sm leading-relaxed text-[#d7cfc3]">{step.detail}</p>
                     {step.id === 'agree' && step.state !== 'later' && (
-                      <ul className="mt-3 space-y-3">
-                        {agreementTopics(data.propertyId).map((topic) => {
-                          const opened = agreementRead.includes(topic.id);
-                          return (
-                            <li key={topic.id}>
-                              <p className="text-sm text-[#f6f1e8]">{topic.title}</p>
-                              <p className="text-sm leading-relaxed text-[#d7cfc3]">{topic.detail}</p>
-                              <button
-                                type="button"
-                                className="mt-2 rounded-full border border-[#d4b56a]/50 px-4 py-2 text-xs uppercase tracking-[0.16em] text-[#d4b56a]"
-                                data-bot="stay-agreement-topic"
-                                data-topic={topic.id}
-                                aria-pressed={opened}
-                                onClick={() => setAgreementRead(markAgreementTopic(token, topic.id))}
-                              >
-                                {opened ? 'Read on this phone' : 'Mark as read on this phone'}
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
+                      <div className="mt-3 max-h-48 space-y-3 overflow-y-auto pr-1" data-bot="stay-agreement-summary">
+                        {agreementTopics(data.propertyId).map((topic) => (
+                          <div key={topic.id} data-bot="stay-agreement-topic" data-topic={topic.id}>
+                            <p className="text-sm text-[#f6f1e8]">{topic.title}</p>
+                            <p className="text-sm leading-relaxed text-[#d7cfc3]">{topic.detail}</p>
+                          </div>
+                        ))}
+                        <p className="text-xs text-white/50">Reading this does not sign the agreement.</p>
+                      </div>
                     )}
                     {step.id === 'early' && (
                       <button
@@ -1040,10 +1088,10 @@ export function StayApp({ token }: { token: string }) {
                 <div className="mt-3 space-y-3" data-bot="stay-rules-gate">
                   <p className="text-sm leading-relaxed text-[#d7cfc3]">
                     {access.unlocked && rulesRead && !agreementOpened
-                      ? 'The door code and Wi-Fi stay off this phone until each stay-agreement topic is opened. Opening a topic does not sign the agreement.'
+                      ? 'The door code and Wi-Fi stay off this phone until you agree to the stay terms below. Agreeing does not sign the agreement.'
                       : access.unlocked
-                        ? 'The door code is ready after you read the house rules and open each stay-agreement topic. Opening a topic does not sign the agreement.'
-                        : `Your door code and Wi-Fi appear here on ${longDate(access.opensOn)}, the day before check-in, after you read the house rules and open each stay-agreement topic. Opening a topic does not sign the agreement.`}
+                        ? 'The door code is ready after you read the house rules and agree to the stay terms. Agreeing does not sign the agreement.'
+                        : `Your door code and Wi-Fi appear here on ${longDate(access.opensOn)}, the day before check-in, after you read the house rules and agree to the stay terms. Agreeing does not sign the agreement.`}
                   </p>
                   <ul className="space-y-2 text-sm leading-relaxed text-[#f6f1e8]" data-bot="stay-rules-lines">
                     {shownRules.map((line) => (
@@ -1062,9 +1110,13 @@ export function StayApp({ token }: { token: string }) {
                     onClick={() => {
                       setRulesRead(true);
                       saveRuleAck(token, true);
+                      const ids = agreementTopics(data.propertyId).map((topic) => topic.id);
+                      let next: string[] = [];
+                      for (const id of ids) next = markAgreementTopic(token, id);
+                      setAgreementRead(next);
                     }}
                   >
-                    I have read the house rules
+                    I agree &amp; unlock door code
                   </button>
                 </div>
               )}
@@ -1165,6 +1217,19 @@ export function StayApp({ token }: { token: string }) {
                   </ul>
                 </>
               )}
+            </Card>
+            <Card>
+              <Kicker>Come back direct</Kicker>
+              <p className="mt-2 text-sm leading-relaxed text-[#d7cfc3]">
+                The next stay can be requested on our site. No platform fee, and a person answers.
+              </p>
+              <a
+                href="/houses/"
+                className="mt-3 inline-block rounded-full bg-[#d4b56a] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-black"
+                data-bot="stay-book-again"
+              >
+                Book again
+              </a>
             </Card>
           </>
         )}
@@ -1378,20 +1443,28 @@ export function StayApp({ token }: { token: string }) {
 
       <nav className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-[#07110f]/95 backdrop-blur">
         <div className="mx-auto grid max-w-md grid-cols-4">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              data-bot={`stay-tab-${item.id}`}
-              onClick={() => {
-                setTab(item.id);
-                window.scrollTo({ top: 0 });
-              }}
-              className={`py-4 text-xs uppercase tracking-widest ${tab === item.id ? 'text-[#d4b56a]' : 'text-white/50'}`}
-            >
-              {item.label}
-            </button>
-          ))}
+          {TABS.map((item) => {
+            const Icon = item.icon;
+            const unread = item.id === 'stay' && hostCount > seenHost;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-bot={`stay-tab-${item.id}`}
+                onClick={() => {
+                  setTab(item.id);
+                  window.scrollTo({ top: 0 });
+                }}
+                className={`relative flex flex-col items-center gap-1 py-3 text-[10px] uppercase tracking-widest ${tab === item.id ? 'text-[#d4b56a]' : 'text-white/50'}`}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {item.label}
+                {unread ? (
+                  <span className="absolute right-4 top-2 h-2 w-2 rounded-full bg-[#d4b56a]" data-bot="stay-host-unread" />
+                ) : null}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>

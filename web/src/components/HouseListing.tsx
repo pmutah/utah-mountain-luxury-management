@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { quoteStay } from '../lib/quote';
+import { formatWhole } from '../lib/luxury';
 import { BrandMark } from './BrandMark';
 import { HouseGallery } from './HouseGallery';
 import { HouseAmenities, HouseHighlights, HouseRooms } from './HouseStory';
@@ -7,6 +9,7 @@ import { GroupRoomPlanner } from './GroupRoomPlanner';
 import { DirectReserveCard } from './DirectReserveCard';
 import { StayMonth } from './StayMonth';
 import { HouseReviews, HouseFaq } from './HouseSocialProof';
+import { GuestThemeToggle } from './GuestThemeToggle';
 import { CanyonPocketMap } from './CanyonPocketMap';
 import { CanyonConditionsBar } from './CanyonConditionsBar';
 import { UtahItineraryStudio } from './UtahItineraryStudio';
@@ -132,6 +135,19 @@ export function HousePage({ house }: { house: PublicHouse }) {
   const photoCount = houseGallery(house.id).length;
   const guestCount = /^\d+$/.test(guests) ? Number(guests) : null;
   const childCount = /^\d+$/.test(children) ? Number(children) : null;
+  const dogCount = /^\d+$/.test(dogs) ? Number(dogs) : null;
+  const mobileQuote = useMemo(() => {
+    if (calendar !== 'live' || chosenParts.length > 0) return null;
+    const quoted = quoteStay(house.id, checkIn, checkOut, taken[house.id] ?? [], {
+      asOf: today,
+      pace: paceMap[house.id] ?? 'unknown',
+      closed: [...(closed[house.id] ?? []), ...(held[house.id] ?? [])],
+      sheet: approved[house.id] ?? [],
+      ...(guestCount !== null ? { guests: guestCount, ...(childCount !== null ? { children: childCount } : {}) } : {}),
+      ...(dogCount !== null ? { dogs: dogCount } : {}),
+    });
+    return quoted.ok ? quoted.stayTotal : null;
+  }, [calendar, chosenParts.length, house.id, checkIn, checkOut, taken, today, paceMap, closed, held, approved, guestCount, childCount, dogCount]);
   const finderBlocked = useMemo(
     () => [...(closed[house.id] ?? []), ...(held[house.id] ?? [])],
     [closed, held, house.id],
@@ -168,9 +184,10 @@ export function HousePage({ house }: { house: PublicHouse }) {
   const safety = houseSafetyLine();
   const license = houseLicenseLine();
   const [activeSection, setActiveSection] = useState<string>('photos');
+  const [reserveSheet, setReserveSheet] = useState(false);
 
   useEffect(() => {
-    const ids = ['photos', 'rooms', 'amenities', 'canyon', 'itinerary', 'faq', 'dates'];
+    const ids = ['photos', 'rooms', 'amenities', 'canyon', 'itinerary', 'faq', 'availability'];
     const onScroll = () => {
       const offset = window.scrollY + 140;
       let current = 'photos';
@@ -198,25 +215,43 @@ export function HousePage({ house }: { house: PublicHouse }) {
       ))}
 
       {/* A slim header, not a hero: the photo mosaic is the hero. */}
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[var(--uml-bg)]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <a href="/houses/" className="flex items-center gap-2 text-sm" data-bot="house-back">
+      <header className="sticky top-0 z-30 border-b border-[var(--uml-line)] bg-[color-mix(in_srgb,var(--uml-bg)_94%,transparent)] text-[var(--uml-ink)] backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
+          <div className="flex items-center justify-between gap-2">
+          <a href="/houses/" className="flex min-w-0 items-center gap-2 text-sm" data-bot="house-back">
             <BrandMark />
             <span className="hidden sm:inline">All houses</span>
           </a>
+          <div className="flex shrink-0 items-center gap-2">
+          <GuestThemeToggle />
+          <a
+            href="#dates"
+            className="uml-gold-btn rounded-full px-4 py-2 text-[11px] uppercase tracking-[0.14em]"
+            data-bot="house-reserve-jump"
+            onClick={(event) => {
+              if (window.matchMedia('(max-width: 1023px)').matches) {
+                event.preventDefault();
+                setReserveSheet(true);
+              }
+            }}
+          >
+            Reserve
+          </a>
+          </div>
+          </div>
           {/*
             The house switcher. It matters most on `/book/`, which is where every shared quote link lands: a guest sent
             a River quote may be deciding between all three, and before this the only way to look at another house was
             to go back to the list and lose their dates. The links carry the stay, so switching houses keeps it.
           */}
-          <nav className="flex items-center gap-1" aria-label="Switch house" data-bot="house-switcher">
+          <nav className="mt-2 flex items-center gap-1 overflow-x-auto" aria-label="Switch house" data-bot="house-switcher">
             {HOUSES.map((id) => (
               <a
                 key={id}
                 href={`/houses/${id}/${housePageSearch(checkIn, checkOut, guests, children)}`}
                 aria-current={id === house.id ? 'page' : undefined}
                 data-bot={`house-switch-${id}`}
-                className={`rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.1em] ${
+                className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] uppercase tracking-[0.1em] ${
                   id === house.id
                     ? 'bg-[var(--uml-gold)] text-[var(--uml-gold-ink)]'
                     : 'border border-[var(--uml-line)] text-[var(--uml-muted)] hover:text-[var(--uml-ink)]'
@@ -226,8 +261,7 @@ export function HousePage({ house }: { house: PublicHouse }) {
               </a>
             ))}
           </nav>
-          {/* On a phone the section links are dropped: a 390px header with four links plus two buttons clips. */}
-          <nav className="hidden items-center gap-3 text-xs uppercase tracking-[0.14em] text-[var(--uml-muted)] md:flex" aria-label="Listing sections">
+          <nav className="mt-2 hidden items-center gap-3 overflow-x-auto text-xs uppercase tracking-[0.14em] text-[var(--uml-muted)] lg:flex" aria-label="Listing sections">
             {(
               [
                 ['photos', 'Photos'],
@@ -236,7 +270,7 @@ export function HousePage({ house }: { house: PublicHouse }) {
                 ['canyon', 'Canyon & Map'],
                 ['itinerary', 'Itinerary'],
                 ['faq', 'FAQ'],
-                ['dates', 'Dates'],
+                ['availability', 'Dates'],
               ] as const
             ).map(([id, label]) => (
               <a
@@ -250,33 +284,59 @@ export function HousePage({ house }: { house: PublicHouse }) {
               </a>
             ))}
           </nav>
-          <a
-            href="#reserve"
-            className="uml-gold-btn rounded-full px-4 py-2 text-[11px] uppercase tracking-[0.14em]"
-            data-bot="house-reserve-jump"
-          >
-            Reserve
-          </a>
         </div>
       </header>
+      <nav
+        className="sticky top-[88px] z-20 flex gap-3 overflow-x-auto border-b border-[var(--uml-line)] bg-[color-mix(in_srgb,var(--uml-bg)_94%,transparent)] px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-[var(--uml-muted)] backdrop-blur lg:hidden"
+        aria-label="Listing sections"
+        data-bot="house-section-jump"
+      >
+        {(
+          [
+            ['photos', 'Photos'],
+            ['rooms', 'Rooms'],
+            ['amenities', 'Amenities'],
+            ['availability', 'Dates'],
+            ['faq', 'FAQ'],
+          ] as const
+        ).map(([id, label]) => (
+          <a key={id} href={`#${id}`} className="shrink-0">
+            {label}
+          </a>
+        ))}
+      </nav>
 
       {/*
         A phone bar. On a narrow screen the booking card sits far below the photos, and the header's Reserve button
         scrolls away with the header. This keeps the way to book reachable while a guest reads the rooms.
-        It shows no price on purpose: the quote is computed inside the reserve card from the live calendar, and this bar
-        has no business inventing a figure or restating one it did not calculate.
+        The figure is the same whole-house quote the card uses, and only when the calendar is live and no River part
+        is chosen — a part stay must not be shown the house total. The bar hides while the reserve sheet is open so
+        it does not cover the request button.
       */}
       <div
-        className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-white/10 bg-[var(--uml-bg)]/95 px-4 py-3 backdrop-blur lg:hidden"
+        className={`fixed inset-x-0 bottom-0 z-40 items-center justify-between gap-3 border-t border-[var(--uml-line)] bg-[color-mix(in_srgb,var(--uml-bg)_94%,transparent)] px-4 py-3 text-[var(--uml-ink)] backdrop-blur lg:hidden ${
+          reserveSheet ? 'hidden' : 'flex'
+        }`}
         data-bot="house-mobile-bar"
       >
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{house.name}</p>
-          <p className="text-[11px] text-[var(--uml-muted)]">{`Sleeps ${house.sleeps} · ${profile.scale.split(' in ')[0] ?? ''}`}</p>
+          <p className="truncate text-sm font-semibold">
+            {mobileQuote !== null ? formatWhole(mobileQuote) : house.name}
+          </p>
+          <p className="text-[11px] text-[var(--uml-muted)]">
+            {checkIn && checkOut
+              ? `${checkIn} – ${checkOut}${chosenParts.length > 0 ? ' · part of the house' : ''}`
+              : `Sleeps ${house.sleeps}`}
+          </p>
         </div>
-        <a href="#reserve" className="uml-gold-btn shrink-0 rounded-full px-5 py-2.5 text-[11px] uppercase tracking-[0.14em]" data-bot="house-mobile-reserve">
-          Check dates
-        </a>
+        <button
+          type="button"
+          className="uml-gold-btn shrink-0 rounded-full px-5 py-2.5 text-[11px] uppercase tracking-[0.14em]"
+          data-bot="house-mobile-reserve"
+          onClick={() => setReserveSheet(true)}
+        >
+          Reserve
+        </button>
       </div>
 
       <div className="mx-auto max-w-6xl px-4 pb-24 pt-5 sm:px-6">
@@ -318,6 +378,84 @@ export function HousePage({ house }: { house: PublicHouse }) {
 
             <section className="mt-8" data-bot="house-highlights-wrap">
               <HouseHighlights house={house.id} />
+            </section>
+
+            <section id="availability" className="mt-8 scroll-mt-24 border-t border-white/10 pt-6" data-bot="house-availability">
+              <h2 className="font-display text-3xl">Availability</h2>
+              <p className="mt-1 text-sm text-[var(--uml-muted)]">
+                Open stays and the month sit here. The total stays in the reserve card.
+              </p>
+              {calendar === 'live' && chosenParts.length === 0 && (
+                <OpenDatesFinder
+                  house={house.id}
+                  asOf={today}
+                  pace={paceMap[house.id] ?? 'unknown'}
+                  taken={taken[house.id] ?? EMPTY_LIST}
+                  blocked={finderBlocked}
+                  guests={guestCount ?? undefined}
+                  children={childCount ?? undefined}
+                  checkIn={checkIn}
+                  onPick={(stay) => {
+                    setCheckIn(stay.checkIn);
+                    setCheckOut(stay.checkOut);
+                  }}
+                />
+              )}
+              <div className="uml-panel mt-4 rounded-3xl p-5" data-bot="house-pick-dates">
+                <p className="uml-kicker">Pick from the calendar</p>
+                <p className="mt-1 text-xs text-[var(--uml-muted)]">
+                  Prices are per night, before tax. A booked or closed night cannot start a stay.
+                </p>
+                {/*
+                  A month drawn from an unread calendar is worse than no month: every night looks free, and a guest
+                  can tap a date this page has no idea about. The panel says so instead.
+                */}
+                {calendar === 'live' ? (
+                  (() => {
+                    const closedAndHeld: Record<HouseId, string[]> = {
+                      ranch: [...(closed.ranch ?? []), ...(held.ranch ?? [])],
+                      lindon: [...(closed.lindon ?? []), ...(held.lindon ?? [])],
+                      river: [...(closed.river ?? []), ...(held.river ?? [])],
+                    };
+                    const monthCal = housePageCalendar(house.id, guestCount, true, taken, closedAndHeld);
+                    const bookingParts = house.id === 'river' && chosenParts.length > 0;
+                    const showPrices =
+                      !bookingParts &&
+                      !monthCal.both &&
+                      (guestCount === null || partyFits(house.id, guestCount, childCount ?? undefined).ok);
+                    return (
+                      <div className="mt-3">
+                        <StayMonth
+                          house={monthCal.house}
+                          taken={monthCal.both ? monthCal.taken : taken[house.id] ?? []}
+                          blocked={monthCal.both ? monthCal.closed : [...(closed[house.id] ?? []), ...(held[house.id] ?? [])]}
+                          sheet={approved[monthCal.house] ?? []}
+                          checkIn={checkIn}
+                          checkOut={checkOut}
+                          pace={paceMap[monthCal.house] ?? 'unknown'}
+                          quoted
+                          prices={showPrices}
+                          onPick={(stay) => {
+                            setCheckIn(stay.checkIn);
+                            setCheckOut(stay.checkOut);
+                          }}
+                        />
+                        {monthCal.both && (
+                          <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="house-both-month-note">
+                            {bothHouseMonthNote()}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="house-calendar-off">
+                    {calendar === 'loading'
+                      ? 'Reading the calendar.'
+                      : 'The calendar could not be read, so no night on this page is marked open or booked. Enter your dates above and send a request — a person will confirm them.'}
+                  </p>
+                )}
+              </div>
             </section>
 
             <section className="mt-8 border-t border-white/10 pt-6" data-bot="house-story">
@@ -427,8 +565,32 @@ export function HousePage({ house }: { house: PublicHouse }) {
             </div>
           </div>
 
+          {reserveSheet ? (
+            <button
+              type="button"
+              aria-label="Close reserve"
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              onClick={() => setReserveSheet(false)}
+            />
+          ) : null}
           {/* The right column is the decision. It stays in view while the story scrolls. */}
-          <aside id="dates" className="scroll-mt-20 lg:sticky lg:top-20">
+          <aside
+            id="dates"
+            className={`scroll-mt-20 lg:sticky lg:top-20 ${
+              reserveSheet
+                ? 'max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:max-h-[88vh] max-lg:overflow-y-auto max-lg:rounded-t-3xl max-lg:border max-lg:border-white/10 max-lg:bg-[var(--uml-bg)] max-lg:p-3 max-lg:pb-6 max-lg:shadow-2xl'
+                : ''
+            }`}
+          >
+            {reserveSheet ? (
+              <button
+                type="button"
+                className="mb-2 text-xs uppercase tracking-[0.14em] text-[var(--uml-muted)] lg:hidden"
+                onClick={() => setReserveSheet(false)}
+              >
+                Close
+              </button>
+            ) : null}
             <DirectReserveCard
               house={house.id}
               checkIn={checkIn}
@@ -459,78 +621,6 @@ export function HousePage({ house }: { house: PublicHouse }) {
               chosenParts={chosenParts}
               onChosenParts={(next) => setChosenParts(next as RiverUnitId[])}
             />
-            {/* The finder quotes the whole house, so it steps aside while a River guest is booking single parts. */}
-            {calendar === 'live' && chosenParts.length === 0 && (
-              <OpenDatesFinder
-                house={house.id}
-                asOf={today}
-                pace={paceMap[house.id] ?? 'unknown'}
-                taken={taken[house.id] ?? EMPTY_LIST}
-                blocked={finderBlocked}
-                guests={guestCount ?? undefined}
-                children={childCount ?? undefined}
-                checkIn={checkIn}
-                onPick={(stay) => {
-                  setCheckIn(stay.checkIn);
-                  setCheckOut(stay.checkOut);
-                }}
-              />
-            )}
-            <div className="uml-panel mt-4 rounded-3xl p-5" data-bot="house-pick-dates">
-              <p className="uml-kicker">Pick from the calendar</p>
-              <p className="mt-1 text-xs text-[var(--uml-muted)]">
-                Prices are per night, before tax. A booked or closed night cannot start a stay.
-              </p>
-              {/*
-                A month drawn from an unread calendar is worse than no month: every night looks free, and a guest
-                can tap a date this page has no idea about. The panel says so instead.
-              */}
-              {calendar === 'live' ? (
-                (() => {
-                  const closedAndHeld: Record<HouseId, string[]> = {
-                    ranch: [...(closed.ranch ?? []), ...(held.ranch ?? [])],
-                    lindon: [...(closed.lindon ?? []), ...(held.lindon ?? [])],
-                    river: [...(closed.river ?? []), ...(held.river ?? [])],
-                  };
-                  const monthCal = housePageCalendar(house.id, guestCount, true, taken, closedAndHeld);
-                  const bookingParts = house.id === 'river' && chosenParts.length > 0;
-                  const showPrices =
-                    !bookingParts &&
-                    !monthCal.both &&
-                    (guestCount === null || partyFits(house.id, guestCount, childCount ?? undefined).ok);
-                  return (
-                    <div className="mt-3">
-                      <StayMonth
-                        house={monthCal.house}
-                        taken={monthCal.both ? monthCal.taken : taken[house.id] ?? []}
-                        blocked={monthCal.both ? monthCal.closed : [...(closed[house.id] ?? []), ...(held[house.id] ?? [])]}
-                        sheet={approved[monthCal.house] ?? []}
-                        checkIn={checkIn}
-                        checkOut={checkOut}
-                        pace={paceMap[monthCal.house] ?? 'unknown'}
-                        quoted
-                        prices={showPrices}
-                        onPick={(stay) => {
-                          setCheckIn(stay.checkIn);
-                          setCheckOut(stay.checkOut);
-                        }}
-                      />
-                      {monthCal.both && (
-                        <p className="mt-2 text-xs text-[var(--uml-muted)]" data-bot="house-both-month-note">
-                          {bothHouseMonthNote()}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()
-              ) : (
-                <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="house-calendar-off">
-                  {calendar === 'loading'
-                    ? 'Reading the calendar.'
-                    : 'The calendar could not be read, so no night on this page is marked open or booked. Enter your dates above and send a request — a person will confirm them.'}
-                </p>
-              )}
-            </div>
             {guestCount !== null && guestCount > 22 || childCount !== null ? (
               <p className="mt-3 text-xs text-[var(--uml-muted)]" data-bot="house-group-note">
                 {GROUP_TRIP}

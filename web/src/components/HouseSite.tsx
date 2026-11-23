@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { BrandMark } from './BrandMark';
+import { GuestThemeToggle } from './GuestThemeToggle';
 import { HousePage as HouseListing } from './HouseListing';
 import { GuideDesk } from './GuideDesk';
 import { CanyonConditionsBar } from './CanyonConditionsBar';
@@ -100,7 +101,7 @@ function HouseIndex() {
         />
       ))}
 
-      <header className="border-b border-white/10">
+      <header className="border-b border-[var(--uml-line)] bg-[var(--uml-bg)] text-[var(--uml-ink)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <a href="/houses/" className="flex items-center gap-2">
             <BrandMark />
@@ -113,20 +114,58 @@ function HouseIndex() {
             <a href="#compare-houses" className="hover:text-[var(--uml-ink)] transition-colors">Compare</a>
             <a href="#ask-guide" className="hover:text-[var(--uml-ink)] transition-colors">Guide</a>
           </nav>
+          <GuestThemeToggle />
           <p className="hidden text-xs uppercase tracking-[0.16em] text-[var(--uml-muted)] sm:block">
             Book direct · Provo Canyon &amp; Utah Valley
           </p>
         </div>
       </header>
 
+      <div className="relative overflow-hidden border-b border-[var(--uml-line)] bg-[var(--uml-bg)] text-[var(--uml-ink)]">
+        <img
+          src="/houses/river.jpg"
+          alt="Architectural rendering of the River House"
+          className="absolute inset-0 h-full w-full object-cover opacity-20"
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(to bottom, color-mix(in srgb, var(--uml-bg) 78%, transparent), var(--uml-bg))',
+          }}
+        />
+        <div className="relative mx-auto max-w-6xl px-4 pb-8 pt-8 sm:px-6 sm:pt-12">
+          <nav
+            aria-label="Explore sections"
+            className="mb-4 flex gap-3 overflow-x-auto text-[11px] uppercase tracking-[0.14em] text-[var(--uml-muted)] md:hidden"
+            data-bot="houses-section-jump"
+          >
+            <a href="#houses-grid" className="shrink-0">Houses</a>
+            <a href="#check-dates" className="shrink-0">Dates</a>
+            <a href="#compare-houses" className="shrink-0">Compare</a>
+            <a href="#ask-guide" className="shrink-0">Guide</a>
+          </nav>
+          <h1 className="max-w-3xl font-display text-4xl leading-tight sm:text-6xl">
+            Three houses for the people you travel with.
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-[var(--uml-muted)] sm:text-base">
+            A riverside lodge in Provo Canyon, a group house with a game room in Lindon, and a family home across from the
+            Lindon Aquatics Center. Book direct — no platform fee, and a person answers.
+          </p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--uml-muted)]">
+            Architectural rendering of the River House
+          </p>
+          <section id="check-dates" className="mt-6 scroll-mt-20" data-bot="houses-search-wrap">
+            <h2 className="font-display text-2xl">Have dates in mind?</h2>
+            <p className="mt-1 text-sm text-[var(--uml-muted)]">
+              Enter them here and each house below will say whether it fits.
+            </p>
+            <HouseFinder onStay={setStay} onHeld={setHeld} onCards={setCardLines} onCalendar={onListCalendar} onNights={onGroupNights} />
+          </section>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-6">
-        <h1 className="max-w-3xl font-display text-4xl leading-tight sm:text-6xl">
-          Three houses for the people you travel with.
-        </h1>
-        <p className="mt-3 max-w-2xl text-sm text-[var(--uml-muted)] sm:text-base">
-          A riverside lodge in Provo Canyon, a group house with a game room in Lindon, and a family home across from the
-          Lindon Aquatics Center. Book direct — no platform fee, and a person answers.
-        </p>
 
         {/* The cards. One per house, picture first. */}
         <div id="houses-grid" className="mt-8 scroll-mt-20 grid gap-6 lg:grid-cols-3">
@@ -211,15 +250,6 @@ function HouseIndex() {
         <div id="live-canyon" className="mt-8 scroll-mt-20">
           <CanyonConditionsBar targetDate={stay.checkIn} />
         </div>
-
-        {/* The date search, compact. It annotates the cards above instead of leading the page. */}
-        <section id="check-dates" className="mt-10 scroll-mt-20" data-bot="houses-search-wrap">
-          <h2 className="font-display text-2xl">Have dates in mind?</h2>
-          <p className="mt-1 text-sm text-[var(--uml-muted)]">
-            Enter them here and each house above will say whether it fits.
-          </p>
-          <HouseFinder onStay={setStay} onHeld={setHeld} onCards={setCardLines} onCalendar={onListCalendar} onNights={onGroupNights} />
-        </section>
 
         <div id="compare-houses" className="scroll-mt-20">
           <HouseCompareMatrix
