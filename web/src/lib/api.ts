@@ -40,6 +40,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
      * might act on are copied across rather than dropped.
      */
     const failure = new Error(message) as Error & Record<string, unknown>;
+    failure.status = res.status;
     try {
       const parsed = JSON.parse(detail) as Record<string, unknown>;
       if (parsed.error) message = String(parsed.error);
@@ -56,6 +57,35 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
+}
+
+function ifMatch(version: number | undefined): Record<string, string> | undefined {
+  if (version === undefined) return undefined;
+  return { 'If-Match': `"${version}"` };
+}
+
+function isVersionConflict(err: unknown): err is Error & { current?: { version?: number } } {
+  return err instanceof Error && (err as { code?: unknown }).code === 'version_conflict';
+}
+
+/**
+ * A 409 means the row moved since the board loaded it. Reload that row and apply the same edit once
+ * against the version the server just returned.
+ */
+async function writeWithReload<T>(
+  send: (version: number | undefined) => Promise<T>,
+  version: number | undefined,
+  reload: () => Promise<number | undefined>,
+): Promise<T> {
+  try {
+    return await send(version);
+  } catch (err) {
+    if (!isVersionConflict(err)) throw err;
+    const reloaded = await reload().catch(() => undefined);
+    const next = reloaded ?? err.current?.version;
+    if (next === undefined) throw err;
+    return await send(next);
+  }
 }
 
 export interface Property {
@@ -125,6 +155,8 @@ export interface Reservation {
    * be dropped by JSON and the stamp would survive, which is exactly the bug a reset button would otherwise have.
    */
   surveyCompletedAt?: string | null;
+  /** Row version from D1. Sent back as If-Match so a stale board does not overwrite a newer save. */
+  version?: number;
   /**
    * Which parts of the Riverhouse this stay occupies.
    *
@@ -279,6 +311,8 @@ export interface Expense {
     uploadedAt: string;
     url?: string;
   }>;
+  /** Row version from D1. Sent back as If-Match. */
+  version?: number;
 }
 
 export type RentalPropertyId = 'ranch' | 'lindon' | 'river';
@@ -844,10 +878,18 @@ export const api = {
   getExpenses: () =>
     request<{ expenses: Expense[]; custom: Expense[]; readOnly?: boolean; houses?: string[] }>('/api/expenses'),
   /** A delete is archived first, so `archived` says the row can be put back. */
-  deleteExpense: (id: string, reason?: string) =>
-    request<{ ok: boolean; archived?: boolean; restore?: string }>(
-      `/api/expenses/${encodeURIComponent(id)}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`,
-      { method: 'DELETE' },
+  deleteExpense: (id: string, reason?: string, version?: number) =>
+    writeWithReload(
+      (v) =>
+        request<{ ok: boolean; archived?: boolean; restore?: string }>(
+          `/api/expenses/${encodeURIComponent(id)}${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`,
+          { method: 'DELETE', headers: ifMatch(v) },
+        ),
+      version,
+      async () => {
+        const list = await request<{ custom: Expense[]; expenses: Expense[] }>('/api/expenses');
+        return (list.custom.find((row) => row.id === id) ?? list.expenses.find((row) => row.id === id))?.version;
+      },
     ),
   /** Removed expenses that can be restored. Not a total: see the line it returns. */
   getExpenseArchive: () =>
@@ -888,11 +930,21 @@ export const api = {
       category?: string;
       amount?: number;
     },
+    version?: number,
   ) =>
-    request<Expense>(`/api/expenses/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }),
+    writeWithReload(
+      (v) =>
+        request<Expense>(`/api/expenses/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: ifMatch(v),
+          body: JSON.stringify(body),
+        }),
+      version,
+      async () => {
+        const list = await request<{ custom: Expense[]; expenses: Expense[] }>('/api/expenses');
+        return (list.custom.find((row) => row.id === id) ?? list.expenses.find((row) => row.id === id))?.version;
+      },
+    ),
   expenseReceiptUrl: (expenseId: string) =>
     `${API_URL}/api/expenses/${encodeURIComponent(expenseId)}/receipt`,
   expensePhotoUrl: (expenseId: string, photoId: string) =>
@@ -1476,11 +1528,28 @@ export const api = {
   updateReservationContacts: (
     id: string,
     body: { guestEmail?: string; guestPhone?: string; confirmationCode?: string },
+    version?: number,
   ) =>
-    request<Reservation>(`/api/reservations/${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }),
+    writeWithReload(
+      (v) =>
+        request<Reservation>(`/api/reservations/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: ifMatch(v),
+          body: JSON.stringify(body),
+        }),
+      version,
+      async () => (await request<Reservation>(`/api/reservations/${encodeURIComponent(id)}`)).version,
+    ),
+  deleteReservation: (id: string, version?: number) =>
+    writeWithReload(
+      (v) =>
+        request<{ ok: boolean; id: string; removed: 'custom' | 'seed' }>(
+          `/api/reservations/${encodeURIComponent(id)}`,
+          { method: 'DELETE', headers: ifMatch(v) },
+        ),
+      version,
+      async () => (await request<Reservation>(`/api/reservations/${encodeURIComponent(id)}`)).version,
+    ),
   sendGuestSurvey: (body: {
     reservationId?: string;
     confirmationCode?: string;

@@ -422,8 +422,8 @@ export function ConstructionPartnerLedger({
                   onRefresh={onRefresh}
                   onError={onError}
                   onToast={onToast}
-                  onDelete={async (id) => {
-                    await api.deleteExpense(id);
+                  onDelete={async (id, version) => {
+                    await api.deleteExpense(id, undefined, version);
                     onRefresh();
                     onToast('Expense removed', 'success');
                   }}

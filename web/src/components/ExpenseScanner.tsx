@@ -155,8 +155,8 @@ export function ExpenseScanner({
     }
   };
 
-  const deleteExpense = async (id: string) => {
-    await api.deleteExpense(id);
+  const deleteExpense = async (id: string, version?: number) => {
+    await api.deleteExpense(id, undefined, version);
     onSaved();
   };
 

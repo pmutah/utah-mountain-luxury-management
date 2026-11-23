@@ -4,17 +4,95 @@ import type { SettingsEnv } from './kv';
 import type { PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
 import { applyHostNetFromSeed, datesOverlap } from './reservation-match';
 import { earnsOnCancellation } from '../../src/lib/cancellation-income';
+import { cachedGet } from './request-cache';
+import {
+  VersionConflictError,
+  canonicalJson,
+  forgetLedgerLists,
+  ledgerReady,
+  many,
+  one,
+  run,
+} from './ledger-db';
+import { withoutKnownDirectDuplicate } from './ledger-migrate';
 
 const KV_RES = 'reservations';
 const KV_OVERRIDES = 'reservationOverrides';
 
+type VersionedReservation = ReservationRecord & { version?: number; updatedAt?: string };
+
+function cleanPatch(patch: Partial<ReservationRecord>): Partial<ReservationRecord> {
+  const next = { ...patch } as VersionedReservation;
+  delete next.version;
+  delete next.updatedAt;
+  return next;
+}
+
+function storedReservation(row: VersionedReservation): ReservationRecord {
+  const rest = { ...row };
+  delete rest.version;
+  delete rest.updatedAt;
+  return rest;
+}
+
+function reservationJson(row: ReservationRecord): string {
+  return JSON.stringify(storedReservation(row));
+}
+
+function parseReservation(body: string, version: number, updatedAt: string): VersionedReservation {
+  return { ...(JSON.parse(body) as ReservationRecord), version, updatedAt };
+}
+
+async function readReservationRows(env: SettingsEnv): Promise<VersionedReservation[]> {
+  const rows = await many<{ body: string; version: number; updated_at: string }>(
+    env,
+    'SELECT body, version, updated_at FROM reservations',
+  );
+  return rows.map((row) => parseReservation(row.body, Number(row.version), row.updated_at));
+}
+
+async function d1ReservationRows(env: SettingsEnv): Promise<VersionedReservation[]> {
+  return cachedGet(env, () => readReservationRows(env), 'ledger:reservations');
+}
+
+async function readOverrideRows(
+  env: SettingsEnv,
+): Promise<Record<string, Partial<ReservationRecord> & { version?: number; updatedAt?: string }>> {
+  const rows = await many<{ id: string; body: string; version: number; updated_at: string }>(
+    env,
+    'SELECT id, body, version, updated_at FROM reservation_overrides',
+  );
+  const out: Record<string, Partial<ReservationRecord> & { version?: number; updatedAt?: string }> = {};
+  for (const row of rows) {
+    out[row.id] = { ...(JSON.parse(row.body) as Partial<ReservationRecord>), version: Number(row.version), updatedAt: row.updated_at };
+  }
+  return out;
+}
+
+async function d1OverrideRows(
+  env: SettingsEnv,
+): Promise<Record<string, Partial<ReservationRecord> & { version?: number; updatedAt?: string }>> {
+  return cachedGet(env, () => readOverrideRows(env), 'ledger:overrides');
+}
+
+async function reservationById(env: SettingsEnv, id: string): Promise<VersionedReservation | null> {
+  const row = await one<{ body: string; version: number; updated_at: string }>(
+    env,
+    'SELECT body, version, updated_at FROM reservations WHERE id = ?',
+    id,
+  );
+  return row ? parseReservation(row.body, Number(row.version), row.updated_at) : null;
+}
+
 export async function loadCustomReservations(env: SettingsEnv): Promise<ReservationRecord[]> {
+  if (await ledgerReady(env)) return d1ReservationRows(env);
   return kvGet(env, KV_RES, []);
 }
 
 export async function loadReservationOverrides(
   env: SettingsEnv,
 ): Promise<Record<string, Partial<ReservationRecord>>> {
+  if (await ledgerReady(env)) return d1OverrideRows(env);
   return kvGet(env, KV_OVERRIDES, {});
 }
 
@@ -31,7 +109,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function getAllReservations(env: SettingsEnv): Promise<ReservationRecord[]> {
   const seed = seedReservations();
-  const custom = await loadCustomReservations(env);
+  const custom = withoutKnownDirectDuplicate(await loadCustomReservations(env));
   const overrides = await loadReservationOverrides(env);
 
   const merged = seed.map((r) => ({
@@ -87,6 +165,7 @@ export async function getAllReservations(env: SettingsEnv): Promise<ReservationR
       if (!(r.propertyId === 'ranch' || r.propertyId === 'lindon' || r.propertyId === 'river')) return false;
       return r.checkOut > r.checkIn;
     })
+    .map((r) => ({ ...r, version: (r as VersionedReservation).version ?? 0 }))
     .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
 }
 
@@ -104,9 +183,14 @@ export async function findReservationAnyStatus(
 ): Promise<ReservationRecord | null> {
   if (!id) return null;
 
-  const custom = await loadCustomReservations(env);
-  const stored = custom.find((r) => r.id === id);
-  if (stored) return applyHostNetFromSeed(stored);
+  if (await ledgerReady(env)) {
+    const stored = await reservationById(env, id);
+    if (stored) return applyHostNetFromSeed({ ...stored, version: stored.version ?? 0 });
+  } else {
+    const custom = await loadCustomReservations(env);
+    const stored = custom.find((r) => r.id === id);
+    if (stored) return applyHostNetFromSeed(stored);
+  }
 
   const overrides = await loadReservationOverrides(env);
   const seedMatch = RESERVATIONS.find((r) => r.id === id);
@@ -121,7 +205,8 @@ export async function findReservationAnyStatus(
 }
 
 /** Fill $0 iCal payouts and placeholder channels from seed. Stored payouts and explicit channels are left alone. */
-export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {  const custom = await loadCustomReservations(env);
+export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {
+  const custom = await loadCustomReservations(env);
   let n = 0;
   for (let i = 0; i < custom.length; i++) {
     const r = custom[i]!;
@@ -132,7 +217,7 @@ export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {  
       n++;
     }
   }
-  if (n > 0) await kvPut(env, KV_RES, custom);
+  if (n > 0) await persistCustomReservations(env, custom);
 
   const overrides = await loadReservationOverrides(env);
   let oChanged = 0;
@@ -154,7 +239,7 @@ export async function backfillZeroPayouts(env: SettingsEnv): Promise<number> {  
       oChanged++;
     }
   }
-  if (oChanged > 0) await kvPut(env, KV_OVERRIDES, overrides);
+  if (oChanged > 0) await persistReservationOverrides(env, overrides);
   return n + oChanged;
 }
 
@@ -201,10 +286,136 @@ export async function createReservation(
     status: input.status ?? 'confirmed',
     createdAt: new Date().toISOString(),
   };
+  if (await ledgerReady(env)) {
+    await insertReservationRow(env, item);
+    return { ...item, version: 1, updatedAt: item.createdAt };
+  }
   const list = await loadCustomReservations(env);
   list.push(item);
   await kvPut(env, KV_RES, list);
   return item;
+}
+
+async function insertReservationRow(env: SettingsEnv, item: ReservationRecord): Promise<void> {
+  const now = item.createdAt ?? new Date().toISOString();
+  await run(env, `DELETE FROM ledger_tombstones WHERE entity = 'reservations' AND id = ?`, item.id);
+  const changes = await run(
+    env,
+    `INSERT INTO reservations (id, version, updated_at, property_id, check_in, check_out, status, source, payout, ical_uid, body)
+     VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO NOTHING`,
+    item.id,
+    now,
+    item.propertyId,
+    item.checkIn,
+    item.checkOut,
+    item.status ?? 'confirmed',
+    item.source,
+    Number(item.payout ?? 0),
+    item.icalUid ?? null,
+    reservationJson(item),
+  );
+  forgetLedgerLists(env);
+  if (changes !== 1) throw new Error(`A stay with id ${item.id} is already stored.`);
+}
+
+async function writeReservationRow(
+  env: SettingsEnv,
+  row: ReservationRecord,
+  expectedVersion: number,
+): Promise<VersionedReservation> {
+  const now = new Date().toISOString();
+  const nextVersion = expectedVersion + 1;
+  const changes = await run(
+    env,
+    `UPDATE reservations
+        SET version = ?, updated_at = ?, property_id = ?, check_in = ?, check_out = ?, status = ?, source = ?, payout = ?, ical_uid = ?, body = ?
+      WHERE id = ? AND version = ?`,
+    nextVersion,
+    now,
+    row.propertyId,
+    row.checkIn,
+    row.checkOut,
+    row.status ?? 'confirmed',
+    row.source,
+    Number(row.payout ?? 0),
+    row.icalUid ?? null,
+    reservationJson(row),
+    row.id,
+    expectedVersion,
+  );
+  forgetLedgerLists(env);
+  if (changes !== 1) {
+    const fresh = await reservationById(env, row.id);
+    throw new VersionConflictError(fresh ? { ...fresh, version: fresh.version ?? 0 } : null);
+  }
+  return { ...storedReservation(row), version: nextVersion, updatedAt: now };
+}
+
+async function writeOverrideRow(
+  env: SettingsEnv,
+  id: string,
+  patch: Partial<ReservationRecord>,
+  expectedVersion: number | undefined,
+): Promise<VersionedReservation> {
+  const seed = RESERVATIONS.find((row) => row.id === id);
+  if (!seed) throw new VersionConflictError(null);
+  const overrides = await d1OverrideRows(env);
+  const current = overrides[id];
+  const currentVersion = current?.version ?? 0;
+  const claimed = expectedVersion ?? currentVersion;
+  if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+    throw new VersionConflictError(applyHostNetFromSeed(mergedSeed(seed, current)));
+  }
+  const prev = { ...(current ?? {}) };
+  delete prev.version;
+  delete prev.updatedAt;
+  const nextPatch = { ...prev, ...cleanPatch(patch) };
+  const now = new Date().toISOString();
+  const nextVersion = currentVersion + 1;
+  let changes: number;
+  if (currentVersion === 0) {
+    changes = await run(
+      env,
+      `INSERT INTO reservation_overrides (id, version, updated_at, body) VALUES (?, ?, ?, ?)
+       ON CONFLICT(id) DO NOTHING`,
+      id,
+      nextVersion,
+      now,
+      JSON.stringify(nextPatch),
+    );
+  } else {
+    changes = await run(
+      env,
+      `UPDATE reservation_overrides SET version = ?, updated_at = ?, body = ? WHERE id = ? AND version = ?`,
+      nextVersion,
+      now,
+      JSON.stringify(nextPatch),
+      id,
+      claimed,
+    );
+  }
+  forgetLedgerLists(env);
+  const merged = mergedSeed(seed, { ...nextPatch, version: nextVersion, updatedAt: now });
+  if (changes !== 1) {
+    const fresh = (await d1OverrideRows(env))[id];
+    throw new VersionConflictError(applyHostNetFromSeed(mergedSeed(seed, fresh)));
+  }
+  return applyHostNetFromSeed(merged);
+}
+
+function mergedSeed(
+  seed: (typeof RESERVATIONS)[number],
+  override?: Partial<ReservationRecord> & { version?: number; updatedAt?: string },
+): VersionedReservation {
+  return {
+    ...seed,
+    propertyId: seed.propertyId as PropertyId,
+    ...override,
+    status: (override?.status ?? 'confirmed') as ReservationStatus,
+    version: override?.version ?? 0,
+    updatedAt: override?.updatedAt,
+  };
 }
 
 export async function updateReservationStatus(
@@ -212,11 +423,47 @@ export async function updateReservationStatus(
   id: string,
   status: ReservationStatus,
   patch?: Partial<ReservationRecord>,
+  expectedVersion?: number,
 ): Promise<ReservationRecord | null> {
-  return updateReservation(env, id, { ...patch, status });
+  return updateReservation(env, id, { ...patch, status }, expectedVersion);
 }
 
 export async function updateReservation(
+  env: SettingsEnv,
+  id: string,
+  patch: Partial<ReservationRecord>,
+  expectedVersion?: number,
+): Promise<ReservationRecord | null> {
+  if (await ledgerReady(env)) {
+    try {
+      return await updateReservationRow(env, id, patch, expectedVersion);
+    } catch (err) {
+      if (expectedVersion !== undefined || !(err instanceof VersionConflictError)) throw err;
+      return updateReservationRow(env, id, patch, undefined);
+    }
+  }
+  return updateReservationKv(env, id, patch);
+}
+
+async function updateReservationRow(
+  env: SettingsEnv,
+  id: string,
+  patch: Partial<ReservationRecord>,
+  expectedVersion?: number,
+): Promise<ReservationRecord | null> {
+  const custom = await reservationById(env, id);
+  if (custom) {
+    const claimed = expectedVersion ?? custom.version ?? 0;
+    if (expectedVersion !== undefined && expectedVersion !== (custom.version ?? 0)) {
+      throw new VersionConflictError({ ...custom, version: custom.version ?? 0 });
+    }
+    return writeReservationRow(env, { ...storedReservation(custom), ...cleanPatch(patch), id }, claimed);
+  }
+  if (!RESERVATIONS.some((row) => row.id === id)) return null;
+  return writeOverrideRow(env, id, patch, expectedVersion);
+}
+
+async function updateReservationKv(
   env: SettingsEnv,
   id: string,
   patch: Partial<ReservationRecord>,
@@ -224,7 +471,7 @@ export async function updateReservation(
   const custom = await loadCustomReservations(env);
   const idx = custom.findIndex((r) => r.id === id);
   if (idx >= 0) {
-    custom[idx] = { ...custom[idx]!, ...patch };
+    custom[idx] = { ...custom[idx]!, ...cleanPatch(patch) };
     await kvPut(env, KV_RES, custom);
     return custom[idx]!;
   }
@@ -233,7 +480,7 @@ export async function updateReservation(
   if (!seedMatch) return null;
 
   const overrides = await loadReservationOverrides(env);
-  overrides[id] = { ...overrides[id], ...patch };
+  overrides[id] = { ...overrides[id], ...cleanPatch(patch) };
   await kvPut(env, KV_OVERRIDES, overrides);
   return {
     ...seedMatch,
@@ -241,6 +488,122 @@ export async function updateReservation(
     ...overrides[id],
     status: (overrides[id]?.status ?? 'confirmed') as ReservationStatus,
   };
+}
+
+/**
+ * Custom stays are removed. Seed stays are marked cancelled, which GET already hides, so the
+ * built-in row does not come back. A live iCal UID can still be linked again on the next sync.
+ */
+export async function deleteReservation(
+  env: SettingsEnv,
+  id: string,
+  expectedVersion?: number,
+): Promise<{ id: string; removed: 'custom' | 'seed' } | null> {
+  const trimmed = id.trim();
+  if (!trimmed) return null;
+  if (await ledgerReady(env)) return deleteReservationRow(env, trimmed, expectedVersion);
+
+  const custom = await loadCustomReservations(env);
+  const idx = custom.findIndex((r) => r.id === trimmed);
+  if (idx >= 0) {
+    custom.splice(idx, 1);
+    await kvPut(env, KV_RES, custom, { allowShrinkReason: `Reservation ${trimmed} removed from the board.` });
+    return { id: trimmed, removed: 'custom' };
+  }
+  if (!RESERVATIONS.some((row) => row.id === trimmed)) return null;
+  const overrides = await loadReservationOverrides(env);
+  overrides[trimmed] = { ...overrides[trimmed], status: 'cancelled' };
+  await kvPut(env, KV_OVERRIDES, overrides);
+  return { id: trimmed, removed: 'seed' };
+}
+
+async function deleteReservationRow(
+  env: SettingsEnv,
+  id: string,
+  expectedVersion?: number,
+): Promise<{ id: string; removed: 'custom' | 'seed' } | null> {
+  const custom = await reservationById(env, id);
+  if (custom) {
+    const claimed = expectedVersion ?? custom.version ?? 0;
+    if (expectedVersion !== undefined && expectedVersion !== (custom.version ?? 0)) {
+      throw new VersionConflictError({ ...custom, version: custom.version ?? 0 });
+    }
+    const changes = await run(env, `DELETE FROM reservations WHERE id = ? AND version = ?`, id, claimed);
+    if (changes !== 1) {
+      const fresh = await reservationById(env, id);
+      if (!fresh) return null;
+      throw new VersionConflictError({ ...fresh, version: fresh.version ?? 0 });
+    }
+    await run(
+      env,
+      `INSERT INTO ledger_tombstones (entity, id) VALUES ('reservations', ?) ON CONFLICT(entity, id) DO NOTHING`,
+      id,
+    );
+    forgetLedgerLists(env);
+    return { id, removed: 'custom' };
+  }
+  if (!RESERVATIONS.some((row) => row.id === id)) return null;
+  await writeOverrideRow(env, id, { status: 'cancelled' }, expectedVersion);
+  return { id, removed: 'seed' };
+}
+
+/** Write the lists the iCal sync built. On D1 each changed row is its own UPDATE. KV is the pre-import path. */
+export async function persistReservationLists(
+  env: SettingsEnv,
+  custom: ReservationRecord[],
+  overrides: Record<string, Partial<ReservationRecord>>,
+): Promise<void> {
+  await persistCustomReservations(env, custom);
+  await persistReservationOverrides(env, overrides);
+}
+
+async function persistCustomReservations(env: SettingsEnv, custom: ReservationRecord[]): Promise<void> {
+  if (!(await ledgerReady(env))) {
+    await kvPut(env, KV_RES, custom);
+    return;
+  }
+  forgetLedgerLists(env);
+  const existing = new Map((await readReservationRows(env)).map((row) => [row.id, row]));
+  for (const row of custom) {
+    const prev = existing.get(row.id);
+    const body = storedReservation(row);
+    if (!prev) {
+      await insertReservationRow(env, body);
+      continue;
+    }
+    if (canonicalJson(storedReservation(prev)) === canonicalJson(body)) continue;
+    const held = (row as VersionedReservation).version;
+    if (held !== undefined && held !== (prev.version ?? 0)) continue;
+    await writeReservationRow(env, { ...body, id: row.id }, prev.version ?? 0);
+  }
+  forgetLedgerLists(env);
+}
+
+async function persistReservationOverrides(
+  env: SettingsEnv,
+  overrides: Record<string, Partial<ReservationRecord>>,
+): Promise<void> {
+  if (!(await ledgerReady(env))) {
+    await kvPut(env, KV_OVERRIDES, overrides);
+    return;
+  }
+  forgetLedgerLists(env);
+  const existing = await readOverrideRows(env);
+  for (const [id, patch] of Object.entries(overrides)) {
+    if (!patch || !RESERVATIONS.some((row) => row.id === id)) continue;
+    const prev = existing[id];
+    const prevBody = { ...(prev ?? {}) };
+    delete prevBody.version;
+    delete prevBody.updatedAt;
+    const nextBody = { ...(patch as VersionedReservation) };
+    delete nextBody.version;
+    delete nextBody.updatedAt;
+    if (prev && canonicalJson(prevBody) === canonicalJson(nextBody)) continue;
+    const held = (patch as VersionedReservation).version;
+    if (held !== undefined && held !== (prev?.version ?? 0)) continue;
+    await writeOverrideRow(env, id, nextBody, prev?.version);
+  }
+  forgetLedgerLists(env);
 }
 
 /**
@@ -258,6 +621,14 @@ export async function updateReservations(
   patches: ReadonlyArray<{ id: string; patch: Partial<ReservationRecord> }>,
 ): Promise<number> {
   if (patches.length === 0) return 0;
+  if (await ledgerReady(env)) {
+    let touched = 0;
+    for (const { id, patch } of patches) {
+      const saved = await updateReservation(env, id, patch);
+      if (saved) touched += 1;
+    }
+    return touched;
+  }
   let touched = 0;
 
   const custom = await loadCustomReservations(env);

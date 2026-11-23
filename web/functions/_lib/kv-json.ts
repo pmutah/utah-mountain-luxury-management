@@ -81,8 +81,15 @@ export async function kvPut<T>(
      * connection replaced 86 bookings with the one it had just made. The invariant is not "not
      * empty", it is "not fewer than what is already saved", so the check compares against storage.
      */
-    if (value.length === 0) throw new Error('Refusing to replace a saved list with an empty one.');
-    if (env.SETTINGS) {
+    const shrinkReason = (options.allowShrinkReason ?? '').trim();
+    /*
+     * An empty list is still a wipe when nobody named a row they meant to remove. A delete of the
+     * last booking or the last expense says so, and is the one case an empty list is the truth.
+     */
+    if (value.length === 0 && shrinkReason.length === 0) {
+      throw new Error('Refusing to replace a saved list with an empty one.');
+    }
+    if (value.length > 0 && env.SETTINGS) {
       /*
        * Prefer the read this request already made. Most routes load the ledger before saving it, so
        * this guard is free in the common case; it only spends a read when the caller never loaded
@@ -107,8 +114,7 @@ export async function kvPut<T>(
            * removes a row says so at the call site. A shrink with no reason is the shape of every
            * accidental wipe this guard exists to stop.
            */
-          const reason = (options.allowShrinkReason ?? '').trim();
-          if (reason.length === 0) {
+          if (shrinkReason.length === 0) {
             throw new Error(
               `Refusing to write ${ledgerRows(value)} saved rows over ${ledgerRows(previous)}: this would lose records. Nothing was written.`,
             );

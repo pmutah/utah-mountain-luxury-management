@@ -70,6 +70,8 @@ const NOT_CONFIGURED: Record<string, string> = {
     'lock buttons. Without it the trip portal never offers unlock, and the door code rules stay as they are.',
   MARKET_DB:
     'the D1 binding for comps and analytics. It is bound as `uml-market` with a preview database. High-volume rows are not written to KV.',
+  LEDGER_DB:
+    'the D1 binding for one reservation, override, and expense per row. The id in wrangler.toml is a placeholder until `wrangler d1 create uml-ledger`. Before POST /api/ledger/migrate, those lists stay in the SETTINGS KV blobs.',
   TURNSTILE_SECRET:
     'the bot check on the booking form. Without it the route records that no bot check ran and still accepts a guest request, rather than refusing every guest until a widget exists.',
   TURNSTILE_SITE_KEY:

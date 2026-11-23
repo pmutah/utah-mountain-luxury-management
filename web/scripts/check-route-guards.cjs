@@ -21,6 +21,7 @@ const HOST_ROUTES = [
   'portfolio/extra-cleaning.ts',
   'reservations/index.ts',
   'reservations/[id].ts',
+  'ledger/migrate.ts',
   'expenses/index.ts',
   'expenses/archive.ts',
   'expenses/[id].ts',

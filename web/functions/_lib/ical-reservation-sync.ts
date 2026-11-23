@@ -1,13 +1,14 @@
 import { RESERVATIONS } from './data';
 import { resolveIcalPayout, findSeedStay } from './reservation-match';
 import { parseIcalSummary, resolveIcalSource } from './ical-summary';
-import { kvPut, newId } from './kv-json';
+import { newId } from './kv-json';
 import type { SettingsEnv } from './kv';
 import type { ICalEvent, PropertyId, ReservationRecord, ReservationStatus } from './agent/types';
 import {
   getAllReservations,
   loadCustomReservations,
   loadReservationOverrides,
+  persistReservationLists,
 } from './reservations-store';
 import { ensureTurnoverCleaningExpenses } from './expenses';
 
@@ -16,6 +17,8 @@ export interface IcalReservationSyncResult {
   updated: number;
   linkedToSeed: number;
   cancelled: number;
+  /** Events that already match a stay and were not inserted as a second $0 row. */
+  skipped: number;
   cleaningExpenses: number;
   /**
    * Why the turnover cleaning rows were not written, when they could not be. The bookings in the same
@@ -47,6 +50,7 @@ export async function syncReservationsFromIcal(
     updated: 0,
     linkedToSeed: 0,
     cancelled: 0,
+    skipped: 0,
     cleaningExpenses: 0,
   };
 
@@ -128,13 +132,47 @@ export async function syncReservationsFromIcal(
       continue;
     }
 
+    const sameDates = custom.findIndex(
+      (row) =>
+        row.propertyId === ev.propertyId &&
+        row.checkIn === ev.start &&
+        row.checkOut === ev.end &&
+        row.status !== 'cancelled',
+    );
+    const payout = resolveIcalPayout(ev, guestName, sameDates >= 0 ? custom[sameDates]!.payout : 0);
+    const placeholder = payout === 0 && (source === 'Hospitable' || source === 'Calendar');
+    if (sameDates >= 0) {
+      const prev = custom[sameDates]!;
+      custom[sameDates] = {
+        ...prev,
+        ...patch,
+        source: resolveIcalSource(ev.summary, ev.description, prev.source, seedHint?.source),
+        payout,
+        icalUid: prev.icalUid ?? ev.uid,
+      };
+      stats.updated++;
+      continue;
+    }
+
+    const stayAlreadyStored =
+      custom.some(
+        (row) => row.propertyId === ev.propertyId && row.checkIn === ev.start && row.checkOut === ev.end,
+      ) ||
+      RESERVATIONS.some(
+        (row) => row.propertyId === ev.propertyId && row.checkIn === ev.start && row.checkOut === ev.end,
+      );
+    if (placeholder && stayAlreadyStored) {
+      stats.skipped++;
+      continue;
+    }
+
     custom.push({
       id: newId('res'),
       guestName,
       propertyId: ev.propertyId as PropertyId,
       checkIn: ev.start,
       checkOut: ev.end,
-      payout: resolveIcalPayout(ev, guestName, 0),
+      payout,
       source,
       status,
       icalUid: ev.uid,
@@ -158,8 +196,7 @@ export async function syncReservationsFromIcal(
     }
   }
 
-  await kvPut(env, 'reservations', custom);
-  await kvPut(env, 'reservationOverrides', overrides);
+  await persistReservationLists(env, custom, overrides);
 
   const all = await getAllReservations(env);
   /*

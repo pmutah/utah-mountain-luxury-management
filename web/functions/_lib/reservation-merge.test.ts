@@ -5,8 +5,8 @@
 import assert from 'node:assert/strict';
 import { applyHostNetFromSeed, resolveIcalPayout } from './reservation-match';
 import { resolveIcalSource } from './ical-summary';
-import { backfillZeroPayouts, getAllReservations } from './reservations-store';
-import { onRequestPatch } from '../api/reservations/[id]';
+import { backfillZeroPayouts, deleteReservation, getAllReservations } from './reservations-store';
+import { onRequestDelete, onRequestPatch } from '../api/reservations/[id]';
 import type { SettingsEnv } from './kv';
 import type { ReservationRecord } from './agent/types';
 
@@ -239,6 +239,98 @@ async function testIcalSyncDoesNotClobberStored() {
   );
 }
 
+async function testDeleteCustomStayLeavesTheOtherRow() {
+  const env = memoryEnv();
+  await env.SETTINGS!.put(
+    'reservations',
+    JSON.stringify([
+      {
+        id: 'res-kept',
+        guestName: 'Kept Guest',
+        propertyId: 'lindon',
+        checkIn: '2026-02-01',
+        checkOut: '2026-02-04',
+        payout: 424.24,
+        source: 'HomeAway',
+        status: 'confirmed',
+      },
+      {
+        id: 'res-dup',
+        guestName: 'Kept Guest',
+        propertyId: 'lindon',
+        checkIn: '2026-02-01',
+        checkOut: '2026-02-04',
+        payout: 1,
+        source: 'Direct',
+        status: 'confirmed',
+      },
+    ]),
+  );
+  const removed = await deleteReservation(env, 'res-dup');
+  assert.deepEqual(removed, { id: 'res-dup', removed: 'custom' });
+  const list = await getAllReservations(env);
+  assert.equal(list.find((row) => row.id === 'res-dup'), undefined);
+  assert.equal(list.find((row) => row.id === 'res-kept')?.payout, 424.24);
+  assert.equal(list.find((row) => row.id === 'res-kept')?.source, 'HomeAway');
+  assert.equal(await deleteReservation(env, 'missing-stay'), null);
+}
+
+async function testDeleteSeedStayStaysHidden() {
+  const env = memoryEnv();
+  await env.SETTINGS!.put(
+    'reservationOverrides',
+    JSON.stringify({ l18: { source: 'HomeAway', note: 'source synced VRBO' } }),
+  );
+  const removed = await deleteReservation(env, 'r1');
+  assert.deepEqual(removed, { id: 'r1', removed: 'seed' });
+  const list = await getAllReservations(env);
+  assert.equal(list.find((row) => row.id === 'r1'), undefined);
+  assert.equal(list.find((row) => row.id === 'l18')?.source, 'HomeAway');
+  assert.equal(list.find((row) => row.id === 'l18')?.payout, 627.69);
+}
+
+async function testDeleteHandlerRemovesCustomAnd404sUnknown() {
+  const env = memoryEnv();
+  await env.SETTINGS!.put(
+    'reservations',
+    JSON.stringify([
+      {
+        id: 'res-dup',
+        guestName: 'Unique Guest',
+        propertyId: 'lindon',
+        checkIn: '2026-01-18',
+        checkOut: '2026-01-20',
+        payout: 111.11,
+        source: 'Airbnb',
+        status: 'confirmed',
+      },
+    ]),
+  );
+  const res = await onRequestDelete({
+    request: new Request('https://wilhite-portfolio.pages.dev/api/reservations/res-dup', {
+      method: 'DELETE',
+      headers: { Cookie: HOST_COOKIE },
+    }),
+    env,
+    params: { id: 'res-dup' },
+  } as unknown as Parameters<typeof onRequestDelete>[0]);
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok: boolean; id: string; removed: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.removed, 'custom');
+  assert.equal((await getAllReservations(env)).find((row) => row.id === 'res-dup'), undefined);
+
+  const missing = await onRequestDelete({
+    request: new Request('https://wilhite-portfolio.pages.dev/api/reservations/nope', {
+      method: 'DELETE',
+      headers: { Cookie: HOST_COOKIE },
+    }),
+    env,
+    params: { id: 'nope' },
+  } as unknown as Parameters<typeof onRequestDelete>[0]);
+  assert.equal(missing.status, 404);
+}
+
 const tests = [
   testLivePayoutWinsOverSeed,
   testZeroPayoutStillFillsFromSeed,
@@ -247,6 +339,9 @@ const tests = [
   testGetMergeAndBackfillKeepStoredValues,
   testPatchSourcePersistsOnGet,
   testIcalSyncDoesNotClobberStored,
+  testDeleteCustomStayLeavesTheOtherRow,
+  testDeleteSeedStayStaysHidden,
+  testDeleteHandlerRemovesCustomAnd404sUnknown,
 ];
 
 for (const test of tests) {

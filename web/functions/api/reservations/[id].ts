@@ -1,11 +1,23 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import { readJsonBody } from '../../_lib/json-body';
-import { updateReservation, updateReservationStatus, getAllReservations } from '../../_lib/reservations-store';
+import {
+  updateReservation,
+  updateReservationStatus,
+  getAllReservations,
+  deleteReservation,
+} from '../../_lib/reservations-store';
 import { readOrRefuse } from '../../_lib/read-guard';
 import type { AgentEnv, ReservationRecord, ReservationStatus } from '../../_lib/agent/types';
 import { refuseReadOnly, mayReadHouse, resolveCaller } from '../../_lib/roles';
 import { audit, auditActorFor } from '../../_lib/platform/audit-store';
+import { readExpectedVersion, versionConflict } from '../../_lib/ledger-db';
+import { storageReadPaused } from '../../_lib/kv-json';
+
+function conflict(request: Request, err: unknown) {
+  if (!versionConflict(err)) return null;
+  return corsJson(request, { error: err.message, code: err.code, current: err.current }, 409);
+}
 
 export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
@@ -26,9 +38,14 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
     guestPhone?: string;
     confirmationCode?: string;
     source?: string;
+    expectedVersion?: number;
   }>(request);
   if (!parsed.ok) return parsed.response;
   const body = parsed.body;
+  const expectedVersion = readExpectedVersion(request, body);
+  if (expectedVersion === 'invalid') {
+    return corsJson(request, { error: 'If-Match must be the row version.' }, 400);
+  }
 
   const patch: Partial<ReservationRecord> = {};
   if (body.note !== undefined) patch.note = body.note;
@@ -64,37 +81,87 @@ export const onRequestPatch: PagesFunction<AgentEnv> = async ({ request, env, pa
   }
 
   if (body.status) {
-    const read = await readOrRefuse(
-      request,
-      () => updateReservationStatus(env, id, body.status!, patch),
-      'Saved bookings',
-    );
-    if (!read.ok) return read.response;
-    if (!read.value) return corsJson(request, { error: 'Not found' }, 404);
-    const logged = await audit(env, {
-      actor: auditActorFor(request, env),
-      action: 'reservation.status',
-      target: id,
-      note: `Status is now ${body.status}.`,
-    });
-    return corsJson(request, { ...read.value, ...(logged.ok ? {} : { auditFailed: logged.reason }) });
+    try {
+      const read = await readOrRefuse(
+        request,
+        () => updateReservationStatus(env, id, body.status!, patch, expectedVersion),
+        'Saved bookings',
+      );
+      if (!read.ok) return read.response;
+      if (!read.value) return corsJson(request, { error: 'Not found' }, 404);
+      const logged = await audit(env, {
+        actor: auditActorFor(request, env),
+        action: 'reservation.status',
+        target: id,
+        note: `Status is now ${body.status}.`,
+      });
+      return corsJson(request, { ...read.value, ...(logged.ok ? {} : { auditFailed: logged.reason }) }, 200, etag(read.value));
+    } catch (err) {
+      const denied = conflict(request, err);
+      if (denied) return denied;
+      throw err;
+    }
   }
 
   if (Object.keys(patch).length === 0) {
     return corsJson(request, { error: 'Nothing to update' }, 400);
   }
 
-  const read = await readOrRefuse(request, () => updateReservation(env, id, patch), 'Saved bookings');
-  if (!read.ok) return read.response;
-  const updated = read.value;
-  if (!updated) return corsJson(request, { error: 'Not found' }, 404);
-  const logged = await audit(env, {
-    actor: auditActorFor(request, env),
-    action: 'reservation.update',
-    target: id,
-    note: `Fields changed: ${Object.keys(patch).slice(0, 8).join(', ')}.`,
-  });
-  return corsJson(request, { ...updated, ...(logged.ok ? {} : { auditFailed: logged.reason }) });
+  try {
+    const read = await readOrRefuse(
+      request,
+      () => updateReservation(env, id, patch, expectedVersion),
+      'Saved bookings',
+    );
+    if (!read.ok) return read.response;
+    const updated = read.value;
+    if (!updated) return corsJson(request, { error: 'Not found' }, 404);
+    const logged = await audit(env, {
+      actor: auditActorFor(request, env),
+      action: 'reservation.update',
+      target: id,
+      note: `Fields changed: ${Object.keys(patch).slice(0, 8).join(', ')}.`,
+    });
+    return corsJson(request, { ...updated, ...(logged.ok ? {} : { auditFailed: logged.reason }) }, 200, etag(updated));
+  } catch (err) {
+    const denied = conflict(request, err);
+    if (denied) return denied;
+    throw err;
+  }
+};
+
+function etag(row: { version?: number }): Record<string, string> {
+  return row.version === undefined ? {} : { ETag: `"${row.version}"` };
+}
+
+export const onRequestDelete: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
+  if (!hostOnly(request, env)) return hostDenied(request, env);
+  const readOnly = refuseReadOnly(request, env, corsJson);
+  if (readOnly) return readOnly;
+  const id = String(params.id ?? '').trim();
+  if (!id) return corsJson(request, { error: 'id required' }, 400);
+  const expectedVersion = readExpectedVersion(request);
+  if (expectedVersion === 'invalid') {
+    return corsJson(request, { error: 'If-Match must be the row version.' }, 400);
+  }
+  try {
+    const removed = await deleteReservation(env, id, expectedVersion);
+    if (!removed) return corsJson(request, { error: 'Not found' }, 404);
+    const logged = await audit(env, {
+      actor: auditActorFor(request, env),
+      action: 'reservation.remove',
+      target: id,
+      note: removed.removed === 'seed' ? 'Seed stay marked cancelled.' : 'Custom stay removed.',
+    });
+    return corsJson(request, { ok: true, ...removed, ...(logged.ok ? {} : { auditFailed: logged.reason }) });
+  } catch (err) {
+    const denied = conflict(request, err);
+    if (denied) return denied;
+    if (storageReadPaused(err)) {
+      return corsJson(request, { error: 'Saved bookings could not be read. Nothing was written over them.' }, 503);
+    }
+    throw err;
+  }
 };
 
 export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, params }) => {

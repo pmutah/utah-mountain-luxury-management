@@ -24,6 +24,14 @@ type RouteHandler = (context: { request: Request; env: unknown; params: Record<s
 const PASSWORD = 'test-password';
 const cookie = `wpm_auth=${btoa(`wpm:${PASSWORD}`).replace(/=+$/, '')}`;
 
+/** A checkout inside the two-week cleaner window, which moves with the calendar. */
+function ahead(days: number): string {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver' }).format(new Date());
+  const day = new Date(`${today}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + days);
+  return day.toISOString().slice(0, 10);
+}
+
 async function routes() {
   const links = (await import('../../functions/api/clean/links.ts')) as unknown as Record<string, RouteHandler>;
   const page = (await import('../../functions/api/clean/[token].ts')) as unknown as Record<string, RouteHandler>;
@@ -55,7 +63,7 @@ test('a minted link opens the job list and never carries a door code or a guest 
   store.set(
     'reservations',
     JSON.stringify([
-      { id: 'res-1', guestName: 'Ada Lovelace', propertyId: 'river', checkIn: '2026-11-10', checkOut: '2026-11-14', payout: 4800, source: 'Airbnb', status: 'confirmed' },
+      { id: 'res-1', guestName: 'Ada Lovelace', propertyId: 'river', checkIn: ahead(1), checkOut: ahead(4), payout: 4800, source: 'Airbnb', status: 'confirmed' },
     ]),
   );
   store.set('guestGuides', JSON.stringify({ river: { doorCode: '4821', wifiPassword: 'fixture-wifi-secret-not-real' } }));
@@ -97,7 +105,7 @@ test('a minted link opens the job list and never carries a door code or a guest 
   };
   assert.equal(body.storageReads, 'ok');
   assert.equal(body.lang, 'en');
-  const job = body.jobs.find((row) => row.house === 'river' && row.checkout === '2026-11-14');
+  const job = body.jobs.find((row) => row.house === 'river' && row.checkout === ahead(4));
   assert.ok(job, 'the River turnover was not listed');
   assert.equal(job.houseName, 'The River House');
   assert.ok(job.steps.length >= 6);
@@ -110,8 +118,8 @@ test('a same-day turn is marked in the list', async () => {
   store.set(
     'reservations',
     JSON.stringify([
-      { id: 'a', guestName: 'One', propertyId: 'ranch', checkIn: '2026-11-10', checkOut: '2026-11-14', payout: 1, source: 'Airbnb', status: 'confirmed' },
-      { id: 'b', guestName: 'Two', propertyId: 'ranch', checkIn: '2026-11-14', checkOut: '2026-11-18', payout: 1, source: 'Airbnb', status: 'confirmed' },
+      { id: 'a', guestName: 'One', propertyId: 'ranch', checkIn: ahead(1), checkOut: ahead(4), payout: 1, source: 'Airbnb', status: 'confirmed' },
+      { id: 'b', guestName: 'Two', propertyId: 'ranch', checkIn: ahead(4), checkOut: ahead(7), payout: 1, source: 'Airbnb', status: 'confirmed' },
     ]),
   );
   const env = { SETTINGS: fakeKv(store), DASHBOARD_PASSWORD: PASSWORD };
@@ -132,7 +140,7 @@ test('a same-day turn is marked in the list', async () => {
     params: { token },
   });
   const body = (await opened.json()) as { jobs: Array<{ checkout: string; sameDay: boolean; steps: string[] }> };
-  const turn = body.jobs.find((row) => row.checkout === '2026-11-14');
+  const turn = body.jobs.find((row) => row.checkout === ahead(4));
   assert.ok(turn);
   assert.equal(turn.sameDay, true);
   assert.match(turn.steps[0] ?? '', /Same-day turn/);

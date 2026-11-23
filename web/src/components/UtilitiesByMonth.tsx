@@ -22,8 +22,8 @@ function CellDetail({
 }) {
   if (cell.expenses.length === 0) return null;
 
-  const deleteExpense = async (id: string) => {
-    await api.deleteExpense(id);
+  const deleteExpense = async (id: string, version?: number) => {
+    await api.deleteExpense(id, undefined, version);
     onRefresh();
   };
 

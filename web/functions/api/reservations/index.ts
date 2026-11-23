@@ -11,18 +11,14 @@ import {
 import type { AgentEnv } from '../../_lib/agent/types';
 import { readOrRefuse } from '../../_lib/read-guard';
 import { allowedHouses, refuseReadOnly, resolveCaller, stripHouses } from '../../_lib/roles';
-import { refreshIcalInBackground } from '../../_lib/ical-refresh';
 import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 
-export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, waitUntil }) => {
+export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   /*
-   * Keep the calendar fresh on a page load. Airbnb and VRBO deliveries only arrived when someone
-   * pressed sync, so a host who did not press it read a calendar that could be days old â€” and a
-   * booked night that still reads open is a double booking. This runs after the response, never
-   * before it, and never twice in one request.
+   * A read does not import. The iCal pull writes stays, and doing that from GET is how two edge
+   * copies of the reservation list kept replacing each other. Import runs from POST /api/calendar/sync.
    */
-  refreshIcalInBackground(env, { waitUntil });
   const url = new URL(request.url);
   const propertyId = url.searchParams.get('propertyId') as 'ranch' | 'lindon' | 'river' | null;
   const when = url.searchParams.get('when') as 'upcoming' | 'current' | 'past' | null;

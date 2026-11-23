@@ -104,15 +104,14 @@ test('no configured feed means no fetch', async () => {
   assert.equal(reads, 1, `the feed config was read ${reads} times for a deployment with no feeds`);
 });
 
-test('the reservations route refreshes on read', () => {
+test('the reservations route does not import on read', () => {
   /*
-   * The whole point is reachability: `syncIcalIfStale` was dead code because nothing called it. A test
-   * of the helper alone would pass while the calendar still went stale.
+   * A page load used to start an iCal import, and that import wrote the whole reservation blob.
+   * Combined with KV's stale edges, the read path was a writer. Import stays on POST /api/calendar/sync.
    */
   const route = readFileSync(join(process.cwd(), 'functions', 'api', 'reservations', 'index.ts'), 'utf8');
-  assert.match(route, /refreshIcalInBackground\(/, 'the reservations read does not refresh the calendar');
-  assert.match(route, /waitUntil/, 'the refresh is not handed to the runtime, so it may block the response');
+  const sync = readFileSync(join(process.cwd(), 'functions', 'api', 'calendar', 'sync.ts'), 'utf8');
+  assert.doesNotMatch(route, /refreshIcalInBackground\(/, 'GET /api/reservations still starts an import');
+  assert.doesNotMatch(route, /syncIcalAndReservations\(/, 'GET /api/reservations still syncs');
+  assert.match(sync, /syncIcalAndReservations\(/, 'POST /api/calendar/sync no longer imports');
 });
-
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';

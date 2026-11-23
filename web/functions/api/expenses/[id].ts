@@ -1,7 +1,7 @@
 import { hostDenied, hostOnly } from '../../_lib/auth';
 import { corsJson } from '../../_lib/data';
 import type { FirebaseStorageEnv } from '../../_lib/gcs';
-import { loadCustomExpenses, saveCustomExpenses, withReceiptUrls } from '../../_lib/expenses';
+import { deleteExpenseRow, loadCustomExpenses, saveCustomExpenses, updateExpenseRow, withReceiptUrls } from '../../_lib/expenses';
 import { parsePaidDate } from '../../_lib/expense-month';
 import { parseConstructionStage } from '../../_lib/construction/types';
 import { isPaidBy } from '../../_lib/paid-by';
@@ -11,6 +11,7 @@ import { storageReadPaused } from '../../_lib/kv-json';
 import type { SettingsEnv } from '../../_lib/kv';
 import { audit, auditActorFor } from '../../_lib/platform/audit-store';
 import { refuseReadOnly } from '../../_lib/roles';
+import { ledgerReady, readExpectedVersion, versionConflict } from '../../_lib/ledger-db';
 
 type ExpenseEnv = SettingsEnv & FirebaseStorageEnv;
 
@@ -36,6 +37,7 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     vendor?: string | null;
     category?: string;
     amount?: number | string;
+    expectedVersion?: number;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -111,12 +113,35 @@ export const onRequestPatch: PagesFunction<ExpenseEnv> = async ({ request, env, 
     custom[idx] = { ...custom[idx]!, paidDate, month: paidDate.slice(0, 7) };
   }
 
-  await saveCustomExpenses(env, custom);
+  const expectedVersion = readExpectedVersion(request, body);
+  if (expectedVersion === 'invalid') {
+    return corsJson(request, { error: 'If-Match must be the row version.' }, 400);
+  }
+  try {
+    if (await ledgerReady(env)) {
+      custom[idx] = await updateExpenseRow(env, custom[idx]!, expectedVersion);
+    } else if (expectedVersion !== undefined && (custom[idx]!.version ?? 0) !== expectedVersion) {
+      return corsJson(
+        request,
+        { error: 'This row was saved somewhere else. Reload it and try the edit again.', code: 'version_conflict', current: custom[idx] },
+        409,
+      );
+    } else {
+      await saveCustomExpenses(env, custom);
+    }
+  } catch (err) {
+    if (versionConflict(err)) {
+      return corsJson(request, { error: err.message, code: err.code, current: err.current }, 409);
+    }
+    throw err;
+  }
   /*
    * Record the edit. The entry names the row and which fields changed — not their values, because an amount is the private
    * detail this log exists to leave in one place.
    */
-  const changed = Object.keys(body).filter((key) => body[key as keyof typeof body] !== undefined);
+  const changed = Object.keys(body).filter(
+    (key) => key !== 'expectedVersion' && body[key as keyof typeof body] !== undefined,
+  );
   const logged = await audit(env, {
     actor: auditActorFor(request, env),
     action: 'expense.update',
@@ -145,6 +170,17 @@ export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env,
   }
 
   const expense = custom[idx]!;
+  const expectedVersion = readExpectedVersion(request);
+  if (expectedVersion === 'invalid') {
+    return corsJson(request, { error: 'If-Match must be the row version.' }, 400);
+  }
+  if (expectedVersion !== undefined && (expense.version ?? 0) !== expectedVersion) {
+    return corsJson(
+      request,
+      { error: 'This row was saved somewhere else. Reload it and try the edit again.', code: 'version_conflict', current: expense },
+      409,
+    );
+  }
   /*
    * Archive first. A removal that cannot be archived does not happen, so a storage failure leaves the
    * expense on the books instead of losing the row and its receipt with nothing to restore.
@@ -169,10 +205,22 @@ export const onRequestDelete: PagesFunction<ExpenseEnv> = async ({ request, env,
    * next to losing a bill, so they stay in storage until the archived row is purged on purpose.
    * Storage is not a ledger, and nothing reads an orphaned file.
    */
-  custom.splice(idx, 1);
-  // Archived above, so this is a deletion we mean. The reason is what lets the ledger guard tell
-  // this apart from a wipe caused by a bad read.
-  await saveCustomExpenses(env, custom, { allowShrinkReason: `Expense ${id} archived, then removed.` });
+  if (await ledgerReady(env)) {
+    try {
+      const removed = await deleteExpenseRow(env, id, expense.version ?? expectedVersion);
+      if (!removed) return corsJson(request, { error: 'Expense not found or cannot delete built-in expense' }, 404);
+    } catch (err) {
+      if (versionConflict(err)) {
+        return corsJson(request, { error: err.message, code: err.code, current: err.current }, 409);
+      }
+      throw err;
+    }
+  } else {
+    custom.splice(idx, 1);
+    // Archived above, so this is a deletion we mean. The reason is what lets the ledger guard tell
+    // this apart from a wipe caused by a bad read.
+    await saveCustomExpenses(env, custom, { allowShrinkReason: `Expense ${id} archived, then removed.` });
+  }
   /*
    * Record it. The entry names the row and the reason, never the amount or the vendor — an audit trail that repeats the
    * detail is a second copy of the thing it exists to protect. A failed log does not undo the removal, and the response says so,

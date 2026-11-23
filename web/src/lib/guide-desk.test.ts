@@ -599,8 +599,8 @@ test('a house guide early or late question follows both calendars for a two-hous
 
 test('an early arrival question names the request and does not send', () => {
   const nora = conciergeGuideAnswer('Can we arrive early?', 'ranch', '2026-10-31', { taken: { ranch: [] }, closed: { ranch: [] } }, {
-    checkIn: '2026-11-16',
-    checkOut: '2026-11-18',
+    checkIn: '2026-12-10',
+    checkOut: '2026-12-12',
   });
   assert.match(nora ?? '', /Arrive at 1:00 PM is a request/);
   assert.match(nora ?? '', /Nothing is sent/);
