@@ -64,7 +64,7 @@ function MoveList({ title, moves, empty }: { title: string; moves: StayMove[]; e
             <li key={move.id} className="text-sm">
               <p>
                 <span className="text-[#d4b56a]">{shortDate(move.date)}</span>
-                {` Â· ${move.houseName} Â· ${move.guest}`}
+                {` · ${move.houseName} · ${move.guest}`}
               </p>
               <p className="text-[var(--uml-muted)]">{move.nights} nights</p>
             </li>

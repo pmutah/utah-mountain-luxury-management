@@ -49,6 +49,7 @@ export function PortfolioOverview({
   onOpenBuild: () => void;
 }) {
   const [opsOpen, setOpsOpen] = useState(false);
+  const [pane, setPane] = useState<'ops' | 'performance'>('ops');
   /**
    * Direct booking requests waiting on a reply.
    *
@@ -117,6 +118,33 @@ export function PortfolioOverview({
           </p>
         </section>
       )}
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Overview">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={pane === 'ops'}
+          aria-current={pane === 'ops' ? 'page' : undefined}
+          data-bot="overview-ops"
+          className="uml-nav"
+          onClick={() => setPane('ops')}
+        >
+          Daily ops
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={pane === 'performance'}
+          aria-current={pane === 'performance' ? 'page' : undefined}
+          data-bot="overview-performance"
+          className="uml-nav"
+          onClick={() => setPane('performance')}
+        >
+          Performance
+        </button>
+      </div>
+
+      {pane === 'ops' && (
+        <>
       <TodayDeskWithSettings reservations={reservations} />
       <ArrivalReadiness reservations={reservations} />
       <section className="uml-panel rounded-3xl px-6 py-8 sm:px-10">
@@ -126,7 +154,18 @@ export function PortfolioOverview({
           <OwnerLetterButton data={data} onToast={onToast} />
         </div>
       </section>
+      <PropertyPostcards data={data} onOpen={onOpenHouse} onOpenBuild={onOpenBuild} signals={signals} />
+      <SiteView
+        onOpen={(id) => {
+          if (id === 'build') onOpenBuild();
+          else onOpenHouse(id);
+        }}
+      />
+        </>
+      )}
 
+      {pane === 'performance' && (
+        <>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           label="Host payouts"
@@ -154,8 +193,6 @@ export function PortfolioOverview({
       {history && <RevenueGoals reservations={history.reservations} />}
       <YieldMoves />
 
-      <PropertyPostcards data={data} onOpen={onOpenHouse} onOpenBuild={onOpenBuild} signals={signals} />
-
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Only the houses this account may see. A `null` house has no health to draw and no profit to name. */}
         {visibleHouses(data).map((id) => {
@@ -175,12 +212,6 @@ export function PortfolioOverview({
 
       <MoneyWaterfall data={data} />
       <SeasonRing year={year} reservations={reservations} />
-      <SiteView
-        onOpen={(id) => {
-          if (id === 'build') onOpenBuild();
-          else onOpenHouse(id);
-        }}
-      />
       {history && <TrendCharts history={history} />}
 
       <AutomationPanel onToast={onToast} />
@@ -210,6 +241,8 @@ export function PortfolioOverview({
           </div>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }

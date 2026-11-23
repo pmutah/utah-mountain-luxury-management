@@ -3,8 +3,9 @@ import { loadQuoteCalendar, type PublicUnit } from '../lib/booked-nights';
 import { heldCheckout, checkInHold, checkoutStopLine } from '../lib/stay-calendar';
 import { denverToday } from '../lib/market/dates';
 import { quoteStay, directSavings, guestPromoLine } from '../lib/quote';
-import { houseStay, partyFits } from '../lib/house-stay';
+import { houseStay, partyFits, SLEEPS_TOGETHER } from '../lib/house-stay';
 import { MAX_DOGS } from '../lib/house-rules';
+import { StayMonth } from './StayMonth';
 import { formatWhole } from '../lib/luxury';
 import { nightsBetween } from '../lib/booking-accept';
 import { RIVER_UNIT_DETAIL } from '../lib/river-units';
@@ -157,6 +158,9 @@ export function DirectReserveCard({
   const units = house !== 'river' ? [] : providedUnits !== undefined ? providedUnits : fetchedUnits;
   const [splitNamesText, setSplitNamesText] = useState('Family 1, Family 2, Family 3');
   const [copiedShare, setCopiedShare] = useState(false);
+  /** Step 1 is the price and the dates. Step 2 is contact, extras, and the rules tick. */
+  const [step, setStep] = useState<'dates' | 'details'>('dates');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const bot = useTurnstile('book_request');
   const stay = houseStay(house);
 
@@ -277,6 +281,13 @@ export function DirectReserveCard({
   const rulesRead = read[house] === true && (!needsBoth || (read.river === true && read.ranch === true));
   const topics = agreementTopics(house, 'page');
   const nights = checkIn && checkOut && checkOut > checkIn ? nightsBetween(checkIn, checkOut) : 0;
+  const guestMax = bookingParts ? Math.max(partSleeps, 1) : house === 'lindon' ? stay.sleeps : SLEEPS_TOGETHER;
+  const childMax = guestCount !== null ? guestCount : guestMax;
+
+  function clampDogs(raw: string) {
+    const digits = raw.replace(/[^\d]/g, '').slice(0, 2);
+    onDogs(digits === '' ? '' : String(Math.min(Number(digits), MAX_DOGS)));
+  }
 
   /*
    * Add-ons are offered only for dates this page can actually quote, because an early arrival and a later checkout
@@ -491,70 +502,92 @@ export function DirectReserveCard({
       )}
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--uml-muted)]">
+        <div className="text-[11px] uppercase tracking-[0.12em] text-[var(--uml-muted)]">
           Check in
-          <input
-            type="date"
+          <button
+            type="button"
             aria-label="Check in"
             data-bot="stay-check-in"
-            value={checkIn}
-            onChange={(event) => pickCheckIn(event.target.value)}
-            className="mt-1 w-full rounded-xl border border-[var(--uml-line)] bg-transparent px-3 py-2 text-sm text-[var(--uml-ink)]"
-          />
-        </label>
-        <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--uml-muted)]">
+            aria-expanded={pickerOpen}
+            onClick={() => setPickerOpen((open) => !open)}
+            className="mt-1 w-full rounded-xl border border-[var(--uml-line)] bg-transparent px-3 py-2 text-left text-sm normal-case tracking-normal text-[var(--uml-ink)]"
+          >
+            {checkIn || 'Choose a date'}
+          </button>
+        </div>
+        <div className="text-[11px] uppercase tracking-[0.12em] text-[var(--uml-muted)]">
           Check out
-          <input
-            type="date"
+          <button
+            type="button"
             aria-label="Check out"
             data-bot="stay-check-out"
-            value={checkOut}
-            onChange={(event) => {
-              const next = event.target.value;
-              onCheckOut(calendar === 'live' ? heldCheckout(checkIn, next, house, takenNights, closedNights) : next);
+            aria-expanded={pickerOpen}
+            onClick={() => setPickerOpen(true)}
+            className="mt-1 w-full rounded-xl border border-[var(--uml-line)] bg-transparent px-3 py-2 text-left text-sm normal-case tracking-normal text-[var(--uml-ink)]"
+          >
+            {checkOut || 'Choose a date'}
+          </button>
+        </div>
+      </div>
+      {pickerOpen && calendar === 'live' && (
+        <div className="mt-2 rounded-2xl border border-[var(--uml-line)] p-2" data-bot="stay-date-popover">
+          <StayMonth
+            house={house}
+            taken={takenNights}
+            blocked={closedNights}
+            sheet={approved[house] ?? []}
+            checkIn={checkIn}
+            checkOut={checkOut}
+            pace={pace[house] ?? 'unknown'}
+            quoted
+            prices={!bookingParts}
+            onPick={(stayPick) => {
+              pickCheckIn(stayPick.checkIn);
+              onCheckOut(
+                calendar === 'live'
+                  ? heldCheckout(stayPick.checkIn, stayPick.checkOut, house, takenNights, closedNights)
+                  : stayPick.checkOut,
+              );
+              if (stayPick.checkOut) setPickerOpen(false);
             }}
-            className="mt-1 w-full rounded-xl border border-[var(--uml-line)] bg-transparent px-3 py-2 text-sm text-[var(--uml-ink)]"
           />
-        </label>
-        <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--uml-muted)]">
-          Guests
-          <input
-            inputMode="numeric"
-            aria-label="Overnight guests"
-            data-bot="stay-guests"
+          <p className="mt-1 text-[11px] text-[var(--uml-muted)]">Booked and held nights are crossed out. A tap fills the dates. It does not hold them.</p>
+        </div>
+      )}
+      {pickerOpen && calendar !== 'live' && (
+        <p className="mt-2 text-sm text-[var(--uml-muted)]" data-bot="stay-picker-waiting">
+          {calendar === 'loading' ? 'Checking the calendar.' : 'The calendar could not be read, so this page will not quote a date.'}
+        </p>
+      )}
+      <div className="mt-3 space-y-2">
+        <div data-bot="stay-guests" data-hint={bookingParts ? `Up to ${partSleeps}` : `Up to ${stay.sleeps}`}>
+          <CountStepper
+            label="Guests"
             value={guests}
+            max={guestMax}
             placeholder={bookingParts ? `Up to ${partSleeps}` : `Up to ${stay.sleeps}`}
-            onChange={(event) => onGuests(event.target.value.replace(/[^\d]/g, '').slice(0, 2))}
-            className="mt-1 w-full rounded-xl border border-[var(--uml-line)] bg-transparent px-3 py-2 text-sm"
+            hint={bookingParts ? `Up to ${partSleeps}` : `Up to ${stay.sleeps}`}
+            onValue={(next) => onGuests(next.replace(/[^\d]/g, '').slice(0, 2))}
           />
-        </label>
-        <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--uml-muted)]">
-          Children
-          <input
-            inputMode="numeric"
-            aria-label="Children"
-            data-bot="stay-children"
+        </div>
+        <div data-bot="stay-children">
+          <CountStepper
+            label="Children"
             value={children}
-            placeholder="0"
-            onChange={(event) => onChildren(event.target.value.replace(/[^\d]/g, '').slice(0, 2))}
-            className="mt-1 w-full rounded-xl border border-[var(--uml-line)] bg-transparent px-3 py-2 text-sm"
+            max={childMax}
+            hint="Included in the guest count"
+            onValue={(next) => onChildren(next.replace(/[^\d]/g, '').slice(0, 2))}
           />
-        </label>
-        <label className="col-span-2 text-[11px] uppercase tracking-[0.12em] text-[var(--uml-muted)]">
-          Dogs <span className="normal-case tracking-normal text-[var(--uml-muted)]">($149 per stay, up to {MAX_DOGS})</span>
-          <input
-            inputMode="numeric"
-            aria-label="Dogs"
-            data-bot="stay-dogs"
+        </div>
+        <div data-bot="stay-dogs">
+          <CountStepper
+            label="Dogs"
             value={dogs}
-            placeholder="0"
-            onChange={(event) => {
-              const digits = event.target.value.replace(/[^\d]/g, '').slice(0, 2);
-              onDogs(digits === '' ? '' : String(Math.min(Number(digits), MAX_DOGS)));
-            }}
-            className="mt-1 w-full rounded-xl border border-[var(--uml-line)] bg-transparent px-3 py-2 text-sm"
+            max={MAX_DOGS}
+            hint={`$149 per stay, up to ${MAX_DOGS}`}
+            onValue={(next) => clampDogs(next)}
           />
-        </label>
+        </div>
       </div>
 
       {/*
@@ -668,6 +701,27 @@ export function DirectReserveCard({
         </p>
       )}
 
+      {step === 'dates' ? (
+        <button
+          type="button"
+          data-bot="stay-continue"
+          className="uml-gold-btn mt-4 w-full rounded-full px-5 py-3 text-xs uppercase tracking-[0.16em]"
+          onClick={() => setStep('details')}
+        >
+          Reserve / Hold dates
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="mt-4 text-xs uppercase tracking-[0.14em] text-[var(--uml-gold)]"
+          onClick={() => setStep('dates')}
+        >
+          Edit dates
+        </button>
+      )}
+
+      {step === 'details' && (
+      <>
       {/*
         Add-ons. Offered only when the dates are quoted, because an early arrival depends on the night before being
         free. They are named on the request and never added to the total — `quoteAddonApart` says that on screen so a
@@ -965,7 +1019,7 @@ export function DirectReserveCard({
         </p>
       )}
 
-      {submitReady ? (
+      {step === 'details' && (
         <form onSubmit={(e) => void submit(e)} className="mt-4 space-y-2" data-bot="stay-form">
           <input
             required
@@ -1021,8 +1075,59 @@ export function DirectReserveCard({
             No card now. A request holds these nights for 30 minutes while we reply.
           </p>
         </form>
-      ) : null}
+      )}
+      </>
+      )}
     </section>
+  );
+}
+
+function CountStepper({
+  label,
+  value,
+  max,
+  hint,
+  placeholder,
+  onValue,
+}: {
+  label: string;
+  value: string;
+  max: number;
+  hint: string;
+  placeholder?: string;
+  onValue: (next: string) => void;
+}) {
+  const current = /^\d+$/.test(value) ? Number(value) : 0;
+  const shown = value === '' ? '0' : value;
+  return (
+    <div className="rounded-xl border border-[var(--uml-line)] px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--uml-muted)]">{label}</span>
+        <span className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={`Fewer ${label}`}
+            disabled={current <= 0}
+            onClick={() => onValue(current <= 1 ? '' : String(current - 1))}
+            className="h-8 w-8 rounded-full border border-[var(--uml-line)] text-base leading-none disabled:opacity-30"
+          >
+            −
+          </button>
+          <span className="min-w-6 text-center text-sm">{shown}</span>
+          <button
+            type="button"
+            aria-label={`More ${label}`}
+            disabled={current >= max}
+            onClick={() => onValue(String(Math.min(max, current + 1)))}
+            className="h-8 w-8 rounded-full border border-[var(--uml-line)] text-base leading-none disabled:opacity-30"
+          >
+            +
+          </button>
+        </span>
+      </div>
+      <p className="mt-1 text-[11px] text-[var(--uml-muted)]">{hint}</p>
+      {placeholder ? <span className="sr-only">{placeholder}</span> : null}
+    </div>
   );
 }
 

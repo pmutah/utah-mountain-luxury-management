@@ -52,7 +52,7 @@ export function GuideDesk({
       <p className="mt-2 text-sm text-[var(--uml-muted)]">
         {host
           ? 'Answers come from the published guide. A split, a rate rule, how many sample comps are close, the lengths a check-in can quote, or a named event is named with no price and no ledger amount. Nothing is sent.'
-          : 'Answers come from the published guide. A check-in date can name the lengths the rate card can quote, and a named event can name its shortest stay. A pet question does not invent a rule. An insurance question uses the stay agreement. Nothing is sent, and no price is quoted.'}
+          : 'Ask anything about rooms, snow, or local spots. Answers come from the published guide. A check-in date can name the lengths the rate card can quote, and a named event can name its shortest stay. A pet question does not invent a rule. An insurance question uses the stay agreement. Nothing is sent, and no price is quoted.'}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <input

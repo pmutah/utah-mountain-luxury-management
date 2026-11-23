@@ -93,6 +93,8 @@ import { OwnerRules } from './components/OwnerRules';
 import { CleanHouseCards } from './components/CleanHouseCards';
 import { RiverLaunch } from './components/RiverLaunch';
 import { RiverUnitsPanel } from './components/RiverUnitsPanel';
+import { CalendarDays, LayoutDashboard, Menu, Plus, Users } from 'lucide-react';
+import { GuestThemeToggle } from './components/GuestThemeToggle';
 import { useToast } from './hooks/useToast';
 import { letterPausedLine, ownerStatementPausedLine } from './lib/report-paused';
 import { currentYearMonth, currentDayIso } from './lib/months';
@@ -501,10 +503,10 @@ function Dashboard() {
         >
           {(
             [
-              ['portfolio', 'Overview'],
-              ['calendar', 'Calendar'],
+              ['portfolio', 'Overview', LayoutDashboard],
+              ['calendar', 'Calendar', CalendarDays],
             ] as const
-          ).map(([id, label]) => (
+          ).map(([id, label, Icon]) => (
             <button
               key={id}
               type="button"
@@ -514,38 +516,47 @@ function Dashboard() {
                 setMoreOpen(false);
                 go(id);
               }}
-              className="uml-nav"
+              className="uml-nav flex flex-col items-center gap-0.5"
             >
+              <Icon className="h-4 w-4" aria-hidden="true" />
               {label}
             </button>
           ))}
           <button
             type="button"
             data-bot="dock-log"
-            className="uml-nav"
+            className="uml-nav flex flex-col items-center gap-0.5"
             onClick={() => window.dispatchEvent(new CustomEvent('uml:quick-capture'))}
           >
-            + Log
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Log
           </button>
           <button
             type="button"
             data-bot="dock-guests"
             aria-current={activeTab === 'guests' ? 'page' : undefined}
-            className="uml-nav"
+            className="uml-nav relative flex flex-col items-center gap-0.5"
             onClick={() => {
               setMoreOpen(false);
               go('guests');
             }}
           >
+            <Users className="h-4 w-4" aria-hidden="true" />
             Guests
+            {(data?.reservations ?? []).filter((stay) => stay.status === 'pending' || stay.status === 'requested').length > 0 ? (
+              <span className="absolute right-2 top-0 rounded-full bg-[var(--uml-gold)] px-1.5 text-[10px] font-bold text-[var(--uml-gold-ink)]">
+                {(data?.reservations ?? []).filter((stay) => stay.status === 'pending' || stay.status === 'requested').length}
+              </span>
+            ) : null}
           </button>
           <button
             type="button"
             data-bot="dock-more"
-            className="uml-nav"
+            className="uml-nav flex flex-col items-center gap-0.5"
             aria-expanded={moreOpen}
             onClick={() => setMoreOpen((value) => !value)}
           >
+            <Menu className="h-4 w-4" aria-hidden="true" />
             More
           </button>
         </nav>
@@ -578,6 +589,18 @@ function Dashboard() {
                 {label}
               </button>
             ))}
+            <button type="button" className="uml-nav" data-bot="dock-opening" onClick={() => { setMoreOpen(false); go('river', 'pnl', 'launch'); }}>
+              Opening
+            </button>
+            <button type="button" className="uml-nav" data-bot="dock-build" onClick={() => { setMoreOpen(false); go('river', 'pnl', 'build'); }}>
+              Build costs
+            </button>
+            <button type="button" className="uml-nav" data-bot="dock-documents" onClick={() => { setMoreOpen(false); go('report', 'documents'); }}>
+              Documents
+            </button>
+            <div className="col-span-2 flex justify-end">
+              <GuestThemeToggle />
+            </div>
           </div>
         ) : null}
       <ToastStack toasts={toasts} />

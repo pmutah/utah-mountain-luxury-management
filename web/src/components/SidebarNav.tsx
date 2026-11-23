@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import {
   Bot,
   CalendarDays,
@@ -15,6 +15,8 @@ import {
   Waves,
 } from 'lucide-react';
 import type { DashboardTab, ReportView, RiverView } from '../lib/bot-nav';
+import { api } from '../lib/api';
+import { applyTheme, cycleTheme, readThemeChoice, themeLabel, type ThemeChoice } from '../lib/theme';
 
 type Go = (tab: DashboardTab, report?: ReportView, river?: RiverView) => void;
 
@@ -115,7 +117,7 @@ export function SidebarNav({
       label: 'River',
       icon: Waves,
       bot: 'nav-river',
-      current: activeTab === 'river' && riverView === 'rental',
+      current: activeTab === 'river',
       onClick: () => onGo('river', 'pnl', 'rental'),
     },
     {
@@ -201,61 +203,52 @@ export function SidebarNav({
         </Section>
         <Section label="Properties" collapsed={collapsed}>
           {properties.map((item) => (
-            <ItemButton key={item.id} item={item} collapsed={collapsed} />
+            <Fragment key={item.id}>
+              <ItemButton item={item} collapsed={collapsed} />
+              {item.id === 'river' && activeTab === 'river' ? (
+                <div className={collapsed ? '' : 'ml-3 border-l border-[var(--uml-line)] pl-2'}>
+                  <button
+                    type="button"
+                    data-bot="river-launch"
+                    aria-current={riverView === 'launch' ? 'page' : undefined}
+                    title="Opening"
+                    onClick={() => onGo('river', 'pnl', 'launch')}
+                    className="uml-side"
+                  >
+                    <Sparkles className="h-4 w-4 shrink-0" />
+                    <span className={collapsed ? 'sr-only' : ''}>Opening</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-bot="river-rental"
+                    aria-current={riverView === 'rental' ? 'page' : undefined}
+                    title="Rental"
+                    onClick={() => onGo('river', 'pnl', 'rental')}
+                    className="uml-side"
+                  >
+                    <Waves className="h-4 w-4 shrink-0" />
+                    <span className={collapsed ? 'sr-only' : ''}>Rental</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-bot="nav-construction"
+                    aria-current={riverView === 'build' ? 'page' : undefined}
+                    title="Build costs"
+                    onClick={() => onGo('river', 'pnl', 'build')}
+                    className="uml-side"
+                  >
+                    <Hammer className="h-4 w-4 shrink-0" />
+                    <span className={collapsed ? 'sr-only' : ''}>Build costs</span>
+                  </button>
+                </div>
+              ) : null}
+            </Fragment>
           ))}
-          <button
-            type="button"
-            data-bot="river-launch"
-            aria-current={activeTab === 'river' && riverView === 'launch' ? 'page' : undefined}
-            title="Opening"
-            onClick={() => onGo('river', 'pnl', 'launch')}
-            className="uml-side"
-          >
-            <Sparkles className="h-4 w-4 shrink-0" />
-            <span className={collapsed ? 'sr-only' : ''}>Opening</span>
-          </button>
-          <button
-            type="button"
-            data-bot="river-rental"
-            aria-current={activeTab === 'river' && riverView === 'rental' ? 'page' : undefined}
-            title="Rental"
-            onClick={() => onGo('river', 'pnl', 'rental')}
-            className="uml-side"
-          >
-            <Waves className="h-4 w-4 shrink-0" />
-            <span className={collapsed ? 'sr-only' : ''}>Rental</span>
-          </button>
-          <button
-            type="button"
-            data-bot="nav-construction"
-            aria-current={activeTab === 'river' && riverView === 'build' ? 'page' : undefined}
-            title="Build costs"
-            onClick={() => onGo('river', 'pnl', 'build')}
-            className="uml-side"
-          >
-            <Hammer className="h-4 w-4 shrink-0" />
-            <span className={collapsed ? 'sr-only' : ''}>Build costs</span>
-          </button>
-          <a href="/houses/" target="_blank" rel="noreferrer" data-bot="nav-guest-site" className="uml-side" title="Live guest site">
-            <Home className="h-4 w-4 shrink-0" />
-            <span className={collapsed ? 'sr-only' : ''}>Live guest site</span>
-          </a>
         </Section>
         <Section label="Finance" collapsed={collapsed}>
           {finance.map((item) => (
             <ItemButton key={item.id} item={item} collapsed={collapsed} />
           ))}
-          <button
-            type="button"
-            data-bot="report-documents"
-            aria-current={activeTab === 'report' && reportView === 'documents' ? 'page' : undefined}
-            title="Documents"
-            onClick={() => onGo('report', 'documents')}
-            className="uml-side"
-          >
-            <Receipt className="h-4 w-4 shrink-0" />
-            <span className={collapsed ? 'sr-only' : ''}>Documents</span>
-          </button>
         </Section>
         <Section label="Intelligence" collapsed={collapsed}>
           <ItemButton
@@ -271,7 +264,63 @@ export function SidebarNav({
           />
         </Section>
       </div>
+      <div className="space-y-2 border-t border-[var(--uml-line)] px-2 py-3">
+        <ThemeSwitch collapsed={collapsed} />
+        <IntegrationPulse collapsed={collapsed} />
+      </div>
     </aside>
+  );
+}
+
+function ThemeSwitch({ collapsed }: { collapsed: boolean }) {
+  const [choice, setChoice] = useState<ThemeChoice>('noir');
+  const [resolved, setResolved] = useState<'noir' | 'snow'>('noir');
+  useEffect(() => {
+    const initial = readThemeChoice();
+    setChoice(initial);
+    setResolved(applyTheme(initial));
+  }, []);
+  return (
+    <button
+      type="button"
+      className="uml-side"
+      title="Theme"
+      onClick={() => {
+        const next = cycleTheme(choice);
+        setChoice(next);
+        setResolved(applyTheme(next));
+      }}
+    >
+      <Sparkles className="h-4 w-4 shrink-0" />
+      <span className={collapsed ? 'sr-only' : ''}>{themeLabel(choice, resolved)}</span>
+    </button>
+  );
+}
+
+function IntegrationPulse({ collapsed }: { collapsed: boolean }) {
+  const [line, setLine] = useState('Reading integrations');
+  useEffect(() => {
+    let cancel = false;
+    void Promise.all([
+      api.getGmailStatus().then((status) => (status.connected ? 'Gmail on' : 'Gmail off')).catch(() => 'Gmail unread'),
+      fetch('/api/platform/health', { credentials: 'include' })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((body: { keys?: { stripeTest?: boolean } } | null) => {
+          if (!body?.keys) return 'Stripe unread';
+          return body.keys.stripeTest ? 'Stripe test key' : 'Stripe key absent';
+        })
+        .catch(() => 'Stripe unread'),
+    ]).then(([gmail, stripe]) => {
+      if (!cancel) setLine(`${gmail} · ${stripe}`);
+    });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+  return (
+    <p className="px-2 text-[10px] uppercase tracking-[0.12em] text-[var(--uml-muted)]" data-bot="integration-pulse" title={line}>
+      {collapsed ? '●' : line}
+    </p>
   );
 }
 
