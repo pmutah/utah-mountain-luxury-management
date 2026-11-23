@@ -101,7 +101,7 @@ Signed-in browser: `/api/muse/enter?token=` or `/api/amanda/enter?token=`.
 - GET `/api/esign/templates`
 - POST `/api/esign/parse-invoice` — import a contractor invoice or email onto a lien waiver (`type`: text / image / gmail / gmail-search)
 - GET/POST `/api/reservations` and PATCH/DELETE `/api/reservations/:id` — GET does not import. DELETE removes a custom stay or hides a built-in one. If-Match is the row version; 409 means reload. On Guests, `[data-bot="reservation-delete"]` asks first.
-- POST `/api/ledger/migrate` — copy KV bookings and expenses into D1 once. Does not write KV. Run it again only to pick up rows a stale KV read missed.
+- POST `/api/ledger/migrate` — copy KV bookings and expenses into D1. Does not write KV. A row missing a required house, date, month, category, or amount is returned in `unresolved` and kept; the rest are saved. `?dryRun=1` returns counts and `unresolved` without writing. Run it again to pick up rows a stale KV read missed.
 - POST `/api/calendar/sync` — the only iCal import. It does not add a $0 Hospitable stay when that property and those dates are already booked.
 - GET `/api/surveys` — upcoming stays + preference surveys
 - POST `/api/surveys/send` — `{ reservationId? , confirmationCode?, channel: "email"|"sms"|"none" }` mints `/stay/:token`. `none` copies a link for Airbnb paste (does not email/SMS the guest).
