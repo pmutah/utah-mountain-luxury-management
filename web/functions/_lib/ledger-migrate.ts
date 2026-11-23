@@ -26,7 +26,6 @@ import {
   one,
   run,
   runBatch,
-  setLedgerReady,
 } from './ledger-db';
 
 const NADYA_DIRECT_DUPLICATE_ID = 'res-1790218853165-k953cr';
@@ -696,7 +695,6 @@ export async function migrateKvLedger(env: SettingsEnv, options: LedgerImportOpt
       : 1
     : 0;
 
-  setLedgerReady(env, true);
   forgetLedgerLists(env);
 
   return {

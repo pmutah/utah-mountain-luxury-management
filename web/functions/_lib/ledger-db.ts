@@ -8,15 +8,19 @@
  * id, and `WHERE version = ?` makes the second writer lose instead of overwriting.
  *
  * Until `ledger_meta.kv_imported_at` is set, callers keep using KV. After it is set, KV is not
- * written. A missing binding (the placeholder id, before `wrangler d1 create`) is the same as
- * "not migrated": the KV path stays in place.
+ * written and must not be read back: the blob is frozen at the import, so a later PATCH (George
+ * at version 2 in D1) still looks like version 1 to any request that takes the KV path.
+ *
+ * The flag is a row in D1. It is read from there on every call. It is not copied into KV, and it
+ * is not remembered on `env` or in module scope. A Pages isolate can keep an `env` object, and a
+ * memoized `false` — including one stored because the flag query threw — would keep that isolate
+ * on the frozen blob forever. A missing binding, or a database whose ledger tables are not
+ * created yet, is what still reads KV.
  */
 import type { SettingsEnv } from './kv';
 import { forgetCached } from './request-cache';
 
 export const KV_IMPORTED_AT = 'kv_imported_at';
-
-const READY = Symbol('uml.ledgerReady');
 
 export class VersionConflictError extends Error {
   readonly code = 'version_conflict';
@@ -38,9 +42,13 @@ export type LedgerDb = {
   prepare: (sql: string) => D1Statement;
   batch?: (statements: D1Statement[]) => Promise<Array<{ meta?: { changes?: number }; changes?: number }>>;
   exec?: (sql: string) => Promise<unknown>;
+  /**
+   * Present on the real D1 binding. `first-primary` sends this read to the primary. A session
+   * opened with `first-unconstrained` and no bookmark may answer from a replica that is behind
+   * the primary.
+   */
+  withSession?: (constraint: string) => LedgerDb;
 };
-
-type ReadyBox = { [READY]?: boolean };
 
 export function ledgerDatabase(env: SettingsEnv): LedgerDb | null {
   const db = env.LEDGER_DB;
@@ -48,45 +56,49 @@ export function ledgerDatabase(env: SettingsEnv): LedgerDb | null {
   return db;
 }
 
+/**
+ * The database for a read. Each call opens its own session on the primary when the binding
+ * supports it, and nothing about that session is stored. Writes keep using `ledgerDatabase`
+ * directly: a write already goes to the primary, and this does not change that path.
+ */
+function primaryDatabase(env: SettingsEnv): LedgerDb | null {
+  const db = ledgerDatabase(env);
+  if (!db) return null;
+  if (typeof db.withSession === 'function') return db.withSession('first-primary');
+  return db;
+}
+
 export function versionConflict(err: unknown): err is VersionConflictError {
   return err instanceof VersionConflictError || (err instanceof Error && err.name === 'VersionConflictError');
 }
 
-/** Drop the per-request answer so the next read sees a migration that just finished. */
-export function setLedgerReady(env: SettingsEnv, ready: boolean): void {
-  (env as ReadyBox)[READY] = ready;
-}
-
 /**
- * True only when this deployment has a D1 binding and the one-time KV import has been recorded.
- * A missing table (migration SQL not applied yet) is not ready — callers stay on KV.
+ * True only when this deployment has a D1 binding and the one-time KV import has been recorded
+ * in `ledger_meta`. Asked every time. A missing table (migration SQL not applied yet) is not
+ * ready — callers stay on KV. Any other failure is raised, because treating it as "not migrated"
+ * would serve the frozen KV blob.
  */
 export async function ledgerReady(env: SettingsEnv): Promise<boolean> {
-  const box = env as ReadyBox;
-  if (typeof box[READY] === 'boolean') return box[READY];
-  const db = ledgerDatabase(env);
-  if (!db) {
-    box[READY] = false;
-    return false;
-  }
+  if (!ledgerDatabase(env)) return false;
   try {
     const row = await one<{ value: string }>(env, 'SELECT value FROM ledger_meta WHERE key = ?', KV_IMPORTED_AT);
-    box[READY] = Boolean(row?.value);
-  } catch {
-    box[READY] = false;
+    return Boolean(row?.value);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/no such table/i.test(message)) return false;
+    throw err;
   }
-  return box[READY]!;
 }
 
 export async function one<T>(env: SettingsEnv, sql: string, ...binds: unknown[]): Promise<T | null> {
-  const db = ledgerDatabase(env);
+  const db = primaryDatabase(env);
   if (!db) return null;
   const result = await db.prepare(sql).bind(...binds.map(nullify)).all<T>();
   return result.results?.[0] ?? null;
 }
 
 export async function many<T>(env: SettingsEnv, sql: string, ...binds: unknown[]): Promise<T[]> {
-  const db = ledgerDatabase(env);
+  const db = primaryDatabase(env);
   if (!db) return [];
   const result = await db.prepare(sql).bind(...binds.map(nullify)).all<T>();
   return result.results ?? [];

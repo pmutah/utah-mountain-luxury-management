@@ -134,6 +134,9 @@ function etag(row: { version?: number }): Record<string, string> {
   return row.version === undefined ? {} : { ETag: `"${row.version}"` };
 }
 
+/** One stay is a live read. A cached copy is how version 1 and version 2 take turns. */
+const NO_STORE = { 'Cache-Control': 'no-store' };
+
 export const onRequestDelete: PagesFunction<AgentEnv> = async ({ request, env, params }) => {
   if (!hostOnly(request, env)) return hostDenied(request, env);
   const readOnly = refuseReadOnly(request, env, corsJson);
@@ -181,9 +184,9 @@ export const onRequestGet: PagesFunction<AgentEnv> = async ({ request, env, para
   const caller = resolveCaller(request, env);
   if (caller.kind === 'denied') return hostDenied(request, env);
   if (!r || (r.propertyId && !mayReadHouse(caller.role, r.propertyId))) {
-    return corsJson(request, { error: 'Not found' }, 404);
+    return corsJson(request, { error: 'Not found' }, 404, NO_STORE);
   }
-  return corsJson(request, r);
+  return corsJson(request, r, 200, NO_STORE);
 };
 
 export const onRequestOptions: PagesFunction = async ({ request }) => corsJson(request, null, 204);
